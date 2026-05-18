@@ -1,0 +1,159 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
+
+interface Standup {
+  id: number;
+  employee_name: string;
+  designation: string;
+  profile_picture?: string;
+  yesterday: string;
+  today: string;
+  blockers: string;
+  standup_date: string;
+  created_at: string;
+}
+
+function initials(name: string) {
+  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+}
+
+function fmtDate(d: string) {
+  return new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+export default function StandupsPage() {
+  const [standups, setStandups] = useState<Standup[]>([]);
+  const [date, setDate] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({ employee_id: '', yesterday: '', today: '', blockers: '' });
+
+  const load = () => {
+    const q = date ? `?date=${date}` : '';
+    api.get<Standup[]>(`/standups${q}`).then(setStandups).catch(() => {});
+  };
+
+  useEffect(() => { load(); }, [date]);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await api.post('/standups', form);
+    setShowModal(false);
+    load();
+  };
+
+  const grouped = standups.reduce((acc, s) => {
+    const d = s.standup_date.split('T')[0];
+    if (!acc[d]) acc[d] = [];
+    acc[d].push(s);
+    return acc;
+  }, {} as Record<string, Standup[]>);
+
+  return (
+    <div>
+      <div className="page-header">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1>Async Standups</h1>
+            <p>Team daily updates — what we did, what's next, any blockers</p>
+          </div>
+          <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Post Standup</button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 mb-4">
+        <label className="form-label" style={{ margin: 0 }}>Filter by date:</label>
+        <input className="form-input" type="date" value={date} onChange={e => setDate(e.target.value)}
+          style={{ width: 180 }} />
+        {date && <button className="btn btn-ghost btn-sm" onClick={() => setDate('')}>Clear</button>}
+      </div>
+
+      {Object.keys(grouped).sort((a, b) => b.localeCompare(a)).map(d => (
+        <div key={d} className="mb-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div style={{
+              background: 'var(--color-primary)',
+              color: '#fff',
+              borderRadius: 'var(--radius-sm)',
+              padding: '3px 10px',
+              fontSize: 12,
+              fontWeight: 600,
+            }}>{fmtDate(d)}</div>
+            <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
+            <span className="text-muted text-sm">{grouped[d].length} update{grouped[d].length !== 1 ? 's' : ''}</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {grouped[d].map(s => (
+              <div key={s.id} className="card" style={{ padding: 20 }}>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="avatar">{initials(s.employee_name)}</div>
+                  <div>
+                    <div className="font-semibold">{s.employee_name}</div>
+                    <div className="text-muted">{s.designation}</div>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-text-muted)', marginBottom: 4 }}>Yesterday</div>
+                    <div className="text-sm">{s.yesterday || '—'}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-accent)', marginBottom: 4 }}>Today</div>
+                    <div className="text-sm">{s.today || '—'}</div>
+                  </div>
+                  {s.blockers && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-error)', marginBottom: 4 }}>Blockers</div>
+                      <div className="text-sm" style={{ color: 'var(--color-error)' }}>{s.blockers}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {standups.length === 0 && (
+        <div className="empty-state card">
+          <div style={{ fontSize: 40 }}>📋</div>
+          <p>No standups found. Be the first to post!</p>
+        </div>
+      )}
+
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Post Daily Standup</h2>
+              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
+            </div>
+            <form onSubmit={submit}>
+              <div className="form-group">
+                <label className="form-label">Employee ID</label>
+                <input className="form-input" type="number" value={form.employee_id} onChange={e => setForm({ ...form, employee_id: e.target.value })} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">What did you do yesterday?</label>
+                <textarea className="form-textarea" value={form.yesterday} onChange={e => setForm({ ...form, yesterday: e.target.value })} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">What are you doing today?</label>
+                <textarea className="form-textarea" value={form.today} onChange={e => setForm({ ...form, today: e.target.value })} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Any blockers?</label>
+                <textarea className="form-textarea" placeholder="Leave empty if none" value={form.blockers} onChange={e => setForm({ ...form, blockers: e.target.value })} />
+              </div>
+              <div className="flex gap-3 justify-between">
+                <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Post</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
