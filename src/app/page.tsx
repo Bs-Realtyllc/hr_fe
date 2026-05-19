@@ -3,6 +3,16 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import Link from 'next/link';
 
+interface DashboardStats {
+  total_active: number;
+  on_leave_today: number;
+  present_today: number;
+  new_hires_month: number;
+  pending_leaves: number;
+  standups_today: number;
+  active_projects: number;
+}
+
 interface OutEmployee {
   name: string;
   designation: string;
@@ -42,28 +52,18 @@ function eventIcon(type: string) {
 }
 
 export default function DashboardPage() {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [outToday, setOutToday] = useState<OutEmployee[]>([]);
   const [outWeek, setOutWeek] = useState<OutEmployee[]>([]);
   const [standups, setStandups] = useState<Standup[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
-  const [stats, setStats] = useState({ employees: 0, projects: 0, pending: 0 });
 
   useEffect(() => {
+    api.get<DashboardStats>('/dashboard/stats').then(setStats).catch(() => {});
     api.get<OutEmployee[]>('/leaves/out/today').then(setOutToday).catch(() => {});
     api.get<OutEmployee[]>('/leaves/out/week').then(setOutWeek).catch(() => {});
     api.get<Standup[]>('/standups/today').then(setStandups).catch(() => {});
     api.get<Event[]>('/events/upcoming').then(setEvents).catch(() => {});
-    Promise.all([
-      api.get<unknown[]>('/employees').catch(() => []),
-      api.get<unknown[]>('/projects').catch(() => []),
-      api.get<unknown[]>('/leaves?status=pending').catch(() => []),
-    ]).then(([emps, projs, pending]) => {
-      setStats({
-        employees: (emps as unknown[]).length,
-        projects: (projs as unknown[]).length,
-        pending: (pending as unknown[]).length,
-      });
-    });
   }, []);
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -75,27 +75,37 @@ export default function DashboardPage() {
         <p>{today}</p>
       </div>
 
-      {/* Stats row */}
+      {/* Headcount stats */}
       <div className="stat-grid">
         <div className="stat-card">
           <div className="stat-card-dot" style={{ background: 'var(--color-primary)' }} />
           <div className="stat-card-label">Total Employees</div>
-          <div className="stat-card-value">{stats.employees}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-accent)' }} />
-          <div className="stat-card-label">Active Projects</div>
-          <div className="stat-card-value">{stats.projects}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-warning)' }} />
-          <div className="stat-card-label">Pending Leaves</div>
-          <div className="stat-card-value">{stats.pending}</div>
+          <div className="stat-card-value">{stats?.total_active ?? '—'}</div>
         </div>
         <div className="stat-card">
           <div className="stat-card-dot" style={{ background: 'var(--color-success)' }} />
-          <div className="stat-card-label">Standups Today</div>
-          <div className="stat-card-value">{standups.length}</div>
+          <div className="stat-card-label">Present Today</div>
+          <div className="stat-card-value">{stats?.present_today ?? '—'}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-dot" style={{ background: 'var(--color-warning)' }} />
+          <div className="stat-card-label">On Leave Today</div>
+          <div className="stat-card-value">{stats?.on_leave_today ?? '—'}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-dot" style={{ background: 'var(--color-accent)' }} />
+          <div className="stat-card-label">New Hires (30d)</div>
+          <div className="stat-card-value">{stats?.new_hires_month ?? '—'}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-dot" style={{ background: 'var(--color-error)' }} />
+          <div className="stat-card-label">Pending Leaves</div>
+          <div className="stat-card-value">{stats?.pending_leaves ?? '—'}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-dot" style={{ background: 'var(--color-info)' }} />
+          <div className="stat-card-label">Active Projects</div>
+          <div className="stat-card-value">{stats?.active_projects ?? '—'}</div>
         </div>
       </div>
 
@@ -196,7 +206,9 @@ export default function DashboardPage() {
                   <div className="font-semibold text-sm">{e.title}</div>
                   {e.employee_name && <div className="text-muted">{e.employee_name}</div>}
                 </div>
-                <div className="text-muted text-sm">{new Date(e.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                <div className="text-muted text-sm">
+                  {new Date(e.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </div>
               </div>
             ))
           )}

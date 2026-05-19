@@ -1,10 +1,7 @@
 {
+  "/_not-found/page": "app/_not-found/page.js",
   "/page": "app/page.js",
-  "/employees/page": "app/employees/page.js",
-  "/leaves/page": "app/leaves/page.js",
-  "/standups/page": "app/standups/page.js",
   "/projects/page": "app/projects/page.js",
-  "/servers/page": "app/servers/page.js",
   "/calendar/page": "app/calendar/page.js",
-  "/culture/page": "app/culture/page.js"
+  "/login/page": "app/login/page.js"
 }
