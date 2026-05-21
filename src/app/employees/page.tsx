@@ -13,7 +13,7 @@ interface Employee {
   start_date: string;
   timezone: string;
   work_hours: string;
-  tech_stack: string[] | string;
+  tech_stack: string[] | string | null;
   role: string;
   is_active: boolean;
 }
@@ -22,9 +22,13 @@ function initials(name: string) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
-function parseTech(ts: string[] | string): string[] {
+function parseTech(ts: string[] | string | null | undefined): string[] {
+  if (!ts) return [];
   if (Array.isArray(ts)) return ts;
-  try { return JSON.parse(ts) as string[]; } catch { return []; }
+  try {
+    const parsed = JSON.parse(ts as string);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
 }
 
 const roleColors: Record<string, string> = {

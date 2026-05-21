@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [errorType, setErrorType] = useState<'default' | 'org'>('default');
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -24,6 +25,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) {
+        setErrorType(res.status === 403 ? 'org' : 'default');
         setError(data.error ?? 'Login failed');
         return;
       }
@@ -72,7 +74,12 @@ export default function LoginPage() {
             />
           </div>
 
-          {error && <div className="login-error">{error}</div>}
+          {error && (
+            <div className={errorType === 'org' ? 'login-error login-error-org' : 'login-error'}>
+              {errorType === 'org' && <span style={{ fontSize: 16, marginRight: 8 }}>🔒</span>}
+              {error}
+            </div>
+          )}
 
           <button
             className="btn btn-primary"

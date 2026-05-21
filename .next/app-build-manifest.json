@@ -1,9 +1,9 @@
 {
   "pages": {
-    "/page": [
+    "/login/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
+      "static/chunks/app/login/page.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",
@@ -11,30 +11,30 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/projects/page": [
+    "/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/projects/page.js"
+      "static/chunks/app/page.js"
     ],
     "/employees/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/employees/page.js"
     ],
-    "/calendar/page": [
+    "/leaves/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/calendar/page.js"
+      "static/chunks/app/leaves/page.js"
     ],
-    "/login/page": [
+    "/standups/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/login/page.js"
+      "static/chunks/app/standups/page.js"
     ],
-    "/_not-found/page": [
+    "/culture/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/_not-found/page.js"
+      "static/chunks/app/culture/page.js"
     ]
   }
 }
