@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Leave {
   id: number;
@@ -12,55 +13,128 @@ interface Leave {
   reason: string;
   status: 'pending' | 'approved' | 'rejected';
   reviewer_name?: string;
-  reviewed_at?: string;
 }
 
-interface Balance {
-  leave_type: string;
-  total: number;
-  taken: number;
-  remaining: number;
+interface EmailSettings {
+  smtp_host: string;
+  smtp_port: number;
+  smtp_user: string;
+  smtp_pass: string;      // write-only — never returned by API
+  smtp_from: string;
+  default_to: string;
+  default_cc: string;
+  default_bcc: string;
 }
 
-const statusBadge: Record<string, string> = {
-  pending: 'badge-warning',
-  approved: 'badge-success',
-  rejected: 'badge-error',
+const BLANK_SETTINGS: EmailSettings = {
+  smtp_host: 'smtp.gmail.com', smtp_port: 587,
+  smtp_user: '', smtp_pass: '', smtp_from: '',
+  default_to: '', default_cc: '', default_bcc: '',
 };
 
-const leaveColors: Record<string, string> = {
-  casual: 'var(--color-info)',
-  sick: 'var(--color-warning)',
-  annual: 'var(--color-accent)',
+const STATUS_BADGE: Record<string, string> = {
+  pending: 'badge-warning', approved: 'badge-success', rejected: 'badge-error',
+};
+const LEAVE_COLORS: Record<string, string> = {
+  casual: 'var(--color-info)', sick: 'var(--color-warning)', annual: 'var(--color-accent)',
 };
 
 export default function LeavesPage() {
-  const [leaves, setLeaves] = useState<Leave[]>([]);
-  const [filter, setFilter] = useState('all');
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ employee_id: '', leave_type: 'casual', start_date: '', end_date: '', reason: '' });
+  const { user } = useAuth();
+
+  const [leaves, setLeaves]                 = useState<Leave[]>([]);
+  const [filter, setFilter]                 = useState('all');
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [showEmailSetup, setShowEmailSetup] = useState(false);
+  const [emailConfigured, setEmailConfigured] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [saveStatus, setSaveStatus]         = useState('');
+  const [emailStatus, setEmailStatus]       = useState('');
+  const [sendingEmail, setSendingEmail]     = useState(false);
+
+  // Email settings form (shown in setup modal)
+  const [emailForm, setEmailForm] = useState<EmailSettings>(BLANK_SETTINGS);
+
+  // Leave + recipient form
+  const [form, setForm] = useState({
+    leave_type: 'casual', start_date: '', end_date: '', reason: '',
+    to: '', cc: '', bcc: '',
+  });
 
   const load = () =>
     api.get<Leave[]>(`/leaves${filter !== 'all' ? `?status=${filter}` : ''}`).then(setLeaves).catch(() => {});
 
   useEffect(() => { load(); }, [filter]);
 
-  const submit = async (e: React.FormEvent) => {
+  // Load email settings from DB whenever user is available
+  useEffect(() => {
+    if (!user?.id) return;
+    api.get<Omit<EmailSettings, 'smtp_pass'> | null>(`/email-settings/${user.id}`)
+      .then(cfg => {
+        if (cfg) {
+          setEmailConfigured(true);
+          setEmailForm(f => ({ ...f, ...cfg, smtp_pass: '' }));
+          setForm(f => ({ ...f, to: cfg.default_to || '', cc: cfg.default_cc || '', bcc: cfg.default_bcc || '' }));
+        }
+      })
+      .catch(() => {});
+  }, [user?.id]);
+
+  const openLeaveModal = () => {
+    setForm(f => ({ ...f, leave_type: 'casual', start_date: '', end_date: '', reason: '' }));
+    setEmailStatus('');
+    setShowLeaveModal(true);
+  };
+
+  const submitLeave = async (e: React.FormEvent) => {
     e.preventDefault();
-    await api.post('/leaves', form);
-    setShowModal(false);
+    const { to, cc, bcc, ...leaveFields } = form;
+    const res = await api.post<{ id: number }>('/leaves', { ...leaveFields, employee_id: user?.id });
+
+    if (to.trim() && emailConfigured) {
+      setSendingEmail(true);
+      try {
+        await api.post('/leaves/send-email', {
+          leave_id: res.id,
+          employee_id: user?.id,
+          to: to.trim(),
+          cc: cc.trim() || undefined,
+          bcc: bcc.trim() || undefined,
+        });
+        setEmailStatus('Leave submitted and email sent successfully.');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        setEmailStatus(`Leave submitted, but email failed: ${msg}`);
+      } finally {
+        setSendingEmail(false);
+      }
+    }
+
+    setShowLeaveModal(false);
     load();
   };
 
-  const approve = async (id: number) => {
-    await api.put(`/leaves/${id}/approve`, { reviewed_by: 1 });
-    load();
+  const saveEmailSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.id) return;
+    setSettingsLoading(true);
+    setSaveStatus('');
+    try {
+      await api.put(`/email-settings/${user.id}`, emailForm);
+      setEmailConfigured(true);
+      setForm(f => ({ ...f, to: emailForm.default_to, cc: emailForm.default_cc, bcc: emailForm.default_bcc }));
+      setSaveStatus('Settings saved.');
+      setTimeout(() => { setSaveStatus(''); setShowEmailSetup(false); }, 1200);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Save failed';
+      setSaveStatus(`Error: ${msg}`);
+    } finally {
+      setSettingsLoading(false);
+    }
   };
 
-  const reject = async (id: number) => {
-    await api.put(`/leaves/${id}/reject`, { reviewed_by: 1 });
-    load();
-  };
+  const approve = async (id: number) => { await api.put(`/leaves/${id}/approve`, { reviewed_by: user?.id }); load(); };
+  const reject  = async (id: number) => { await api.put(`/leaves/${id}/reject`,  { reviewed_by: user?.id }); load(); };
 
   return (
     <div>
@@ -70,23 +144,26 @@ export default function LeavesPage() {
             <h1>Leave Requests</h1>
             <p>Manage employee leave applications and balances</p>
           </div>
-          <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ New Request</button>
+          <div className="flex gap-2">
+            <button className="btn btn-ghost" onClick={() => { setSaveStatus(''); setShowEmailSetup(true); }}>
+              {emailConfigured ? '✓ Email Settings' : 'Setup Email'}
+            </button>
+            <button className="btn btn-primary" onClick={openLeaveModal}>+ New Request</button>
+          </div>
         </div>
       </div>
+
+      {emailStatus && (
+        <div className="card mb-3" style={{ padding: '10px 16px', fontSize: 13, color: emailStatus.includes('failed') ? 'var(--color-warning)' : 'var(--color-success)' }}>
+          {emailStatus}
+        </div>
+      )}
 
       {/* Filter tabs */}
       <div className="flex gap-2 mb-4">
         {['all', 'pending', 'approved', 'rejected'].map(s => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className="btn btn-sm"
-            style={{
-              background: filter === s ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: filter === s ? '#fff' : 'var(--color-text-muted)',
-              border: '1px solid var(--color-border)',
-            }}
-          >
+          <button key={s} onClick={() => setFilter(s)} className="btn btn-sm"
+            style={{ background: filter === s ? 'var(--color-primary)' : 'var(--color-surface)', color: filter === s ? '#fff' : 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
             {s.charAt(0).toUpperCase() + s.slice(1)}
           </button>
         ))}
@@ -96,14 +173,7 @@ export default function LeavesPage() {
         <div className="table-wrap">
           <table>
             <thead>
-              <tr>
-                <th>Employee</th>
-                <th>Type</th>
-                <th>Dates</th>
-                <th>Reason</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
+              <tr><th>Employee</th><th>Type</th><th>Dates</th><th>Reason</th><th>Status</th><th>Actions</th></tr>
             </thead>
             <tbody>
               {leaves.length === 0 && (
@@ -111,12 +181,9 @@ export default function LeavesPage() {
               )}
               {leaves.map(l => (
                 <tr key={l.id}>
+                  <td><div className="font-semibold">{l.employee_name}</div><div className="text-muted">{l.designation}</div></td>
                   <td>
-                    <div className="font-semibold">{l.employee_name}</div>
-                    <div className="text-muted">{l.designation}</div>
-                  </td>
-                  <td>
-                    <span className="badge" style={{ background: `${leaveColors[l.leave_type]}22`, color: leaveColors[l.leave_type], fontWeight: 600 }}>
+                    <span className="badge" style={{ background: `${LEAVE_COLORS[l.leave_type]}22`, color: LEAVE_COLORS[l.leave_type], fontWeight: 600 }}>
                       {l.leave_type}
                     </span>
                   </td>
@@ -124,10 +191,8 @@ export default function LeavesPage() {
                     <div className="text-sm">{new Date(l.start_date).toLocaleDateString()}</div>
                     <div className="text-muted">to {new Date(l.end_date).toLocaleDateString()}</div>
                   </td>
-                  <td style={{ maxWidth: 200 }}>
-                    <div className="truncate text-sm">{l.reason || '—'}</div>
-                  </td>
-                  <td><span className={`badge ${statusBadge[l.status]}`}>{l.status}</span></td>
+                  <td style={{ maxWidth: 200 }}><div className="truncate text-sm">{l.reason || '—'}</div></td>
+                  <td><span className={`badge ${STATUS_BADGE[l.status]}`}>{l.status}</span></td>
                   <td>
                     {l.status === 'pending' && (
                       <div className="flex gap-2">
@@ -143,18 +208,15 @@ export default function LeavesPage() {
         </div>
       </div>
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
+      {/* ── Leave Request Modal ──────────────────────────────────────────── */}
+      {showLeaveModal && (
+        <div className="modal-overlay" onClick={() => setShowLeaveModal(false)}>
+          <div className="modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>New Leave Request</h2>
-              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
+              <button className="modal-close" onClick={() => setShowLeaveModal(false)}>×</button>
             </div>
-            <form onSubmit={submit}>
-              <div className="form-group">
-                <label className="form-label">Employee ID</label>
-                <input className="form-input" type="number" value={form.employee_id} onChange={e => setForm({ ...form, employee_id: e.target.value })} required />
-              </div>
+            <form onSubmit={submitLeave}>
               <div className="form-group">
                 <label className="form-label">Leave Type</label>
                 <select className="form-select" value={form.leave_type} onChange={e => setForm({ ...form, leave_type: e.target.value })}>
@@ -177,9 +239,137 @@ export default function LeavesPage() {
                 <label className="form-label">Reason</label>
                 <textarea className="form-textarea" value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} />
               </div>
+
+              {/* Email notification */}
+              <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 14, marginTop: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-text-muted)' }}>
+                    Email Notification
+                  </span>
+                  {!emailConfigured && (
+                    <button type="button" className="btn btn-ghost btn-sm"
+                      style={{ fontSize: 12 }}
+                      onClick={() => { setShowLeaveModal(false); setSaveStatus(''); setShowEmailSetup(true); }}>
+                      Setup email first →
+                    </button>
+                  )}
+                </div>
+                {emailConfigured ? (
+                  <>
+                    <div className="form-group">
+                      <label className="form-label">To</label>
+                      <input className="form-input" type="text" placeholder="manager@company.com"
+                        value={form.to} onChange={e => setForm({ ...form, to: e.target.value })} />
+                    </div>
+                    <div className="grid-2">
+                      <div className="form-group">
+                        <label className="form-label">CC</label>
+                        <input className="form-input" type="text" placeholder="hr@company.com"
+                          value={form.cc} onChange={e => setForm({ ...form, cc: e.target.value })} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">BCC</label>
+                        <input className="form-input" type="text" placeholder="archive@company.com"
+                          value={form.bcc} onChange={e => setForm({ ...form, bcc: e.target.value })} />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-muted" style={{ fontSize: 13 }}>Configure your email settings once to enable notifications.</p>
+                )}
+              </div>
+
+              <div className="flex gap-3 justify-between" style={{ marginTop: 16 }}>
+                <button type="button" className="btn btn-ghost" onClick={() => setShowLeaveModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={sendingEmail}>
+                  {sendingEmail ? 'Sending…' : emailConfigured && form.to.trim() ? 'Submit & Send Email' : 'Submit Request'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Email Setup Modal ────────────────────────────────────────────── */}
+      {showEmailSetup && (
+        <div className="modal-overlay" onClick={() => setShowEmailSetup(false)}>
+          <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Email Settings</h2>
+              <button className="modal-close" onClick={() => setShowEmailSetup(false)}>×</button>
+            </div>
+            <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>
+              Set up once. Your credentials are saved securely in the database and used each time you send a leave notification.
+            </p>
+            <form onSubmit={saveEmailSettings}>
+              {/* SMTP config */}
+              <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-text-muted)', marginBottom: 10 }}>
+                SMTP Configuration
+              </div>
+              <div className="grid-2">
+                <div className="form-group">
+                  <label className="form-label">SMTP Host</label>
+                  <input className="form-input" type="text" placeholder="smtp.gmail.com"
+                    value={emailForm.smtp_host} onChange={e => setEmailForm({ ...emailForm, smtp_host: e.target.value })} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Port</label>
+                  <input className="form-input" type="number" placeholder="587"
+                    value={emailForm.smtp_port} onChange={e => setEmailForm({ ...emailForm, smtp_port: +e.target.value })} required />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Email / Username</label>
+                <input className="form-input" type="email" placeholder="you@gmail.com"
+                  value={emailForm.smtp_user} onChange={e => setEmailForm({ ...emailForm, smtp_user: e.target.value })} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">
+                  Password {emailConfigured && <span className="text-muted" style={{ fontWeight: 400 }}>(leave blank to keep existing)</span>}
+                </label>
+                <input className="form-input" type="password" placeholder={emailConfigured ? '••••••••' : 'App password'}
+                  value={emailForm.smtp_pass}
+                  onChange={e => setEmailForm({ ...emailForm, smtp_pass: e.target.value })}
+                  required={!emailConfigured} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Display Name (From)</label>
+                <input className="form-input" type="text" placeholder="Your Name (optional)"
+                  value={emailForm.smtp_from} onChange={e => setEmailForm({ ...emailForm, smtp_from: e.target.value })} />
+              </div>
+
+              {/* Default recipients */}
+              <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-text-muted)', margin: '16px 0 10px' }}>
+                Default Recipients
+              </div>
+              <div className="form-group">
+                <label className="form-label">Default To</label>
+                <input className="form-input" type="text" placeholder="manager@company.com"
+                  value={emailForm.default_to} onChange={e => setEmailForm({ ...emailForm, default_to: e.target.value })} />
+              </div>
+              <div className="grid-2">
+                <div className="form-group">
+                  <label className="form-label">Default CC</label>
+                  <input className="form-input" type="text" placeholder="hr@company.com"
+                    value={emailForm.default_cc} onChange={e => setEmailForm({ ...emailForm, default_cc: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Default BCC</label>
+                  <input className="form-input" type="text" placeholder="archive@company.com"
+                    value={emailForm.default_bcc} onChange={e => setEmailForm({ ...emailForm, default_bcc: e.target.value })} />
+                </div>
+              </div>
+
+              {saveStatus && (
+                <div style={{ fontSize: 13, marginBottom: 12, color: saveStatus.startsWith('Error') ? 'var(--color-error)' : 'var(--color-success)' }}>
+                  {saveStatus}
+                </div>
+              )}
               <div className="flex gap-3 justify-between">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Submit Request</button>
+                <button type="button" className="btn btn-ghost" onClick={() => setShowEmailSetup(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={settingsLoading}>
+                  {settingsLoading ? 'Saving…' : 'Save Settings'}
+                </button>
               </div>
             </form>
           </div>

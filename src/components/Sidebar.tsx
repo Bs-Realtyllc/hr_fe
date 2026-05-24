@@ -30,7 +30,7 @@ const allNav = [
     section: 'Work',
     items: [
       { href: '/projects', label: 'Projects', icon: '◉', roles: ['admin', 'lead'] as Role[] },
-      { href: '/servers', label: 'Servers & Envs', icon: '◫', roles: ['admin'] as Role[] },
+      { href: '/servers', label: 'Services & Access', icon: '◫', roles: ['admin', 'lead', 'employee'] as Role[] },
       { href: '/calendar', label: 'Calendar', icon: '◻', roles: ['admin', 'lead', 'employee'] as Role[] },
     ],
   },
@@ -38,6 +38,12 @@ const allNav = [
     section: 'Culture',
     items: [
       { href: '/culture', label: 'Events & Milestones', icon: '✦', roles: ['admin', 'lead', 'employee'] as Role[] },
+    ],
+  },
+  {
+    section: 'Reports',
+    items: [
+      { href: '/reports', label: 'Monthly Reports', icon: '◧', roles: ['admin', 'lead', 'employee'] as Role[] },
     ],
   },
 ];

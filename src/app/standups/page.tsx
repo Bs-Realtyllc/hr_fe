@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import * as XLSX from 'xlsx';
 
 interface Standup {
   id: number;
@@ -23,10 +25,11 @@ function fmtDate(d: string) {
 }
 
 export default function StandupsPage() {
+  const { user } = useAuth();
   const [standups, setStandups] = useState<Standup[]>([]);
   const [date, setDate] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ employee_id: '', yesterday: '', today: '', blockers: '' });
+  const [form, setForm] = useState({ yesterday: '', today: '', blockers: '' });
 
   const load = () => {
     const q = date ? `?date=${date}` : '';
@@ -37,9 +40,26 @@ export default function StandupsPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await api.post('/standups', form);
+    await api.post('/standups', { ...form, employee_id: user?.id });
     setShowModal(false);
+    setForm({ yesterday: '', today: '', blockers: '' });
     load();
+  };
+
+  const exportExcel = () => {
+    const rows = standups.map(s => ({
+      Employee:     s.employee_name,
+      Designation:  s.designation,
+      Date:         s.standup_date.split('T')[0],
+      Yesterday:    s.yesterday,
+      Today:        s.today,
+      Blockers:     s.blockers || '',
+      'Submitted At': new Date(s.created_at).toLocaleString(),
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Standups');
+    XLSX.writeFile(wb, `standups_${date || new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   const grouped = standups.reduce((acc, s) => {
@@ -57,7 +77,10 @@ export default function StandupsPage() {
             <h1>Async Standups</h1>
             <p>Team daily updates — what we did, what's next, any blockers</p>
           </div>
-          <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Post Standup</button>
+          <div className="flex gap-2">
+            <button className="btn btn-ghost" onClick={exportExcel} disabled={standups.length === 0}>Export Excel</button>
+            <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Post Standup</button>
+          </div>
         </div>
       </div>
 
@@ -130,10 +153,6 @@ export default function StandupsPage() {
               <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
             </div>
             <form onSubmit={submit}>
-              <div className="form-group">
-                <label className="form-label">Employee ID</label>
-                <input className="form-input" type="number" value={form.employee_id} onChange={e => setForm({ ...form, employee_id: e.target.value })} required />
-              </div>
               <div className="form-group">
                 <label className="form-label">What did you do yesterday?</label>
                 <textarea className="form-textarea" value={form.yesterday} onChange={e => setForm({ ...form, yesterday: e.target.value })} required />
