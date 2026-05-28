@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 interface Leave {
   id: number;
+  employee_id: number;
   employee_name: string;
   designation: string;
   leave_type: string;
@@ -39,8 +40,14 @@ const LEAVE_COLORS: Record<string, string> = {
   casual: 'var(--color-info)', sick: 'var(--color-warning)', annual: 'var(--color-accent)',
 };
 
+function toDateInput(iso: string) {
+  return iso ? iso.split('T')[0] : '';
+}
+
 export default function LeavesPage() {
   const { user } = useAuth();
+  const isAdmin     = user?.role === 'admin';
+  const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
 
   const [leaves, setLeaves]                 = useState<Leave[]>([]);
   const [filter, setFilter]                 = useState('all');
@@ -49,13 +56,15 @@ export default function LeavesPage() {
   const [emailConfigured, setEmailConfigured] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [saveStatus, setSaveStatus]         = useState('');
-  const [emailStatus, setEmailStatus]       = useState('');
-  const [sendingEmail, setSendingEmail]     = useState(false);
 
-  // Email settings form (shown in setup modal)
+  // Edit-leave state
+  const [editingLeave, setEditingLeave]   = useState<Leave | null>(null);
+  const [editForm, setEditForm]           = useState({ leave_type: 'casual', start_date: '', end_date: '', reason: '' });
+
+  // Email settings form
   const [emailForm, setEmailForm] = useState<EmailSettings>(BLANK_SETTINGS);
 
-  // Leave + recipient form
+  // New-leave + recipient form
   const [form, setForm] = useState({
     leave_type: 'casual', start_date: '', end_date: '', reason: '',
     to: '', cc: '', bcc: '',
@@ -66,7 +75,6 @@ export default function LeavesPage() {
 
   useEffect(() => { load(); }, [filter]);
 
-  // Load email settings from DB whenever user is available
   useEffect(() => {
     if (!user?.id) return;
     api.get<Omit<EmailSettings, 'smtp_pass'> | null>(`/email-settings/${user.id}`)
@@ -82,35 +90,46 @@ export default function LeavesPage() {
 
   const openLeaveModal = () => {
     setForm(f => ({ ...f, leave_type: 'casual', start_date: '', end_date: '', reason: '' }));
-    setEmailStatus('');
     setShowLeaveModal(true);
   };
 
   const submitLeave = async (e: React.FormEvent) => {
     e.preventDefault();
     const { to, cc, bcc, ...leaveFields } = form;
-    const res = await api.post<{ id: number }>('/leaves', { ...leaveFields, employee_id: user?.id });
-
-    if (to.trim() && emailConfigured) {
-      setSendingEmail(true);
-      try {
-        await api.post('/leaves/send-email', {
-          leave_id: res.id,
-          employee_id: user?.id,
-          to: to.trim(),
-          cc: cc.trim() || undefined,
-          bcc: bcc.trim() || undefined,
-        });
-        setEmailStatus('Leave submitted and email sent successfully.');
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Unknown error';
-        setEmailStatus(`Leave submitted, but email failed: ${msg}`);
-      } finally {
-        setSendingEmail(false);
-      }
-    }
-
+    await api.post<{ id: number }>('/leaves', {
+      ...leaveFields,
+      employee_id: user?.id,
+      ...(emailConfigured && to.trim() && {
+        to: to.trim(),
+        cc: cc.trim() || undefined,
+        bcc: bcc.trim() || undefined,
+      }),
+    });
     setShowLeaveModal(false);
+    load();
+  };
+
+  const openEditModal = (l: Leave) => {
+    setEditingLeave(l);
+    setEditForm({
+      leave_type: l.leave_type,
+      start_date: toDateInput(l.start_date),
+      end_date:   toDateInput(l.end_date),
+      reason:     l.reason || '',
+    });
+  };
+
+  const submitEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLeave) return;
+    await api.put(`/leaves/${editingLeave.id}`, editForm);
+    setEditingLeave(null);
+    load();
+  };
+
+  const cancelLeave = async (id: number) => {
+    if (!confirm('Cancel this leave request?')) return;
+    await api.delete(`/leaves/${id}`);
     load();
   };
 
@@ -123,8 +142,7 @@ export default function LeavesPage() {
       await api.put(`/email-settings/${user.id}`, emailForm);
       setEmailConfigured(true);
       setForm(f => ({ ...f, to: emailForm.default_to, cc: emailForm.default_cc, bcc: emailForm.default_bcc }));
-      setSaveStatus('Settings saved.');
-      setTimeout(() => { setSaveStatus(''); setShowEmailSetup(false); }, 1200);
+      setShowEmailSetup(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Save failed';
       setSaveStatus(`Error: ${msg}`);
@@ -133,8 +151,8 @@ export default function LeavesPage() {
     }
   };
 
-  const approve = async (id: number) => { await api.put(`/leaves/${id}/approve`, { reviewed_by: user?.id }); load(); };
-  const reject  = async (id: number) => { await api.put(`/leaves/${id}/reject`,  { reviewed_by: user?.id }); load(); };
+  const approve = async (id: number) => { await api.put(`/leaves/${id}/approve`, {}); load(); };
+  const reject  = async (id: number) => { await api.put(`/leaves/${id}/reject`,  {}); load(); };
 
   return (
     <div>
@@ -142,7 +160,7 @@ export default function LeavesPage() {
         <div className="flex justify-between items-center">
           <div>
             <h1>Leave Requests</h1>
-            <p>Manage employee leave applications and balances</p>
+            <p>{isPrivileged ? 'Manage employee leave applications and balances' : 'Your leave applications'}</p>
           </div>
           <div className="flex gap-2">
             <button className="btn btn-ghost" onClick={() => { setSaveStatus(''); setShowEmailSetup(true); }}>
@@ -152,12 +170,6 @@ export default function LeavesPage() {
           </div>
         </div>
       </div>
-
-      {emailStatus && (
-        <div className="card mb-3" style={{ padding: '10px 16px', fontSize: 13, color: emailStatus.includes('failed') ? 'var(--color-warning)' : 'var(--color-success)' }}>
-          {emailStatus}
-        </div>
-      )}
 
       {/* Filter tabs */}
       <div className="flex gap-2 mb-4">
@@ -179,36 +191,56 @@ export default function LeavesPage() {
               {leaves.length === 0 && (
                 <tr><td colSpan={6} style={{ textAlign: 'center', padding: 32, color: 'var(--color-text-muted)' }}>No leave requests found</td></tr>
               )}
-              {leaves.map(l => (
-                <tr key={l.id}>
-                  <td><div className="font-semibold">{l.employee_name}</div><div className="text-muted">{l.designation}</div></td>
-                  <td>
-                    <span className="badge" style={{ background: `${LEAVE_COLORS[l.leave_type]}22`, color: LEAVE_COLORS[l.leave_type], fontWeight: 600 }}>
-                      {l.leave_type}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="text-sm">{new Date(l.start_date).toLocaleDateString()}</div>
-                    <div className="text-muted">to {new Date(l.end_date).toLocaleDateString()}</div>
-                  </td>
-                  <td style={{ maxWidth: 200 }}><div className="truncate text-sm">{l.reason || '—'}</div></td>
-                  <td><span className={`badge ${STATUS_BADGE[l.status]}`}>{l.status}</span></td>
-                  <td>
-                    {l.status === 'pending' && (
+              {leaves.map(l => {
+                const isOwn            = l.employee_id === user?.id;
+                // Admin can always approve/reject; lead can for others' leaves only
+                const canApproveReject = l.status === 'pending' && (isAdmin || (user?.role === 'lead' && !isOwn));
+                const canEditCancel    = l.status === 'pending' && isOwn;
+
+                return (
+                  <tr key={l.id}>
+                    <td><div className="font-semibold">{l.employee_name}</div><div className="text-muted">{l.designation}</div></td>
+                    <td>
+                      <span className="badge" style={{ background: `${LEAVE_COLORS[l.leave_type]}22`, color: LEAVE_COLORS[l.leave_type], fontWeight: 600 }}>
+                        {l.leave_type}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="text-sm">{new Date(l.start_date).toLocaleDateString()}</div>
+                      <div className="text-muted">to {new Date(l.end_date).toLocaleDateString()}</div>
+                    </td>
+                    <td style={{ maxWidth: 200 }}><div className="truncate text-sm">{l.reason || '—'}</div></td>
+                    <td><span className={`badge ${STATUS_BADGE[l.status]}`}>{l.status}</span></td>
+                    <td>
                       <div className="flex gap-2">
-                        <button className="btn btn-sm btn-accent" onClick={() => approve(l.id)}>Approve</button>
-                        <button className="btn btn-sm btn-danger" onClick={() => reject(l.id)}>Reject</button>
+                        {canApproveReject && (
+                          <>
+                            <button className="btn btn-sm btn-accent" onClick={() => approve(l.id)}>Approve</button>
+                            <button className="btn btn-sm btn-danger" onClick={() => reject(l.id)}>Reject</button>
+                          </>
+                        )}
+                        {canEditCancel && (
+                          <>
+                            <button className="btn btn-sm btn-ghost" onClick={() => openEditModal(l)}>Edit</button>
+                            <button className="btn btn-sm btn-danger" onClick={() => cancelLeave(l.id)}>Cancel</button>
+                          </>
+                        )}
+                        {isOwn && l.status !== 'pending' && (
+                          <span className="text-muted" style={{ fontSize: 12 }}>
+                            {l.status === 'approved' ? `Approved${l.reviewer_name ? ` by ${l.reviewer_name}` : ''}` : `Rejected${l.reviewer_name ? ` by ${l.reviewer_name}` : ''}`}
+                          </span>
+                        )}
                       </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* ── Leave Request Modal ──────────────────────────────────────────── */}
+      {/* ── New Leave Request Modal ──────────────────────────────────────── */}
       {showLeaveModal && (
         <div className="modal-overlay" onClick={() => setShowLeaveModal(false)}>
           <div className="modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
@@ -247,8 +279,7 @@ export default function LeavesPage() {
                     Email Notification
                   </span>
                   {!emailConfigured && (
-                    <button type="button" className="btn btn-ghost btn-sm"
-                      style={{ fontSize: 12 }}
+                    <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: 12 }}
                       onClick={() => { setShowLeaveModal(false); setSaveStatus(''); setShowEmailSetup(true); }}>
                       Setup email first →
                     </button>
@@ -281,9 +312,49 @@ export default function LeavesPage() {
 
               <div className="flex gap-3 justify-between" style={{ marginTop: 16 }}>
                 <button type="button" className="btn btn-ghost" onClick={() => setShowLeaveModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={sendingEmail}>
-                  {sendingEmail ? 'Sending…' : emailConfigured && form.to.trim() ? 'Submit & Send Email' : 'Submit Request'}
+                <button type="submit" className="btn btn-primary">
+                  {emailConfigured && form.to.trim() ? 'Submit & Notify' : 'Submit Request'}
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Leave Modal ─────────────────────────────────────────────── */}
+      {editingLeave && (
+        <div className="modal-overlay" onClick={() => setEditingLeave(null)}>
+          <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Edit Leave Request</h2>
+              <button className="modal-close" onClick={() => setEditingLeave(null)}>×</button>
+            </div>
+            <form onSubmit={submitEdit}>
+              <div className="form-group">
+                <label className="form-label">Leave Type</label>
+                <select className="form-select" value={editForm.leave_type} onChange={e => setEditForm({ ...editForm, leave_type: e.target.value })}>
+                  <option value="casual">Casual</option>
+                  <option value="sick">Sick</option>
+                  <option value="annual">Annual</option>
+                </select>
+              </div>
+              <div className="grid-2">
+                <div className="form-group">
+                  <label className="form-label">Start Date</label>
+                  <input className="form-input" type="date" value={editForm.start_date} onChange={e => setEditForm({ ...editForm, start_date: e.target.value })} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">End Date</label>
+                  <input className="form-input" type="date" value={editForm.end_date} onChange={e => setEditForm({ ...editForm, end_date: e.target.value })} required />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Reason</label>
+                <textarea className="form-textarea" value={editForm.reason} onChange={e => setEditForm({ ...editForm, reason: e.target.value })} />
+              </div>
+              <div className="flex gap-3 justify-between" style={{ marginTop: 16 }}>
+                <button type="button" className="btn btn-ghost" onClick={() => setEditingLeave(null)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Save Changes</button>
               </div>
             </form>
           </div>
@@ -302,7 +373,6 @@ export default function LeavesPage() {
               Set up once. Your credentials are saved securely in the database and used each time you send a leave notification.
             </p>
             <form onSubmit={saveEmailSettings}>
-              {/* SMTP config */}
               <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-text-muted)', marginBottom: 10 }}>
                 SMTP Configuration
               </div>
@@ -338,7 +408,6 @@ export default function LeavesPage() {
                   value={emailForm.smtp_from} onChange={e => setEmailForm({ ...emailForm, smtp_from: e.target.value })} />
               </div>
 
-              {/* Default recipients */}
               <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-text-muted)', margin: '16px 0 10px' }}>
                 Default Recipients
               </div>

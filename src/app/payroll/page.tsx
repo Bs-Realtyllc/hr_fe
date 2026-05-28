@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -20,29 +19,30 @@ function initials(name: string) {
 
 function toMonthly(salary: number, freq: string): number {
   if (freq === 'biweekly') return (salary * 26) / 12;
-  if (freq === 'weekly') return salary * 52 / 12;
+  if (freq === 'weekly') return (salary * 52) / 12;
   return salary;
 }
 
 export default function PayrollPage() {
   const { user } = useAuth();
-  const router = useRouter();
-  const [rows, setRows] = useState<PayrollRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editId, setEditId] = useState<number | null>(null);
+  const isAdmin      = user?.role === 'admin';
+  const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
+
+  const [rows, setRows]         = useState<PayrollRow[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [editId, setEditId]     = useState<number | null>(null);
   const [editSalary, setEditSalary] = useState('');
   const [editFreq, setEditFreq] = useState('monthly');
-  const [resetId, setResetId] = useState<number | null>(null);
-  const [resetPw, setResetPw] = useState('');
+  const [resetId, setResetId]   = useState<number | null>(null);
+  const [resetPw, setResetPw]   = useState('');
   const [resetMsg, setResetMsg] = useState('');
 
   useEffect(() => {
-    if (user && user.role !== 'admin') { router.replace('/'); return; }
     api.get<PayrollRow[]>('/payroll')
       .then(setRows)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [user, router]);
+  }, []);
 
   const totalMonthly = rows.reduce((sum, r) => {
     if (!r.salary) return sum;
@@ -51,7 +51,9 @@ export default function PayrollPage() {
 
   async function saveSalary(id: number) {
     await api.put(`/payroll/${id}/salary`, { salary: parseFloat(editSalary) || null, pay_frequency: editFreq });
-    setRows(prev => prev.map(r => r.id === id ? { ...r, salary: parseFloat(editSalary) || null, pay_frequency: editFreq as PayrollRow['pay_frequency'] } : r));
+    setRows(prev => prev.map(r => r.id === id
+      ? { ...r, salary: parseFloat(editSalary) || null, pay_frequency: editFreq as PayrollRow['pay_frequency'] }
+      : r));
     setEditId(null);
   }
 
@@ -65,32 +67,34 @@ export default function PayrollPage() {
     }
   }
 
-  if (loading) return <div className="page-header"><h1>Payroll</h1><p>Loading…</p></div>;
+  if (loading) return <div className="page-header"><h1>{isPrivileged ? 'Payroll' : 'My Payroll'}</h1><p>Loading…</p></div>;
 
   return (
     <div>
       <div className="page-header">
-        <h1>Payroll</h1>
-        <p>Manage employee salaries and account access</p>
+        <h1>{isPrivileged ? 'Payroll' : 'My Payroll'}</h1>
+        <p>{isPrivileged ? 'Manage employee salaries and account access' : 'Your salary and pay details'}</p>
       </div>
 
-      <div className="stat-grid" style={{ marginBottom: 24 }}>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-primary)' }} />
-          <div className="stat-card-label">Total Employees</div>
-          <div className="stat-card-value">{rows.length}</div>
+      {isPrivileged && (
+        <div className="stat-grid" style={{ marginBottom: 24 }}>
+          <div className="stat-card">
+            <div className="stat-card-dot" style={{ background: 'var(--color-primary)' }} />
+            <div className="stat-card-label">Total Employees</div>
+            <div className="stat-card-value">{rows.length}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-dot" style={{ background: 'var(--color-success)' }} />
+            <div className="stat-card-label">Est. Monthly Total</div>
+            <div className="stat-card-value">${Math.round(totalMonthly).toLocaleString()}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-dot" style={{ background: 'var(--color-accent)' }} />
+            <div className="stat-card-label">Salaries Configured</div>
+            <div className="stat-card-value">{rows.filter(r => r.salary).length} / {rows.length}</div>
+          </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-success)' }} />
-          <div className="stat-card-label">Est. Monthly Total</div>
-          <div className="stat-card-value">${Math.round(totalMonthly).toLocaleString()}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-accent)' }} />
-          <div className="stat-card-label">Salaries Configured</div>
-          <div className="stat-card-value">{rows.filter(r => r.salary).length} / {rows.length}</div>
-        </div>
-      </div>
+      )}
 
       <div className="card" style={{ overflowX: 'auto' }}>
         <table className="table">
@@ -101,7 +105,7 @@ export default function PayrollPage() {
               <th>Role</th>
               <th>Pay Frequency</th>
               <th>Monthly Salary</th>
-              <th>Actions</th>
+              {isAdmin && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -124,12 +128,8 @@ export default function PayrollPage() {
                 </td>
                 <td>
                   {editId === r.id ? (
-                    <select
-                      className="form-input"
-                      style={{ padding: '4px 8px', fontSize: 13 }}
-                      value={editFreq}
-                      onChange={e => setEditFreq(e.target.value)}
-                    >
+                    <select className="form-input" style={{ padding: '4px 8px', fontSize: 13 }}
+                      value={editFreq} onChange={e => setEditFreq(e.target.value)}>
                       <option value="monthly">Monthly</option>
                       <option value="biweekly">Biweekly</option>
                       <option value="weekly">Weekly</option>
@@ -140,52 +140,41 @@ export default function PayrollPage() {
                 </td>
                 <td>
                   {editId === r.id ? (
-                    <input
-                      className="form-input"
-                      style={{ padding: '4px 8px', fontSize: 13, width: 120 }}
-                      type="number"
-                      value={editSalary}
-                      onChange={e => setEditSalary(e.target.value)}
-                      placeholder="0.00"
-                    />
+                    <input className="form-input" style={{ padding: '4px 8px', fontSize: 13, width: 120 }}
+                      type="number" value={editSalary} onChange={e => setEditSalary(e.target.value)} placeholder="0.00" />
                   ) : r.salary ? (
                     <span style={{ fontWeight: 600 }}>${r.salary.toLocaleString()}</span>
                   ) : (
                     <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Not set</span>
                   )}
                 </td>
-                <td>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    {editId === r.id ? (
-                      <>
-                        <button className="btn btn-primary" style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => saveSalary(r.id)}>Save</button>
-                        <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => setEditId(null)}>Cancel</button>
-                      </>
-                    ) : (
-                      <button
-                        className="btn btn-secondary"
-                        style={{ padding: '4px 12px', fontSize: 12 }}
-                        onClick={() => { setEditId(r.id); setEditSalary(r.salary?.toString() ?? ''); setEditFreq(r.pay_frequency ?? 'monthly'); }}
-                      >
-                        Edit Salary
+                {isAdmin && (
+                  <td>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      {editId === r.id ? (
+                        <>
+                          <button className="btn btn-primary" style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => saveSalary(r.id)}>Save</button>
+                          <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => setEditId(null)}>Cancel</button>
+                        </>
+                      ) : (
+                        <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }}
+                          onClick={() => { setEditId(r.id); setEditSalary(r.salary?.toString() ?? ''); setEditFreq(r.pay_frequency ?? 'monthly'); }}>
+                          Edit Salary
+                        </button>
+                      )}
+                      <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }}
+                        onClick={() => { setResetId(r.id); setResetMsg(''); setResetPw(''); }}>
+                        Reset PW
                       </button>
-                    )}
-                    <button
-                      className="btn btn-secondary"
-                      style={{ padding: '4px 12px', fontSize: 12 }}
-                      onClick={() => { setResetId(r.id); setResetMsg(''); setResetPw(''); }}
-                    >
-                      Reset PW
-                    </button>
-                  </div>
-                </td>
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      {/* Reset password inline panel */}
       {resetId !== null && (
         <div className="modal-overlay" onClick={() => setResetId(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -195,13 +184,8 @@ export default function PayrollPage() {
             </div>
             <div className="form-group">
               <label className="form-label">New Password</label>
-              <input
-                className="form-input"
-                type="password"
-                value={resetPw}
-                onChange={e => setResetPw(e.target.value)}
-                placeholder="Min. 6 characters"
-              />
+              <input className="form-input" type="password" value={resetPw}
+                onChange={e => setResetPw(e.target.value)} placeholder="Min. 6 characters" />
             </div>
             {resetMsg && (
               <p style={{ fontSize: 13, color: resetMsg.includes('success') ? 'var(--color-success)' : 'var(--color-error)', marginBottom: 12 }}>

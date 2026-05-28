@@ -1,8 +1,4 @@
 {
-  "/standups/page": "app/standups/page.js",
-  "/leaves/page": "app/leaves/page.js",
-  "/servers/page": "app/servers/page.js",
   "/page": "app/page.js",
-  "/payroll/page": "app/payroll/page.js",
-  "/culture/page": "app/culture/page.js"
+  "/login/page": "app/login/page.js"
 }

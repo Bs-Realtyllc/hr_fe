@@ -16,44 +16,56 @@ interface CredForm {
   notes: string;
 }
 
-const SERVICES = [
-  {
-    key: 'drone',
-    name: 'Drone CI',
-    url: 'https://drone.bsrealtyllc.com',
-    icon: '🚁',
-    color: '#1565C0',
-    desc: 'Continuous Integration & Deployment pipeline',
-  },
-  {
-    key: 'sonarqube',
-    name: 'SonarQube',
-    url: 'https://sonar.bsrealtyllc.com',
-    icon: '🔍',
-    color: '#00897B',
-    desc: 'Code quality and static analysis',
-  },
-  {
-    key: 'design',
-    name: 'Design',
-    url: 'https://design.bsrealtyllc.org',
-    icon: '🎨',
-    color: '#6A1B9A',
-    desc: 'Design system and prototypes',
-  },
-  {
-    key: 'ui',
-    name: 'UI App',
-    url: 'https://ui.bsrealtyllc.com',
-    icon: '◻',
-    color: '#2E7D32',
-    desc: 'Frontend application interface',
-  },
+interface Service {
+  key: string;
+  name: string;
+  url: string;
+  logoSrc: string;
+  color: string;
+}
+
+const INTERNAL_SERVICES: Service[] = [
+  { key: 'drone',     name: 'Drone CI',   url: 'https://drone.bsrealtyllc.com', logoSrc: '/logos/drone.svg',      color: '#1565C0' },
+  { key: 'sonarqube', name: 'SonarQube',  url: 'https://sonar.bsrealtyllc.com', logoSrc: '/logos/sonar.svg',      color: '#00897B' },
+  { key: 'design',    name: 'Design',     url: 'https://design.bsrealtyllc.org', logoSrc: '/logos/storybook.svg', color: '#FF4785' },
 ];
+
+const EXTERNAL_SERVICES: Service[] = [
+  { key: 'bsrealty',   name: 'BS Realty',   url: 'https://bsrealtyllc.com',          logoSrc: '/logos/bsrealty.png',   color: '#1e3a5f' },
+  { key: 'insurance',  name: 'Insurance',   url: 'https://insurance.bsrealtyllc.com', logoSrc: '/logos/insurance.png',  color: '#2563eb' },
+  { key: 'gitgi',      name: 'GITGI',       url: 'https://gitgi.com',                logoSrc: '/logos/gitgi.svg',      color: '#235e94' },
+  { key: 'job-portal', name: 'Job Portal',  url: 'https://jobportal.gitgi.com',      logoSrc: '/logos/job-portal.svg', color: '#863bff' },
+];
+
+const ALL_SERVICES = [...INTERNAL_SERVICES, ...EXTERNAL_SERVICES];
+
+function ServiceTile({ svc, isActive, onClick }: { svc: Service; isActive: boolean; onClick: () => void }) {
+  return (
+    <div
+      onClick={onClick}
+      style={{ width: 90, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+    >
+      <div style={{
+        width: 68, height: 68, borderRadius: 16,
+        background: `${svc.color}15`,
+        border: isActive ? `2px solid ${svc.color}` : '2px solid var(--color-border)',
+        boxShadow: isActive ? `0 0 0 3px ${svc.color}22` : 'none',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 12,
+        transition: 'border-color 0.15s, box-shadow 0.15s',
+      }}>
+        <img src={svc.logoSrc} alt={svc.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+      </div>
+      <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text)', textAlign: 'center', lineHeight: 1.3 }}>
+        {svc.name}
+      </span>
+    </div>
+  );
+}
 
 export default function ServersPage() {
   const { user } = useAuth();
-  const [selected, setSelected] = useState<typeof SERVICES[0]>(SERVICES[0]);
+  const [selected, setSelected] = useState<Service>(ALL_SERVICES[0]);
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [saving, setSaving] = useState(false);
   const [showPass, setShowPass] = useState(false);
@@ -66,17 +78,11 @@ export default function ServersPage() {
     setCredentials(data);
   };
 
-  useEffect(() => {
-    loadCredentials();
-  }, [user?.id]);
+  useEffect(() => { loadCredentials(); }, [user?.id]);
 
   useEffect(() => {
     const cred = credentials.find(c => c.service_name === selected.key);
-    setForm({
-      username: cred?.username ?? '',
-      password: '',
-      notes: cred?.notes ?? '',
-    });
+    setForm({ username: cred?.username ?? '', password: '', notes: cred?.notes ?? '' });
     setShowPass(false);
     setSaved(false);
   }, [selected.key, credentials]);
@@ -109,61 +115,39 @@ export default function ServersPage() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20, alignItems: 'start' }}>
-        {/* Left: Service Cards */}
-        <div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
-            {SERVICES.map(svc => {
-              const hasCred = credentials.some(c => c.service_name === svc.key && c.username);
-              const isActive = selected.key === svc.key;
-              return (
-                <div
-                  key={svc.key}
-                  onClick={() => setSelected(svc)}
-                  style={{
-                    background: 'var(--color-surface)',
-                    border: isActive ? `2px solid ${svc.color}` : '2px solid var(--color-border)',
-                    borderRadius: 'var(--radius-lg)',
-                    padding: 20,
-                    cursor: 'pointer',
-                    transition: 'border-color 0.15s, box-shadow 0.15s',
-                    boxShadow: isActive ? `0 0 0 3px ${svc.color}22` : 'none',
-                  }}
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div style={{
-                      width: 44, height: 44, borderRadius: 12, fontSize: 24,
-                      background: `${svc.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      {svc.icon}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 15 }}>{svc.name}</div>
-                      {hasCred && (
-                        <span style={{
-                          fontSize: 11, background: '#dcfce7', color: '#166534',
-                          borderRadius: 20, padding: '1px 8px', display: 'inline-block', marginTop: 2,
-                        }}>credentials saved</span>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-muted text-sm" style={{ marginBottom: 12 }}>{svc.desc}</p>
-                  <a
-                    href={svc.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={e => e.stopPropagation()}
-                    style={{ fontSize: 13, color: svc.color, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}
-                  >
-                    {svc.url.replace('https://', '')} ↗
-                  </a>
-                </div>
-              );
-            })}
+        {/* Left: Service Groups */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+          {/* Internal Tools */}
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-muted)', marginBottom: 14 }}>
+              Internal Tools
+            </p>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              {INTERNAL_SERVICES.map(svc => (
+                <ServiceTile key={svc.key} svc={svc} isActive={selected.key === svc.key} onClick={() => setSelected(svc)} />
+              ))}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div style={{ borderTop: '1px solid var(--color-border)' }} />
+
+          {/* External Sites */}
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-muted)', marginBottom: 14 }}>
+              External Sites
+            </p>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              {EXTERNAL_SERVICES.map(svc => (
+                <ServiceTile key={svc.key} svc={svc} isActive={selected.key === svc.key} onClick={() => setSelected(svc)} />
+              ))}
+            </div>
           </div>
 
           {/* Info note */}
           <div style={{
-            marginTop: 20, background: 'var(--color-bg)', border: '1px solid var(--color-border)',
+            background: 'var(--color-bg)', border: '1px solid var(--color-border)',
             borderRadius: 'var(--radius-md)', padding: '12px 16px', fontSize: 13, color: 'var(--color-muted)',
           }}>
             Your credentials are stored securely per-service and are only visible to you. Passwords are never displayed after saving.
@@ -174,10 +158,11 @@ export default function ServersPage() {
         <div className="card" style={{ position: 'sticky', top: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
             <div style={{
-              width: 40, height: 40, borderRadius: 10, fontSize: 22,
+              width: 40, height: 40, borderRadius: 10,
               background: `${selected.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 8,
             }}>
-              {selected.icon}
+              <img src={selected.logoSrc} alt={selected.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
             <div>
               <div style={{ fontWeight: 600, fontSize: 15 }}>{selected.name}</div>

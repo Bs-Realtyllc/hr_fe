@@ -36,6 +36,23 @@ interface Employee {
   designation: string;
 }
 
+interface ServiceDef {
+  key: string;
+  name: string;
+  logoSrc: string;
+  color: string;
+}
+
+const ALL_SERVICES: ServiceDef[] = [
+  { key: 'drone',      name: 'Drone CI',   logoSrc: '/logos/drone.svg',      color: '#1565C0' },
+  { key: 'sonarqube',  name: 'SonarQube',  logoSrc: '/logos/sonar.svg',      color: '#00897B' },
+  { key: 'design',     name: 'Design',     logoSrc: '/logos/storybook.svg',  color: '#FF4785' },
+  { key: 'bsrealty',   name: 'BS Realty',  logoSrc: '/logos/bsrealty.png',   color: '#1e3a5f' },
+  { key: 'insurance',  name: 'Insurance',  logoSrc: '/logos/insurance.png',  color: '#2563eb' },
+  { key: 'gitgi',      name: 'GITGI',      logoSrc: '/logos/gitgi.svg',      color: '#235e94' },
+  { key: 'job-portal', name: 'Job Portal', logoSrc: '/logos/job-portal.svg', color: '#863bff' },
+];
+
 const statusBadge: Record<string, string> = {
   active: 'badge-success',
   archived: 'badge-neutral',
@@ -126,6 +143,8 @@ export default function ProjectsPage() {
     start_date: '', expected_end_date: '',
   });
 
+  const [projectServices, setProjectServices] = useState<string[]>([]);
+
   // Assignment modal state
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assignForm, setAssignForm] = useState({ employee_id: '', role: 'developer' });
@@ -141,12 +160,26 @@ export default function ProjectsPage() {
 
   const selectProject = async (p: Project) => {
     setSelected(p);
-    const [ms, as] = await Promise.all([
+    const [ms, as, svcs] = await Promise.all([
       api.get<Milestone[]>(`/projects/${p.id}/milestones`).catch(() => []),
       api.get<Assignment[]>(`/projects/${p.id}/assignments`).catch(() => []),
+      api.get<string[]>(`/projects/${p.id}/services`).catch(() => []),
     ]);
     setMilestones(ms);
     setAssignments(as);
+    setProjectServices(svcs);
+  };
+
+  const toggleService = async (serviceKey: string) => {
+    if (!selected) return;
+    const active = projectServices.includes(serviceKey);
+    if (active) {
+      await api.delete(`/projects/${selected.id}/services/${serviceKey}`).catch(() => {});
+      setProjectServices(prev => prev.filter(k => k !== serviceKey));
+    } else {
+      await api.post(`/projects/${selected.id}/services`, { service_key: serviceKey }).catch(() => {});
+      setProjectServices(prev => [...prev, serviceKey]);
+    }
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -338,6 +371,46 @@ export default function ProjectsPage() {
                   </div>
                 ))
               }
+            </div>
+
+            {/* Services */}
+            <div className="card">
+              <div className="card-title" style={{ marginBottom: 16 }}>Services</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                {ALL_SERVICES.map(svc => {
+                  const active = projectServices.includes(svc.key);
+                  return (
+                    <div
+                      key={svc.key}
+                      onClick={() => isAdmin && toggleService(svc.key)}
+                      title={svc.name}
+                      style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                        cursor: isAdmin ? 'pointer' : 'default', width: 64,
+                        opacity: active ? 1 : 0.35,
+                        transition: 'opacity 0.15s',
+                      }}
+                    >
+                      <div style={{
+                        width: 48, height: 48, borderRadius: 12,
+                        background: active ? `${svc.color}18` : 'var(--color-bg)',
+                        border: active ? `2px solid ${svc.color}` : '2px solid var(--color-border)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        padding: 10,
+                        transition: 'border-color 0.15s, background 0.15s',
+                      }}>
+                        <img src={svc.logoSrc} alt={svc.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      </div>
+                      <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--color-muted)', textAlign: 'center', lineHeight: 1.2 }}>
+                        {svc.name}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              {isAdmin && (
+                <p className="text-muted" style={{ fontSize: 11, marginTop: 12 }}>Click a service to toggle assignment</p>
+              )}
             </div>
           </div>
         ) : (
