@@ -177,7 +177,7 @@ function AdminView({
       }
       map.get(key)!.reports.push(r);
     }
-    return [...map.values()].sort((a, b) =>
+    return Array.from(map.values()).sort((a, b) =>
       b.year !== a.year ? b.year - a.year : b.month - a.month
     );
   }, [reports]);
@@ -313,7 +313,7 @@ function EmployeeView({
       if (!map.has(r.year)) map.set(r.year, []);
       map.get(r.year)!.push(r);
     }
-    return [...map.entries()].sort((a, b) => b[0] - a[0]);
+    return Array.from(map.entries()).sort((a, b) => b[0] - a[0]);
   }, [reports]);
 
   const years = Array.from({ length: 4 }, (_, i) => now.getFullYear() - i);

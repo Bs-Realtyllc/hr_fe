@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 
@@ -46,7 +45,6 @@ function initials(name: string) {
 }
 
 export default function ProfilePage() {
-  const { user } = useAuth();
   const [tab, setTab]         = useState<Tab>('personal');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [saving, setSaving]   = useState(false);
@@ -67,10 +65,8 @@ export default function ProfilePage() {
   const [pwType, setPwType] = useState<'ok' | 'err'>('ok');
   const [pwSaving, setPwSaving] = useState(false);
 
-  // file upload refs
-  const photoRef  = useRef<HTMLInputElement>(null);
-  const frontRef  = useRef<HTMLInputElement>(null);
-  const backRef   = useRef<HTMLInputElement>(null);
+  // file upload ref (photo only — citizenship refs live inside DocUploadCard)
+  const photoRef = useRef<HTMLInputElement>(null);
   const [photoPreview, setPhotoPreview]   = useState<string | null>(null);
   const [frontPreview, setFrontPreview]   = useState<string | null>(null);
   const [backPreview, setBackPreview]     = useState<string | null>(null);
@@ -439,14 +435,12 @@ export default function ProfilePage() {
                   label="Citizenship / ID (Front)"
                   preview={frontPreview}
                   loading={uploading.front}
-                  inputRef={frontRef}
                   onChange={handleFileChange('front')}
                 />
                 <DocUploadCard
                   label="Citizenship / ID (Back)"
                   preview={backPreview}
                   loading={uploading.back}
-                  inputRef={backRef}
                   onChange={handleFileChange('back')}
                 />
               </div>
@@ -514,11 +508,11 @@ interface DocUploadCardProps {
   label: string;
   preview: string | null;
   loading: boolean;
-  inputRef: React.RefObject<HTMLInputElement | null>;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-function DocUploadCard({ label, preview, loading, inputRef, onChange }: DocUploadCardProps) {
+function DocUploadCard({ label, preview, loading, onChange }: DocUploadCardProps) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
   return (
     <div style={{
       border: '2px dashed var(--color-border)', borderRadius: 12,
@@ -548,7 +542,7 @@ function DocUploadCard({ label, preview, loading, inputRef, onChange }: DocUploa
         >
           {loading ? 'Uploading…' : preview ? 'Replace' : 'Upload'}
         </button>
-        <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onChange} />
+        <input ref={node => { inputRef.current = node; }} type="file" accept="image/*" style={{ display: 'none' }} onChange={onChange} />
       </div>
     </div>
   );
