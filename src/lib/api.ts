@@ -1,9 +1,6 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api';
+import { clearAuth, getToken } from '@/lib/auth';
 
-function getToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('hr_token');
-}
+const BASE = process.env.NEXT_PUBLIC_API_URL;
 
 async function req<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getToken();
@@ -14,6 +11,13 @@ async function req<T>(path: string, options?: RequestInit): Promise<T> {
     headers,
     ...options,
   });
+
+  if (res.status === 401) {
+    clearAuth();
+    window.location.href = '/login';
+    return Promise.reject(new Error('Session expired'));
+  }
+
   if (!res.ok) throw new Error(`API error ${res.status}`);
   return res.json();
 }

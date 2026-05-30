@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api';
+const BASE = process.env.NEXT_PUBLIC_API_URL;
 
 interface Report {
   id: number;
