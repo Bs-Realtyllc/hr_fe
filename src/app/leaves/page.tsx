@@ -16,6 +16,26 @@ interface Leave {
   reviewer_name?: string;
 }
 
+type DisplayStatus = 'unverified' | 'approved' | 'rejected' | 'expired';
+
+function isExpired(leave: Leave): boolean {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return new Date(leave.end_date) < today;
+}
+
+function displayStatus(leave: Leave): DisplayStatus {
+  if (leave.status === 'approved') return 'approved';
+  if (leave.status === 'rejected') return 'rejected';
+  return isExpired(leave) ? 'expired' : 'unverified';
+}
+
+const STATUS_META: Record<DisplayStatus, { label: string; color: string; bg: string; dot: string }> = {
+  unverified: { label: 'Unverified', color: '#b45309', bg: '#fef3c7', dot: '#f59e0b' },
+  approved:   { label: 'Approved',   color: '#15803d', bg: '#f0fdf4', dot: '#22c55e' },
+  rejected:   { label: 'Rejected',   color: '#b91c1c', bg: '#fef2f2', dot: '#ef4444' },
+  expired:    { label: 'Expired',    color: '#64748b', bg: '#f1f5f9', dot: '#94a3b8' },
+};
+
 interface EmailSettings {
   smtp_host: string;
   smtp_port: number;
@@ -33,9 +53,6 @@ const BLANK_SETTINGS: EmailSettings = {
   default_to: '', default_cc: '', default_bcc: '',
 };
 
-const STATUS_BADGE: Record<string, string> = {
-  pending: 'badge-warning', approved: 'badge-success', rejected: 'badge-error',
-};
 const LEAVE_COLORS: Record<string, string> = {
   casual: 'var(--color-info)', sick: 'var(--color-warning)', annual: 'var(--color-accent)',
 };
@@ -172,11 +189,20 @@ export default function LeavesPage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-2 mb-4">
-        {['all', 'pending', 'approved', 'rejected'].map(s => (
-          <button key={s} onClick={() => setFilter(s)} className="btn btn-sm"
-            style={{ background: filter === s ? 'var(--color-primary)' : 'var(--color-surface)', color: filter === s ? '#fff' : 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
-            {s.charAt(0).toUpperCase() + s.slice(1)}
+      <div className="flex gap-2 mb-4" style={{ flexWrap: 'wrap' }}>
+        {[
+          { value: 'all',      label: 'All' },
+          { value: 'pending',  label: 'Unverified' },
+          { value: 'approved', label: 'Approved' },
+          { value: 'rejected', label: 'Rejected' },
+        ].map(({ value, label }) => (
+          <button key={value} onClick={() => setFilter(value)} className="btn btn-sm"
+            style={{
+              background: filter === value ? 'var(--color-primary)' : 'var(--color-surface)',
+              color: filter === value ? '#fff' : 'var(--color-text-muted)',
+              border: '1px solid var(--color-border)',
+            }}>
+            {label}
           </button>
         ))}
       </div>
@@ -192,27 +218,49 @@ export default function LeavesPage() {
                 <tr><td colSpan={6} style={{ textAlign: 'center', padding: 32, color: 'var(--color-text-muted)' }}>No leave requests found</td></tr>
               )}
               {leaves.map(l => {
-                const isOwn            = l.employee_id === user?.id;
-                // Admin can always approve/reject; lead can for others' leaves only
-                const canApproveReject = l.status === 'pending' && (isAdmin || (user?.role === 'lead' && !isOwn));
-                const canEditCancel    = l.status === 'pending' && isOwn;
+                const isOwn    = l.employee_id === user?.id;
+                const ds       = displayStatus(l);
+                const meta     = STATUS_META[ds];
+                const expired  = ds === 'expired';
+
+                // Actions only allowed while leave dates are still in the future
+                const canApproveReject = l.status === 'pending' && !expired &&
+                  (isAdmin || (user?.role === 'lead' && !isOwn));
+                const canEditCancel = l.status === 'pending' && !expired && isOwn;
 
                 return (
-                  <tr key={l.id}>
-                    <td><div className="font-semibold">{l.employee_name}</div><div className="text-muted">{l.designation}</div></td>
+                  <tr key={l.id} style={{ opacity: expired ? 0.6 : 1 }}>
                     <td>
-                      <span className="badge" style={{ background: `${LEAVE_COLORS[l.leave_type]}22`, color: LEAVE_COLORS[l.leave_type], fontWeight: 600 }}>
+                      <div className="font-semibold">{l.employee_name}</div>
+                      <div className="text-muted">{l.designation}</div>
+                    </td>
+                    <td>
+                      <span className="badge" style={{ background: `${LEAVE_COLORS[l.leave_type]}22`, color: LEAVE_COLORS[l.leave_type], fontWeight: 600, textTransform: 'capitalize' }}>
                         {l.leave_type}
                       </span>
                     </td>
                     <td>
                       <div className="text-sm">{new Date(l.start_date).toLocaleDateString()}</div>
-                      <div className="text-muted">to {new Date(l.end_date).toLocaleDateString()}</div>
+                      <div className="text-muted" style={{ fontSize: 12 }}>to {new Date(l.end_date).toLocaleDateString()}</div>
                     </td>
                     <td style={{ maxWidth: 200 }}><div className="truncate text-sm">{l.reason || '—'}</div></td>
-                    <td><span className={`badge ${STATUS_BADGE[l.status]}`}>{l.status}</span></td>
                     <td>
-                      <div className="flex gap-2">
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                        background: meta.bg, color: meta.color,
+                      }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: meta.dot, flexShrink: 0 }} />
+                        {meta.label}
+                      </span>
+                      {(ds === 'approved' || ds === 'rejected') && l.reviewer_name && (
+                        <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
+                          by {l.reviewer_name}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
                         {canApproveReject && (
                           <>
                             <button className="btn btn-sm btn-accent" onClick={() => approve(l.id)}>Approve</button>
@@ -225,10 +273,8 @@ export default function LeavesPage() {
                             <button className="btn btn-sm btn-danger" onClick={() => cancelLeave(l.id)}>Cancel</button>
                           </>
                         )}
-                        {isOwn && l.status !== 'pending' && (
-                          <span className="text-muted" style={{ fontSize: 12 }}>
-                            {l.status === 'approved' ? `Approved${l.reviewer_name ? ` by ${l.reviewer_name}` : ''}` : `Rejected${l.reviewer_name ? ` by ${l.reviewer_name}` : ''}`}
-                          </span>
+                        {expired && l.status === 'pending' && (
+                          <span className="text-muted" style={{ fontSize: 11 }}>No actions available</span>
                         )}
                       </div>
                     </td>
