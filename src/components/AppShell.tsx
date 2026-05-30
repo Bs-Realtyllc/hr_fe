@@ -9,13 +9,16 @@ function Shell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, loading } = useAuth();
 
+  const PUBLIC_PATHS = ['/login', '/forgot-password', '/reset-password'];
+  const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p));
+
   useEffect(() => {
-    if (!loading && !user && pathname !== '/login') {
+    if (!loading && !user && !isPublic) {
       router.replace('/login');
     }
   }, [user, loading, pathname, router]);
 
-  if (pathname === '/login') {
+  if (isPublic) {
     return <>{children}</>;
   }
 

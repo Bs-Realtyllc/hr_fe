@@ -46,6 +46,12 @@ const allNav = [
       { href: '/reports', label: 'Monthly Reports', icon: '◧', roles: ['admin', 'lead', 'employee'] as Role[] },
     ],
   },
+  {
+    section: 'Account',
+    items: [
+      { href: '/profile', label: 'My Profile', icon: '◑', roles: ['admin', 'lead', 'employee'] as Role[] },
+    ],
+  },
 ];
 
 function initials(name: string) {
