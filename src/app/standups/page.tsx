@@ -16,6 +16,12 @@ interface Standup {
   created_at: string;
 }
 
+interface Employee {
+  id: number;
+  name: string;
+  designation: string;
+}
+
 function initials(name: string) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
@@ -26,17 +32,40 @@ function fmtDate(d: string) {
 
 export default function StandupsPage() {
   const { user } = useAuth();
-  const [standups, setStandups] = useState<Standup[]>([]);
-  const [date, setDate] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ yesterday: '', today: '', blockers: '' });
+  const isPrivileged = ['admin', 'lead'].includes(user?.role ?? '');
+
+  const [standups, setStandups]           = useState<Standup[]>([]);
+  const [employees, setEmployees]         = useState<Employee[]>([]);
+  const [selectedEmployee, setSelectedEmployee] = useState('');
+  const [startDate, setStartDate]         = useState('');
+  const [endDate, setEndDate]             = useState('');
+  const [showModal, setShowModal]         = useState(false);
+  const [form, setForm]                   = useState({ yesterday: '', today: '', blockers: '' });
+
+  useEffect(() => {
+    if (isPrivileged) {
+      api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+    }
+  }, [isPrivileged]);
 
   const load = () => {
-    const q = date ? `?date=${date}` : '';
+    const params = new URLSearchParams();
+    if (selectedEmployee) params.set('employee_id', selectedEmployee);
+    if (startDate)        params.set('start_date', startDate);
+    if (endDate)          params.set('end_date', endDate);
+    const q = params.toString() ? `?${params.toString()}` : '';
     api.get<Standup[]>(`/standups${q}`).then(setStandups).catch(() => {});
   };
 
-  useEffect(() => { load(); }, [date]);
+  useEffect(() => { load(); }, [selectedEmployee, startDate, endDate]);
+
+  const clearFilters = () => {
+    setSelectedEmployee('');
+    setStartDate('');
+    setEndDate('');
+  };
+
+  const hasFilters = !!(selectedEmployee || startDate || endDate);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,18 +77,19 @@ export default function StandupsPage() {
 
   const exportExcel = () => {
     const rows = standups.map(s => ({
-      Employee:     s.employee_name,
-      Designation:  s.designation,
-      Date:         s.standup_date.split('T')[0],
-      Yesterday:    s.yesterday,
-      Today:        s.today,
-      Blockers:     s.blockers || '',
+      Employee:       s.employee_name,
+      Designation:    s.designation,
+      Date:           s.standup_date.split('T')[0],
+      Yesterday:      s.yesterday,
+      Today:          s.today,
+      Blockers:       s.blockers || '',
       'Submitted At': new Date(s.created_at).toLocaleString(),
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Standups');
-    XLSX.writeFile(wb, `standups_${date || new Date().toISOString().split('T')[0]}.xlsx`);
+    const suffix = startDate ? `_${startDate}${endDate ? `_to_${endDate}` : ''}` : `_${new Date().toISOString().split('T')[0]}`;
+    XLSX.writeFile(wb, `standups${suffix}.xlsx`);
   };
 
   const grouped = standups.reduce((acc, s) => {
@@ -84,11 +114,59 @@ export default function StandupsPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 mb-4">
-        <label className="form-label" style={{ margin: 0 }}>Filter by date:</label>
-        <input className="form-input" type="date" value={date} onChange={e => setDate(e.target.value)}
-          style={{ width: 180 }} />
-        {date && <button className="btn btn-ghost btn-sm" onClick={() => setDate('')}>Clear</button>}
+      {/* Filters */}
+      <div className="card mb-4" style={{ padding: '14px 20px' }}>
+        <div className="flex items-center gap-3" style={{ flexWrap: 'wrap' }}>
+          {isPrivileged && (
+            <div className="flex items-center gap-2">
+              <label className="form-label" style={{ margin: 0, whiteSpace: 'nowrap' }}>Employee</label>
+              <select
+                className="form-select"
+                value={selectedEmployee}
+                onChange={e => setSelectedEmployee(e.target.value)}
+                style={{ width: 200 }}
+              >
+                <option value="">All employees</option>
+                {employees.map(e => (
+                  <option key={e.id} value={e.id}>{e.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <label className="form-label" style={{ margin: 0, whiteSpace: 'nowrap' }}>From</label>
+            <input
+              className="form-input"
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              style={{ width: 160 }}
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="form-label" style={{ margin: 0, whiteSpace: 'nowrap' }}>To</label>
+            <input
+              className="form-input"
+              type="date"
+              value={endDate}
+              min={startDate || undefined}
+              onChange={e => setEndDate(e.target.value)}
+              style={{ width: 160 }}
+            />
+          </div>
+
+          {hasFilters && (
+            <button className="btn btn-ghost btn-sm" onClick={clearFilters}>Clear filters</button>
+          )}
+
+          {hasFilters && (
+            <span className="text-muted text-sm" style={{ marginLeft: 'auto' }}>
+              {standups.length} result{standups.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
       </div>
 
       {Object.keys(grouped).sort((a, b) => b.localeCompare(a)).map(d => (
@@ -141,7 +219,7 @@ export default function StandupsPage() {
       {standups.length === 0 && (
         <div className="empty-state card">
           <div style={{ fontSize: 40 }}>📋</div>
-          <p>No standups found. Be the first to post!</p>
+          <p>{hasFilters ? 'No standups match the selected filters.' : 'No standups found. Be the first to post!'}</p>
         </div>
       )}
 
