@@ -37,3 +37,4 @@ networks:
   hr-fe-net:
     external: true
     name: hr-fe-network
+
