@@ -117,8 +117,8 @@ function TrendChart({ data, color, title, subtitle, emptyLabel }: {
               axisLine={false}
             />
             <Tooltip
-              formatter={(value: number) => [value, 'Count']}
-              labelFormatter={fmtTooltipLabel}
+              formatter={(value) => [value, 'Count']}
+              labelFormatter={(label) => fmtTooltipLabel(String(label))}
               contentStyle={{
                 fontSize: 12,
                 borderRadius: 8,
