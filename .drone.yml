@@ -1,0 +1,107 @@
+---
+kind:     pipeline
+type:     docker
+name:     hr-fe-web
+
+trigger:
+  branch:
+    - dev
+    - main
+  event:
+    - push
+
+clone:
+  depth: 1
+
+steps:
+
+  # ── build & push ghcr.io/bs-realtyllc/hr_fe:<branch> and :<branch>-<sha> ────
+  - name: build-and-push
+    image: plugins/docker
+    settings:
+      registry: ghcr.io
+      repo: ghcr.io/bs-realtyllc/hr_fe
+      tags:
+        - "${DRONE_COMMIT_BRANCH}"
+        - "${DRONE_COMMIT_BRANCH}-${DRONE_COMMIT_SHA:0:8}"
+      dockerfile: Dockerfile
+      context:    .
+      username:
+        from_secret: ghcr_username
+      password:
+        from_secret: ghcr_token
+      cache_from: "ghcr.io/bs-realtyllc/hr_fe:${DRONE_COMMIT_BRANCH}"
+
+  - name: copy-configs-dev
+    image: appleboy/drone-scp
+    settings:
+      host:
+        from_secret: ssh_host
+      username:
+        from_secret: ssh_user
+      key:
+        from_secret: ssh_private_key
+      target: /opt/hr-fe-dev/frontend
+      source:
+        - docker-compose.dev.yml
+    when:
+      branch:
+        - dev
+    depends_on:
+      - build-and-push
+
+  - name: copy-configs-main
+    image: appleboy/drone-scp
+    settings:
+      host:
+        from_secret: ssh_host
+      username:
+        from_secret: ssh_user
+      key:
+        from_secret: ssh_private_key
+      target: /opt/hr-fe/frontend
+      source:
+        - docker-compose.main.yml
+    when:
+      branch:
+        - main
+    depends_on:
+      - build-and-push
+
+  # ── deploy: branch picks the compose file, target dir, and container name ──
+  - name: deploy
+    image: appleboy/drone-ssh
+    settings:
+      host:
+        from_secret: ssh_host
+      username:
+        from_secret: ssh_user
+      key:
+        from_secret: ssh_private_key
+      envs:
+        - DRONE_COMMIT_BRANCH
+      script:
+        - |
+          if [ "$DRONE_COMMIT_BRANCH" = "main" ]; then
+            DIR=/opt/hr-fe/frontend
+            FILE=docker-compose.main.yml
+            CONTAINER=hr-fe-frontend
+          else
+            DIR=/opt/hr-fe-dev/frontend
+            FILE=docker-compose.dev.yml
+            CONTAINER=hr-fe-dev-frontend
+          fi
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+          cd $DIR
+          docker compose -f $FILE pull app
+          docker compose -f $FILE up -d --remove-orphans
+          docker image prune -f
+          docker ps | grep $CONTAINER
+      environment:
+        GHCR_USERNAME:
+          from_secret: ghcr_username
+        GHCR_TOKEN:
+          from_secret: ghcr_token
+    depends_on:
+      - copy-configs-dev
+      - copy-configs-main

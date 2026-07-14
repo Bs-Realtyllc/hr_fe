@@ -1,0 +1,40 @@
+# =============================================================================
+# docker-compose.dev.yml — DEV SERVER DEPLOYMENT
+#
+# Deployed by Drone to /opt/hr-fe-dev/frontend on push to `dev`.
+# Pulls ghcr.io/bs-realtyllc/hr_fe:dev.
+# =============================================================================
+
+name: hr-fe-dev
+
+services:
+  app:
+    image: ghcr.io/bs-realtyllc/hr_fe:dev
+    container_name: hr-fe-dev-frontend
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+    ports:
+      - "6004:6001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6001/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - hr-fe-dev-net
+      - proxy
+
+networks:
+  hr-fe-dev-net:
+    driver: bridge
+  proxy:
+    external: true

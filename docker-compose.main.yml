@@ -1,0 +1,39 @@
+# =============================================================================
+# docker-compose.main.yml — PRODUCTION DEPLOYMENT
+#
+# Deployed by Drone to /opt/hr-fe/frontend on push to `main`.
+# Pulls ghcr.io/bs-realtyllc/hr_fe:main. Host nginx (nginx.conf) terminates
+# TLS and reverse-proxies hr.bsrealtyllc.com to localhost:6001.
+# =============================================================================
+
+name: hr-fe-frontend
+
+services:
+  app:
+    image: ghcr.io/bs-realtyllc/hr_fe:main
+    container_name: hr-fe-frontend
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+    ports:
+      - "6001:6001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6001/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - hr-fe-net
+
+networks:
+  hr-fe-net:
+    external: true
+    name: hr-fe-network

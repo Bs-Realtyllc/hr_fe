@@ -1,0 +1,39 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# .dockerignore — tells Docker which files to EXCLUDE from the build context.
+# A smaller context = faster builds and smaller images.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Version control ───────────────────────────────────────────────────────────
+.git
+.gitignore
+
+# ── Node modules & build output (rebuilt inside Docker) ───────────────────────
+node_modules
+.next
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Environment files ─────────────────────────────────────────────────────────
+# NEVER bake real secrets into the image.
+# Env vars are injected at runtime via docker compose env_file / -e flags.
+.env
+.env.*
+
+# ── CI ─────────────────────────────────────────────────────────────────────────
+.drone.yml
+
+# ── Docs & compose files not needed inside the image ──────────────────────────
+README.md
+*.md
+docker-compose*.yml
+nginx.conf
+
+# ── Editor / OS junk ──────────────────────────────────────────────────────────
+.DS_Store
+.vscode/
+.idea/
+*.swp
