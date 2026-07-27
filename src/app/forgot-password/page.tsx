@@ -34,7 +34,9 @@ export default function ForgotPasswordPage() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-header">
-          <div className="login-logo">HR</div>
+          <div className="login-logo">
+            <img src="/logos/hr-platform.svg" alt="HR Platform" width={28} height={28} />
+          </div>
           <h1>Forgot Password</h1>
           <p>Enter your company email to receive a reset link</p>
         </div>

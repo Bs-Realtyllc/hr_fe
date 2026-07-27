@@ -6,8 +6,9 @@ import { getUser } from '@/lib/auth';
 interface CalEvent {
   date: string;
   label: string;
-  type: 'leave' | 'event' | 'milestone' | 'meeting' | 'birthday';
+  type: 'meeting' | 'holiday';
   sub?: string;
+  time?: string;
   meetLink?: string;
   meetingId?: number;
 }
@@ -28,6 +29,14 @@ interface GoogleStatus {
   webhookActive: boolean;
 }
 
+interface Holiday {
+  id: number;
+  name: string;
+  message: string | null;
+  holiday_date: string;
+  year: number;
+}
+
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
 }
@@ -38,17 +47,31 @@ function getFirstDayOfMonth(year: number, month: number) {
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-const TYPE_CONFIG: Record<string, { color: string; bg: string; icon: string }> = {
-  leave:     { color: '#d97706', bg: '#fef3c7', icon: '🏖' },
-  meeting:   { color: '#6366f1', bg: '#eef2ff', icon: '📹' },
-  event:     { color: '#0ea5e9', bg: '#e0f2fe', icon: '✦'  },
-  milestone: { color: '#ef4444', bg: '#fee2e2', icon: '🎯' },
-  birthday:  { color: '#ec4899', bg: '#fdf2f8', icon: '🎂' },
-};
+// ── Icons ────────────────────────────────────────────────────────────────────
+interface IconProps { size?: number; color: string }
 
-function typeConfig(type: string) {
-  return TYPE_CONFIG[type] ?? TYPE_CONFIG.event;
+function MeetingIcon({ size = 14, color }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="6" width="14" height="12" rx="2" />
+      <path d="M16 10.5L22 7v10l-6-3.5" />
+    </svg>
+  );
 }
+
+function HolidayIcon({ size = 14, color }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 21V4" />
+      <path d="M5 4h13l-3 4 3 4H5" />
+    </svg>
+  );
+}
+
+const TYPE_CONFIG: Record<'meeting' | 'holiday', { color: string; bg: string; Icon: (p: IconProps) => JSX.Element; label: string }> = {
+  meeting: { color: '#6366f1', bg: '#eef2ff', Icon: MeetingIcon, label: 'Meeting' },
+  holiday: { color: '#15803d', bg: '#dcfce7', Icon: HolidayIcon, label: 'Holiday' },
+};
 
 // ── Schedule Meeting Modal ─────────────────────────────────────────────────
 interface ScheduleModalProps {
@@ -102,7 +125,9 @@ function ScheduleModal({ defaultDate, onClose, onCreated }: ScheduleModalProps) 
     }} onClick={onClose}>
       <div className="card" style={{ width: 460, maxWidth: '95vw', padding: 28 }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>📅 Schedule Meeting</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 16 }}>
+            <MeetingIcon size={18} color="var(--color-primary)" /> Schedule Meeting
+          </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-muted)' }}>×</button>
         </div>
         <form onSubmit={submit}>
@@ -147,6 +172,159 @@ function ScheduleModal({ defaultDate, onClose, onCreated }: ScheduleModalProps) 
   );
 }
 
+// ── Holiday List Modal ───────────────────────────────────────────────────────
+interface HolidayListModalProps {
+  holidays: Holiday[];
+  isAdmin: boolean;
+  onClose: () => void;
+  onChanged: () => void;
+}
+
+function HolidayListModal({ holidays, isAdmin, onClose, onChanged }: HolidayListModalProps) {
+  const [form, setForm]     = useState({ name: '', holiday_date: '', message: '' });
+  const [saving, setSaving] = useState(false);
+  const [error, setError]   = useState('');
+
+  const todayStart = new Date(new Date().toDateString());
+  const sorted = [...holidays].sort((a, b) => a.holiday_date.localeCompare(b.holiday_date));
+  const upcoming = sorted.filter(h => new Date(h.holiday_date) >= todayStart);
+  const past     = sorted.filter(h => new Date(h.holiday_date) < todayStart);
+
+  const addHoliday = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.holiday_date) return;
+    setSaving(true);
+    setError('');
+    try {
+      await api.post('/holidays', form);
+      setForm({ name: '', holiday_date: '', message: '' });
+      onChanged();
+    } catch {
+      setError('Failed to add holiday');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeHoliday = async (id: number) => {
+    if (!confirm('Remove this holiday?')) return;
+    await api.delete(`/holidays/${id}`);
+    onChanged();
+  };
+
+  const renderCard = (h: Holiday, isPast: boolean) => (
+    <div key={h.id} style={{
+      borderRadius: 10,
+      border: '1px solid var(--color-border)',
+      borderLeft: `3px solid ${TYPE_CONFIG.holiday.color}`,
+      padding: '12px 14px',
+      opacity: isPast ? 0.6 : 1,
+      background: isPast ? 'var(--color-bg)' : 'var(--color-surface)',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 700, fontSize: 14 }}>
+          <HolidayIcon size={14} color={TYPE_CONFIG.holiday.color} /> {h.name}
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}>
+            {new Date(h.holiday_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+          </span>
+          {isAdmin && (
+            <button className="btn btn-sm btn-danger" onClick={() => removeHoliday(h.id)}>Remove</button>
+          )}
+        </div>
+      </div>
+      {h.message && (
+        <p style={{ fontSize: 13, color: 'var(--color-text-body)', marginTop: 6, lineHeight: 1.5 }}>{h.message}</p>
+      )}
+    </div>
+  );
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+      backdropFilter: 'blur(2px)',
+    }} onClick={onClose}>
+      <div className="card" style={{ width: 560, maxWidth: '95vw', maxHeight: '88vh', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 22px', borderBottom: '1px solid var(--color-border)' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 16 }}>
+              <HolidayIcon size={16} color={TYPE_CONFIG.holiday.color} /> Company Holidays
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>{holidays.length} fixed paid holidays this year</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-muted)' }}>×</button>
+        </div>
+
+        <div style={{ padding: 18, overflowY: 'auto' }}>
+          {isAdmin && (
+            <form onSubmit={addHoliday} style={{ marginBottom: 18, background: 'var(--color-bg)', padding: 14, borderRadius: 10 }}>
+              <div className="grid-2" style={{ alignItems: 'end', marginBottom: 10 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Holiday Name</label>
+                  <input className="form-input" placeholder="e.g. Dashain" value={form.name}
+                    onChange={e => setForm({ ...form, name: e.target.value })} />
+                </div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+                  <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
+                    <label className="form-label">Date</label>
+                    <input className="form-input" type="date" value={form.holiday_date}
+                      onChange={e => setForm({ ...form, holiday_date: e.target.value })} />
+                  </div>
+                  <button type="submit" className="btn btn-primary" disabled={saving} style={{ height: 40 }}>
+                    {saving ? 'Adding…' : '+ Add'}
+                  </button>
+                </div>
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Message <span className="text-muted" style={{ fontWeight: 400 }}>(optional)</span></label>
+                <input className="form-input" placeholder="e.g. Wishing you a joyful celebration! 🎉" value={form.message}
+                  onChange={e => setForm({ ...form, message: e.target.value })} />
+              </div>
+              {error && <p style={{ color: 'var(--color-error)', fontSize: 13, marginTop: 10 }}>{error}</p>}
+            </form>
+          )}
+
+          {holidays.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+                <HolidayIcon size={28} color="var(--color-text-muted)" />
+              </div>
+              <div style={{ fontSize: 13 }}>
+                No holidays have been added yet{isAdmin ? ' — add the official list above.' : '.'}
+              </div>
+            </div>
+          ) : (
+            <>
+              {upcoming.length > 0 && (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-text-muted)', marginBottom: 8 }}>
+                    Upcoming
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: past.length ? 20 : 0 }}>
+                    {upcoming.map(h => renderCard(h, false))}
+                  </div>
+                </>
+              )}
+              {past.length > 0 && (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-text-muted)', marginBottom: 8 }}>
+                    Past
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {past.map(h => renderCard(h, true))}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function CalendarPage() {
   const today   = new Date();
@@ -159,6 +337,8 @@ export default function CalendarPage() {
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [selected, setSelected]   = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showHolidays, setShowHolidays] = useState(false);
+  const [holidays, setHolidays]   = useState<Holiday[]>([]);
   const [syncing, setSyncing]     = useState(false);
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus | null>(null);
 
@@ -178,24 +358,11 @@ export default function CalendarPage() {
 
   const loadEvents = useCallback(() => {
     Promise.all([
-      api.get<{ employee_name: string; start_date: string; end_date: string; leave_type: string }[]>('/leaves?status=approved').catch(() => []),
-      api.get<{ event_date: string; title: string; event_type: string }[]>('/events').catch(() => []),
       api.get<Meeting[]>('/google/meetings').catch(() => []),
-    ]).then(([leaves, evts, meetings]) => {
+      api.get<Holiday[]>('/holidays').catch(() => []),
+    ]).then(([meetings, holidayList]) => {
       const cal: CalEvent[] = [];
-
-      for (const l of leaves) {
-        const s = new Date(l.start_date), e = new Date(l.end_date);
-        for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-          cal.push({ date: d.toISOString().split('T')[0], label: l.employee_name, type: 'leave', sub: l.leave_type });
-        }
-      }
-
-      for (const ev of evts) {
-        const type = ev.event_type === 'birthday' ? 'birthday' :
-                     ev.event_type === 'milestone' ? 'milestone' : 'event';
-        cal.push({ date: ev.event_date.split('T')[0], label: ev.title, type, sub: ev.event_type });
-      }
+      setHolidays(holidayList);
 
       for (const m of meetings) {
         cal.push({
@@ -203,9 +370,14 @@ export default function CalendarPage() {
           label: m.title,
           type: 'meeting',
           sub: m.creator_name ? `by ${m.creator_name}` : undefined,
+          time: new Date(m.start_datetime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
           meetLink: m.meet_link ?? undefined,
           meetingId: m.id,
         });
+      }
+
+      for (const h of holidayList) {
+        cal.push({ date: h.holiday_date.split('T')[0], label: h.name, type: 'holiday', sub: 'Public Holiday' });
       }
 
       setEvents(cal);
@@ -248,13 +420,24 @@ export default function CalendarPage() {
     return events.filter(e => e.date === ds);
   };
 
-  const selectedEvents = selected ? events.filter(e => e.date === selected) : [];
-
   const isWeekend = (dayIndex: number) => {
     // dayIndex = (firstDay + day - 1) % 7
     const dow = (firstDay + dayIndex) % 7;
     return dow === 0 || dow === 6;
   };
+
+  // Upcoming (meetings + holidays), soonest first
+  const upcomingList = [...events]
+    .filter(e => e.date >= todayStr)
+    .sort((a, b) => a.date === b.date ? (a.time || '').localeCompare(b.time || '') : a.date.localeCompare(b.date))
+    .slice(0, 6);
+
+  // This week (Sun–Sat containing today), independent of the navigated month above
+  const weekDates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() - today.getDay() + i);
+    return d;
+  });
 
   return (
     <div>
@@ -266,12 +449,24 @@ export default function CalendarPage() {
         />
       )}
 
+      {showHolidays && (
+        <HolidayListModal holidays={holidays} isAdmin={isAdmin} onClose={() => setShowHolidays(false)} onChanged={loadEvents} />
+      )}
+
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="page-header">
-        <div className="flex justify-between items-center" style={{ flexWrap: 'wrap', gap: 12 }}>
+        <div className="flex justify-between" style={{ flexWrap: 'wrap', gap: 16, alignItems: 'flex-end' }}>
           <div>
-            <h1>Company Calendar</h1>
-            <p>Leaves, events, birthdays, and meetings all in one place</p>
+            <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.5px' }}>Calendar</h1>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 10,
+              padding: '6px 14px', borderRadius: 20,
+              background: 'var(--color-primary-light)', color: 'var(--color-primary)',
+              fontWeight: 700, fontSize: 13,
+            }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-primary)' }} />
+              {today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+            </div>
           </div>
 
           <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
@@ -325,199 +520,128 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* ── Calendar + Detail panel ───────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 300px' : '1fr', gap: 16, alignItems: 'start' }}>
+      {/* ── Calendar grid ──────────────────────────────────────────────────── */}
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        {/* Day-of-week header */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: 'var(--color-surface)' }}>
+          {DAYS_SHORT.map((d, i) => (
+            <div key={d} style={{
+              padding: '10px 0', textAlign: 'center',
+              fontSize: 11, fontWeight: 700,
+              color: (i === 0 || i === 6) ? '#94a3b8' : 'var(--color-text-muted)',
+              textTransform: 'uppercase', letterSpacing: '0.6px',
+              borderBottom: '1px solid var(--color-border)',
+            }}>
+              {d}
+            </div>
+          ))}
+        </div>
 
-        {/* Calendar grid */}
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          {/* Day-of-week header */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: 'var(--color-surface)' }}>
-            {DAYS_SHORT.map((d, i) => (
-              <div key={d} style={{
-                padding: '10px 0', textAlign: 'center',
-                fontSize: 11, fontWeight: 700,
-                color: (i === 0 || i === 6) ? '#94a3b8' : 'var(--color-text-muted)',
-                textTransform: 'uppercase', letterSpacing: '0.6px',
-                borderBottom: '1px solid var(--color-border)',
-              }}>
-                {d}
-              </div>
-            ))}
-          </div>
-
-          {/* Day cells */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-            {cells.map((day, i) => {
-              if (!day) {
-                return (
-                  <div key={`e-${i}`} style={{
-                    minHeight: 96,
-                    borderBottom: '1px solid var(--color-border)',
-                    borderRight: '1px solid var(--color-border)',
-                    background: '#fafafa',
-                  }} />
-                );
-              }
-
-              const dateStr   = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-              const dayEvents = eventsForDay(day);
-              const isToday   = dateStr === todayStr;
-              const isSel     = dateStr === selected;
-              const weekend   = isWeekend(i);
-              const visible   = dayEvents.slice(0, 3);
-              const overflow  = dayEvents.length - visible.length;
-
+        {/* Day cells */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+          {cells.map((day, i) => {
+            if (!day) {
               return (
-                <div
-                  key={day}
-                  onClick={() => setSelected(isSel ? null : dateStr)}
-                  style={{
-                    minHeight: 96, padding: '8px 6px',
-                    borderBottom: '1px solid var(--color-border)',
-                    borderRight: '1px solid var(--color-border)',
-                    cursor: 'pointer',
-                    background: isSel
-                      ? 'var(--color-primary-light, #eef2ff)'
-                      : isToday
-                        ? '#fefce8'
+                <div key={`e-${i}`} style={{
+                  minHeight: 112,
+                  borderBottom: '1px solid var(--color-border)',
+                  borderRight: '1px solid var(--color-border)',
+                  background: '#fafafa',
+                }} />
+              );
+            }
+
+            const dateStr    = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+            const dayEvents  = eventsForDay(day);
+            const isToday    = dateStr === todayStr;
+            const isSel      = dateStr === selected;
+            const weekend    = isWeekend(i);
+            const hasHoliday = dayEvents.some(e => e.type === 'holiday');
+            const visible    = dayEvents.slice(0, 3);
+            const overflow   = dayEvents.length - visible.length;
+
+            return (
+              <div
+                key={day}
+                onClick={() => setSelected(isSel ? null : dateStr)}
+                style={{
+                  minHeight: 112, padding: '8px 6px',
+                  borderBottom: '1px solid var(--color-border)',
+                  borderRight: '1px solid var(--color-border)',
+                  cursor: 'pointer',
+                  background: isSel
+                    ? 'var(--color-primary-light, #eef2ff)'
+                    : isToday
+                      ? '#fefce8'
+                      : hasHoliday
+                        ? TYPE_CONFIG.holiday.bg
                         : weekend
                           ? '#fafafa'
                           : 'transparent',
-                    boxShadow: isSel ? 'inset 2px 0 0 var(--color-primary)' : undefined,
-                    transition: 'background 0.12s',
-                  }}
-                >
-                  {/* Day number */}
-                  <div style={{ marginBottom: 5, display: 'flex', justifyContent: 'flex-end' }}>
-                    <span style={{
-                      width: 26, height: 26, borderRadius: '50%',
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 12, fontWeight: isToday ? 800 : 400,
-                      background: isToday ? 'var(--color-primary)' : 'transparent',
-                      color: isToday ? '#fff' : weekend ? '#94a3b8' : 'var(--color-text-body)',
-                    }}>
-                      {day}
-                    </span>
-                  </div>
+                  boxShadow: isSel ? 'inset 2px 0 0 var(--color-primary)' : undefined,
+                  transition: 'background 0.12s',
+                }}
+              >
+                {/* Day number */}
+                <div style={{ marginBottom: 5, display: 'flex', justifyContent: 'flex-end' }}>
+                  <span style={{
+                    width: 26, height: 26, borderRadius: '50%',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 12, fontWeight: isToday ? 800 : 400,
+                    background: isToday ? 'var(--color-primary)' : 'transparent',
+                    color: isToday ? '#fff' : weekend ? '#94a3b8' : 'var(--color-text-body)',
+                  }}>
+                    {day}
+                  </span>
+                </div>
 
-                  {/* Event chips */}
-                  {visible.map((ev, j) => {
-                    const cfg = typeConfig(ev.type);
-                    return (
-                      <div key={j} style={{
-                        display: 'flex', alignItems: 'center', gap: 4,
-                        fontSize: 10, fontWeight: 600,
-                        background: cfg.bg,
-                        color: cfg.color,
-                        borderRadius: 4, padding: '2px 5px',
-                        marginBottom: 2,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>
-                        <span style={{ flexShrink: 0, fontSize: 9 }}>{cfg.icon}</span>
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.label}</span>
-                      </div>
-                    );
-                  })}
-
-                  {overflow > 0 && (
-                    <div style={{
-                      fontSize: 10, fontWeight: 600, color: 'var(--color-primary)',
-                      background: 'var(--color-primary-light, #eef2ff)',
-                      borderRadius: 4, padding: '1px 5px', marginTop: 1,
+                {/* Event bars — full-width, icon + label */}
+                {visible.map((ev, j) => {
+                  const cfg = TYPE_CONFIG[ev.type];
+                  const Icon = cfg.Icon;
+                  return (
+                    <div key={j} style={{
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      fontSize: 11, fontWeight: 600,
+                      background: cfg.bg,
+                      color: cfg.color,
+                      borderLeft: `3px solid ${cfg.color}`,
+                      borderRadius: 5, padding: '4px 6px',
+                      marginBottom: 3,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     }}>
-                      +{overflow} more
+                      <Icon size={11} color={cfg.color} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.label}</span>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                  );
+                })}
 
-        {/* ── Day detail panel ────────────────────────────────────────────── */}
-        {selected && (
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            {/* Panel header */}
-            <div style={{
-              padding: '16px 20px',
-              borderBottom: '1px solid var(--color-border)',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-            }}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 15 }}>
-                  {new Date(selected + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                </div>
-                {selected === todayStr && (
-                  <div style={{ fontSize: 11, color: 'var(--color-primary)', fontWeight: 600, marginTop: 2 }}>Today</div>
+                {overflow > 0 && (
+                  <div style={{
+                    fontSize: 10, fontWeight: 600, color: 'var(--color-primary)',
+                    background: 'var(--color-primary-light, #eef2ff)',
+                    borderRadius: 4, padding: '1px 5px', marginTop: 1,
+                  }}>
+                    +{overflow} more
+                  </div>
                 )}
               </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button className="btn btn-primary btn-sm" onClick={() => setShowModal(true)}>+ Meet</button>
-                <button onClick={() => setSelected(null)}
-                  style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--color-text-muted)', lineHeight: 1 }}>
-                  ×
-                </button>
-              </div>
-            </div>
-
-            {/* Events list */}
-            <div style={{ padding: 16 }}>
-              {selectedEvents.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)' }}>
-                  <div style={{ fontSize: 28, marginBottom: 8 }}>📭</div>
-                  <div style={{ fontSize: 13 }}>Nothing scheduled</div>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {selectedEvents.map((ev, i) => {
-                    const cfg = typeConfig(ev.type);
-                    return (
-                      <div key={i} style={{
-                        borderRadius: 8,
-                        background: cfg.bg,
-                        border: `1px solid ${cfg.color}33`,
-                        padding: '10px 12px',
-                        borderLeft: `3px solid ${cfg.color}`,
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: ev.sub || ev.meetLink ? 4 : 0 }}>
-                          <span style={{ fontSize: 14 }}>{cfg.icon}</span>
-                          <span style={{ fontWeight: 600, fontSize: 13, color: cfg.color }}>{ev.label}</span>
-                        </div>
-                        {ev.sub && (
-                          <div style={{ fontSize: 11, color: cfg.color, opacity: 0.8, textTransform: 'capitalize', paddingLeft: 21 }}>
-                            {ev.sub.replace(/_/g, ' ')}
-                          </div>
-                        )}
-                        {ev.meetLink && (
-                          <a href={ev.meetLink} target="_blank" rel="noreferrer" style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 4,
-                            fontSize: 11, color: '#6366f1', fontWeight: 700,
-                            marginTop: 6, paddingLeft: 21, textDecoration: 'none',
-                          }}>
-                            Join Google Meet ↗
-                          </a>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+            );
+          })}
+        </div>
       </div>
 
       {/* ── Legend ──────────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
-        {Object.entries(TYPE_CONFIG).map(([type, cfg]) => (
+        {(Object.entries(TYPE_CONFIG) as [keyof typeof TYPE_CONFIG, typeof TYPE_CONFIG['meeting']][]).map(([type, cfg]) => (
           <span key={type} style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
+            display: 'inline-flex', alignItems: 'center', gap: 6,
             fontSize: 12, fontWeight: 600,
             background: cfg.bg, color: cfg.color,
             border: `1px solid ${cfg.color}33`,
             borderRadius: 20, padding: '4px 10px',
           }}>
-            {cfg.icon} {type.charAt(0).toUpperCase() + type.slice(1)}
+            <cfg.Icon size={12} color={cfg.color} /> {cfg.label}
           </span>
         ))}
 
@@ -526,6 +650,69 @@ export default function CalendarPage() {
             {googleStatus.webhookActive ? '🟢 Live sync active' : 'Google Calendar connected (manual sync)'}
           </span>
         )}
+      </div>
+
+      {/* ── Below calendar: Upcoming / This Week (left) + Holidays (right) ──── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginTop: 16, alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Upcoming */}
+          <div className="card">
+            <div className="card-title">Upcoming</div>
+            {upcomingList.length === 0 ? (
+              <p className="text-muted" style={{ fontSize: 13 }}>Nothing scheduled.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {upcomingList.map((ev, i) => {
+                  const cfg = TYPE_CONFIG[ev.type];
+                  const Icon = cfg.Icon;
+                  return (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{
+                        width: 34, height: 34, borderRadius: 8, background: cfg.bg,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                      }}>
+                        <Icon size={16} color={cfg.color} />
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {ev.label}
+                        </div>
+                        <div className="text-muted" style={{ fontSize: 12 }}>
+                          {new Date(ev.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                          {ev.time && ` · ${ev.time}`}
+                        </div>
+                      </div>
+                      {ev.meetLink && (
+                        <a href={ev.meetLink} target="_blank" rel="noreferrer" style={{
+                          fontSize: 12, color: '#6366f1', fontWeight: 700, textDecoration: 'none', flexShrink: 0,
+                        }}>
+                          Join ↗
+                        </a>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Holidays teaser — moved here from the header, bottom-right of the calendar */}
+        <div className="card" style={{ textAlign: 'center', padding: 24 }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: 12, background: TYPE_CONFIG.holiday.bg,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px',
+          }}>
+            <HolidayIcon size={22} color={TYPE_CONFIG.holiday.color} />
+          </div>
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Company Holidays</div>
+          <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>
+            {holidays.length} fixed paid holidays this year
+          </p>
+          <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setShowHolidays(true)}>
+            View full list of holidays
+          </button>
+        </div>
       </div>
     </div>
   );

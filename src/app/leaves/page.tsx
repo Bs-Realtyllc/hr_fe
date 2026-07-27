@@ -54,7 +54,10 @@ const BLANK_SETTINGS: EmailSettings = {
 };
 
 const LEAVE_COLORS: Record<string, string> = {
-  casual: 'var(--color-info)', sick: 'var(--color-warning)', annual: 'var(--color-accent)',
+  sick: 'var(--color-warning)', bereavement: 'var(--color-error)',
+  maternity: 'var(--color-accent)', paternity: 'var(--color-info)',
+  // legacy types — no longer offered on new requests, kept so old records still render correctly
+  casual: 'var(--color-info)', annual: 'var(--color-accent)',
 };
 
 function toDateInput(iso: string) {
@@ -76,14 +79,14 @@ export default function LeavesPage() {
 
   // Edit-leave state
   const [editingLeave, setEditingLeave]   = useState<Leave | null>(null);
-  const [editForm, setEditForm]           = useState({ leave_type: 'casual', start_date: '', end_date: '', reason: '' });
+  const [editForm, setEditForm]           = useState({ leave_type: 'sick', start_date: '', end_date: '', reason: '' });
 
   // Email settings form
   const [emailForm, setEmailForm] = useState<EmailSettings>(BLANK_SETTINGS);
 
   // New-leave + recipient form
   const [form, setForm] = useState({
-    leave_type: 'casual', start_date: '', end_date: '', reason: '',
+    leave_type: 'sick', start_date: '', end_date: '', reason: '',
     to: '', cc: '', bcc: '',
   });
 
@@ -106,7 +109,7 @@ export default function LeavesPage() {
   }, [user?.id]);
 
   const openLeaveModal = () => {
-    setForm(f => ({ ...f, leave_type: 'casual', start_date: '', end_date: '', reason: '' }));
+    setForm(f => ({ ...f, leave_type: 'sick', start_date: '', end_date: '', reason: '' }));
     setShowLeaveModal(true);
   };
 
@@ -298,9 +301,10 @@ export default function LeavesPage() {
               <div className="form-group">
                 <label className="form-label">Leave Type</label>
                 <select className="form-select" value={form.leave_type} onChange={e => setForm({ ...form, leave_type: e.target.value })}>
-                  <option value="casual">Casual</option>
                   <option value="sick">Sick</option>
-                  <option value="annual">Annual</option>
+                  <option value="bereavement">Bereavement</option>
+                  <option value="maternity">Maternity</option>
+                  <option value="paternity">Paternity</option>
                 </select>
               </div>
               <div className="grid-2">
@@ -379,9 +383,10 @@ export default function LeavesPage() {
               <div className="form-group">
                 <label className="form-label">Leave Type</label>
                 <select className="form-select" value={editForm.leave_type} onChange={e => setEditForm({ ...editForm, leave_type: e.target.value })}>
-                  <option value="casual">Casual</option>
                   <option value="sick">Sick</option>
-                  <option value="annual">Annual</option>
+                  <option value="bereavement">Bereavement</option>
+                  <option value="maternity">Maternity</option>
+                  <option value="paternity">Paternity</option>
                 </select>
               </div>
               <div className="grid-2">

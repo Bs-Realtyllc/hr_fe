@@ -11,18 +11,54 @@ interface CultureEvent {
   employee_name?: string;
 }
 
-const typeIcon: Record<string, string> = {
-  birthday: '🎂',
-  anniversary: '🎉',
-  team_event: '👥',
-  milestone: '🏆',
-};
+// ── Icons ────────────────────────────────────────────────────────────────────
+interface IconProps { size?: number; color: string }
 
-const typeBadge: Record<string, string> = {
-  birthday: 'badge-warning',
-  anniversary: 'badge-accent',
-  team_event: 'badge-info',
-  milestone: 'badge-success',
+function CakeIcon({ size = 14, color }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="9" rx="2" />
+      <path d="M3 15h18" />
+      <path d="M12 11V6" />
+      <circle cx="12" cy="4" r="1.5" fill={color} stroke="none" />
+    </svg>
+  );
+}
+
+function AwardIcon({ size = 14, color }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="5" />
+      <path d="M8.5 12.5L7 21l5-3 5 3-1.5-8.5" />
+    </svg>
+  );
+}
+
+function UsersIcon({ size = 14, color }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M15.5 14c2.5.3 4.5 2.3 4.5 6" />
+    </svg>
+  );
+}
+
+function FlagIcon({ size = 14, color }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 21V4" />
+      <path d="M5 4h13l-3 4 3 4H5" />
+    </svg>
+  );
+}
+
+const TYPE_CONFIG: Record<CultureEvent['event_type'], { color: string; bg: string; Icon: (p: IconProps) => JSX.Element; label: string }> = {
+  birthday:    { color: '#db2777', bg: '#fdf2f8', Icon: CakeIcon,  label: 'Birthday' },
+  anniversary: { color: '#7c3aed', bg: '#f5f3ff', Icon: AwardIcon, label: 'Anniversary' },
+  team_event:  { color: '#0ea5e9', bg: '#e0f2fe', Icon: UsersIcon, label: 'Team Event' },
+  milestone:   { color: '#d97706', bg: '#fef3c7', Icon: FlagIcon,  label: 'Milestone' },
 };
 
 function daysUntil(dateStr: string): number {
@@ -31,24 +67,120 @@ function daysUntil(dateStr: string): number {
   return Math.round((d.getTime() - today.getTime()) / 86400000);
 }
 
+function relativeLabel(days: number): string {
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  if (days === -1) return 'Yesterday';
+  if (days > 1) return `In ${days} days`;
+  return `${Math.abs(days)} days ago`;
+}
+
+// The display window is always the Sun–Sat week containing today, except on
+// Saturday itself it rolls forward to next week — i.e. every Saturday the
+// widget starts showing "the coming week"'s events instead of the outgoing one.
+function getDisplayWeek(today: Date) {
+  const daysSinceSaturday = (today.getDay() + 1) % 7;
+  const lastSaturday = new Date(today);
+  lastSaturday.setDate(today.getDate() - daysSinceSaturday);
+  const weekStart = new Date(lastSaturday);
+  weekStart.setDate(lastSaturday.getDate() + 1);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  return { weekStart, weekEnd };
+}
+
+function fmtShort(d: Date) {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// ── Full Events List Modal ──────────────────────────────────────────────────
+interface FullEventsModalProps {
+  events: CultureEvent[];
+  onClose: () => void;
+}
+
+function FullEventsModal({ events, onClose }: FullEventsModalProps) {
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 680, maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: 0 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-header" style={{ padding: '20px 24px', marginBottom: 0, borderBottom: '1px solid var(--color-border)' }}>
+          <h2>All Events</h2>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <div style={{ padding: 20, overflowY: 'auto' }}>
+          {events.length === 0 ? (
+            <p className="text-muted" style={{ fontSize: 13 }}>No events yet.</p>
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Event</th><th>Type</th><th>Employee</th><th>Date</th></tr>
+                </thead>
+                <tbody>
+                  {events.map(e => {
+                    const isPast = e.event_date.split('T')[0] < todayStr;
+                    const cfg = TYPE_CONFIG[e.event_type];
+                    const Icon = cfg.Icon;
+                    return (
+                      <tr key={e.id} style={{ opacity: isPast ? 0.5 : 1 }}>
+                        <td style={{ fontWeight: 600 }}>{e.title}</td>
+                        <td>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px',
+                            background: cfg.bg, color: cfg.color, borderRadius: 20, padding: '3px 10px',
+                          }}>
+                            <Icon size={11} color={cfg.color} /> {cfg.label}
+                          </span>
+                        </td>
+                        <td className="text-muted">{e.employee_name || '—'}</td>
+                        <td className="text-muted" style={{ fontSize: 13 }}>
+                          {new Date(e.event_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                          {isPast && <span style={{ marginLeft: 6, fontSize: 11 }}>(past)</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CulturePage() {
   const [events, setEvents] = useState<CultureEvent[]>([]);
-  const [upcoming, setUpcoming] = useState<CultureEvent[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const [form, setForm] = useState({ title: '', event_type: 'team_event', event_date: '', description: '', employee_id: '' });
 
-  useEffect(() => {
-    api.get<CultureEvent[]>('/events').then(setEvents).catch(() => {});
-    api.get<CultureEvent[]>('/events/upcoming').then(setUpcoming).catch(() => {});
-  }, []);
+  const load = () => api.get<CultureEvent[]>('/events').then(setEvents).catch(() => {});
+
+  useEffect(() => { load(); }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     await api.post('/events', { ...form, employee_id: form.employee_id || null });
     setShowModal(false);
-    api.get<CultureEvent[]>('/events').then(setEvents).catch(() => {});
-    api.get<CultureEvent[]>('/events/upcoming').then(setUpcoming).catch(() => {});
+    load();
   };
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const { weekStart, weekEnd } = getDisplayWeek(today);
+
+  const weekEvents = events
+    .filter(e => {
+      const d = new Date(e.event_date); d.setHours(0, 0, 0, 0);
+      return d >= weekStart && d <= weekEnd;
+    })
+    .sort((a, b) => a.event_date.localeCompare(b.event_date));
+
+  const sortedAll = [...events].sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
 
   return (
     <div>
@@ -62,69 +194,55 @@ export default function CulturePage() {
         </div>
       </div>
 
-      {/* Upcoming widget */}
-      {upcoming.length > 0 && (
-        <div className="card mb-4" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)', color: '#fff' }}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 16, opacity: 0.85 }}>COMING UP IN THE NEXT 30 DAYS</div>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            {upcoming.map(e => {
+      {showAll && <FullEventsModal events={sortedAll} onClose={() => setShowAll(false)} />}
+
+      {/* This Week */}
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+          <div>
+            <div className="card-title" style={{ marginBottom: 4 }}>This Week</div>
+            <div className="text-muted" style={{ fontSize: 12 }}>{fmtShort(weekStart)} – {fmtShort(weekEnd)}</div>
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowAll(true)}>View Full Events List</button>
+        </div>
+
+        {weekEvents.length === 0 ? (
+          <p className="text-muted" style={{ fontSize: 13 }}>No events this week.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {weekEvents.map(e => {
+              const cfg = TYPE_CONFIG[e.event_type];
+              const Icon = cfg.Icon;
               const days = daysUntil(e.event_date);
+              const isPast = days < 0;
               return (
-                <div key={e.id} style={{
-                  background: 'rgba(255,255,255,0.15)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '12px 16px',
-                  minWidth: 160,
-                  flex: '1 1 160px',
-                }}>
-                  <div style={{ fontSize: 24, marginBottom: 6 }}>{typeIcon[e.event_type]}</div>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{e.title}</div>
-                  {e.employee_name && <div style={{ fontSize: 12, opacity: 0.8, marginTop: 2 }}>{e.employee_name}</div>}
-                  <div style={{ fontSize: 12, marginTop: 6, opacity: 0.9 }}>
-                    {days === 0 ? '🎊 Today!' : `In ${days} day${days !== 1 ? 's' : ''}`}
+                <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 12, opacity: isPast ? 0.55 : 1 }}>
+                  <div style={{
+                    width: 38, height: 38, borderRadius: 10, background: cfg.bg,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>
+                    <Icon size={18} color={cfg.color} />
                   </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {e.title}
+                    </div>
+                    <div className="text-muted" style={{ fontSize: 12 }}>
+                      {e.employee_name ? `${e.employee_name} · ` : ''}
+                      {new Date(e.event_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: 12, fontWeight: 600, color: cfg.color, background: cfg.bg,
+                    borderRadius: 20, padding: '4px 10px', flexShrink: 0,
+                  }}>
+                    {relativeLabel(days)}
+                  </span>
                 </div>
               );
             })}
           </div>
-        </div>
-      )}
-
-      {/* All events */}
-      <div className="card">
-        <div className="card-title">All Events</div>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Event</th>
-                <th>Type</th>
-                <th>Employee</th>
-                <th>Date</th>
-                <th>Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.length === 0 && (
-                <tr><td colSpan={5} style={{ textAlign: 'center', padding: 32, color: 'var(--color-text-muted)' }}>No events yet</td></tr>
-              )}
-              {events.map(e => (
-                <tr key={e.id}>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <span>{typeIcon[e.event_type]}</span>
-                      <span className="font-semibold">{e.title}</span>
-                    </div>
-                  </td>
-                  <td><span className={`badge ${typeBadge[e.event_type]}`}>{e.event_type.replace('_', ' ')}</span></td>
-                  <td className="text-muted">{e.employee_name || '—'}</td>
-                  <td>{new Date(e.event_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-                  <td className="text-muted text-sm">{e.description || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        )}
       </div>
 
       {showModal && (

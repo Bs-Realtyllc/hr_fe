@@ -10,6 +10,7 @@ interface Employee {
   phone?: string;
   designation: string;
   department: string;
+  manager_id?: number;
   manager_name?: string;
   start_date: string;
   timezone: string;
@@ -63,12 +64,38 @@ const msBadge: Record<string, string> = {
   pending: 'badge-neutral',
 };
 
+const UNASSIGNED_DEPARTMENT = 'Unassigned';
+
+const DEPARTMENT_PRIORITY = [
+  'founders', 'founder', 'leadership', 'executive', 'management', 'managers',
+];
+
+function departmentRank(department: string) {
+  const idx = DEPARTMENT_PRIORITY.indexOf(department.toLowerCase());
+  return idx === -1 ? DEPARTMENT_PRIORITY.length : idx;
+}
+
+function groupByDepartment(list: Employee[]): [string, Employee[]][] {
+  const groups: Record<string, Employee[]> = {};
+  list.forEach(emp => {
+    const dept = emp.department?.trim() || UNASSIGNED_DEPARTMENT;
+    (groups[dept] ??= []).push(emp);
+  });
+  return Object.entries(groups).sort(([a], [b]) => {
+    if (a === UNASSIGNED_DEPARTMENT) return 1;
+    if (b === UNASSIGNED_DEPARTMENT) return -1;
+    const rankDiff = departmentRank(a) - departmentRank(b);
+    return rankDiff !== 0 ? rankDiff : a.localeCompare(b);
+  });
+}
+
 export default function EmployeesPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.role === 'lead';
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [search, setSearch] = useState('');
+  const [myTeamOnly, setMyTeamOnly] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selected, setSelected] = useState<Employee | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -83,11 +110,18 @@ export default function EmployeesPage() {
     api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
   }, []);
 
-  const filtered = employees.filter(e =>
+  const searched = employees.filter(e =>
     e.name.toLowerCase().includes(search.toLowerCase()) ||
     e.designation?.toLowerCase().includes(search.toLowerCase()) ||
     e.department?.toLowerCase().includes(search.toLowerCase())
   );
+
+  const filtered = myTeamOnly && user
+    ? searched.filter(e => e.id === user.id || e.manager_id === user.id)
+    : searched;
+
+  const sections = groupByDepartment(filtered);
+  const departmentCount = new Set(filtered.map(e => e.department?.trim() || UNASSIGNED_DEPARTMENT)).size;
 
   const selectEmployee = async (emp: Employee) => {
     if (selected?.id === emp.id) {
@@ -118,8 +152,11 @@ export default function EmployeesPage() {
       <div className="page-header">
         <div className="flex justify-between items-center">
           <div>
-            <h1>Employee Directory</h1>
-            <p>Profiles, tech stacks, availability, and contact info</p>
+            <h1>Team Directory</h1>
+            <p>
+              {filtered.length} {filtered.length === 1 ? 'person' : 'people'} across {departmentCount} {departmentCount === 1 ? 'department' : 'departments'}
+              {' — '}managers, founders, and every team from engineering to marketing and operations
+            </p>
           </div>
           {isAdmin && (
             <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Add Employee</button>
@@ -127,79 +164,106 @@ export default function EmployeesPage() {
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 16, padding: '12px 16px' }}>
-        <input
-          className="form-input"
-          placeholder="Search by name, role, department..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{ width: '100%', border: 'none', boxShadow: 'none', padding: '6px 0', fontSize: 14 }}
-        />
+      <div className="card" style={{ marginBottom: 20, padding: '12px 16px' }}>
+        <div className="flex items-center gap-3">
+          <input
+            className="form-input"
+            placeholder="Search by name, role, department..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ flex: 1, border: 'none', boxShadow: 'none', padding: '6px 0', fontSize: 14 }}
+          />
+          <div style={{ width: 1, height: 24, background: 'var(--color-border)', flexShrink: 0 }} />
+          <button
+            className={`btn btn-sm ${myTeamOnly ? 'btn-primary' : 'btn-ghost'}`}
+            style={{ flexShrink: 0 }}
+            onClick={() => setMyTeamOnly(v => !v)}
+            title="Show only yourself and your direct reports"
+          >
+            {myTeamOnly ? '✓ My Team' : '◎ My Team'}
+          </button>
+        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-        {filtered.map(emp => {
-          const tech = parseTech(emp.tech_stack);
-          const isSelected = selected?.id === emp.id;
-          return (
-            <div
-              key={emp.id}
-              className="card"
-              style={{ cursor: 'pointer', border: isSelected ? '2px solid var(--color-accent)' : '2px solid transparent' }}
-              onClick={() => selectEmployee(emp)}
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="avatar avatar-lg">{initials(emp.name)}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="font-semibold" style={{ fontSize: 15 }}>{emp.name}</div>
-                  <div className="text-muted">{emp.designation}</div>
-                  <span className={`badge ${roleColors[emp.role]}`} style={{ marginTop: 4 }}>{emp.role}</span>
-                </div>
-              </div>
+      {sections.map(([department, members]) => (
+        <div key={department} style={{ marginBottom: 28 }}>
+          <div className="flex items-center gap-3" style={{ marginBottom: 12 }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-h2)', letterSpacing: '-0.2px' }}>
+              {department}
+            </h2>
+            <span className="badge badge-accent">{members.length}</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
+          </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div className="flex gap-2 items-center">
-                  <span className="text-muted" style={{ width: 80, flexShrink: 0 }}>Email</span>
-                  <span className="text-sm truncate">{emp.email}</span>
-                </div>
-                {emp.department && (
-                  <div className="flex gap-2 items-center">
-                    <span className="text-muted" style={{ width: 80, flexShrink: 0 }}>Dept.</span>
-                    <span className="text-sm">{emp.department}</span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+            {members.map(emp => {
+              const tech = parseTech(emp.tech_stack);
+              const isSelected = selected?.id === emp.id;
+              const isMe = emp.id === user?.id;
+              return (
+                <div
+                  key={emp.id}
+                  className="card"
+                  style={{ cursor: 'pointer', border: isSelected ? '2px solid var(--color-accent)' : '2px solid transparent' }}
+                  onClick={() => selectEmployee(emp)}
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="avatar avatar-lg">{initials(emp.name)}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="flex items-center gap-2">
+                        <div className="font-semibold" style={{ fontSize: 15 }}>{emp.name}</div>
+                        {isMe && <span className="badge badge-info">You</span>}
+                      </div>
+                      <div className="text-muted">{emp.designation}</div>
+                      <span className={`badge ${roleColors[emp.role]}`} style={{ marginTop: 4 }}>{emp.role}</span>
+                    </div>
                   </div>
-                )}
-                {emp.manager_name && (
-                  <div className="flex gap-2 items-center">
-                    <span className="text-muted" style={{ width: 80, flexShrink: 0 }}>Reports to</span>
-                    <span className="text-sm">{emp.manager_name}</span>
-                  </div>
-                )}
-                <div className="flex gap-2 items-center">
-                  <span className="text-muted" style={{ width: 80, flexShrink: 0 }}>Hours</span>
-                  <span className="text-sm">{emp.work_hours} <span style={{ color: 'var(--color-accent)' }}>({emp.timezone})</span></span>
-                </div>
-                {emp.start_date && (
-                  <div className="flex gap-2 items-center">
-                    <span className="text-muted" style={{ width: 80, flexShrink: 0 }}>Since</span>
-                    <span className="text-sm">{new Date(emp.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}</span>
-                  </div>
-                )}
-              </div>
 
-              {tech.length > 0 && (
-                <div style={{ marginTop: 12 }}>
-                  {tech.map(t => <span key={t} className="tag">{t}</span>)}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div className="flex gap-2 items-center">
+                      <span className="text-muted" style={{ width: 80, flexShrink: 0 }}>Email</span>
+                      <span className="text-sm truncate">{emp.email}</span>
+                    </div>
+                    {emp.manager_name && (
+                      <div className="flex gap-2 items-center">
+                        <span className="text-muted" style={{ width: 80, flexShrink: 0 }}>Reports to</span>
+                        <span className="text-sm">{emp.manager_name}</span>
+                      </div>
+                    )}
+                    <div className="flex gap-2 items-center">
+                      <span className="text-muted" style={{ width: 80, flexShrink: 0 }}>Hours</span>
+                      <span className="text-sm">{emp.work_hours} <span style={{ color: 'var(--color-accent)' }}>({emp.timezone})</span></span>
+                    </div>
+                    {emp.start_date && (
+                      <div className="flex gap-2 items-center">
+                        <span className="text-muted" style={{ width: 80, flexShrink: 0 }}>Since</span>
+                        <span className="text-sm">{new Date(emp.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {tech.length > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      {tech.map(t => <span key={t} className="tag">{t}</span>)}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
 
       {filtered.length === 0 && (
         <div className="empty-state card" style={{ marginTop: 16 }}>
           <div style={{ fontSize: 40 }}>👤</div>
-          <p>{search ? 'No employees match your search' : 'No employees yet'}</p>
+          <p>
+            {myTeamOnly
+              ? 'No one reports to you yet'
+              : search
+                ? 'No employees match your search'
+                : 'No employees yet'}
+          </p>
         </div>
       )}
 

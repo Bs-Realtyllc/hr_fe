@@ -47,7 +47,9 @@ function ResetPasswordForm() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-header">
-          <div className="login-logo">HR</div>
+          <div className="login-logo">
+            <img src="/logos/hr-platform.svg" alt="HR Platform" width={28} height={28} />
+          </div>
           <h1>Reset Password</h1>
           <p>Enter your new password below</p>
         </div>

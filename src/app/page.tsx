@@ -7,18 +7,29 @@ import {
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 /* ─────────────────────────────── helpers ──────────────────────────────── */
 
 const WEEKLY_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfL7_liDkuSYL2unDM-h1UTUp7-pJprekDP5-ILeo1GSa63dA/viewform';
 
+// Sunday from 10:00 AM onward — the internal "Work updates ppt" reminder takes over this window.
+function isPptReminderTime(d = new Date()) {
+  return d.getDay() === 0 && d.getHours() >= 10;
+}
+
 function isWeeklyFormDay(d = new Date()) {
+  if (isPptReminderTime(d)) return false;
   const day = d.getDay();
   return day === 0 || day === 5 || day === 6;
 }
 
 function getDismissKey() {
   return `weekly_form_dismissed_${new Date().toISOString().split('T')[0]}`;
+}
+
+function getPptDismissKey() {
+  return `ppt_update_dismissed_${new Date().toISOString().split('T')[0]}`;
 }
 
 function fmt(n: number) {
@@ -192,6 +203,29 @@ function DateWidget() {
           Fill Weekly Update Form
         </a>
       )}
+
+      {isPptReminderTime(d) && (
+        <Link
+          href="/weekly-reports"
+          style={{
+            marginLeft: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            background: 'var(--color-primary)',
+            color: '#fff',
+            borderRadius: 'var(--radius-md, 8px)',
+            padding: '10px 18px',
+            textDecoration: 'none',
+            fontWeight: 600,
+            fontSize: 14,
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ fontSize: 18 }}>📊</span>
+          Work updates ppt
+        </Link>
+      )}
     </div>
   );
 }
@@ -204,6 +238,7 @@ interface DashboardStats {
   present_today: number;
   new_hires_month: number;
   pending_leaves: number;
+  pending_overtime: number;
   standups_today: number;
   active_projects: number;
 }
@@ -244,12 +279,18 @@ interface PayrollSummary {
   present_days: number;
   daily_rate: number;
   expected_pay: number;
+  overtime_pay: number;
+  leave_deduction: number;
+  leave_bonus: number;
+  net_pay: number;
+  adjustments: { title: string; type: string; amount: number }[];
 }
 
 /* ─────────────────────────────── page ─────────────────────────────────── */
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const router = useRouter();
 
   const [stats, setStats]                   = useState<DashboardStats | null>(null);
   const [payroll, setPayroll]               = useState<PayrollSummary | null>(null);
@@ -260,6 +301,7 @@ export default function DashboardPage() {
   const [standupTrend, setStandupTrend]     = useState<TrendPoint[]>([]);
   const [leaveTrend, setLeaveTrend]         = useState<TrendPoint[]>([]);
   const [showWeeklyPopup, setShowWeeklyPopup] = useState(false);
+  const [showPptPopup, setShowPptPopup]       = useState(false);
 
   useEffect(() => {
     api.get<DashboardStats>('/dashboard/stats').then(setStats).catch(() => {});
@@ -275,6 +317,9 @@ export default function DashboardPage() {
     if (isWeeklyFormDay() && !localStorage.getItem(getDismissKey())) {
       setShowWeeklyPopup(true);
     }
+    if (isPptReminderTime() && !localStorage.getItem(getPptDismissKey())) {
+      setShowPptPopup(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -289,6 +334,11 @@ export default function DashboardPage() {
   const dismissWeeklyPopup = () => {
     localStorage.setItem(getDismissKey(), '1');
     setShowWeeklyPopup(false);
+  };
+
+  const dismissPptPopup = () => {
+    localStorage.setItem(getPptDismissKey(), '1');
+    setShowPptPopup(false);
   };
 
   return (
@@ -316,6 +366,29 @@ export default function DashboardPage() {
                 className="btn btn-primary" onClick={dismissWeeklyPopup}>
                 Fill Form Now
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Work updates ppt popup */}
+      {showPptPopup && (
+        <div className="modal-overlay" onClick={dismissPptPopup}>
+          <div className="modal" style={{ maxWidth: 440, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <button className="modal-close" onClick={dismissPptPopup} style={{ position: 'absolute', top: 12, right: 16 }}>×</button>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
+            <h2 style={{ marginBottom: 8 }}>Work updates ppt</h2>
+            <p className="text-muted" style={{ fontSize: 14, marginBottom: 24 }}>
+              It's Sunday — please submit this week's work update (PPT or PDF) so the team stays aligned.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button className="btn btn-ghost" onClick={dismissPptPopup}>Remind me later</button>
+              <button
+                className="btn btn-primary"
+                onClick={() => { dismissPptPopup(); router.push('/weekly-reports'); }}
+              >
+                Submit Now
+              </button>
             </div>
           </div>
         </div>
@@ -358,8 +431,8 @@ export default function DashboardPage() {
                   <div className="text-muted" style={{ fontSize: 11 }}>this month</div>
                 </div>
                 <div style={{ flex: '1 1 140px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 4 }}>Expected Pay</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-success)' }}>৳{fmt(payroll.expected_pay)}</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 4 }}>Net Pay (est.)</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-success)' }}>৳{fmt(payroll.net_pay)}</div>
                   <div className="text-muted" style={{ fontSize: 11 }}>৳{fmt(payroll.daily_rate)}/day</div>
                 </div>
               </>
@@ -371,6 +444,20 @@ export default function DashboardPage() {
               <span className="badge badge-warning" style={{ alignSelf: 'center' }}>You are on leave today</span>
             )}
           </div>
+
+          {/* Overtime pay / leave deduction / year-end bonus line items */}
+          {payroll?.salary && payroll.adjustments.length > 0 && (
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {payroll.adjustments.map((a, i) => (
+                <div key={i} className="flex justify-between items-center">
+                  <span className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{a.title}</span>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: a.amount >= 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
+                    {a.amount >= 0 ? '+' : '-'}৳{fmt(Math.abs(a.amount))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -400,6 +487,11 @@ export default function DashboardPage() {
           <div className="stat-card-dot" style={{ background: 'var(--color-error)' }} />
           <div className="stat-card-label">Pending Leaves</div>
           <div className="stat-card-value">{stats?.pending_leaves ?? '—'}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-dot" style={{ background: 'var(--color-warning)' }} />
+          <div className="stat-card-label">Pending Overtime</div>
+          <div className="stat-card-value">{stats?.pending_overtime ?? '—'}</div>
         </div>
         <div className="stat-card">
           <div className="stat-card-dot" style={{ background: 'var(--color-info)' }} />

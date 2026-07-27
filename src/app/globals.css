@@ -157,6 +157,12 @@ input, textarea, select { font-family: inherit; }
 
 .sidebar-link.active .icon { opacity: 1; }
 
+.sidebar-link-external {
+  margin-left: auto;
+  font-size: 11px;
+  opacity: 0.5;
+}
+
 /* ── Page Header ── */
 .page-header {
   margin-bottom: 24px;
