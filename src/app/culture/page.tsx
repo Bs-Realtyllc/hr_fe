@@ -11,6 +11,8 @@ interface CultureEvent {
   employee_name?: string;
 }
 
+interface Employee { id: number; name: string; designation: string; }
+
 // ── Icons ────────────────────────────────────────────────────────────────────
 interface IconProps { size?: number; color: string }
 
@@ -103,13 +105,13 @@ function FullEventsModal({ events, onClose }: FullEventsModalProps) {
   const todayStr = new Date().toISOString().split('T')[0];
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 680, maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: 0 }} onClick={e => e.stopPropagation()}>
-        <div className="modal-header" style={{ padding: '20px 24px', marginBottom: 0, borderBottom: '1px solid var(--color-border)' }}>
+    <div className="drawer-overlay" onClick={onClose}>
+      <div className="drawer" onClick={e => e.stopPropagation()}>
+        <div className="drawer-header">
           <h2>All Events</h2>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
-        <div style={{ padding: 20, overflowY: 'auto' }}>
+        <div className="drawer-body">
           {events.length === 0 ? (
             <p className="text-muted" style={{ fontSize: 13 }}>No events yet.</p>
           ) : (
@@ -155,13 +157,17 @@ function FullEventsModal({ events, onClose }: FullEventsModalProps) {
 
 export default function CulturePage() {
   const [events, setEvents] = useState<CultureEvent[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [form, setForm] = useState({ title: '', event_type: 'team_event', event_date: '', description: '', employee_id: '' });
 
   const load = () => api.get<CultureEvent[]>('/events').then(setEvents).catch(() => {});
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,7 +196,13 @@ export default function CulturePage() {
             <h1>Culture & Events</h1>
             <p>Birthdays, anniversaries, and team milestones</p>
           </div>
-          <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Add Event</button>
+          <button className="btn btn-primary btn-sm" onClick={() => setShowModal(true)}>
+            <span
+              className="icon-mask"
+              style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
+            />
+            Add Event
+          </button>
         </div>
       </div>
 
@@ -207,7 +219,13 @@ export default function CulturePage() {
         </div>
 
         {weekEvents.length === 0 ? (
-          <p className="text-muted" style={{ fontSize: 13 }}>No events this week.</p>
+          <div className="empty-state" style={{ padding: '32px 24px' }}>
+            <span
+              className="icon-mask empty-state-icon"
+              style={{ WebkitMaskImage: 'url(/icons/calendar.svg)', maskImage: 'url(/icons/calendar.svg)' }}
+            />
+            <p>No events this week.</p>
+          </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {weekEvents.map(e => {
@@ -273,8 +291,13 @@ export default function CulturePage() {
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">Employee ID (optional)</label>
-                <input className="form-input" type="number" value={form.employee_id} onChange={e => setForm({ ...form, employee_id: e.target.value })} />
+                <label className="form-label">Employee (optional)</label>
+                <select className="form-select" value={form.employee_id} onChange={e => setForm({ ...form, employee_id: e.target.value })}>
+                  <option value="">None</option>
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.id}>{emp.name} — {emp.designation}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Description</label>

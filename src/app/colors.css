@@ -1,0 +1,226 @@
+/*
+ * Primary Color — Deep Teal
+ * Source: Figma — HR Management System (node 5:1752, "Deep Teal" / "Green")
+ *
+ * Full ramp from the Figma color-ratio swatch page. Reuse these tokens
+ * anywhere a shade of the brand teal is needed instead of hardcoding hex
+ * values, so the whole app stays on one palette.
+ *
+ * Note: `--color-primary` / `--color-primary-hover` / `--color-primary-focus-border` /
+ * `--color-primary-disabled` (defined in globals.css) map to this ramp's
+ * Normal / Normal:active / Darker / Light:active steps respectively — those
+ * are the exact shades specified on the Button components (node 7:3412 etc.),
+ * which take precedence over the palette's own hover/active labels below.
+ */
+
+:root {
+  --teal-light: #E7EDEF;
+  --teal-light-hover: #DBE4E7;
+  --teal-light-active: #B5C8CC;
+
+  --teal-normal: #104C5C;
+  --teal-normal-hover: #0E4453;
+  --teal-normal-active: #0D3D4A;
+
+  --teal-dark: #0C3945;
+  --teal-dark-hover: #0A2E37;
+  --teal-dark-active: #072229;
+
+  --teal-darker: #061B20;
+}
+
+/*
+ * Secondary Color — Warm Sand
+ * Source: Figma — HR Management System (node 5:1886, "warm Sand")
+ *
+ * Full ramp from the Figma color-ratio swatch page, same shape as the
+ * Deep Teal scale above. Use as the app's secondary/accent-neutral palette.
+ */
+
+:root {
+  --sand-light: #F9F8F5;
+  --sand-light-hover: #F7F4F0;
+  --sand-light-active: #EEE9E0;
+
+  --sand-normal: #C7B89A;
+  --sand-normal-hover: #B3A68B;
+  --sand-normal-active: #9F937B;
+
+  --sand-dark: #958A74;
+  --sand-dark-hover: #776E5C;
+  --sand-dark-active: #5A5345;
+
+  --sand-darker: #464036;
+}
+
+/*
+ * Neutral Color — Blackish
+ * Source: Figma — HR Management System (node 6:2142, "Blackish")
+ *
+ * Full ramp from the Figma color-ratio swatch page, same shape as the
+ * Deep Teal / Warm Sand scales above. Use for neutral text, icons, and
+ * dark-surface needs instead of plain black/gray.
+ */
+
+:root {
+  --neutral-light: #E8E9EA;
+  --neutral-light-hover: #DCDEDF;
+  --neutral-light-active: #B7BABD;
+
+  --neutral-normal: #17212B;
+  --neutral-normal-hover: #151E27;
+  --neutral-normal-active: #121A22;
+
+  --neutral-dark: #111920;
+  --neutral-dark-hover: #0E141A;
+  --neutral-dark-active: #0A0F13;
+
+  --neutral-darker: #080C0F;
+}
+
+/*
+ * Gray Color — Grays
+ * Source: Figma — HR Management System (node 6:2399, "Grays")
+ *
+ * Full ramp from the Figma color-ratio swatch page, same shape as the
+ * other palettes above. Use for slate/muted UI chrome (borders, secondary
+ * text, disabled states) that needs a cooler tone than Blackish.
+ */
+
+:root {
+  --gray-light: #F0F1F3;
+  --gray-light-hover: #E8EAEE;
+  --gray-light-active: #CFD4DB;
+
+  --gray-normal: #64748B;
+  --gray-normal-hover: #5A687D;
+  --gray-normal-active: #505D6F;
+
+  --gray-dark: #4B5768;
+  --gray-dark-hover: #3C4653;
+  --gray-dark-active: #2D343F;
+
+  --gray-darker: #232931;
+}
+
+/*
+ * Surface Color — Soft White
+ * Source: Figma — HR Management System (node 6:2656, "Soft White")
+ *
+ * Full ramp from the Figma color-ratio swatch page, same shape as the
+ * other palettes above. `--soft-white-normal` (#FEFEFE) is the exact
+ * "Foundation/Soft White/Light" shade already used as button text color
+ * in buttons.css.
+ */
+
+:root {
+  --soft-white-light: #FEFEFE;
+  --soft-white-light-hover: #FDFEFE;
+  --soft-white-light-active: #FBFCFD;
+
+  --soft-white-normal: #F1F5F9;
+  --soft-white-normal-hover: #D9DDE0;
+  --soft-white-normal-active: #C1C4C7;
+
+  --soft-white-dark: #B5B8BB;
+  --soft-white-dark-hover: #919395;
+  --soft-white-dark-active: #6C6E70;
+
+  --soft-white-darker: #545657;
+}
+
+/*
+ * Status Color — Success
+ * Source: Figma — HR Management System (node 6:2796, "Success")
+ *
+ * Full ramp from the Figma color-ratio swatch page, same shape as the
+ * other palettes above. Use for success states, badges, and confirmations.
+ */
+
+:root {
+  --success-light: #E8F6ED;
+  --success-light-hover: #DCF1E4;
+  --success-light-active: #B7E2C7;
+
+  --success-normal: #16A34A;
+  --success-normal-hover: #149343;
+  --success-normal-active: #12823B;
+
+  --success-dark: #117A38;
+  --success-dark-hover: #0D622C;
+  --success-dark-active: #0A4921;
+
+  --success-darker: #08391A;
+}
+
+/*
+ * Status Color — Warning
+ * Source: Figma — HR Management System (node 6:2929, "Warning")
+ *
+ * Full ramp from the Figma color-ratio swatch page, same shape as the
+ * other palettes above. Use for warning states, badges, and alerts.
+ */
+
+:root {
+  --warning-light: #FEF5E7;
+  --warning-light-hover: #FEF0DA;
+  --warning-light-active: #FCE1B3;
+
+  --warning-normal: #F59E0B;
+  --warning-normal-hover: #DD8E0A;
+  --warning-normal-active: #C47E09;
+
+  --warning-dark: #B87708;
+  --warning-dark-hover: #935F07;
+  --warning-dark-active: #6E4705;
+
+  --warning-darker: #563704;
+}
+
+/*
+ * Status Color — Error
+ * Source: Figma — HR Management System (node 6:3062, "Error")
+ *
+ * Full ramp from the Figma color-ratio swatch page, same shape as the
+ * other palettes above. Use for error states, destructive actions, and badges.
+ */
+
+:root {
+  --error-light: #FCE9E9;
+  --error-light-hover: #FADEDE;
+  --error-light-active: #F4BCBC;
+
+  --error-normal: #DC2626;
+  --error-normal-hover: #C62222;
+  --error-normal-active: #B01E1E;
+
+  --error-dark: #A51D1D;
+  --error-dark-hover: #841717;
+  --error-dark-active: #631111;
+
+  --error-darker: #4D0D0D;
+}
+
+/*
+ * Status Color — Information
+ * Source: Figma — HR Management System (node 6:3195, "Information")
+ *
+ * Full ramp from the Figma color-ratio swatch page, same shape as the
+ * other palettes above. Use for info states, tooltips, and badges.
+ */
+
+:root {
+  --info-light: #E9EFFD;
+  --info-light-hover: #DEE8FC;
+  --info-light-active: #BBCFF9;
+
+  --info-normal: #2563EB;
+  --info-normal-hover: #2159D4;
+  --info-normal-active: #1E4FBC;
+
+  --info-dark: #1C4AB0;
+  --info-dark-hover: #163B8D;
+  --info-dark-active: #112D6A;
+
+  --info-darker: #0D2352;
+}

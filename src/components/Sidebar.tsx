@@ -19,66 +19,67 @@ const allNav: { section: string; items: NavItem[] }[] = [
   {
     section: 'Overview',
     items: [
-      { href: '/', label: 'Dashboard', icon: '▣', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/', label: 'Dashboard', icon: 'grid.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
     ],
   },
   {
     section: 'People',
     items: [
-      { href: '/employees', label: 'Team Directory', icon: '◎', roles: ['admin', 'lead'] as Role[] },
-      { href: '/leaves', label: 'Leave Requests', icon: '◷', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/overtime', label: 'Overtime Requests', icon: '⏱', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/leave-policy', label: 'Leave Policy', icon: '◈', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/standups', label: 'Standups', icon: '◈', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/employees', label: 'Team Directory', icon: 'users.svg', roles: ['admin', 'lead'] as Role[] },
+      { href: '/leaves', label: 'Leave Requests', icon: 'calendar.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/overtime', label: 'Overtime Requests', icon: 'clock.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/documents', label: 'Documents & Signature', icon: 'file-text.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/resources', label: 'Resources', icon: 'book-open.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/standups', label: 'Standups', icon: 'message-square.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
     ],
   },
   {
     section: 'Finance',
     items: [
-      { href: '/payroll', label: 'Payroll & Taxes', icon: '◈', roles: ['admin'] as Role[] },
+      { href: '/payroll', label: 'Payroll & Taxes', icon: 'dollar-sign.svg', roles: ['admin'] as Role[] },
     ],
   },
   {
     section: 'Work',
     items: [
-      { href: '/projects', label: 'Projects', icon: '◉', roles: ['admin', 'lead'] as Role[] },
-      { href: '/servers', label: 'Services & Access', icon: '◫', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/calendar', label: 'Calendar', icon: '◻', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/projects', label: 'Projects', icon: 'briefcase.svg', roles: ['admin', 'lead'] as Role[] },
+      { href: '/servers', label: 'Services & Access', icon: 'server.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/calendar', label: 'Calendar', icon: 'calendar.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
     ],
   },
   {
     section: 'Growth',
     items: [
-      { href: '/goals', label: 'Goals & KPIs', icon: '◎', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/performance', label: 'Performance', icon: '◈', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/feedback', label: 'Feedback', icon: '✦', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/goals', label: 'Goals & KPIs', icon: 'target.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/performance', label: 'Performance', icon: 'trending-up.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/feedback', label: 'Feedback', icon: 'message-circle.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
     ],
   },
   {
     section: 'Culture',
     items: [
-      { href: '/culture', label: 'Events & Milestones', icon: '✦', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/culture', label: 'Events & Milestones', icon: 'award.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
     ],
   },
   {
     section: 'Learning',
     items: [
-      { href: LEARNING_URL, label: 'Learning', icon: '▤', roles: ['admin', 'lead', 'employee'] as Role[], external: true },
+      { href: LEARNING_URL, label: 'Learning', icon: 'book.svg', roles: ['admin', 'lead', 'employee'] as Role[], external: true },
     ],
   },
   {
     section: 'Reports',
     items: [
-      { href: '/reports', label: 'Monthly Reports', icon: '◧', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/weekly-reports', label: 'Weekly Reports', icon: '▨', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/leave-report', label: 'Leave Report', icon: '⌗', roles: ['admin'] as Role[] },
-      { href: '/financial-report', label: 'Financial Report', icon: '◈', roles: ['admin'] as Role[] },
+      { href: '/reports', label: 'Monthly Reports', icon: 'bar-chart.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/weekly-reports', label: 'Weekly Reports', icon: 'bar-chart-2.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/leave-report', label: 'Leave Report', icon: 'clipboard.svg', roles: ['admin'] as Role[] },
+      { href: '/financial-report', label: 'Financial Report', icon: 'pie-chart.svg', roles: ['admin'] as Role[] },
     ],
   },
   {
     section: 'Account',
     items: [
-      { href: '/profile', label: 'My Profile', icon: '◑', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/profile', label: 'My Profile', icon: 'user.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
     ],
   },
 ];
@@ -120,8 +121,12 @@ export default function Sidebar() {
         {nav.map(group => (
           <div key={group.section}>
             <div className="sidebar-section-label">{group.section}</div>
-            {group.items.map(item =>
-              item.external ? (
+            {group.items.map(item => {
+              const iconStyle = {
+                WebkitMaskImage: `url(/icons/${item.icon})`,
+                maskImage: `url(/icons/${item.icon})`,
+              };
+              return item.external ? (
                 <a
                   key={item.href}
                   href={item.href}
@@ -129,7 +134,7 @@ export default function Sidebar() {
                   rel="noreferrer"
                   className="sidebar-link"
                 >
-                  <span className="icon">{item.icon}</span>
+                  <span className="icon" style={iconStyle} />
                   {item.label}
                   <span className="sidebar-link-external">↗</span>
                 </a>
@@ -139,11 +144,11 @@ export default function Sidebar() {
                   href={item.href}
                   className={`sidebar-link ${pathname === item.href ? 'active' : ''}`}
                 >
-                  <span className="icon">{item.icon}</span>
+                  <span className="icon" style={iconStyle} />
                   {item.label}
                 </Link>
-              )
-            )}
+              );
+            })}
           </div>
         ))}
       </nav>
@@ -157,7 +162,10 @@ export default function Sidebar() {
           <div className="sidebar-profile-role">{user?.role ?? ''}</div>
         </div>
         <button className="sidebar-logout-btn" onClick={handleLogout} title="Sign out">
-          ⏻
+          <span
+            className="icon"
+            style={{ WebkitMaskImage: 'url(/icons/log-out.svg)', maskImage: 'url(/icons/log-out.svg)' }}
+          />
         </button>
       </div>
     </aside>

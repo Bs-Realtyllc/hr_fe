@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import PillTabs from '@/components/PillTabs';
 
 interface Leave {
   id: number;
@@ -183,31 +184,39 @@ export default function LeavesPage() {
             <p>{isPrivileged ? 'Manage employee leave applications and balances' : 'Your leave applications'}</p>
           </div>
           <div className="flex gap-2">
-            <button className="btn btn-ghost" onClick={() => { setSaveStatus(''); setShowEmailSetup(true); }}>
-              {emailConfigured ? '✓ Email Settings' : 'Setup Email'}
+            <button className="btn btn-secondary btn-sm" onClick={() => { setSaveStatus(''); setShowEmailSetup(true); }}>
+              <span
+                className="icon-mask"
+                style={{
+                  WebkitMaskImage: `url(/icons/${emailConfigured ? 'check-circle.svg' : 'mail.svg'})`,
+                  maskImage: `url(/icons/${emailConfigured ? 'check-circle.svg' : 'mail.svg'})`,
+                }}
+              />
+              {emailConfigured ? 'Email Settings' : 'Setup Email'}
             </button>
-            <button className="btn btn-primary" onClick={openLeaveModal}>+ New Request</button>
+            <button className="btn btn-primary btn-sm" onClick={openLeaveModal}>
+              <span
+                className="icon-mask"
+                style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
+              />
+              New Request
+            </button>
           </div>
         </div>
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-2 mb-4" style={{ flexWrap: 'wrap' }}>
-        {[
-          { value: 'all',      label: 'All' },
-          { value: 'pending',  label: 'Unverified' },
-          { value: 'approved', label: 'Approved' },
-          { value: 'rejected', label: 'Rejected' },
-        ].map(({ value, label }) => (
-          <button key={value} onClick={() => setFilter(value)} className="btn btn-sm"
-            style={{
-              background: filter === value ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: filter === value ? '#fff' : 'var(--color-text-muted)',
-              border: '1px solid var(--color-border)',
-            }}>
-            {label}
-          </button>
-        ))}
+      <div className="mb-4">
+        <PillTabs
+          value={filter}
+          onChange={setFilter}
+          options={[
+            { value: 'all',      label: 'All' },
+            { value: 'pending',  label: 'Unverified' },
+            { value: 'approved', label: 'Approved' },
+            { value: 'rejected', label: 'Rejected' },
+          ]}
+        />
       </div>
 
       <div className="card">
@@ -234,8 +243,8 @@ export default function LeavesPage() {
                 return (
                   <tr key={l.id} style={{ opacity: expired ? 0.6 : 1 }}>
                     <td>
-                      <div className="font-semibold">{l.employee_name}</div>
-                      <div className="text-muted">{l.designation}</div>
+                      <div className="cell-title">{l.employee_name}</div>
+                      <div className="cell-subtitle">{l.designation}</div>
                     </td>
                     <td>
                       <span className="badge" style={{ background: `${LEAVE_COLORS[l.leave_type]}22`, color: LEAVE_COLORS[l.leave_type], fontWeight: 600, textTransform: 'capitalize' }}>

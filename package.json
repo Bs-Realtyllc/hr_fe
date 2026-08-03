@@ -5,10 +5,12 @@
   "scripts": {
     "dev": "next dev -p 6001",
     "build": "next build",
-    "start": "next start -p 6001"
+    "start": "next start -p 6001",
+    "postinstall": "node scripts/copy-pdf-worker.js"
   },
   "dependencies": {
     "next": "14.2.5",
+    "pdfjs-dist": "^3.11.174",
     "react": "^18",
     "react-dom": "^18",
     "recharts": "^3.8.1",

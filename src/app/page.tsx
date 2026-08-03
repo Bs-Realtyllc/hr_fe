@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import KpiCard from '@/components/KpiCard';
 
 /* ─────────────────────────────── helpers ──────────────────────────────── */
 
@@ -106,7 +107,10 @@ function TrendChart({ data, color, title, subtitle, emptyLabel }: {
 
       {allZero ? (
         <div className="empty-state" style={{ minHeight: 110 }}>
-          <div style={{ fontSize: 28, marginBottom: 6 }}>📉</div>
+          <span
+            className="icon-mask empty-state-icon"
+            style={{ WebkitMaskImage: 'url(/icons/trending-down.svg)', maskImage: 'url(/icons/trending-down.svg)' }}
+          />
           <p>{emptyLabel}</p>
         </div>
       ) : (
@@ -184,22 +188,9 @@ function DateWidget() {
           href={WEEKLY_FORM_URL}
           target="_blank"
           rel="noopener noreferrer"
-          style={{
-            marginLeft: 'auto',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            background: 'var(--color-warning, #f59e0b)',
-            color: '#fff',
-            borderRadius: 'var(--radius-md, 8px)',
-            padding: '10px 18px',
-            textDecoration: 'none',
-            fontWeight: 600,
-            fontSize: 14,
-            flexShrink: 0,
-          }}
+          className="btn btn-primary btn-sm ml-auto no-underline"
         >
-          <span style={{ fontSize: 18 }}>📋</span>
+          <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/clipboard.svg)', maskImage: 'url(/icons/clipboard.svg)' }} />
           Fill Weekly Update Form
         </a>
       )}
@@ -207,22 +198,9 @@ function DateWidget() {
       {isPptReminderTime(d) && (
         <Link
           href="/weekly-reports"
-          style={{
-            marginLeft: 'auto',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            background: 'var(--color-primary)',
-            color: '#fff',
-            borderRadius: 'var(--radius-md, 8px)',
-            padding: '10px 18px',
-            textDecoration: 'none',
-            fontWeight: 600,
-            fontSize: 14,
-            flexShrink: 0,
-          }}
+          className="btn btn-primary btn-sm ml-auto no-underline"
         >
-          <span style={{ fontSize: 18 }}>📊</span>
+          <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/bar-chart-2.svg)', maskImage: 'url(/icons/bar-chart-2.svg)' }} />
           Work updates ppt
         </Link>
       )}
@@ -355,7 +333,10 @@ export default function DashboardPage() {
         <div className="modal-overlay" onClick={dismissWeeklyPopup}>
           <div className="modal" style={{ maxWidth: 440, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
             <button className="modal-close" onClick={dismissWeeklyPopup} style={{ position: 'absolute', top: 12, right: 16 }}>×</button>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
+            <span
+              className="icon-mask modal-icon"
+              style={{ WebkitMaskImage: 'url(/icons/clipboard.svg)', maskImage: 'url(/icons/clipboard.svg)' }}
+            />
             <h2 style={{ marginBottom: 8 }}>Weekly Update Due</h2>
             <p className="text-muted" style={{ fontSize: 14, marginBottom: 24 }}>
               It's the end of the week! Please take a moment to fill in your weekly update form so the team stays aligned.
@@ -376,7 +357,10 @@ export default function DashboardPage() {
         <div className="modal-overlay" onClick={dismissPptPopup}>
           <div className="modal" style={{ maxWidth: 440, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
             <button className="modal-close" onClick={dismissPptPopup} style={{ position: 'absolute', top: 12, right: 16 }}>×</button>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
+            <span
+              className="icon-mask modal-icon"
+              style={{ WebkitMaskImage: 'url(/icons/bar-chart-2.svg)', maskImage: 'url(/icons/bar-chart-2.svg)' }}
+            />
             <h2 style={{ marginBottom: 8 }}>Work updates ppt</h2>
             <p className="text-muted" style={{ fontSize: 14, marginBottom: 24 }}>
               It's Sunday — please submit this week's work update (PPT or PDF) so the team stays aligned.
@@ -462,42 +446,11 @@ export default function DashboardPage() {
       )}
 
       {/* Headcount stats */}
-      <div className="stat-grid">
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-primary)' }} />
-          <div className="stat-card-label">Total Employees</div>
-          <div className="stat-card-value">{stats?.total_active ?? '—'}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-success)' }} />
-          <div className="stat-card-label">Present Today</div>
-          <div className="stat-card-value">{stats?.present_today ?? '—'}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-warning)' }} />
-          <div className="stat-card-label">On Leave Today</div>
-          <div className="stat-card-value">{stats?.on_leave_today ?? '—'}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-accent)' }} />
-          <div className="stat-card-label">New Hires (30d)</div>
-          <div className="stat-card-value">{stats?.new_hires_month ?? '—'}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-error)' }} />
-          <div className="stat-card-label">Pending Leaves</div>
-          <div className="stat-card-value">{stats?.pending_leaves ?? '—'}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-warning)' }} />
-          <div className="stat-card-label">Pending Overtime</div>
-          <div className="stat-card-value">{stats?.pending_overtime ?? '—'}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-info)' }} />
-          <div className="stat-card-label">Active Projects</div>
-          <div className="stat-card-value">{stats?.active_projects ?? '—'}</div>
-        </div>
+      <div className="kpi-grid">
+        <KpiCard label="Total Employees" value={stats?.total_active ?? '—'} />
+        <KpiCard label="Present Today" value={stats?.present_today ?? '—'} />
+        <KpiCard label="On Leave Today" value={stats?.on_leave_today ?? '—'} />
+        <KpiCard label="Pending Leaves" value={stats?.pending_leaves ?? '—'} />
       </div>
 
       {/* Activity trend charts */}
@@ -527,7 +480,10 @@ export default function DashboardPage() {
           </div>
           {outToday.length === 0 ? (
             <div className="empty-state">
-              <div style={{ fontSize: 32 }}>✓</div>
+              <span
+                className="icon-mask empty-state-icon empty-state-icon-success"
+                style={{ WebkitMaskImage: 'url(/icons/check-circle.svg)', maskImage: 'url(/icons/check-circle.svg)' }}
+              />
               <p>Everyone is in today</p>
             </div>
           ) : (
@@ -551,7 +507,10 @@ export default function DashboardPage() {
           </div>
           {outWeek.length === 0 ? (
             <div className="empty-state">
-              <div style={{ fontSize: 32 }}>🗓</div>
+              <span
+                className="icon-mask empty-state-icon"
+                style={{ WebkitMaskImage: 'url(/icons/calendar.svg)', maskImage: 'url(/icons/calendar.svg)' }}
+              />
               <p>No absences scheduled this week</p>
             </div>
           ) : (
@@ -578,7 +537,10 @@ export default function DashboardPage() {
           </div>
           {standups.length === 0 ? (
             <div className="empty-state">
-              <div style={{ fontSize: 32 }}>📝</div>
+              <span
+                className="icon-mask empty-state-icon"
+                style={{ WebkitMaskImage: 'url(/icons/edit-3.svg)', maskImage: 'url(/icons/edit-3.svg)' }}
+              />
               <p>No standups submitted yet today</p>
             </div>
           ) : (
@@ -602,7 +564,10 @@ export default function DashboardPage() {
           </div>
           {events.length === 0 ? (
             <div className="empty-state">
-              <div style={{ fontSize: 32 }}>🎊</div>
+              <span
+                className="icon-mask empty-state-icon"
+                style={{ WebkitMaskImage: 'url(/icons/gift.svg)', maskImage: 'url(/icons/gift.svg)' }}
+              />
               <p>No upcoming events in the next 30 days</p>
             </div>
           ) : (

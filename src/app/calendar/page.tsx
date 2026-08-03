@@ -45,7 +45,12 @@ function getFirstDayOfMonth(year: number, month: number) {
 }
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAYS_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+function addMonths(year: number, month: number, delta: number) {
+  const d = new Date(year, month + delta, 1);
+  return { y: d.getFullYear(), m: d.getMonth() };
+}
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 interface IconProps { size?: number; color: string }
@@ -69,8 +74,8 @@ function HolidayIcon({ size = 14, color }: IconProps) {
 }
 
 const TYPE_CONFIG: Record<'meeting' | 'holiday', { color: string; bg: string; Icon: (p: IconProps) => JSX.Element; label: string }> = {
-  meeting: { color: '#6366f1', bg: '#eef2ff', Icon: MeetingIcon, label: 'Meeting' },
-  holiday: { color: '#15803d', bg: '#dcfce7', Icon: HolidayIcon, label: 'Holiday' },
+  meeting: { color: 'var(--color-primary)', bg: 'var(--color-primary-light)', Icon: MeetingIcon, label: 'Meeting' },
+  holiday: { color: 'var(--color-primary)', bg: 'var(--color-primary-light)', Icon: HolidayIcon, label: 'Holiday' },
 };
 
 // ── Schedule Meeting Modal ─────────────────────────────────────────────────
@@ -118,17 +123,13 @@ function ScheduleModal({ defaultDate, onClose, onCreated }: ScheduleModalProps) 
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-      backdropFilter: 'blur(2px)',
-    }} onClick={onClose}>
-      <div className="card" style={{ width: 460, maxWidth: '95vw', padding: 28 }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 16 }}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 540 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)' }}>
             <MeetingIcon size={18} color="var(--color-primary)" /> Schedule Meeting
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-muted)' }}>×</button>
+          </h2>
+          <button className="modal-close" onClick={onClose}>×</button>
         </div>
         <form onSubmit={submit}>
           <div className="form-group">
@@ -137,10 +138,10 @@ function ScheduleModal({ defaultDate, onClose, onCreated }: ScheduleModalProps) 
           </div>
           <div className="form-group">
             <label className="form-label">Description</label>
-            <textarea className="form-input" style={{ resize: 'vertical', minHeight: 56 }}
+            <textarea className="form-textarea"
               value={form.description} onChange={set('description')} placeholder="Optional agenda" />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <div className="grid-3">
             <div className="form-group">
               <label className="form-label">Date *</label>
               <input type="date" className="form-input" value={form.date} onChange={set('date')} />
@@ -159,9 +160,9 @@ function ScheduleModal({ defaultDate, onClose, onCreated }: ScheduleModalProps) 
             <input className="form-input" value={form.attendees} onChange={set('attendees')}
               placeholder="alice@co.com, bob@co.com" />
           </div>
-          {error && <p style={{ color: 'var(--color-error)', fontSize: 13, marginBottom: 12 }}>{error}</p>}
+          {error && <p className="form-error-text" style={{ marginBottom: 'var(--space-12)' }}>{error}</p>}
           <div className="flex gap-3 justify-end">
-            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={loading}>
               {loading ? 'Scheduling…' : 'Schedule'}
             </button>
@@ -223,7 +224,11 @@ function HolidayListModal({ holidays, isAdmin, onClose, onChanged }: HolidayList
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 700, fontSize: 14 }}>
-          <HolidayIcon size={14} color={TYPE_CONFIG.holiday.color} /> {h.name}
+          <span className="icon-mask" style={{
+            width: 14, height: 14, backgroundColor: 'var(--color-text-h1)',
+            WebkitMaskImage: 'url(/icons/gift.svg)', maskImage: 'url(/icons/gift.svg)',
+          }} />
+          {h.name}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}>
@@ -241,40 +246,35 @@ function HolidayListModal({ holidays, isAdmin, onClose, onChanged }: HolidayList
   );
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-      backdropFilter: 'blur(2px)',
-    }} onClick={onClose}>
-      <div className="card" style={{ width: 560, maxWidth: '95vw', maxHeight: '88vh', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 22px', borderBottom: '1px solid var(--color-border)' }}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 560, maxHeight: '88vh', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+        <div className="modal-header" style={{ padding: '18px 22px', margin: 0, borderBottom: '1px solid var(--color-border)' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 16 }}>
-              <HolidayIcon size={16} color={TYPE_CONFIG.holiday.color} /> Company Holidays
-            </div>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+              <span className="icon-mask" style={{
+                width: 16, height: 16, backgroundColor: 'var(--color-primary)',
+                WebkitMaskImage: 'url(/icons/gift.svg)', maskImage: 'url(/icons/gift.svg)',
+              }} />
+              Company Holidays
+            </h2>
             <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>{holidays.length} fixed paid holidays this year</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--color-text-muted)' }}>×</button>
+          <button className="modal-close" onClick={onClose}>×</button>
         </div>
 
         <div style={{ padding: 18, overflowY: 'auto' }}>
           {isAdmin && (
             <form onSubmit={addHoliday} style={{ marginBottom: 18, background: 'var(--color-bg)', padding: 14, borderRadius: 10 }}>
-              <div className="grid-2" style={{ alignItems: 'end', marginBottom: 10 }}>
+              <div className="grid-2" style={{ marginBottom: 10 }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Holiday Name</label>
                   <input className="form-input" placeholder="e.g. Dashain" value={form.name}
                     onChange={e => setForm({ ...form, name: e.target.value })} />
                 </div>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
-                  <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
-                    <label className="form-label">Date</label>
-                    <input className="form-input" type="date" value={form.holiday_date}
-                      onChange={e => setForm({ ...form, holiday_date: e.target.value })} />
-                  </div>
-                  <button type="submit" className="btn btn-primary" disabled={saving} style={{ height: 40 }}>
-                    {saving ? 'Adding…' : '+ Add'}
-                  </button>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Date</label>
+                  <input className="form-input" type="date" value={form.holiday_date}
+                    onChange={e => setForm({ ...form, holiday_date: e.target.value })} />
                 </div>
               </div>
               <div className="form-group" style={{ marginBottom: 0 }}>
@@ -282,18 +282,32 @@ function HolidayListModal({ holidays, isAdmin, onClose, onChanged }: HolidayList
                 <input className="form-input" placeholder="e.g. Wishing you a joyful celebration! 🎉" value={form.message}
                   onChange={e => setForm({ ...form, message: e.target.value })} />
               </div>
-              {error && <p style={{ color: 'var(--color-error)', fontSize: 13, marginTop: 10 }}>{error}</p>}
+              {error && <p className="form-error-text">{error}</p>}
+              <div className="flex justify-end" style={{ marginTop: 10 }}>
+                <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
+                  <span className="icon-mask" style={{
+                    WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)',
+                  }} />
+                  {saving ? 'Adding…' : 'Add'}
+                </button>
+              </div>
             </form>
           )}
 
           {holidays.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--color-text-muted)' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-                <HolidayIcon size={28} color="var(--color-text-muted)" />
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: 12, background: 'var(--color-primary-light)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px',
+              }}>
+                <span className="icon-mask" style={{
+                  width: 22, height: 22, backgroundColor: 'var(--color-primary)',
+                  WebkitMaskImage: 'url(/icons/gift.svg)', maskImage: 'url(/icons/gift.svg)',
+                }} />
               </div>
-              <div style={{ fontSize: 13 }}>
+              <p className="text-muted" style={{ fontSize: 13 }}>
                 No holidays have been added yet{isAdmin ? ' — add the official list above.' : '.'}
-              </div>
+              </p>
             </div>
           ) : (
             <>
@@ -341,6 +355,7 @@ export default function CalendarPage() {
   const [holidays, setHolidays]   = useState<Holiday[]>([]);
   const [syncing, setSyncing]     = useState(false);
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus | null>(null);
+  const [hoverIdx, setHoverIdx]   = useState<number | null>(null);
 
   useEffect(() => {
     api.get<GoogleStatus>('/google/status').then(setGoogleStatus).catch(() => null);
@@ -410,20 +425,30 @@ export default function CalendarPage() {
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay    = getFirstDayOfMonth(year, month);
-  const cells: (number | null)[] = [
-    ...Array.from({ length: firstDay }, () => null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ];
+
+  const { y: prevY, m: prevM } = addMonths(year, month, -1);
+  const { y: nextY, m: nextM } = addMonths(year, month, 1);
+  const prevMonthDays = getDaysInMonth(prevY, prevM);
+
+  interface CalCell { day: number; y: number; m: number; inMonth: boolean }
+
+  const leading: CalCell[] = Array.from({ length: firstDay }, (_, i) => ({
+    day: prevMonthDays - firstDay + 1 + i, y: prevY, m: prevM, inMonth: false,
+  }));
+  const current: CalCell[] = Array.from({ length: daysInMonth }, (_, i) => ({
+    day: i + 1, y: year, m: month, inMonth: true,
+  }));
+  const trailingCount = (7 - (leading.length + current.length) % 7) % 7;
+  const trailing: CalCell[] = Array.from({ length: trailingCount }, (_, i) => ({
+    day: i + 1, y: nextY, m: nextM, inMonth: false,
+  }));
+  const cells: CalCell[] = [...leading, ...current, ...trailing];
+
+  const dateStrOf = (c: CalCell) => `${c.y}-${String(c.m+1).padStart(2,'0')}-${String(c.day).padStart(2,'0')}`;
 
   const eventsForDay = (day: number) => {
     const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     return events.filter(e => e.date === ds);
-  };
-
-  const isWeekend = (dayIndex: number) => {
-    // dayIndex = (firstDay + day - 1) % 7
-    const dow = (firstDay + dayIndex) % 7;
-    return dow === 0 || dow === 6;
   };
 
   // Upcoming (meetings + holidays), soonest first
@@ -464,7 +489,6 @@ export default function CalendarPage() {
               background: 'var(--color-primary-light)', color: 'var(--color-primary)',
               fontWeight: 700, fontSize: 13,
             }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-primary)' }} />
               {today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
             </div>
           </div>
@@ -482,26 +506,27 @@ export default function CalendarPage() {
               <button onClick={nextMonth} style={{ padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--color-text-body)' }}>›</button>
             </div>
 
-            <button className="btn btn-ghost btn-sm" onClick={goToday}>Today</button>
+            <button className="btn btn-secondary btn-sm" onClick={goToday}>Today</button>
 
             {/* Google Calendar controls */}
             {googleStatus?.connected ? (
               <>
-                <button className="btn btn-ghost btn-sm" onClick={handleSync} disabled={syncing}>
+                <button className="btn btn-secondary btn-sm" onClick={handleSync} disabled={syncing}>
                   {syncing ? '⟳ Syncing…' : '⟳ Sync'}
                 </button>
                 {googleStatus.webhookActive && (
                   <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12,
-                    color: '#16a34a', background: '#f0fdf4',
-                    border: '1px solid #bbf7d0', borderRadius: 20, padding: '3px 10px', fontWeight: 600,
+                    display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14,
+                    height: 40, boxSizing: 'border-box',
+                    color: 'var(--color-primary)', background: 'var(--color-primary-light)',
+                    border: '2px solid var(--color-primary-light)', borderRadius: 'var(--radius-full)', padding: '0 14px', fontWeight: 600,
                   }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} />
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-primary)' }} />
                     Live sync
                   </span>
                 )}
                 {isAdmin && (
-                  <button className="btn btn-ghost btn-sm" style={{ color: 'var(--color-error)' }} onClick={disconnectGoogle}>
+                  <button className="btn btn-secondary btn-sm btn-danger" onClick={disconnectGoogle}>
                     Disconnect
                   </button>
                 )}
@@ -523,14 +548,14 @@ export default function CalendarPage() {
       {/* ── Calendar grid ──────────────────────────────────────────────────── */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         {/* Day-of-week header */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: 'var(--color-surface)' }}>
-          {DAYS_SHORT.map((d, i) => (
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+          borderBottom: '1px solid var(--color-border)',
+        }}>
+          {DAYS_FULL.map(d => (
             <div key={d} style={{
-              padding: '10px 0', textAlign: 'center',
-              fontSize: 11, fontWeight: 700,
-              color: (i === 0 || i === 6) ? '#94a3b8' : 'var(--color-text-muted)',
-              textTransform: 'uppercase', letterSpacing: '0.6px',
-              borderBottom: '1px solid var(--color-border)',
+              textAlign: 'center', padding: '12px 0', fontSize: 14, fontWeight: 500,
+              color: 'var(--color-text-body)',
             }}>
               {d}
             </div>
@@ -539,79 +564,82 @@ export default function CalendarPage() {
 
         {/* Day cells */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-          {cells.map((day, i) => {
-            if (!day) {
-              return (
-                <div key={`e-${i}`} style={{
-                  minHeight: 112,
-                  borderBottom: '1px solid var(--color-border)',
-                  borderRight: '1px solid var(--color-border)',
-                  background: '#fafafa',
-                }} />
-              );
-            }
-
-            const dateStr    = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-            const dayEvents  = eventsForDay(day);
-            const isToday    = dateStr === todayStr;
-            const isSel      = dateStr === selected;
-            const weekend    = isWeekend(i);
-            const hasHoliday = dayEvents.some(e => e.type === 'holiday');
-            const visible    = dayEvents.slice(0, 3);
+          {cells.map((c, i) => {
+            const dateStr    = dateStrOf(c);
+            const dayEvents  = c.inMonth ? eventsForDay(c.day) : [];
+            const isToday    = c.inMonth && dateStr === todayStr;
+            const isSel      = c.inMonth && dateStr === selected;
+            const visible    = dayEvents.slice(0, 2);
             const overflow   = dayEvents.length - visible.length;
+            const isHover    = hoverIdx === i;
+            const isLastCol  = i % 7 === 6;
+
+            const handleCellClick = () => {
+              if (!c.inMonth) return;
+              if (dateStr >= todayStr && dayEvents.length === 0) {
+                setSelected(dateStr);
+                setShowModal(true);
+                return;
+              }
+              setSelected(isSel ? null : dateStr);
+            };
 
             return (
               <div
-                key={day}
-                onClick={() => setSelected(isSel ? null : dateStr)}
+                key={i}
+                onMouseEnter={() => setHoverIdx(i)}
+                onMouseLeave={() => setHoverIdx(null)}
+                onClick={handleCellClick}
                 style={{
-                  minHeight: 112, padding: '8px 6px',
+                  position: 'relative',
+                  minHeight: 150, minWidth: 0, padding: '15px 15px',
+                  cursor: c.inMonth ? 'pointer' : 'default',
                   borderBottom: '1px solid var(--color-border)',
-                  borderRight: '1px solid var(--color-border)',
-                  cursor: 'pointer',
-                  background: isSel
-                    ? 'var(--color-primary-light, #eef2ff)'
-                    : isToday
-                      ? '#fefce8'
-                      : hasHoliday
-                        ? TYPE_CONFIG.holiday.bg
-                        : weekend
-                          ? '#fafafa'
-                          : 'transparent',
-                  boxShadow: isSel ? 'inset 2px 0 0 var(--color-primary)' : undefined,
+                  borderRight: isLastCol ? 'none' : '1px solid var(--color-border)',
+                  background: (c.inMonth && isHover)
+                    ? 'var(--color-primary-light)'
+                    : c.inMonth ? 'var(--color-surface)' : 'var(--color-bg)',
                   transition: 'background 0.12s',
                 }}
               >
                 {/* Day number */}
-                <div style={{ marginBottom: 5, display: 'flex', justifyContent: 'flex-end' }}>
-                  <span style={{
-                    width: 26, height: 26, borderRadius: '50%',
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 12, fontWeight: isToday ? 800 : 400,
-                    background: isToday ? 'var(--color-primary)' : 'transparent',
-                    color: isToday ? '#fff' : weekend ? '#94a3b8' : 'var(--color-text-body)',
-                  }}>
-                    {day}
-                  </span>
+                <div style={{ marginBottom: 6, display: 'flex', justifyContent: 'flex-end' }}>
+                  {isToday ? (
+                    <span style={{
+                      width: 22, height: 22, borderRadius: '50%',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 12, fontWeight: 700,
+                      background: 'var(--color-primary)', color: 'var(--soft-white-light)',
+                    }}>
+                      {String(c.day).padStart(2, '0')}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: 12, color: c.inMonth ? 'var(--color-text-h1)' : 'var(--gray-normal)' }}>
+                      {String(c.day).padStart(2, '0')}
+                    </span>
+                  )}
                 </div>
 
-                {/* Event bars — full-width, icon + label */}
+                {/* Event chips */}
                 {visible.map((ev, j) => {
                   const cfg = TYPE_CONFIG[ev.type];
-                  const Icon = cfg.Icon;
                   return (
                     <div key={j} style={{
-                      display: 'flex', alignItems: 'center', gap: 5,
-                      fontSize: 11, fontWeight: 600,
                       background: cfg.bg,
-                      color: cfg.color,
-                      borderLeft: `3px solid ${cfg.color}`,
-                      borderRadius: 5, padding: '4px 6px',
-                      marginBottom: 3,
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      borderLeft: `2px solid ${cfg.color}`,
+                      borderRadius: 3, padding: '4px 7px',
+                      marginBottom: 6,
+                      overflow: 'hidden',
                     }}>
-                      <Icon size={11} color={cfg.color} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.label}</span>
+                      <div style={{ fontSize: 11, color: 'var(--gray-dark)', lineHeight: 1.4 }}>
+                        {ev.time || ev.sub || cfg.label}
+                      </div>
+                      <div style={{
+                        fontSize: 12.5, fontWeight: 600, color: 'var(--color-text-h1)', lineHeight: 1.4,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {ev.label}
+                      </div>
                     </div>
                   );
                 })}
@@ -619,7 +647,7 @@ export default function CalendarPage() {
                 {overflow > 0 && (
                   <div style={{
                     fontSize: 10, fontWeight: 600, color: 'var(--color-primary)',
-                    background: 'var(--color-primary-light, #eef2ff)',
+                    background: 'var(--color-primary-light)',
                     borderRadius: 4, padding: '1px 5px', marginTop: 1,
                   }}>
                     +{overflow} more
@@ -631,35 +659,31 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* ── Legend ──────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
-        {(Object.entries(TYPE_CONFIG) as [keyof typeof TYPE_CONFIG, typeof TYPE_CONFIG['meeting']][]).map(([type, cfg]) => (
-          <span key={type} style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            fontSize: 12, fontWeight: 600,
-            background: cfg.bg, color: cfg.color,
-            border: `1px solid ${cfg.color}33`,
-            borderRadius: 20, padding: '4px 10px',
-          }}>
-            <cfg.Icon size={12} color={cfg.color} /> {cfg.label}
-          </span>
-        ))}
-
-        {googleStatus?.connected && (
-          <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-text-muted)' }}>
-            {googleStatus.webhookActive ? '🟢 Live sync active' : 'Google Calendar connected (manual sync)'}
-          </span>
-        )}
-      </div>
+      {googleStatus?.connected && (
+        <div style={{ textAlign: 'right', fontSize: 12, color: 'var(--color-text-muted)', marginTop: 16 }}>
+          {googleStatus.webhookActive ? '🟢 Live sync active' : 'Google Calendar connected (manual sync)'}
+        </div>
+      )}
 
       {/* ── Below calendar: Upcoming / This Week (left) + Holidays (right) ──── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginTop: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginTop: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Upcoming */}
-          <div className="card">
+          <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             <div className="card-title">Upcoming</div>
             {upcomingList.length === 0 ? (
-              <p className="text-muted" style={{ fontSize: 13 }}>Nothing scheduled.</p>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center', padding: '20px 0' }}>
+                <div style={{
+                  width: 48, height: 48, borderRadius: 12, background: 'var(--color-primary-light)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px',
+                }}>
+                  <span className="icon-mask" style={{
+                    width: 22, height: 22, backgroundColor: 'var(--color-primary)',
+                    WebkitMaskImage: 'url(/icons/calendar.svg)', maskImage: 'url(/icons/calendar.svg)',
+                  }} />
+                </div>
+                <p className="text-muted" style={{ fontSize: 13 }}>Nothing scheduled.</p>
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {upcomingList.map((ev, i) => {
@@ -684,9 +708,14 @@ export default function CalendarPage() {
                       </div>
                       {ev.meetLink && (
                         <a href={ev.meetLink} target="_blank" rel="noreferrer" style={{
-                          fontSize: 12, color: '#6366f1', fontWeight: 700, textDecoration: 'none', flexShrink: 0,
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          fontSize: 12, color: 'var(--color-primary)', fontWeight: 700, textDecoration: 'none', flexShrink: 0,
                         }}>
-                          Join ↗
+                          Join
+                          <span className="icon-mask" style={{
+                            width: 12, height: 12, backgroundColor: 'var(--color-primary)',
+                            WebkitMaskImage: 'url(/icons/external-link.svg)', maskImage: 'url(/icons/external-link.svg)',
+                          }} />
                         </a>
                       )}
                     </div>
@@ -700,16 +729,19 @@ export default function CalendarPage() {
         {/* Holidays teaser — moved here from the header, bottom-right of the calendar */}
         <div className="card" style={{ textAlign: 'center', padding: 24 }}>
           <div style={{
-            width: 48, height: 48, borderRadius: 12, background: TYPE_CONFIG.holiday.bg,
+            width: 48, height: 48, borderRadius: 12, background: 'var(--color-primary-light)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px',
           }}>
-            <HolidayIcon size={22} color={TYPE_CONFIG.holiday.color} />
+            <span className="icon-mask" style={{
+              width: 22, height: 22, backgroundColor: 'var(--color-primary)',
+              WebkitMaskImage: 'url(/icons/gift.svg)', maskImage: 'url(/icons/gift.svg)',
+            }} />
           </div>
           <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Company Holidays</div>
           <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>
             {holidays.length} fixed paid holidays this year
           </p>
-          <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setShowHolidays(true)}>
+          <button className="btn btn-primary" onClick={() => setShowHolidays(true)}>
             View full list of holidays
           </button>
         </div>

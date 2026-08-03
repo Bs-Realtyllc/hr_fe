@@ -213,13 +213,21 @@ export default function ServersPage() {
                 />
                 <button
                   type="button"
+                  className="btn btn-text btn-xs"
                   onClick={() => setShowPass(!showPass)}
                   style={{
-                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-muted)', fontSize: 14,
+                    position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+                    padding: 6, color: 'var(--color-text-muted)',
                   }}
+                  title={showPass ? 'Hide password' : 'Show password'}
                 >
-                  {showPass ? '🙈' : '👁'}
+                  <span
+                    className="icon-mask"
+                    style={{
+                      WebkitMaskImage: `url(/icons/${showPass ? 'eye-off.svg' : 'eye.svg'})`,
+                      maskImage: `url(/icons/${showPass ? 'eye-off.svg' : 'eye.svg'})`,
+                    }}
+                  />
                 </button>
               </div>
             </div>
@@ -235,8 +243,17 @@ export default function ServersPage() {
               />
             </div>
 
-            <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={saving}>
-              {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save Credentials'}
+            <button type="submit" className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
+              {!saving && (
+                <span
+                  className="icon-mask"
+                  style={{
+                    WebkitMaskImage: `url(/icons/${saved ? 'check.svg' : 'save.svg'})`,
+                    maskImage: `url(/icons/${saved ? 'check.svg' : 'save.svg'})`,
+                  }}
+                />
+              )}
+              {saved ? 'Saved' : saving ? 'Saving…' : 'Save Credentials'}
             </button>
           </form>
         </div>

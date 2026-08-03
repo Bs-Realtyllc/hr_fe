@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import PillTabs from '@/components/PillTabs';
 
 interface PayrollRow {
   id: number;
@@ -227,25 +228,16 @@ export default function PayrollPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex items-center gap-2" style={{ marginBottom: 20 }}>
-        <button
-          className={`btn btn-sm ${tab === 'salaries' ? 'btn-primary' : 'btn-ghost'}`}
-          onClick={() => setTab('salaries')}
-        >
-          Salaries
-        </button>
-        <button
-          className={`btn btn-sm ${tab === 'taxes' ? 'btn-primary' : 'btn-ghost'}`}
-          onClick={() => setTab('taxes')}
-        >
-          Taxes
-        </button>
-        <button
-          className={`btn btn-sm ${tab === 'adjustments' ? 'btn-primary' : 'btn-ghost'}`}
-          onClick={() => setTab('adjustments')}
-        >
-          Overtime & Adjustments
-        </button>
+      <div className="mb-4">
+        <PillTabs
+          value={tab}
+          onChange={v => setTab(v as typeof tab)}
+          options={[
+            { value: 'salaries',    label: 'Salaries' },
+            { value: 'taxes',       label: 'Taxes' },
+            { value: 'adjustments', label: 'Overtime & Adjustments' },
+          ]}
+        />
       </div>
 
       {tab === 'salaries' && (
@@ -327,16 +319,16 @@ export default function PayrollPage() {
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                           {editId === r.id ? (
                             <>
-                              <button className="btn btn-primary" style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => saveSalary(r.id)}>Save</button>
-                              <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => setEditId(null)}>Cancel</button>
+                              <button className="btn btn-primary btn-xs" onClick={() => saveSalary(r.id)}>Save</button>
+                              <button className="btn btn-secondary btn-xs" onClick={() => setEditId(null)}>Cancel</button>
                             </>
                           ) : (
-                            <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }}
+                            <button className="btn btn-secondary btn-xs"
                               onClick={() => { setEditId(r.id); setEditSalary(r.salary?.toString() ?? ''); setEditFreq(r.pay_frequency ?? 'monthly'); }}>
                               Edit Salary
                             </button>
                           )}
-                          <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }}
+                          <button className="btn btn-secondary btn-xs"
                             onClick={() => { setResetId(r.id); setResetMsg(''); setResetPw(''); }}>
                             Reset PW
                           </button>
@@ -432,7 +424,7 @@ export default function PayrollPage() {
                           </td>
                           {isAdmin && (
                             <td>
-                              <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => openTaxEdit(r)}>
+                              <button className="btn btn-secondary btn-xs" onClick={() => openTaxEdit(r)}>
                                 Edit
                               </button>
                             </td>
