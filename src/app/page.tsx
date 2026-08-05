@@ -9,6 +9,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import KpiCard from '@/components/KpiCard';
+//redux
+import { useAppDispatch, useAppSelector } from '@/store/hook';
+
+//icon
+import { RxHamburgerMenu } from "react-icons/rx";
+import { toggleSidebar } from '@/store/sidebarSlice';
 
 /* ─────────────────────────────── helpers ──────────────────────────────── */
 
@@ -154,11 +160,11 @@ function TrendChart({ data, color, title, subtitle, emptyLabel }: {
 /* ─────────────────────────────── DateWidget ───────────────────────────── */
 
 function DateWidget() {
-  const d   = new Date();
+  const d = new Date();
   const day = d.toLocaleDateString('en-US', { weekday: 'long' });
-  const dt  = d.toLocaleDateString('en-US', { day: 'numeric' });
+  const dt = d.toLocaleDateString('en-US', { day: 'numeric' });
   const mon = d.toLocaleDateString('en-US', { month: 'long' });
-  const yr  = d.getFullYear();
+  const yr = d.getFullYear();
 
   return (
     <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
@@ -251,28 +257,30 @@ interface PayrollSummary {
 export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  const isOpen = useAppSelector((state) => state.sidebar.isOpen)
 
-  const [stats, setStats]                   = useState<DashboardStats | null>(null);
-  const [payroll, setPayroll]               = useState<PayrollSummary | null>(null);
-  const [outToday, setOutToday]             = useState<OutEmployee[]>([]);
-  const [outWeek, setOutWeek]               = useState<OutEmployee[]>([]);
-  const [standups, setStandups]             = useState<Standup[]>([]);
-  const [events, setEvents]                 = useState<Event[]>([]);
-  const [standupTrend, setStandupTrend]     = useState<TrendPoint[]>([]);
-  const [leaveTrend, setLeaveTrend]         = useState<TrendPoint[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [payroll, setPayroll] = useState<PayrollSummary | null>(null);
+  const [outToday, setOutToday] = useState<OutEmployee[]>([]);
+  const [outWeek, setOutWeek] = useState<OutEmployee[]>([]);
+  const [standups, setStandups] = useState<Standup[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [standupTrend, setStandupTrend] = useState<TrendPoint[]>([]);
+  const [leaveTrend, setLeaveTrend] = useState<TrendPoint[]>([]);
   const [showWeeklyPopup, setShowWeeklyPopup] = useState(false);
-  const [showPptPopup, setShowPptPopup]       = useState(false);
+  const [showPptPopup, setShowPptPopup] = useState(false);
 
   useEffect(() => {
-    api.get<DashboardStats>('/dashboard/stats').then(setStats).catch(() => {});
-    api.get<OutEmployee[]>('/leaves/out/today').then(setOutToday).catch(() => {});
-    api.get<OutEmployee[]>('/leaves/out/week').then(setOutWeek).catch(() => {});
-    api.get<Standup[]>('/standups/today').then(setStandups).catch(() => {});
-    api.get<Event[]>('/events/upcoming').then(setEvents).catch(() => {});
+    api.get<DashboardStats>('/dashboard/stats').then(setStats).catch(() => { });
+    api.get<OutEmployee[]>('/leaves/out/today').then(setOutToday).catch(() => { });
+    api.get<OutEmployee[]>('/leaves/out/week').then(setOutWeek).catch(() => { });
+    api.get<Standup[]>('/standups/today').then(setStandups).catch(() => { });
+    api.get<Event[]>('/events/upcoming').then(setEvents).catch(() => { });
     api.get<TrendPoint[]>('/dashboard/standup-trend')
-      .then(d => setStandupTrend(fillDays(d, 30))).catch(() => {});
+      .then(d => setStandupTrend(fillDays(d, 30))).catch(() => { });
     api.get<TrendPoint[]>('/dashboard/leave-trend')
-      .then(d => setLeaveTrend(fillDays(d, 30))).catch(() => {});
+      .then(d => setLeaveTrend(fillDays(d, 30))).catch(() => { });
 
     if (isWeeklyFormDay() && !localStorage.getItem(getDismissKey())) {
       setShowWeeklyPopup(true);
@@ -284,11 +292,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user?.id) {
-      api.get<PayrollSummary>(`/employees/${user.id}/payroll-summary`).then(setPayroll).catch(() => {});
+      api.get<PayrollSummary>(`/employees/${user.id}/payroll-summary`).then(setPayroll).catch(() => { });
     }
   }, [user?.id]);
 
-  const monthName    = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const monthName = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const isAbsentToday = outToday.some(o => o.name === user?.name);
 
   const dismissWeeklyPopup = () => {
@@ -304,6 +312,7 @@ export default function DashboardPage() {
   return (
     <div>
       <div className="page-header">
+        {!isOpen && <div className='hover:cursor-pointer' onClick={() => dispatch(toggleSidebar())}><RxHamburgerMenu className='text-xl' /></div>}
         <h1>Dashboard</h1>
       </div>
 

@@ -17,6 +17,10 @@
   min-height: 100vh;
 }
 
+.main-content.sidebar-closed {
+  margin-left: 0;
+}
+
 /* ── Sidebar ── */
 .sidebar {
   position: fixed;
@@ -29,6 +33,11 @@
   flex-direction: column;
   overflow-y: auto;
   z-index: 100;
+}
+
+.sidebar.sidebar-closed {
+  width: 0;
+  overflow: hidden;
 }
 
 .sidebar-logo {
@@ -193,6 +202,9 @@
 /* ── Page Header ── */
 .page-header {
   margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .page-header h1 {
