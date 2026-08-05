@@ -41,9 +41,9 @@ function initials(name: string) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
-function leaveTypeBadge(type: string) {
-  const map: Record<string, string> = { casual: 'badge-info', sick: 'badge-warning', annual: 'badge-accent' };
-  return map[type] || 'badge-neutral';
+function leaveTypeDot(type: string) {
+  const map: Record<string, string> = { casual: 'status-dot-info', sick: 'status-dot-warning', annual: 'status-dot-accent' };
+  return map[type] || 'status-dot-neutral';
 }
 
 function eventIcon(type: string) {
@@ -92,14 +92,8 @@ function TrendChart({ data, color, title, subtitle, emptyLabel }: {
       <div className="flex justify-between items-start mb-1">
         <div className="font-semibold" style={{ fontSize: 15 }}>{title}</div>
         {!allZero && (
-          <span className="badge" style={{
-            background: color + '18',
-            color,
-            border: `1px solid ${color}40`,
-            fontSize: 11,
-            fontWeight: 600,
-          }}>
-            Peak: {peak}
+          <span className="text-muted" style={{ fontSize: 12, fontWeight: 500 }}>
+            Peak {peak}
           </span>
         )}
       </div>
@@ -167,28 +161,16 @@ function DateWidget() {
   const yr  = d.getFullYear();
 
   return (
-    <div className="card" style={{ padding: '18px 24px', display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap', marginBottom: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-        <span style={{ fontSize: 42, fontWeight: 800, lineHeight: 1, color: 'var(--color-primary)' }}>{dt}</span>
-        <div>
-          <div style={{ fontSize: 16, fontWeight: 600 }}>{day}</div>
-          <div className="text-muted" style={{ fontSize: 13 }}>{mon} {yr}</div>
-        </div>
-      </div>
-
-      <div style={{ borderLeft: '1px solid var(--color-border)', paddingLeft: 24 }}>
-        <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Week</div>
-        <div style={{ fontSize: 20, fontWeight: 700 }}>
-          {Math.ceil((((d.getTime() - new Date(d.getFullYear(), 0, 1).getTime()) / 86400000) + new Date(d.getFullYear(), 0, 1).getDay() + 1) / 7)}
-        </div>
-      </div>
+    <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+      <div style={{ fontSize: 14, fontWeight: 600 }}>{day}, {mon} {dt}</div>
+      <div className="text-muted" style={{ fontSize: 12 }}>{yr} · Week {Math.ceil((((d.getTime() - new Date(d.getFullYear(), 0, 1).getTime()) / 86400000) + new Date(d.getFullYear(), 0, 1).getDay() + 1) / 7)}</div>
 
       {isWeeklyFormDay(d) && (
         <a
           href={WEEKLY_FORM_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn btn-primary btn-sm ml-auto no-underline"
+          className="btn btn-primary btn-sm no-underline"
         >
           <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/clipboard.svg)', maskImage: 'url(/icons/clipboard.svg)' }} />
           Fill Weekly Update Form
@@ -198,7 +180,7 @@ function DateWidget() {
       {isPptReminderTime(d) && (
         <Link
           href="/weekly-reports"
-          className="btn btn-primary btn-sm ml-auto no-underline"
+          className="btn btn-primary btn-sm no-underline"
         >
           <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/bar-chart-2.svg)', maskImage: 'url(/icons/bar-chart-2.svg)' }} />
           Work updates ppt
@@ -325,9 +307,6 @@ export default function DashboardPage() {
         <h1>Dashboard</h1>
       </div>
 
-      {/* Date widget */}
-      <div className="mb-4"><DateWidget /></div>
-
       {/* Weekly form popup */}
       {showWeeklyPopup && (
         <div className="modal-overlay" onClick={dismissWeeklyPopup}>
@@ -427,6 +406,10 @@ export default function DashboardPage() {
             {isAbsentToday && (
               <span className="badge badge-warning" style={{ alignSelf: 'center' }}>You are on leave today</span>
             )}
+
+            <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--color-border)', flexShrink: 0 }} />
+
+            <DateWidget />
           </div>
 
           {/* Overtime pay / leave deduction / year-end bonus line items */}
@@ -476,7 +459,7 @@ export default function DashboardPage() {
         <div className="card">
           <div className="flex justify-between items-center mb-4">
             <h2 className="card-title" style={{ marginBottom: 0 }}>Absent Today</h2>
-            <Link href="/leaves" className="text-sm" style={{ color: 'var(--color-accent)' }}>View all</Link>
+            <Link href="/leaves" className="card-link">See all</Link>
           </div>
           {outToday.length === 0 ? (
             <div className="empty-state">
@@ -494,7 +477,7 @@ export default function DashboardPage() {
                   <div className="font-semibold text-sm">{e.name} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>is absent today</span></div>
                   <div className="text-muted">{e.designation}</div>
                 </div>
-                <span className={`badge ${leaveTypeBadge(e.leave_type)}`}>{e.leave_type}</span>
+                <span className={`status-dot ${leaveTypeDot(e.leave_type)}`}>{e.leave_type}</span>
               </div>
             ))
           )}
@@ -504,6 +487,7 @@ export default function DashboardPage() {
         <div className="card">
           <div className="flex justify-between items-center mb-4">
             <h2 className="card-title" style={{ marginBottom: 0 }}>Out This Week</h2>
+            <Link href="/leaves" className="card-link">See all</Link>
           </div>
           {outWeek.length === 0 ? (
             <div className="empty-state">
@@ -523,7 +507,7 @@ export default function DashboardPage() {
                     {new Date(e.start_date ?? e.end_date).toLocaleDateString()} – {new Date(e.end_date).toLocaleDateString()}
                   </div>
                 </div>
-                <span className={`badge ${leaveTypeBadge(e.leave_type)}`}>{e.leave_type}</span>
+                <span className={`status-dot ${leaveTypeDot(e.leave_type)}`}>{e.leave_type}</span>
               </div>
             ))
           )}
@@ -533,7 +517,7 @@ export default function DashboardPage() {
         <div className="card">
           <div className="flex justify-between items-center mb-4">
             <h2 className="card-title" style={{ marginBottom: 0 }}>Today's Standups</h2>
-            <Link href="/standups" className="text-sm" style={{ color: 'var(--color-accent)' }}>Feed</Link>
+            <Link href="/standups" className="card-link">See all</Link>
           </div>
           {standups.length === 0 ? (
             <div className="empty-state">
@@ -560,7 +544,7 @@ export default function DashboardPage() {
         <div className="card">
           <div className="flex justify-between items-center mb-4">
             <h2 className="card-title" style={{ marginBottom: 0 }}>Upcoming Events</h2>
-            <Link href="/culture" className="text-sm" style={{ color: 'var(--color-accent)' }}>All events</Link>
+            <Link href="/culture" className="card-link">See all</Link>
           </div>
           {events.length === 0 ? (
             <div className="empty-state">
