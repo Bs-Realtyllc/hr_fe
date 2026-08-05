@@ -1,0 +1,18 @@
+/*
+ * Root CSS manifest — imports only, per CSS-ARCHITECTURE.md.
+ * Never add a rule (any selector with `{ }`) directly to this file — it
+ * belongs in exactly one of the layer files below.
+ *
+ * NOTE: `@import '...' layer(name);` is NOT used here. Verified live that
+ * Next.js's webpack/css-loader pipeline mistranslates it into
+ * `@media layer(name) { ... }`, which is not valid CSS — browsers discard
+ * the entire block silently (confirmed: this broke every style in the app).
+ * Cascade order below is controlled purely by import order instead, same
+ * as the rest of this project. Revisit @layer if the toolchain's handling
+ * of `@import layer()` improves.
+ */
+@import './tokens/index.css';
+@import './base/index.css';
+@import './layout/index.css';
+@import './components/index.css';
+@import './utilities/index.css';

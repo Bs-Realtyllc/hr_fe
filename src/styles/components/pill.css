@@ -1,0 +1,39 @@
+/* ── Pills (filter tabs) ──
+ * Source: Figma — Job Portal (node 357:3131, "Category" pills)
+ * Reusable filter/tab pill. Group with .pill-group, mark the selected one
+ * with .pill-active. */
+.pill-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  flex-wrap: wrap;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  border: none;
+  background: var(--gray-light);
+  color: var(--color-text-body);
+  border-radius: var(--radius-full);
+  padding: var(--space-8) var(--space-12);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.pill:hover:not(.pill-active):not(:disabled) { background: var(--gray-light-hover); }
+
+.pill-active {
+  background: var(--color-primary);
+  color: #FEFEFE;
+}
+.pill-active:hover:not(:disabled) { background: var(--color-primary-hover); }
+
+.pill:disabled { opacity: 0.5; cursor: not-allowed; }

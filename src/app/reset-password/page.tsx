@@ -44,10 +44,10 @@ function ResetPasswordForm() {
   }
 
   return (
-    <div className="login-page">
-      <div className="login-card">
-        <div className="login-header">
-          <div className="login-logo">
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-header">
+          <div className="auth-logo">
             <img src="/logos/hr-platform.svg" alt="HR Platform" width={28} height={28} />
           </div>
           <h1>Reset Password</h1>
@@ -82,7 +82,7 @@ function ResetPasswordForm() {
                 onChange={e => setForm(f => ({ ...f, confirm: e.target.value }))} />
             </div>
 
-            {error && <div className="login-error">{error}</div>}
+            {error && <div className="auth-error">{error}</div>}
 
             <button className="btn btn-primary" type="submit"
               disabled={loading || !token}

@@ -1,0 +1,27 @@
+/*
+ * Global Typography Scale
+ * Source: Figma — HR Management System (node 1:6)
+ * Typeface: Plus Jakarta Sans · Base: 16px · Scale ratio: 1.25
+ *
+ * Reuse these tokens/utilities anywhere text sizing is needed instead of
+ * hardcoding font-size values, so the whole app stays on one type scale.
+ */
+
+:root {
+  /* ── Font family ── */
+  --font-heading: var(--font-plus-jakarta-sans), 'Plus Jakarta Sans', system-ui, sans-serif;
+
+  /* ── Type scale (px / rem) ── */
+  --text-5xl: 3.813rem; /* 61px */
+  --text-4xl: 3.063rem; /* 49px */
+  --text-3xl: 2.438rem; /* 39px */
+  --text-2xl: 1.938rem; /* 31px */
+  --text-xl: 1.563rem;  /* 25px */
+  --text-lg: 1.25rem;   /* 20px */
+  --text-base: 1rem;    /* 16px */
+  --text-sm: 0.813rem;  /* 13px */
+  --text-xs: 0.625rem;  /* 10px */
+
+  /* ── Line height ── */
+  --leading-scale: 1.2;
+}

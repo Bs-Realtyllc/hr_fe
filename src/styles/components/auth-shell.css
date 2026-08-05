@@ -1,0 +1,81 @@
+/*
+ * Auth shell — centered card layout (logo, header, error banner) shared by
+ * the whole auth flow: /login, /forgot-password, /reset-password.
+ *
+ * Originally named login-page.css with .login-* classes, based on an
+ * unverified assumption that it was login-only. Verified against actual
+ * usage and found reused identically across all three auth routes, so it's
+ * a real reusable component — renamed file and classes to .auth-* to match.
+ *
+ * .auth-error-org is the one genuinely login-specific piece (org-mismatch
+ * error variant, only used on /login) but kept the shared prefix since it's
+ * still part of this same component family.
+ */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  padding: 24px;
+}
+
+.auth-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.auth-logo {
+  width: 52px;
+  height: 52px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  letter-spacing: -1px;
+}
+
+.auth-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text-h1);
+  letter-spacing: -0.4px;
+}
+
+.auth-header p {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+.auth-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: var(--color-error);
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+}
+
+.auth-error-org {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #c2410c;
+  font-size: 13px;
+  font-weight: 500;
+}

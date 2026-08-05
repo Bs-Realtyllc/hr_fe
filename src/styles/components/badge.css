@@ -1,0 +1,42 @@
+/* ── Badges ── */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.badge-success { background: #D1FAE5; color: #065F46; }
+.badge-warning { background: #FEF3C7; color: #92400E; }
+.badge-error   { background: #FEE2E2; color: #991B1B; }
+.badge-info    { background: #DBEAFE; color: #1E40AF; }
+.badge-neutral { background: var(--color-border); color: var(--color-text-muted); }
+.badge-accent  { background: var(--color-primary-light); color: var(--color-primary); }
+
+/* Calmer status indicator: colored dot + plain text, no pill background */
+.status-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: capitalize;
+  color: var(--color-text-h3);
+}
+.status-dot::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.status-dot-success { color: #059669; }
+.status-dot-warning { color: #D97706; }
+.status-dot-error   { color: #DC2626; }
+.status-dot-info    { color: #2563EB; }
+.status-dot-neutral { color: var(--color-text-muted); }
+.status-dot-accent  { color: var(--color-primary); }
