@@ -2,6 +2,10 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { RxHamburgerMenu } from "react-icons/rx";
+//redux
+import { useAppSelector, useAppDispatch } from '@/store/hook';
+import { toggleSidebar } from '@/store/sidebarSlice'
 
 type Role = 'admin' | 'lead' | 'employee';
 
@@ -92,7 +96,11 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const isOpen = useAppSelector((state) => state.sidebar.isOpen);
+  const dispatch = useAppDispatch();
 
+
+  //Sidebartoogle State:
   const role: Role = user?.role ?? 'employee';
 
   const nav = allNav
@@ -108,12 +116,15 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <aside className={`sidebar  ${!isOpen ? 'sidebar-closed' : ''}`}>
+      <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
         <img src="/logos/hr-platform.svg" alt="" width={30} height={30} style={{ flexShrink: 0 }} />
         <div>
           <h1>HR Platform</h1>
           <span>Internal Tools</span>
+        </div>
+        <div className='hover:cursor-pointer'>
+          <RxHamburgerMenu className='text-white text-xl' onClick={() => dispatch(toggleSidebar())} />
         </div>
       </div>
 

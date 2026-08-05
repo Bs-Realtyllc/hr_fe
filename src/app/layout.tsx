@@ -6,6 +6,7 @@ import './typography.css';
 import './globals.css';
 import './buttons.css';
 import AppShell from '@/components/AppShell';
+import StoreProvider from '@/store/storeProvider';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -28,7 +29,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${plusJakartaSans.variable} ${ibmPlexSans.variable}`}>
       <body>
+        <StoreProvider>
         <AppShell>{children}</AppShell>
+        </StoreProvider>
       </body>
     </html>
   );
