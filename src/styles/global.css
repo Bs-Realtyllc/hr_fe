@@ -11,6 +11,7 @@
  * as the rest of this project. Revisit @layer if the toolchain's handling
  * of `@import layer()` improves.
  */
+@import 'tailwindcss';
 @import './tokens/index.css';
 @import './base/index.css';
 @import './layout/index.css';

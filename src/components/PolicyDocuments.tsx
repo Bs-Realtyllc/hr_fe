@@ -263,8 +263,10 @@ export default function PolicyDocuments({
   return (
     <div>
       <div className="page-header">
-        <h1>{heading}</h1>
-        <p>{isAdmin ? adminSubtitle : employeeSubtitle}</p>
+        <div>
+          <h1>{heading}</h1>
+          <p>{isAdmin ? adminSubtitle : employeeSubtitle}</p>
+        </div>
       </div>
 
       <div className="search-bar mb-4">

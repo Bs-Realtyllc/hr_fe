@@ -5,8 +5,11 @@ interface SidebarState {
   isOpen: boolean;
 }
 
+// isOpen only drives the off-canvas drawer on mobile (<=768px); the sidebar
+// is always visible on desktop regardless of this flag. Starts closed so it
+// doesn't flash open over the page on a mobile load.
 const initialState: SidebarState = {
-  isOpen: true,
+  isOpen: false,
 };
 
 const sidebarSlice = createSlice({

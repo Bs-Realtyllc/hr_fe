@@ -339,6 +339,82 @@ function HolidayListModal({ holidays, isAdmin, onClose, onChanged }: HolidayList
   );
 }
 
+// ── Day Events Drawer ────────────────────────────────────────────────────────
+interface DayEventsDrawerProps {
+  dateStr: string;
+  dayEvents: CalEvent[];
+  onClose: () => void;
+  onAddMeeting: () => void;
+}
+
+function DayEventsDrawer({ dateStr, dayEvents, onClose, onAddMeeting }: DayEventsDrawerProps) {
+  const heading = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+  });
+
+  return (
+    <div className="drawer-overlay" onClick={onClose}>
+      <div className="drawer" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+        <div className="drawer-header">
+          <h2 style={{ fontSize: 16 }}>{heading}</h2>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <div className="drawer-body">
+          {dayEvents.length === 0 ? (
+            <p className="text-muted" style={{ fontSize: 13 }}>Nothing scheduled on this day.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {dayEvents.map((ev, i) => {
+                const cfg = TYPE_CONFIG[ev.type];
+                const Icon = cfg.Icon;
+                return (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 12,
+                    border: '1px solid var(--color-border)', borderRadius: 10, padding: 12,
+                  }}>
+                    <div style={{
+                      width: 34, height: 34, borderRadius: 8, background: cfg.bg,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    }}>
+                      <Icon size={16} color={cfg.color} />
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>{ev.label}</div>
+                      <div className="text-muted" style={{ fontSize: 12.5, marginTop: 2 }}>
+                        {ev.time || ev.sub || cfg.label}
+                      </div>
+                      {ev.sub && ev.time && (
+                        <div className="text-muted" style={{ fontSize: 12, marginTop: 1 }}>{ev.sub}</div>
+                      )}
+                      {ev.meetLink && (
+                        <a href={ev.meetLink} target="_blank" rel="noreferrer" style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 6,
+                          fontSize: 12.5, color: 'var(--color-primary)', fontWeight: 700, textDecoration: 'none',
+                        }}>
+                          Join
+                          <span className="icon-mask" style={{
+                            width: 12, height: 12, backgroundColor: 'var(--color-primary)',
+                            WebkitMaskImage: 'url(/icons/external-link.svg)', maskImage: 'url(/icons/external-link.svg)',
+                          }} />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <button className="btn btn-secondary btn-sm" style={{ width: '100%', justifyContent: 'center', marginTop: 16 }} onClick={onAddMeeting}>
+            <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }} />
+            Schedule a meeting on this day
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function CalendarPage() {
   const today   = new Date();
@@ -351,6 +427,7 @@ export default function CalendarPage() {
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [selected, setSelected]   = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [dayDrawerDate, setDayDrawerDate] = useState<string | null>(null);
   const [showHolidays, setShowHolidays] = useState(false);
   const [holidays, setHolidays]   = useState<Holiday[]>([]);
   const [syncing, setSyncing]     = useState(false);
@@ -464,6 +541,21 @@ export default function CalendarPage() {
     return d;
   });
 
+  // Rendered twice below: once next to the title (mobile only), once in the
+  // control row (desktop only) — same markup, CSS picks which copy shows.
+  const monthNav = (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 0,
+      border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden',
+    }}>
+      <button onClick={prevMonth} style={{ padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--color-text-body)' }}>‹</button>
+      <div style={{ padding: '7px 16px', fontWeight: 700, fontSize: 14, borderLeft: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)', minWidth: 160, textAlign: 'center' }}>
+        {MONTHS[month]} {year}
+      </div>
+      <button onClick={nextMonth} style={{ padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--color-text-body)' }}>›</button>
+    </div>
+  );
+
   return (
     <div>
       {showModal && selected && (
@@ -474,6 +566,15 @@ export default function CalendarPage() {
         />
       )}
 
+      {dayDrawerDate && (
+        <DayEventsDrawer
+          dateStr={dayDrawerDate}
+          dayEvents={events.filter(e => e.date === dayDrawerDate)}
+          onClose={() => setDayDrawerDate(null)}
+          onAddMeeting={() => { setDayDrawerDate(null); setSelected(dayDrawerDate); setShowModal(true); }}
+        />
+      )}
+
       {showHolidays && (
         <HolidayListModal holidays={holidays} isAdmin={isAdmin} onClose={() => setShowHolidays(false)} onChanged={loadEvents} />
       )}
@@ -481,30 +582,25 @@ export default function CalendarPage() {
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="page-header">
         <div className="flex justify-between" style={{ flexWrap: 'wrap', gap: 16, alignItems: 'flex-end' }}>
-          <div>
-            <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.5px' }}>Calendar</h1>
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 10,
-              padding: '6px 14px', borderRadius: 20,
-              background: 'var(--color-primary-light)', color: 'var(--color-primary)',
-              fontWeight: 700, fontSize: 13,
-            }}>
-              {today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          <div className="flex justify-between items-center cal-title-row">
+            <div>
+              <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.5px' }}>Calendar</h1>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 10,
+                padding: '6px 14px', borderRadius: 20,
+                background: 'var(--color-primary-light)', color: 'var(--color-primary)',
+                fontWeight: 700, fontSize: 13,
+              }}>
+                {today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+              </div>
             </div>
+            {/* Same month-nav as below — mobile-only here, next to the title; desktop keeps it in the control row */}
+            <div className="cal-nav-mobile">{monthNav}</div>
           </div>
 
-          <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
+          <div className="flex items-center gap-2 cal-header-controls" style={{ flexWrap: 'wrap' }}>
             {/* Month navigation */}
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 0,
-              border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden',
-            }}>
-              <button onClick={prevMonth} style={{ padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--color-text-body)' }}>‹</button>
-              <div style={{ padding: '7px 16px', fontWeight: 700, fontSize: 14, borderLeft: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)', minWidth: 160, textAlign: 'center' }}>
-                {MONTHS[month]} {year}
-              </div>
-              <button onClick={nextMonth} style={{ padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--color-text-body)' }}>›</button>
-            </div>
+            <div className="cal-nav-group cal-nav-desktop">{monthNav}</div>
 
             <button className="btn btn-secondary btn-sm" onClick={goToday}>Today</button>
 
@@ -537,7 +633,7 @@ export default function CalendarPage() {
               </button>
             ) : null}
 
-            <button className="btn btn-primary btn-sm"
+            <button className="btn btn-primary btn-sm cal-add-btn"
               onClick={() => { if (!selected) setSelected(todayStr); setShowModal(true); }}>
               + Meeting
             </button>
@@ -557,7 +653,8 @@ export default function CalendarPage() {
               textAlign: 'center', padding: '12px 0', fontSize: 14, fontWeight: 500,
               color: 'var(--color-text-body)',
             }}>
-              {d}
+              <span className="cal-dow-full">{d}</span>
+              <span className="cal-dow-short">{d.slice(0, 3)}</span>
             </div>
           ))}
         </div>
@@ -576,28 +673,34 @@ export default function CalendarPage() {
 
             const handleCellClick = () => {
               if (!c.inMonth) return;
-              if (dateStr >= todayStr && dayEvents.length === 0) {
-                setSelected(dateStr);
-                setShowModal(true);
+              setSelected(dateStr);
+              if (dayEvents.length > 0) {
+                setDayDrawerDate(dateStr);
                 return;
               }
-              setSelected(isSel ? null : dateStr);
+              if (dateStr >= todayStr) {
+                setShowModal(true);
+              }
             };
 
             return (
               <div
                 key={i}
+                className="cal-cell"
                 onMouseEnter={() => setHoverIdx(i)}
                 onMouseLeave={() => setHoverIdx(null)}
                 onClick={handleCellClick}
                 style={{
                   position: 'relative',
-                  minHeight: 150, minWidth: 0, padding: '15px 15px',
+                  minWidth: 0,
                   cursor: c.inMonth ? 'pointer' : 'default',
                   borderBottom: '1px solid var(--color-border)',
                   borderRight: isLastCol ? 'none' : '1px solid var(--color-border)',
+                  // Not --color-primary-light: that's also the event chip's own
+                  // background, so a hovered cell made the chip's "card" boundary
+                  // vanish into the cell around it. A neutral gray keeps both visible.
                   background: (c.inMonth && isHover)
-                    ? 'var(--color-primary-light)'
+                    ? 'var(--gray-light-hover)'
                     : c.inMonth ? 'var(--color-surface)' : 'var(--color-bg)',
                   transition: 'background 0.12s',
                 }}
@@ -620,37 +723,56 @@ export default function CalendarPage() {
                   )}
                 </div>
 
-                {/* Event chips */}
-                {visible.map((ev, j) => {
-                  const cfg = TYPE_CONFIG[ev.type];
-                  return (
-                    <div key={j} style={{
-                      background: cfg.bg,
-                      borderLeft: `2px solid ${cfg.color}`,
-                      borderRadius: 3, padding: '4px 7px',
-                      marginBottom: 6,
-                      overflow: 'hidden',
-                    }}>
-                      <div style={{ fontSize: 11, color: 'var(--gray-dark)', lineHeight: 1.4 }}>
-                        {ev.time || ev.sub || cfg.label}
-                      </div>
-                      <div style={{
-                        fontSize: 12.5, fontWeight: 600, color: 'var(--color-text-h1)', lineHeight: 1.4,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                {/* Event chips — full detail on desktop, cell has no room for this on mobile */}
+                <div className="cal-chip-full">
+                  {visible.map((ev, j) => {
+                    const cfg = TYPE_CONFIG[ev.type];
+                    return (
+                      <div key={j} style={{
+                        background: cfg.bg,
+                        borderLeft: `2px solid ${cfg.color}`,
+                        borderRadius: 3, padding: '4px 7px',
+                        marginBottom: 6,
+                        overflow: 'hidden',
                       }}>
-                        {ev.label}
+                        <div style={{ fontSize: 11, color: 'var(--gray-dark)', lineHeight: 1.4 }}>
+                          {ev.time || ev.sub || cfg.label}
+                        </div>
+                        <div style={{
+                          fontSize: 12.5, fontWeight: 600, color: 'var(--color-text-h1)', lineHeight: 1.4,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {ev.label}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
 
-                {overflow > 0 && (
-                  <div style={{
-                    fontSize: 10, fontWeight: 600, color: 'var(--color-primary)',
-                    background: 'var(--color-primary-light)',
-                    borderRadius: 4, padding: '1px 5px', marginTop: 1,
-                  }}>
-                    +{overflow} more
+                  {overflow > 0 && (
+                    <div style={{
+                      fontSize: 10, fontWeight: 600, color: 'var(--color-primary)',
+                      background: 'var(--color-primary-light)',
+                      borderRadius: 4, padding: '1px 5px', marginTop: 1,
+                    }}>
+                      +{overflow} more
+                    </div>
+                  )}
+                </div>
+
+                {/* Compact mobile equivalent — a dot per event, capped at 4; tap the day and use the Upcoming list below for detail */}
+                {dayEvents.length > 0 && (
+                  <div className="cal-chip-compact">
+                    {dayEvents.slice(0, 4).map((ev, j) => (
+                      <span key={j} style={{
+                        width: 5, height: 5, borderRadius: '50%',
+                        background: TYPE_CONFIG[ev.type].color, flexShrink: 0,
+                      }} />
+                    ))}
+                    {dayEvents.length > 4 && (
+                      <span style={{ fontSize: 8, fontWeight: 700, color: 'var(--color-primary)' }}>
+                        +{dayEvents.length - 4}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
@@ -666,7 +788,7 @@ export default function CalendarPage() {
       )}
 
       {/* ── Below calendar: Upcoming / This Week (left) + Holidays (right) ──── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginTop: 16 }}>
+      <div className="cal-bottom-grid">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Upcoming */}
           <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>

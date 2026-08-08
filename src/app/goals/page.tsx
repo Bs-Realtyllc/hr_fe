@@ -198,7 +198,7 @@ export default function GoalsPage() {
 
   const canManage = (g: Goal) => isPrivileged || g.employee_id === user?.id;
 
-  if (loading) return <div className="page-header"><h1>Goals &amp; KPIs</h1><p>Loading…</p></div>;
+  if (loading) return <div className="page-header"><div><h1>Goals &amp; KPIs</h1><p>Loading…</p></div></div>;
 
   return (
     <div>

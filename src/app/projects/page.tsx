@@ -291,13 +291,9 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: selected ? 'minmax(280px, 340px) 1fr' : '1fr',
-        gap: 20, alignItems: 'start',
-      }}>
-        {/* Project list */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className={`projects-layout ${selected ? 'has-detail' : ''}`}>
+        {/* Project list — hidden on mobile once a project is selected, see .projects-layout.has-detail in grid.css */}
+        <div className="projects-list" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {projects.length === 0 && (
             <div className="empty-state card">
               <span
@@ -360,6 +356,18 @@ export default function ProjectsPage() {
         {/* Detail panel */}
         {selected ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Mobile-only: the list is hidden here (see .projects-layout.has-detail), so this is the way back */}
+            <button
+              type="button"
+              className="btn btn-text btn-xs projects-back-btn"
+              onClick={() => setSelected(null)}
+            >
+              <span
+                className="icon-mask"
+                style={{ WebkitMaskImage: 'url(/icons/chevron-left.svg)', maskImage: 'url(/icons/chevron-left.svg)' }}
+              />
+              Back to projects
+            </button>
             <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
               <div>
                 <div className="flex items-center gap-2 mb-1">

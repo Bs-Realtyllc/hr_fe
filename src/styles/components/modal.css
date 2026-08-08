@@ -19,6 +19,18 @@
   box-shadow: 0 20px 60px rgba(0,0,0,0.15);
 }
 
+@media (max-width: 768px) {
+  /* .modal has no height cap by default — a tall form (e.g. New Project,
+     with its dynamic repo/docs URL lists) just grows past the viewport on a
+     short phone screen, with .modal-overlay's centering giving no way to
+     scroll to whatever falls off the top/bottom. Cap it and scroll inside. */
+  .modal {
+    max-height: calc(100vh - 48px); /* 48px = .modal-overlay's 24px padding on each side */
+    overflow-y: auto;
+    padding: 20px;
+  }
+}
+
 .modal-header {
   display: flex;
   align-items: center;

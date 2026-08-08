@@ -180,7 +180,7 @@ export default function PerformancePage() {
     load();
   }
 
-  if (loading) return <div className="page-header"><h1>Performance</h1><p>Loading…</p></div>;
+  if (loading) return <div className="page-header"><div><h1>Performance</h1><p>Loading…</p></div></div>;
 
   return (
     <div>

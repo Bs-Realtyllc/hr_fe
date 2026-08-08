@@ -17,8 +17,9 @@
   min-height: 100vh;
 }
 
-.main-content.sidebar-closed {
-  margin-left: 0;
+/* ── Mobile topbar (hidden on desktop) ── */
+.mobile-topbar {
+  display: none;
 }
 
 /* ── Sidebar ── */
@@ -32,12 +33,8 @@
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  z-index: 100;
-}
-
-.sidebar.sidebar-closed {
-  width: 0;
-  overflow: hidden;
+  z-index: 200;
+  transition: transform 0.25s ease;
 }
 
 .sidebar-logo {
@@ -207,6 +204,47 @@
   gap: 4px;
 }
 
+/* Full-bleed divider directly under a page-header, e.g. the Dashboard topbar row.
+   .main-content's 24px padding pulls it in from both edges — cancel that on the
+   left so the line runs flush from the sidebar's edge, matching how a real
+   topbar divider reads as "attached" to the sidebar rather than floating in
+   the content column. */
+.page-header-divider {
+  margin: 20px -24px 28px;
+  border: none;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Pages nest a title block + action button in a ".flex.justify-between" row
+   inside .page-header. That row never had width:100%, so it shrink-wrapped
+   to its own content instead of spanning .page-header — space-between had
+   no real right edge to pin the button to, only looking flush by
+   coincidence of content width. Give it the full width so the button
+   reliably sits at the true right edge, e.g. flush with "My Team" below it. */
+.page-header > .flex.justify-between {
+  width: 100%;
+}
+
+/* The title block (h1 + description paragraph) can run long ("0 people
+   across 0 departments — managers, founders, and every team from..."),
+   and with no min-width the flex row let it keep its full intrinsic width
+   and squeeze the button sibling below its own label's width instead —
+   the button's text then wrapped mid-word ("Add" / "Employee") rather
+   than the button itself shrinking or wrapping to a new row. The title
+   block should be the one to give way (truncate/wrap its paragraph); the
+   button must stay a single-line, unsqueezed target at any width above
+   the 1120px breakpoint where the whole row wraps instead. */
+.page-header > .flex.justify-between > *:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.page-header .flex.justify-between > .btn,
+.page-header .flex.justify-between > button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .page-header h1 {
   font-size: 24px;
   font-weight: 700;
@@ -220,6 +258,85 @@
   margin-top: 4px;
 }
 
-@media (max-width: 768px) {
-  .main-content { margin-left: 0; padding: 16px; }
+@media (max-width: 1120px) {
+  /* Pages put a title block + action button in a ".flex.justify-between"
+     row inside .page-header; let it wrap instead of squeezing the button.
+     1120px matches the sidebar-collapse breakpoint below — anywhere the
+     layout is already narrow enough to lose the sidebar, the header row
+     needs to wrap too (tables/grids need the same buffer above the fixed
+     240px sidebar's width before things feel cramped, not just the exact
+     px where the sidebar itself disappears). */
+  .page-header .flex.justify-between {
+    flex-wrap: wrap;
+    row-gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Full-width only at true phone sizes — the tap-friendly, edge-to-edge
+     button convention from iOS/Material. Above this (tablet, ~481-1120px)
+     the button keeps its natural width on its own wrapped row instead of
+     stretching into an oversized full-bleed bar. */
+  .page-header .flex.justify-between > .btn,
+  .page-header .flex.justify-between > button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ── Sidebar backdrop (mobile only) ── */
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 1120px) {
+  .main-content { margin-left: 0; padding: 16px; padding-top: 76px; }
+
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    padding: 0px 16px;
+    background: var(--sidebar-bg);
+    z-index: 150;
+  }
+
+  .mobile-topbar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: var(--sidebar-text);
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .mobile-topbar-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--sidebar-text);
+    letter-spacing: -0.3px;
+  }
+
+  .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop.sidebar-open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 190;
+  }
 }

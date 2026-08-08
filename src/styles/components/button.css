@@ -17,6 +17,9 @@
 .btn-secondary,
 .btn-text {
   border: 1.5px solid transparent;
+  /* radius-md (not radius-lg): radius-lg reads as a full pill at this
+     button's height — square it off while keeping the rest of the box
+     model (size/padding/font) as designed. */
   border-radius: var(--radius-lg);
   gap: 8px;
   padding: 12px 16px;

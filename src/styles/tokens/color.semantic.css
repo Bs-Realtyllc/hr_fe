@@ -36,7 +36,7 @@
   --color-info: var(--info-normal);
 
   /* Neutrals */
-  --color-bg: var(--gray-light);
+  --color-bg: #F7F8F9; /* soft white, no exact match in either ramp — deliberately a shade off --color-surface (#FEFEFE) so cards/table-row-hover keep contrast against the page */
   --color-surface: var(--soft-white-light);
   --color-border: var(--gray-light-hover);
   --color-text-muted: var(--gray-normal);
