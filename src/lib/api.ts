@@ -1,6 +1,6 @@
 import { clearAuth, getToken } from '@/lib/auth';
 
-const BASE = process.env.NEXT_PUBLIC_API_URL;
+const BASE = '/api';
 
 async function req<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getToken();

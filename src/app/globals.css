@@ -621,8 +621,200 @@ tbody tr:last-child td { border-bottom: none; }
   font-weight: 500;
 }
 
+/* ── Safe-area tokens (notch / home indicator on iOS) ── */
+:root {
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left, 0px);
+  --safe-right:  env(safe-area-inset-right, 0px);
+
+  --mobile-header-height: 56px;
+}
+
+/* ── Mobile global tweaks ── */
+html {
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+/* ── Mobile Header (hamburger bar) ── */
+.mobile-header {
+  display: none;           /* hidden on desktop */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 99;
+  height: calc(var(--mobile-header-height) + var(--safe-top));
+  padding-top: var(--safe-top);
+  background: var(--sidebar-bg);
+  align-items: center;
+  gap: 12px;
+  padding-left: max(16px, var(--safe-left));
+  padding-right: max(16px, var(--safe-right));
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.mobile-hamburger {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.mobile-hamburger:hover { background: var(--sidebar-hover); }
+
+.mobile-header-title {
+  flex: 1;
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-header-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+/* ── Sidebar Overlay (mobile backdrop) ── */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 100;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Sidebar mobile close button ── */
+.sidebar-mobile-close {
+  display: none;
+  padding: 12px 12px 0;
+  justify-content: flex-end;
+}
+
+.sidebar-mobile-close button {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.8);
+  font-size: 18px;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-mobile-close button:hover {
+  background: rgba(255,255,255,0.18);
+  color: #fff;
+}
+
+/* ── Responsive breakpoint: mobile ── */
 @media (max-width: 768px) {
-  .main-content { margin-left: 0; padding: 16px; }
-  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  /* Show mobile header */
+  .mobile-header { display: flex; }
+
+  /* Sidebar: hidden off-screen by default, slides in when open */
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 101;
+    /* Extend sidebar under top safe area */
+    padding-top: var(--safe-top);
+  }
+
+  .sidebar.sidebar-mobile-open {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.3);
+  }
+
+  /* Show overlay and close button only on mobile */
+  .sidebar-overlay { display: block; }
+  .sidebar-mobile-close { display: flex; }
+
+  /* Main content: no left margin, account for mobile header + bottom safe area */
+  .main-content {
+    margin-left: 0;
+    padding: calc(var(--mobile-header-height) + var(--safe-top) + 16px) 16px
+             calc(16px + var(--safe-bottom))
+             max(16px, var(--safe-left));
+  }
+
+  /* Responsive grids collapse to single column */
+  .grid-2,
+  .grid-3 { grid-template-columns: 1fr; }
+
   .stat-grid { grid-template-columns: 1fr 1fr; }
+
+  /* Larger touch targets for buttons */
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 36px; }
+
+  /* Modals go full-width */
+  .modal {
+    max-width: 100%;
+    border-radius: var(--radius-md);
+  }
+
+  /* Page header sizing */
+  .page-header h1 { font-size: 20px; }
+
+  /* Tables: allow horizontal scroll */
+  .table-wrap {
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+
+  /* Stat cards: readable values */
+  .stat-card-value { font-size: 24px; }
+
+  /* Form inputs: larger on mobile */
+  .form-input,
+  .form-select,
+  .form-textarea {
+    font-size: 16px; /* prevents iOS auto-zoom */
+    min-height: 44px;
+  }
+
+  /* Card padding reduced on mobile */
+  .card { padding: 16px; }
+}
+
+/* ── Very small screens (360 px and below) ── */
+@media (max-width: 400px) {
+  .stat-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Landscape phone ── */
+@media (max-width: 768px) and (orientation: landscape) {
+  :root { --mobile-header-height: 48px; }
 }

@@ -5,3 +5,11 @@ node_modules/
 # Next.js build output
 .next/
 out/
+
+# Capacitor native projects (commit only if you want to version-control them)
+# android/
+# ios/
+
+# Capacitor generated config (built from capacitor.config.ts)
+android/app/src/main/assets/capacitor.config.json
+ios/App/App/capacitor.config.json

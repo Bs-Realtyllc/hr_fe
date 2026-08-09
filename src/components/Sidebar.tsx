@@ -13,6 +13,11 @@ interface NavItem {
   external?: boolean;
 }
 
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
 const LEARNING_URL = process.env.NEXT_PUBLIC_LEARNING_URL ?? '';
 
 const allNav: { section: string; items: NavItem[] }[] = [
@@ -87,7 +92,7 @@ function initials(name: string) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -107,7 +112,13 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${isOpen ? ' sidebar-mobile-open' : ''}`}>
+      {/* Mobile-only: close button in top-right of sidebar */}
+      <div className="sidebar-mobile-close">
+        <button onClick={onClose} aria-label="Close navigation menu">✕</button>
+      </div>
+
+      {/* Logo / brand */}
       <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <img src="/logos/hr-platform.svg" alt="" width={30} height={30} style={{ flexShrink: 0 }} />
         <div>
@@ -116,6 +127,7 @@ export default function Sidebar() {
         </div>
       </div>
 
+      {/* Navigation */}
       <nav className="sidebar-nav">
         {nav.map(group => (
           <div key={group.section}>
@@ -128,6 +140,7 @@ export default function Sidebar() {
                   target="_blank"
                   rel="noreferrer"
                   className="sidebar-link"
+                  onClick={onClose}
                 >
                   <span className="icon">{item.icon}</span>
                   {item.label}
@@ -138,6 +151,7 @@ export default function Sidebar() {
                   key={item.href}
                   href={item.href}
                   className={`sidebar-link ${pathname === item.href ? 'active' : ''}`}
+                  onClick={onClose}
                 >
                   <span className="icon">{item.icon}</span>
                   {item.label}
@@ -148,6 +162,7 @@ export default function Sidebar() {
         ))}
       </nav>
 
+      {/* Profile / logout footer */}
       <div className="sidebar-profile">
         <div className="sidebar-profile-avatar">
           {user ? initials(user.name) : '?'}
