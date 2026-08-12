@@ -95,17 +95,8 @@ function MultiUrlField({
   };
   return (
     <div className="form-group">
-      <div className="flex items-center justify-between">
-        <label className="form-label" style={{ marginBottom: 0 }}>{label}</label>
-        <button type="button" onClick={add} style={{
-          background: 'var(--color-accent)', color: '#fff', border: 'none',
-          borderRadius: 4, width: 22, height: 22, cursor: 'pointer', fontSize: 16, lineHeight: '20px',
-        }}>+</button>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
-        {values.length === 0 && (
-          <p className="text-muted text-sm">No URLs yet — click + to add</p>
-        )}
+      <label className="form-label">{label}</label>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {values.map((v, i) => (
           <div key={i} className="flex gap-2 items-center">
             <input
@@ -116,12 +107,39 @@ function MultiUrlField({
               onChange={e => update(i, e.target.value)}
               style={{ flex: 1, marginBottom: 0 }}
             />
-            <button type="button" onClick={() => remove(i)} style={{
-              background: 'none', border: '1px solid var(--color-border)', color: 'var(--color-error)',
-              borderRadius: 4, width: 28, height: 28, cursor: 'pointer', fontSize: 16, flexShrink: 0,
-            }}>×</button>
+            <button
+              type="button"
+              className="btn btn-text btn-xs btn-danger"
+              style={{ flexShrink: 0, padding: 8 }}
+              onClick={() => remove(i)}
+              title="Remove"
+            >
+              <span
+                className="icon-mask"
+                style={{ WebkitMaskImage: 'url(/icons/x.svg)', maskImage: 'url(/icons/x.svg)' }}
+              />
+            </button>
           </div>
         ))}
+        <button
+          type="button"
+          onClick={add}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            border: '1.5px dashed var(--color-border)', borderRadius: 'var(--radius-md)',
+            background: 'transparent', color: 'var(--color-text-muted)',
+            padding: '8px 12px', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            transition: 'border-color 0.15s, color 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.color = 'var(--color-primary)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-muted)'; }}
+        >
+          <span
+            className="icon-mask"
+            style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)', width: 14, height: 14 }}
+          />
+          Add URL
+        </button>
       </div>
     </div>
   );
@@ -154,8 +172,12 @@ export default function ProjectsPage() {
   const [msForm, setMsForm] = useState({ title: '', due_date: '', status: 'pending' });
 
   useEffect(() => {
-    api.get<Project[]>('/projects').then(setProjects).catch(() => {});
+    api.get<Project[]>('/projects').then(list => {
+      setProjects(list);
+      if (list.length > 0) selectProject(list[0]);
+    }).catch(() => {});
     api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectProject = async (p: Project) => {
@@ -232,6 +254,23 @@ export default function ProjectsPage() {
     setMilestones(updated);
   };
 
+  const deleteProject = async (p: Project) => {
+    if (!window.confirm(`Delete "${p.name}"? This removes its assignments, milestones, and services. This cannot be undone.`)) return;
+    await api.delete(`/projects/${p.id}`).catch(() => {});
+    const remaining = projects.filter(proj => proj.id !== p.id);
+    setProjects(remaining);
+    if (selected?.id === p.id) {
+      if (remaining.length > 0) {
+        selectProject(remaining[0]);
+      } else {
+        setSelected(null);
+        setMilestones([]);
+        setAssignments([]);
+        setProjectServices([]);
+      }
+    }
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -241,62 +280,72 @@ export default function ProjectsPage() {
             <p>Assignments, milestones, and project timelines</p>
           </div>
           {isAdmin && (
-            <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ New Project</button>
+            <button className="btn btn-primary btn-sm" onClick={() => setShowModal(true)}>
+              <span
+                className="icon-mask"
+                style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
+              />
+              New Project
+            </button>
           )}
         </div>
       </div>
 
-      <div className="grid-2" style={{ alignItems: 'start' }}>
-        {/* Project list */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className={`projects-layout ${selected ? 'has-detail' : ''}`}>
+        {/* Project list — hidden on mobile once a project is selected, see .projects-layout.has-detail in grid.css */}
+        <div className="projects-list" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {projects.length === 0 && (
             <div className="empty-state card">
-              <div style={{ fontSize: 40 }}>📁</div>
+              <span
+                className="icon-mask empty-state-icon"
+                style={{ WebkitMaskImage: 'url(/icons/folder.svg)', maskImage: 'url(/icons/folder.svg)' }}
+              />
               <p>No projects yet</p>
             </div>
           )}
           {projects.map(p => {
             const pct = progressPct(p.start_date, p.expected_end_date);
-            const repos = Array.isArray(p.repo_url) ? p.repo_url : [];
-            const docs = Array.isArray(p.docs_url) ? p.docs_url : [];
+            const isSelected = selected?.id === p.id;
+            const progressColor = p.status === 'on_hold' ? 'var(--color-warning)'
+              : p.status === 'archived' ? 'var(--color-text-muted)'
+              : 'var(--color-accent)';
             return (
               <div
                 key={p.id}
                 className="card"
-                style={{ cursor: 'pointer', border: selected?.id === p.id ? '2px solid var(--color-accent)' : '2px solid transparent' }}
+                style={{
+                  cursor: 'pointer',
+                  padding: 16,
+                  background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                  boxShadow: isSelected ? '0 0 0 1.5px var(--color-primary)' : 'var(--shadow-card)',
+                  transition: 'background 0.15s, box-shadow 0.15s',
+                }}
                 onClick={() => selectProject(p)}
               >
-                <div className="flex justify-between items-center mb-3">
-                  <h3 style={{ fontSize: 15, fontWeight: 600 }}>{p.name}</h3>
-                  <span className={`badge ${statusBadge[p.status]}`}>{p.status}</span>
+                <div className="flex justify-between items-center mb-2" style={{ gap: 8 }}>
+                  <h3 style={{ fontSize: 14.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {p.name}
+                  </h3>
+                  <span className={`badge ${statusBadge[p.status]}`} style={{ flexShrink: 0 }}>{p.status.replace('_', ' ')}</span>
                 </div>
-                {p.description && <p className="text-sm text-muted" style={{ marginBottom: 12 }}>{p.description}</p>}
+                {p.description && (
+                  <p className="text-sm text-muted" style={{
+                    marginBottom: 10, overflow: 'hidden', textOverflow: 'ellipsis',
+                    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                  }}>
+                    {p.description}
+                  </p>
+                )}
                 {(p.start_date && p.expected_end_date) && (
                   <div>
-                    <div className="flex justify-between text-muted text-sm" style={{ marginBottom: 6 }}>
+                    <div className="progress-bar">
+                      <div className="progress-fill" style={{ width: `${pct}%`, background: progressColor }} />
+                    </div>
+                    <div className="flex justify-between text-muted" style={{ marginTop: 6, fontSize: 11 }}>
                       <span>{new Date(p.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
-                      <span>{pct}%</span>
+                      <span style={{ fontWeight: 600 }}>{pct}%</span>
                       <span>{new Date(p.expected_end_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
                     </div>
-                    <div className="progress-bar">
-                      <div className="progress-fill" style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                )}
-                {(repos.length > 0 || docs.length > 0) && (
-                  <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {repos.map((url, i) => (
-                      <a key={i} href={url} target="_blank" rel="noreferrer" className="text-sm"
-                        style={{ color: 'var(--color-accent)' }} onClick={e => e.stopPropagation()}>
-                        Repo {repos.length > 1 ? i + 1 : ''} ↗
-                      </a>
-                    ))}
-                    {docs.map((url, i) => (
-                      <a key={i} href={url} target="_blank" rel="noreferrer" className="text-sm"
-                        style={{ color: 'var(--color-accent)' }} onClick={e => e.stopPropagation()}>
-                        Docs {docs.length > 1 ? i + 1 : ''} ↗
-                      </a>
-                    ))}
                   </div>
                 )}
               </div>
@@ -307,70 +356,123 @@ export default function ProjectsPage() {
         {/* Detail panel */}
         {selected ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Team */}
-            <div className="card">
-              <div className="flex justify-between items-center mb-3">
-                <div className="card-title" style={{ marginBottom: 0 }}>Team — {selected.name}</div>
-                {isAdmin && (
-                  <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }}
-                    onClick={() => setShowAssignModal(true)}>+ Assign</button>
-                )}
-              </div>
-              {assignments.length === 0
-                ? <p className="text-muted text-sm">No assignments yet</p>
-                : assignments.map(a => (
-                  <div key={a.id} className="flex items-center gap-3 mb-3">
-                    <div className="avatar avatar-sm">{initials(a.name)}</div>
-                    <div style={{ flex: 1 }}>
-                      <div className="font-semibold text-sm">{a.name}</div>
-                      <div className="text-muted">{a.designation}</div>
+            {/* Mobile-only: the list is hidden here (see .projects-layout.has-detail), so this is the way back */}
+            <button
+              type="button"
+              className="btn btn-text btn-xs projects-back-btn"
+              onClick={() => setSelected(null)}
+            >
+              <span
+                className="icon-mask"
+                style={{ WebkitMaskImage: 'url(/icons/chevron-left.svg)', maskImage: 'url(/icons/chevron-left.svg)' }}
+              />
+              Back to projects
+            </button>
+            <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h2 style={{ fontSize: 18, fontWeight: 700 }}>{selected.name}</h2>
+                  <span className={`badge ${statusBadge[selected.status]}`}>{selected.status.replace('_', ' ')}</span>
+                </div>
+                {selected.description && <p className="text-muted text-sm">{selected.description}</p>}
+                {(() => {
+                  const repos = Array.isArray(selected.repo_url) ? selected.repo_url : [];
+                  const docs = Array.isArray(selected.docs_url) ? selected.docs_url : [];
+                  return (repos.length > 0 || docs.length > 0) && (
+                    <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                      {repos.map((url, i) => (
+                        <a key={i} href={url} target="_blank" rel="noreferrer" className="text-sm"
+                          style={{ color: 'var(--color-accent)', fontWeight: 500 }}>
+                          Repo {repos.length > 1 ? i + 1 : ''} ↗
+                        </a>
+                      ))}
+                      {docs.map((url, i) => (
+                        <a key={i} href={url} target="_blank" rel="noreferrer" className="text-sm"
+                          style={{ color: 'var(--color-accent)', fontWeight: 500 }}>
+                          Docs {docs.length > 1 ? i + 1 : ''} ↗
+                        </a>
+                      ))}
                     </div>
-                    <span className="badge badge-accent">{a.role.replace(/_/g, ' ')}</span>
-                    {isAdmin && (
-                      <button onClick={() => removeAssignment(a.employee_id)} style={{
-                        background: 'none', border: 'none', color: 'var(--color-error)',
-                        cursor: 'pointer', fontSize: 16, padding: '0 4px',
-                      }}>×</button>
-                    )}
-                  </div>
-                ))
-              }
+                  );
+                })()}
+              </div>
+              {isAdmin && (
+                <button
+                  className="btn btn-secondary btn-xs btn-danger"
+                  style={{ flexShrink: 0 }}
+                  onClick={() => deleteProject(selected)}
+                >
+                  Delete
+                </button>
+              )}
             </div>
 
-            {/* Milestones */}
-            <div className="card">
-              <div className="flex justify-between items-center mb-3">
-                <div className="card-title" style={{ marginBottom: 0 }}>Milestones</div>
-                {isAdmin && (
-                  <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }}
-                    onClick={() => setShowMsModal(true)}>+ Add</button>
-                )}
-              </div>
-              {milestones.length === 0
-                ? <p className="text-muted text-sm">No milestones defined</p>
-                : milestones.map(m => (
-                  <div key={m.id} className="flex items-center gap-3 mb-3">
-                    <div style={{ flex: 1 }}>
-                      <div className="font-semibold text-sm">{m.title}</div>
-                      <div className="text-muted">{new Date(m.due_date).toLocaleDateString()}</div>
+            <div className="grid-2" style={{ gap: 16, alignItems: 'start' }}>
+              {/* Team */}
+              <div className="card">
+                <div className="flex justify-between items-center mb-3">
+                  <div className="card-title" style={{ marginBottom: 0 }}>Team</div>
+                  {isAdmin && (
+                    <button className="btn btn-primary btn-xs"
+                      onClick={() => setShowAssignModal(true)}>+ Assign</button>
+                  )}
+                </div>
+                {assignments.length === 0
+                  ? <p className="text-muted text-sm">No assignments yet</p>
+                  : assignments.map(a => (
+                    <div key={a.id} className="flex items-center gap-3 mb-3">
+                      <div className="avatar avatar-sm">{initials(a.name)}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="font-semibold text-sm" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
+                        <div className="text-muted" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.designation}</div>
+                      </div>
+                      <span className="badge badge-accent" style={{ flexShrink: 0 }}>{a.role.replace(/_/g, ' ')}</span>
+                      {isAdmin && (
+                        <button onClick={() => removeAssignment(a.employee_id)} style={{
+                          background: 'none', border: 'none', color: 'var(--color-error)',
+                          cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0,
+                        }}>×</button>
+                      )}
                     </div>
-                    {isAdmin ? (
-                      <select
-                        value={m.status}
-                        onChange={e => updateMsStatus(m, e.target.value)}
-                        className="form-select"
-                        style={{ width: 'auto', padding: '2px 8px', fontSize: 12 }}
-                      >
-                        <option value="pending">pending</option>
-                        <option value="in_progress">in progress</option>
-                        <option value="completed">completed</option>
-                      </select>
-                    ) : (
-                      <span className={`badge ${msStatus[m.status]}`}>{m.status.replace('_', ' ')}</span>
-                    )}
-                  </div>
-                ))
-              }
+                  ))
+                }
+              </div>
+
+              {/* Milestones */}
+              <div className="card">
+                <div className="flex justify-between items-center mb-3">
+                  <div className="card-title" style={{ marginBottom: 0 }}>Milestones</div>
+                  {isAdmin && (
+                    <button className="btn btn-primary btn-xs"
+                      onClick={() => setShowMsModal(true)}>+ Add</button>
+                  )}
+                </div>
+                {milestones.length === 0
+                  ? <p className="text-muted text-sm">No milestones defined</p>
+                  : milestones.map(m => (
+                    <div key={m.id} className="flex items-center gap-3 mb-3">
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="font-semibold text-sm" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title}</div>
+                        <div className="text-muted">{new Date(m.due_date).toLocaleDateString()}</div>
+                      </div>
+                      {isAdmin ? (
+                        <select
+                          value={m.status}
+                          onChange={e => updateMsStatus(m, e.target.value)}
+                          className="form-select"
+                          style={{ width: 'auto', padding: '2px 8px', fontSize: 12, flexShrink: 0 }}
+                        >
+                          <option value="pending">pending</option>
+                          <option value="in_progress">in progress</option>
+                          <option value="completed">completed</option>
+                        </select>
+                      ) : (
+                        <span className={`badge ${msStatus[m.status]}`} style={{ flexShrink: 0 }}>{m.status.replace('_', ' ')}</span>
+                      )}
+                    </div>
+                  ))
+                }
+              </div>
             </div>
 
             {/* Services */}
@@ -413,12 +515,7 @@ export default function ProjectsPage() {
               )}
             </div>
           </div>
-        ) : (
-          <div className="empty-state card">
-            <div style={{ fontSize: 40 }}>👈</div>
-            <p>Select a project to view details</p>
-          </div>
-        )}
+        ) : null}
       </div>
 
       {/* New Project Modal */}
@@ -461,8 +558,14 @@ export default function ProjectsPage() {
                 </div>
               </div>
               <div className="flex gap-3 justify-between mt-4">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Create Project</button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary btn-sm">
+                  <span
+                    className="icon-mask"
+                    style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
+                  />
+                  Create Project
+                </button>
               </div>
             </form>
           </div>

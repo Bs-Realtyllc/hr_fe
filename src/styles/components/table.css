@@ -1,0 +1,150 @@
+/* ── Tables ── */
+.table-wrap { overflow-x: auto; }
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13.5px;
+}
+
+/* Source: Figma — Job Portal (node 357:3141, table heading bar) */
+thead th {
+  background: var(--gray-light-hover);
+  padding: var(--space-16);
+  text-align: left;
+  font-family: var(--font-body);
+  font-weight: 500;
+  color: var(--gray-dark);
+  font-size: 1rem;
+  line-height: 1.5rem;
+  border-bottom: none;
+}
+thead th:first-child {
+  border-top-left-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-md);
+  padding-left: var(--space-24);
+}
+thead th:last-child {
+  border-top-right-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+  padding-right: var(--space-24);
+}
+
+/* Source: Figma — Job Portal (node 357:3155, table row/cell content) */
+tbody td {
+  padding: var(--space-16);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 400;
+  color: var(--color-text-body);
+  border-bottom: 1px solid var(--gray-light-hover);
+}
+
+tbody tr:hover td { background: var(--color-bg); }
+
+/* Two-line cell (e.g. name + email/designation) */
+.cell-title {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.5rem;
+  font-weight: 500;
+  color: var(--neutral-darker);
+}
+.cell-subtitle {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 400;
+  color: var(--gray-normal);
+}
+
+/* Plain status dot + label (e.g. "● Screening")
+ * NOTE: .status-dot is also defined in badge.css (the full badge variant).
+ * This second declaration narrows it to a small plain dot for table rows —
+ * table.css must load after badge.css (see components/index.css) to
+ * preserve that override, matching the original file's top-to-bottom order. */
+.status-dot-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+.status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.status-dot-label {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  color: var(--neutral-darker);
+}
+
+/* Tinted icon+label chip (e.g. "View Resume") */
+.doc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  background: var(--color-primary-light);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-8) var(--space-12);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  color: var(--gray-normal);
+  text-decoration: none;
+  cursor: pointer;
+}
+.doc-chip .icon-mask { width: 20px; height: 20px; }
+tbody tr:last-child td { border-bottom: none; }
+
+/* ── Mobile row-cards (table replacement below 1120px) ──
+   Pages render both .table-wrap and .row-cards from the same data;
+   CSS picks which one shows, so there's no JS breakpoint logic.
+   1120px matches the sidebar-collapse breakpoint in app-shell.css — the
+   table needs to switch to stacked cards exactly when the sidebar goes
+   away, so tablet widths never get the full desktop grid squeezed
+   against a fixed 240px sidebar. */
+.row-cards { display: none; }
+
+@media (max-width: 1120px) {
+  .table-wrap { display: none; }
+
+  .row-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .row-card {
+    border: 1px solid var(--gray-light-hover);
+    border-radius: var(--radius-md);
+    padding: 14px;
+  }
+
+  .row-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .row-card-meta {
+    font-size: 12px;
+    color: var(--gray-normal);
+    white-space: nowrap;
+  }
+
+  .row-card-line {
+    margin-bottom: 8px;
+  }
+
+  .row-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+}

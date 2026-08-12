@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import PillTabs from '@/components/PillTabs';
 
 interface OvertimeRequest {
   id: number;
@@ -138,7 +139,9 @@ export default function OvertimePage() {
   };
   const reject = async (id: number) => { await api.put(`/overtime/${id}/reject`, {}); load(); };
 
-  const pendingCount = allRequests.filter(r => r.status === 'pending').length;
+  const pendingCount  = allRequests.filter(r => r.status === 'pending').length;
+  const approvedCount = allRequests.filter(r => r.status === 'approved').length;
+  const rejectedCount = allRequests.filter(r => r.status === 'rejected').length;
   const approvedThisMonth = allRequests.filter(r => {
     if (r.status !== 'approved') return false;
     const d = new Date(r.work_date);
@@ -155,51 +158,45 @@ export default function OvertimePage() {
           <div>
             <h1>Overtime Requests</h1>
             <p>{isPrivileged ? 'Review and approve employee overtime claims' : 'Log and track your overtime hours'}</p>
+            <p className="text-muted" style={{ marginTop: 4 }}>
+              <strong style={{ color: 'var(--color-text-body)' }}>This month:</strong> <strong style={{ color: 'var(--color-text-body)' }}>{totalHoursThisMonth}h</strong> approved
+              {' · '}
+              <strong style={{ color: 'var(--color-text-body)' }}>Rs. {Math.round(totalPayThisMonth).toLocaleString()}</strong> paid
+            </p>
           </div>
-          <button className="btn btn-primary" onClick={openModal}>+ New Overtime Request</button>
-        </div>
-      </div>
-
-      {/* Stat cards */}
-      <div className="stat-grid" style={{ marginBottom: 24 }}>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-warning)' }} />
-          <div className="stat-card-label">Pending Requests</div>
-          <div className="stat-card-value">{pendingCount}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-info)' }} />
-          <div className="stat-card-label">Approved Hours (this month)</div>
-          <div className="stat-card-value">{totalHoursThisMonth}h</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-success)' }} />
-          <div className="stat-card-label">Overtime Pay (this month)</div>
-          <div className="stat-card-value" style={{ color: 'var(--color-success)' }}>
-            Rs. {Math.round(totalPayThisMonth).toLocaleString()}
-          </div>
-        </div>
-      </div>
-
-      {/* Filter tabs */}
-      <div className="flex gap-2 mb-4" style={{ flexWrap: 'wrap' }}>
-        {[
-          { value: 'all',      label: 'All' },
-          { value: 'pending',  label: 'Pending' },
-          { value: 'approved', label: 'Approved' },
-          { value: 'rejected', label: 'Rejected' },
-        ].map(({ value, label }) => (
-          <button key={value} onClick={() => setFilter(value)} className="btn btn-sm"
-            style={{
-              background: filter === value ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: filter === value ? '#fff' : 'var(--color-text-muted)',
-              border: '1px solid var(--color-border)',
-            }}>
-            {label}
+          <button className="btn btn-primary btn-sm" onClick={openModal}>
+            <span
+              className="icon-mask"
+              style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
+            />
+            New Overtime Request
           </button>
-        ))}
+        </div>
       </div>
 
+      {/* Filter tabs — counts fold the old "Pending Requests" stat into here */}
+      <div className="mb-4">
+        <PillTabs
+          value={filter}
+          onChange={setFilter}
+          options={[
+            { value: 'all',      label: `All (${allRequests.length})` },
+            { value: 'pending',  label: `Pending (${pendingCount})` },
+            { value: 'approved', label: `Approved (${approvedCount})` },
+            { value: 'rejected', label: `Rejected (${rejectedCount})` },
+          ]}
+        />
+      </div>
+
+      {requests.length === 0 ? (
+        <div className="empty-state card">
+          <span
+            className="icon-mask empty-state-icon"
+            style={{ WebkitMaskImage: 'url(/icons/clock.svg)', maskImage: 'url(/icons/clock.svg)' }}
+          />
+          <p>No overtime requests found</p>
+        </div>
+      ) : (
       <div className="card">
         <div className="table-wrap">
           <table>
@@ -210,9 +207,6 @@ export default function OvertimePage() {
               </tr>
             </thead>
             <tbody>
-              {requests.length === 0 && (
-                <tr><td colSpan={9} style={{ textAlign: 'center', padding: 32, color: 'var(--color-text-muted)' }}>No overtime requests found</td></tr>
-              )}
               {requests.map(o => {
                 const isOwn = o.employee_id === user?.id;
                 const meta  = STATUS_META[o.status];
@@ -222,8 +216,8 @@ export default function OvertimePage() {
                 return (
                   <tr key={o.id}>
                     <td>
-                      <div className="font-semibold">{o.employee_name}</div>
-                      <div className="text-muted">{o.designation}</div>
+                      <div className="cell-title">{o.employee_name}</div>
+                      <div className="cell-subtitle">{o.designation}</div>
                     </td>
                     <td className="text-sm">{o.project_name || <span className="text-muted">General duties</span>}</td>
                     <td className="text-sm">{new Date(o.work_date).toLocaleDateString()}</td>
@@ -263,7 +257,7 @@ export default function OvertimePage() {
                         )}
                         {canEditCancel && (
                           <>
-                            <button className="btn btn-sm btn-ghost" onClick={() => openEditModal(o)}>Edit</button>
+                            <button className="btn btn-sm btn-secondary" onClick={() => openEditModal(o)}>Edit</button>
                             <button className="btn btn-sm btn-danger" onClick={() => cancelRequest(o.id)}>Cancel</button>
                           </>
                         )}
@@ -276,6 +270,7 @@ export default function OvertimePage() {
           </table>
         </div>
       </div>
+      )}
 
       {/* ── New Overtime Request Modal ───────────────────────────────────── */}
       {showModal && (
@@ -324,7 +319,7 @@ export default function OvertimePage() {
               {error && <p style={{ color: 'var(--color-error)', fontSize: 13, marginBottom: 12 }}>{error}</p>}
 
               <div className="flex gap-3 justify-between" style={{ marginTop: 16 }}>
-                <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">Submit Request</button>
               </div>
             </form>
@@ -369,7 +364,7 @@ export default function OvertimePage() {
               </div>
               {error && <p style={{ color: 'var(--color-error)', fontSize: 13, marginBottom: 12 }}>{error}</p>}
               <div className="flex gap-3 justify-between" style={{ marginTop: 16 }}>
-                <button type="button" className="btn btn-ghost" onClick={() => setEditingId(null)}>Cancel</button>
+                <button type="button" className="btn btn-secondary" onClick={() => setEditingId(null)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">Save Changes</button>
               </div>
             </form>

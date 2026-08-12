@@ -1,0 +1,342 @@
+:root {
+  /* Layout constant — not a design token (no Figma-ramp/scale backing it),
+     so it stays local here rather than living in tokens/. */
+  --sidebar-width: 240px;
+}
+
+/* ── Layout ── */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  padding: 24px;
+  min-height: 100vh;
+}
+
+/* ── Mobile topbar (hidden on desktop) ── */
+.mobile-topbar {
+  display: none;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--sidebar-width);
+  height: 100vh;
+  background: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  z-index: 200;
+  transition: transform 0.25s ease;
+}
+
+.sidebar-logo {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.sidebar-logo h1 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--sidebar-text);
+  letter-spacing: -0.3px;
+}
+
+.sidebar-logo span {
+  font-size: 11px;
+  color: var(--color-accent);
+  font-weight: 500;
+  display: block;
+  margin-top: 2px;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 12px 0;
+}
+
+.sidebar-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 12px 20px 6px;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 20px;
+  color: rgba(255,255,255,0.8);
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+  border-radius: 0;
+}
+
+.sidebar-link:hover {
+  background: var(--sidebar-hover);
+  color: var(--sidebar-text);
+}
+
+.sidebar-link.active {
+  background: var(--sidebar-hover);
+  color: var(--sidebar-text);
+  border-left: 3px solid var(--sidebar-active);
+  padding-left: 17px;
+}
+
+.sidebar-link .icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  opacity: 0.8;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.sidebar-link.active .icon { opacity: 1; }
+
+.sidebar-link-external {
+  margin-left: auto;
+  font-size: 11px;
+  opacity: 0.5;
+}
+
+/* ── Sidebar Profile Footer ── */
+.sidebar-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+
+.sidebar-profile-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-profile-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-profile-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-profile-role {
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+  text-transform: capitalize;
+  margin-top: 1px;
+}
+
+.sidebar-logout-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.7);
+  font-size: 15px;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.sidebar-logout-btn:hover {
+  background: rgba(229,83,61,0.2);
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.sidebar-logout-btn .icon {
+  width: 15px;
+  height: 15px;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+/* ── Page Header ── */
+.page-header {
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Full-bleed divider directly under a page-header, e.g. the Dashboard topbar row.
+   .main-content's 24px padding pulls it in from both edges — cancel that on the
+   left so the line runs flush from the sidebar's edge, matching how a real
+   topbar divider reads as "attached" to the sidebar rather than floating in
+   the content column. */
+.page-header-divider {
+  margin: 20px -24px 28px;
+  border: none;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Pages nest a title block + action button in a ".flex.justify-between" row
+   inside .page-header. That row never had width:100%, so it shrink-wrapped
+   to its own content instead of spanning .page-header — space-between had
+   no real right edge to pin the button to, only looking flush by
+   coincidence of content width. Give it the full width so the button
+   reliably sits at the true right edge, e.g. flush with "My Team" below it. */
+.page-header > .flex.justify-between {
+  width: 100%;
+}
+
+/* The title block (h1 + description paragraph) can run long ("0 people
+   across 0 departments — managers, founders, and every team from..."),
+   and with no min-width the flex row let it keep its full intrinsic width
+   and squeeze the button sibling below its own label's width instead —
+   the button's text then wrapped mid-word ("Add" / "Employee") rather
+   than the button itself shrinking or wrapping to a new row. The title
+   block should be the one to give way (truncate/wrap its paragraph); the
+   button must stay a single-line, unsqueezed target at any width above
+   the 1120px breakpoint where the whole row wraps instead. */
+.page-header > .flex.justify-between > *:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.page-header .flex.justify-between > .btn,
+.page-header .flex.justify-between > button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.page-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text-h1);
+  letter-spacing: -0.5px;
+}
+
+.page-header p {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+@media (max-width: 1120px) {
+  /* Pages put a title block + action button in a ".flex.justify-between"
+     row inside .page-header; let it wrap instead of squeezing the button.
+     1120px matches the sidebar-collapse breakpoint below — anywhere the
+     layout is already narrow enough to lose the sidebar, the header row
+     needs to wrap too (tables/grids need the same buffer above the fixed
+     240px sidebar's width before things feel cramped, not just the exact
+     px where the sidebar itself disappears). */
+  .page-header .flex.justify-between {
+    flex-wrap: wrap;
+    row-gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Full-width only at true phone sizes — the tap-friendly, edge-to-edge
+     button convention from iOS/Material. Above this (tablet, ~481-1120px)
+     the button keeps its natural width on its own wrapped row instead of
+     stretching into an oversized full-bleed bar. */
+  .page-header .flex.justify-between > .btn,
+  .page-header .flex.justify-between > button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ── Sidebar backdrop (mobile only) ── */
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 1120px) {
+  .main-content { margin-left: 0; padding: 16px; padding-top: 76px; }
+
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    padding: 0px 16px;
+    background: var(--sidebar-bg);
+    z-index: 150;
+  }
+
+  .mobile-topbar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: var(--sidebar-text);
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .mobile-topbar-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--sidebar-text);
+    letter-spacing: -0.3px;
+  }
+
+  .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop.sidebar-open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 190;
+  }
+}

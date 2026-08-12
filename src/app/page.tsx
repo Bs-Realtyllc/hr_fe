@@ -3,11 +3,13 @@ import { useEffect, useState } from 'react';
 import {
   ResponsiveContainer, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip,
+  RadialBarChart, RadialBar, PolarAngleAxis,
 } from 'recharts';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import KpiCard from '@/components/KpiCard';
 
 /* ─────────────────────────────── helpers ──────────────────────────────── */
 
@@ -40,14 +42,9 @@ function initials(name: string) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
-function leaveTypeBadge(type: string) {
-  const map: Record<string, string> = { casual: 'badge-info', sick: 'badge-warning', annual: 'badge-accent' };
-  return map[type] || 'badge-neutral';
-}
-
-function eventIcon(type: string) {
-  const map: Record<string, string> = { birthday: '🎂', anniversary: '🎉', team_event: '👥', milestone: '🏆' };
-  return map[type] || '📅';
+function leaveTypeDot(type: string) {
+  const map: Record<string, string> = { casual: 'status-dot-info', sick: 'status-dot-warning', annual: 'status-dot-accent' };
+  return map[type] || 'status-dot-neutral';
 }
 
 /** Fill every day in the last `days` days with 0 if missing from API data */
@@ -91,14 +88,8 @@ function TrendChart({ data, color, title, subtitle, emptyLabel }: {
       <div className="flex justify-between items-start mb-1">
         <div className="font-semibold" style={{ fontSize: 15 }}>{title}</div>
         {!allZero && (
-          <span className="badge" style={{
-            background: color + '18',
-            color,
-            border: `1px solid ${color}40`,
-            fontSize: 11,
-            fontWeight: 600,
-          }}>
-            Peak: {peak}
+          <span className="text-muted" style={{ fontSize: 12, fontWeight: 500 }}>
+            Peak {peak}
           </span>
         )}
       </div>
@@ -106,7 +97,10 @@ function TrendChart({ data, color, title, subtitle, emptyLabel }: {
 
       {allZero ? (
         <div className="empty-state" style={{ minHeight: 110 }}>
-          <div style={{ fontSize: 28, marginBottom: 6 }}>📉</div>
+          <span
+            className="icon-mask empty-state-icon"
+            style={{ WebkitMaskImage: 'url(/icons/trending-down.svg)', maskImage: 'url(/icons/trending-down.svg)' }}
+          />
           <p>{emptyLabel}</p>
         </div>
       ) : (
@@ -153,79 +147,86 @@ function TrendChart({ data, color, title, subtitle, emptyLabel }: {
   );
 }
 
-/* ─────────────────────────────── DateWidget ───────────────────────────── */
+/* ─────────────────────────────── TeamSummary ───────────────────────────── */
+// Mirrors the reference "Jobs Summary" card: a radial gauge for the headline
+// total plus a 4-stat status breakdown, sized to fill the row alongside the
+// 4 KpiCards above instead of leaving a gap.
 
-function DateWidget() {
-  const d   = new Date();
-  const day = d.toLocaleDateString('en-US', { weekday: 'long' });
-  const dt  = d.toLocaleDateString('en-US', { day: 'numeric' });
-  const mon = d.toLocaleDateString('en-US', { month: 'long' });
-  const yr  = d.getFullYear();
+function TeamSummary({ stats }: { stats: DashboardStats | null }) {
+  const total = stats?.total_active ?? 0;
+  const present = stats?.present_today ?? 0;
+  const pct = total > 0 ? Math.round((present / total) * 100) : 0;
+  const gaugeData = [{ value: pct, fill: 'var(--color-primary)' }];
 
   return (
-    <div className="card" style={{ padding: '18px 24px', display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap', marginBottom: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-        <span style={{ fontSize: 42, fontWeight: 800, lineHeight: 1, color: 'var(--color-primary)' }}>{dt}</span>
-        <div>
-          <div style={{ fontSize: 16, fontWeight: 600 }}>{day}</div>
-          <div className="text-muted" style={{ fontSize: 13 }}>{mon} {yr}</div>
+    <div
+      className="card kpi-grid-wide"
+      style={{
+        padding: 20,
+        background: 'var(--color-primary-light)',
+        border: '1px solid var(--color-primary-light)',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <div className="font-semibold" style={{ fontSize: 15, marginBottom: 4 }}>Team Summary</div>
+
+      <div style={{ position: 'relative', height: 130 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <RadialBarChart
+            data={gaugeData}
+            innerRadius="72%"
+            outerRadius="100%"
+            startAngle={200}
+            endAngle={-20}
+            barSize={10}
+          >
+            <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
+            <RadialBar dataKey="value" cornerRadius={6} background={{ fill: 'var(--color-surface)' }} />
+          </RadialBarChart>
+        </ResponsiveContainer>
+        <div style={{
+          position: 'absolute', inset: 0, top: 10,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <span style={{ fontSize: 26, fontWeight: 800, lineHeight: 1 }}>{total}</span>
+          <span className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>Total Employees</span>
         </div>
       </div>
 
-      <div style={{ borderLeft: '1px solid var(--color-border)', paddingLeft: 24 }}>
-        <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Week</div>
-        <div style={{ fontSize: 20, fontWeight: 700 }}>
-          {Math.ceil((((d.getTime() - new Date(d.getFullYear(), 0, 1).getTime()) / 86400000) + new Date(d.getFullYear(), 0, 1).getDay() + 1) / 7)}
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 1fr', rowGap: 10, columnGap: 8,
+        marginTop: 4,
+      }}>
+        <div className="flex items-center gap-2">
+          <span style={{ width: 3, height: 22, borderRadius: 2, background: 'var(--color-primary)', flexShrink: 0 }} />
+          <span>
+            <span style={{ fontWeight: 700, fontSize: 14 }}>{String(present).padStart(2, '0')}</span>
+            <span className="text-muted" style={{ fontSize: 12 }}> Present</span>
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span style={{ width: 3, height: 22, borderRadius: 2, background: 'var(--color-warning)', flexShrink: 0 }} />
+          <span>
+            <span style={{ fontWeight: 700, fontSize: 14 }}>{String(stats?.on_leave_today ?? 0).padStart(2, '0')}</span>
+            <span className="text-muted" style={{ fontSize: 12 }}> On Leave</span>
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span style={{ width: 3, height: 22, borderRadius: 2, background: 'var(--color-success)', flexShrink: 0 }} />
+          <span>
+            <span style={{ fontWeight: 700, fontSize: 14 }}>{String(stats?.new_hires_month ?? 0).padStart(2, '0')}</span>
+            <span className="text-muted" style={{ fontSize: 12 }}> New Hires</span>
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span style={{ width: 3, height: 22, borderRadius: 2, background: 'var(--gray-normal)', flexShrink: 0 }} />
+          <span>
+            <span style={{ fontWeight: 700, fontSize: 14 }}>{String(stats?.pending_leaves ?? 0).padStart(2, '0')}</span>
+            <span className="text-muted" style={{ fontSize: 12 }}> Pending Leaves</span>
+          </span>
         </div>
       </div>
-
-      {isWeeklyFormDay(d) && (
-        <a
-          href={WEEKLY_FORM_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            marginLeft: 'auto',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            background: 'var(--color-warning, #f59e0b)',
-            color: '#fff',
-            borderRadius: 'var(--radius-md, 8px)',
-            padding: '10px 18px',
-            textDecoration: 'none',
-            fontWeight: 600,
-            fontSize: 14,
-            flexShrink: 0,
-          }}
-        >
-          <span style={{ fontSize: 18 }}>📋</span>
-          Fill Weekly Update Form
-        </a>
-      )}
-
-      {isPptReminderTime(d) && (
-        <Link
-          href="/weekly-reports"
-          style={{
-            marginLeft: 'auto',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            background: 'var(--color-primary)',
-            color: '#fff',
-            borderRadius: 'var(--radius-md, 8px)',
-            padding: '10px 18px',
-            textDecoration: 'none',
-            fontWeight: 600,
-            fontSize: 14,
-            flexShrink: 0,
-          }}
-        >
-          <span style={{ fontSize: 18 }}>📊</span>
-          Work updates ppt
-        </Link>
-      )}
     </div>
   );
 }
@@ -259,31 +260,14 @@ interface Standup {
   standup_date: string;
 }
 
-interface Event {
+interface RecentEmployee {
   id: number;
-  title: string;
-  event_type: string;
-  event_date: string;
-  employee_name?: string;
-}
-
-interface PayrollSummary {
   name: string;
+  email: string;
   designation: string;
   department: string;
-  salary: number;
-  pay_frequency: string;
   start_date: string;
-  working_days_this_month: number;
-  leave_days_this_month: number;
-  present_days: number;
-  daily_rate: number;
-  expected_pay: number;
-  overtime_pay: number;
-  leave_deduction: number;
-  leave_bonus: number;
-  net_pay: number;
-  adjustments: { title: string; type: string; amount: number }[];
+  is_active: boolean;
 }
 
 /* ─────────────────────────────── page ─────────────────────────────────── */
@@ -292,27 +276,31 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
 
-  const [stats, setStats]                   = useState<DashboardStats | null>(null);
-  const [payroll, setPayroll]               = useState<PayrollSummary | null>(null);
-  const [outToday, setOutToday]             = useState<OutEmployee[]>([]);
-  const [outWeek, setOutWeek]               = useState<OutEmployee[]>([]);
-  const [standups, setStandups]             = useState<Standup[]>([]);
-  const [events, setEvents]                 = useState<Event[]>([]);
-  const [standupTrend, setStandupTrend]     = useState<TrendPoint[]>([]);
-  const [leaveTrend, setLeaveTrend]         = useState<TrendPoint[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [outToday, setOutToday] = useState<OutEmployee[]>([]);
+  const [standups, setStandups] = useState<Standup[]>([]);
+  const [recentEmployees, setRecentEmployees] = useState<RecentEmployee[]>([]);
+  const [standupTrend, setStandupTrend] = useState<TrendPoint[]>([]);
+  const [leaveTrend, setLeaveTrend] = useState<TrendPoint[]>([]);
   const [showWeeklyPopup, setShowWeeklyPopup] = useState(false);
-  const [showPptPopup, setShowPptPopup]       = useState(false);
+  const [showPptPopup, setShowPptPopup] = useState(false);
 
   useEffect(() => {
-    api.get<DashboardStats>('/dashboard/stats').then(setStats).catch(() => {});
-    api.get<OutEmployee[]>('/leaves/out/today').then(setOutToday).catch(() => {});
-    api.get<OutEmployee[]>('/leaves/out/week').then(setOutWeek).catch(() => {});
-    api.get<Standup[]>('/standups/today').then(setStandups).catch(() => {});
-    api.get<Event[]>('/events/upcoming').then(setEvents).catch(() => {});
+    api.get<DashboardStats>('/dashboard/stats').then(setStats).catch(() => { });
+    api.get<OutEmployee[]>('/leaves/out/today').then(setOutToday).catch(() => { });
+    api.get<Standup[]>('/standups/today').then(setStandups).catch(() => { });
+    api.get<RecentEmployee[]>('/employees')
+      .then(list => setRecentEmployees(
+        [...list]
+          .filter(e => e.is_active)
+          .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
+          .slice(0, 6)
+      ))
+      .catch(() => { });
     api.get<TrendPoint[]>('/dashboard/standup-trend')
-      .then(d => setStandupTrend(fillDays(d, 30))).catch(() => {});
+      .then(d => setStandupTrend(fillDays(d, 30))).catch(() => { });
     api.get<TrendPoint[]>('/dashboard/leave-trend')
-      .then(d => setLeaveTrend(fillDays(d, 30))).catch(() => {});
+      .then(d => setLeaveTrend(fillDays(d, 30))).catch(() => { });
 
     if (isWeeklyFormDay() && !localStorage.getItem(getDismissKey())) {
       setShowWeeklyPopup(true);
@@ -321,15 +309,6 @@ export default function DashboardPage() {
       setShowPptPopup(true);
     }
   }, []);
-
-  useEffect(() => {
-    if (user?.id) {
-      api.get<PayrollSummary>(`/employees/${user.id}/payroll-summary`).then(setPayroll).catch(() => {});
-    }
-  }, [user?.id]);
-
-  const monthName    = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const isAbsentToday = outToday.some(o => o.name === user?.name);
 
   const dismissWeeklyPopup = () => {
     localStorage.setItem(getDismissKey(), '1');
@@ -343,19 +322,30 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div className="page-header">
+      <div className="page-header flex justify-between items-center" style={{ marginBottom: 0 }}>
         <h1>Dashboard</h1>
+        <div className="flex items-center gap-2">
+          <button className="topbar-icon-btn" title="Notifications">
+            <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/bell.svg)', maskImage: 'url(/icons/bell.svg)' }} />
+            <span className="topbar-icon-btn-dot" />
+          </button>
+          <button className="topbar-icon-btn" title="Toggle theme">
+            <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/moon.svg)', maskImage: 'url(/icons/moon.svg)' }} />
+          </button>
+          {user && <div className="avatar" title={user.name}>{initials(user.name)}</div>}
+        </div>
       </div>
-
-      {/* Date widget */}
-      <div className="mb-4"><DateWidget /></div>
+      <hr className="page-header-divider" />
 
       {/* Weekly form popup */}
       {showWeeklyPopup && (
         <div className="modal-overlay" onClick={dismissWeeklyPopup}>
           <div className="modal" style={{ maxWidth: 440, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
             <button className="modal-close" onClick={dismissWeeklyPopup} style={{ position: 'absolute', top: 12, right: 16 }}>×</button>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
+            <span
+              className="icon-mask modal-icon"
+              style={{ WebkitMaskImage: 'url(/icons/clipboard.svg)', maskImage: 'url(/icons/clipboard.svg)' }}
+            />
             <h2 style={{ marginBottom: 8 }}>Weekly Update Due</h2>
             <p className="text-muted" style={{ fontSize: 14, marginBottom: 24 }}>
               It's the end of the week! Please take a moment to fill in your weekly update form so the team stays aligned.
@@ -376,7 +366,10 @@ export default function DashboardPage() {
         <div className="modal-overlay" onClick={dismissPptPopup}>
           <div className="modal" style={{ maxWidth: 440, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
             <button className="modal-close" onClick={dismissPptPopup} style={{ position: 'absolute', top: 12, right: 16 }}>×</button>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
+            <span
+              className="icon-mask modal-icon"
+              style={{ WebkitMaskImage: 'url(/icons/bar-chart-2.svg)', maskImage: 'url(/icons/bar-chart-2.svg)' }}
+            />
             <h2 style={{ marginBottom: 8 }}>Work updates ppt</h2>
             <p className="text-muted" style={{ fontSize: 14, marginBottom: 24 }}>
               It's Sunday — please submit this week's work update (PPT or PDF) so the team stays aligned.
@@ -394,110 +387,14 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Employee profile + payroll */}
-      {user && (
-        <div className="card mb-4" style={{ padding: 24 }}>
-          <div className="flex items-center gap-4" style={{ flexWrap: 'wrap' }}>
-            <div className="flex items-center gap-4" style={{ flex: '1 1 260px' }}>
-              <div className="avatar" style={{ width: 52, height: 52, fontSize: 20, flexShrink: 0 }}>
-                {initials(user.name)}
-              </div>
-              <div>
-                <div className="font-semibold" style={{ fontSize: 17 }}>{user.name}</div>
-                <div className="text-muted">{payroll?.designation || user.designation}</div>
-                <div className="text-muted" style={{ fontSize: 12 }}>{payroll?.department}{payroll?.start_date && ` · Joined ${new Date(payroll.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}</div>
-              </div>
-            </div>
-
-            <div style={{ width: 1, height: 56, background: 'var(--color-border)', flexShrink: 0 }} />
-
-            {payroll?.salary ? (
-              <>
-                <div style={{ flex: '1 1 120px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 4 }}>Base Salary</div>
-                  <div style={{ fontSize: 18, fontWeight: 700 }}>৳{fmt(payroll.salary)}</div>
-                  <div className="text-muted" style={{ fontSize: 11 }}>{payroll.pay_frequency}</div>
-                </div>
-                <div style={{ flex: '1 1 120px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 4 }}>Work Days</div>
-                  <div style={{ fontSize: 18, fontWeight: 700 }}>{payroll.present_days}<span style={{ fontSize: 13, fontWeight: 400, color: 'var(--color-text-muted)' }}>/{payroll.working_days_this_month}</span></div>
-                  <div className="text-muted" style={{ fontSize: 11 }}>{monthName}</div>
-                </div>
-                <div style={{ flex: '1 1 120px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 4 }}>Leave Taken</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: payroll.leave_days_this_month > 0 ? 'var(--color-warning)' : undefined }}>
-                    {payroll.leave_days_this_month} day{payroll.leave_days_this_month !== 1 ? 's' : ''}
-                  </div>
-                  <div className="text-muted" style={{ fontSize: 11 }}>this month</div>
-                </div>
-                <div style={{ flex: '1 1 140px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 4 }}>Net Pay (est.)</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-success)' }}>৳{fmt(payroll.net_pay)}</div>
-                  <div className="text-muted" style={{ fontSize: 11 }}>৳{fmt(payroll.daily_rate)}/day</div>
-                </div>
-              </>
-            ) : (
-              <div className="text-muted" style={{ fontSize: 13 }}>Salary not configured. Contact admin.</div>
-            )}
-
-            {isAbsentToday && (
-              <span className="badge badge-warning" style={{ alignSelf: 'center' }}>You are on leave today</span>
-            )}
-          </div>
-
-          {/* Overtime pay / leave deduction / year-end bonus line items */}
-          {payroll?.salary && payroll.adjustments.length > 0 && (
-            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {payroll.adjustments.map((a, i) => (
-                <div key={i} className="flex justify-between items-center">
-                  <span className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{a.title}</span>
-                  <span style={{ fontWeight: 700, fontSize: 13, color: a.amount >= 0 ? 'var(--color-success)' : 'var(--color-error)' }}>
-                    {a.amount >= 0 ? '+' : '-'}৳{fmt(Math.abs(a.amount))}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Headcount stats */}
-      <div className="stat-grid">
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-primary)' }} />
-          <div className="stat-card-label">Total Employees</div>
-          <div className="stat-card-value">{stats?.total_active ?? '—'}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-success)' }} />
-          <div className="stat-card-label">Present Today</div>
-          <div className="stat-card-value">{stats?.present_today ?? '—'}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-warning)' }} />
-          <div className="stat-card-label">On Leave Today</div>
-          <div className="stat-card-value">{stats?.on_leave_today ?? '—'}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-accent)' }} />
-          <div className="stat-card-label">New Hires (30d)</div>
-          <div className="stat-card-value">{stats?.new_hires_month ?? '—'}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-error)' }} />
-          <div className="stat-card-label">Pending Leaves</div>
-          <div className="stat-card-value">{stats?.pending_leaves ?? '—'}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-warning)' }} />
-          <div className="stat-card-label">Pending Overtime</div>
-          <div className="stat-card-value">{stats?.pending_overtime ?? '—'}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-info)' }} />
-          <div className="stat-card-label">Active Projects</div>
-          <div className="stat-card-value">{stats?.active_projects ?? '—'}</div>
-        </div>
+      <div className="kpi-grid">
+        <KpiCard label="Total Employees" value={stats?.total_active ?? '—'} />
+        <KpiCard label="Present Today" value={stats?.present_today ?? '—'} />
+        <KpiCard label="On Leave Today" value={stats?.on_leave_today ?? '—'} />
+        <KpiCard label="Pending Leaves" value={stats?.pending_leaves ?? '—'} />
+        {/* TeamSummary temporarily disabled — revisit gauge/breakdown styling */}
+        {/* <TeamSummary stats={stats} /> */}
       </div>
 
       {/* Activity trend charts */}
@@ -523,11 +420,14 @@ export default function DashboardPage() {
         <div className="card">
           <div className="flex justify-between items-center mb-4">
             <h2 className="card-title" style={{ marginBottom: 0 }}>Absent Today</h2>
-            <Link href="/leaves" className="text-sm" style={{ color: 'var(--color-accent)' }}>View all</Link>
+            <Link href="/leaves" className="card-link">See all</Link>
           </div>
           {outToday.length === 0 ? (
             <div className="empty-state">
-              <div style={{ fontSize: 32 }}>✓</div>
+              <span
+                className="icon-mask empty-state-icon empty-state-icon-success"
+                style={{ WebkitMaskImage: 'url(/icons/check-circle.svg)', maskImage: 'url(/icons/check-circle.svg)' }}
+              />
               <p>Everyone is in today</p>
             </div>
           ) : (
@@ -538,33 +438,7 @@ export default function DashboardPage() {
                   <div className="font-semibold text-sm">{e.name} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>is absent today</span></div>
                   <div className="text-muted">{e.designation}</div>
                 </div>
-                <span className={`badge ${leaveTypeBadge(e.leave_type)}`}>{e.leave_type}</span>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Out this week */}
-        <div className="card">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="card-title" style={{ marginBottom: 0 }}>Out This Week</h2>
-          </div>
-          {outWeek.length === 0 ? (
-            <div className="empty-state">
-              <div style={{ fontSize: 32 }}>🗓</div>
-              <p>No absences scheduled this week</p>
-            </div>
-          ) : (
-            outWeek.slice(0, 6).map((e, i) => (
-              <div key={i} className="flex items-center gap-3 mb-3">
-                <div className="avatar avatar-sm">{initials(e.name)}</div>
-                <div style={{ flex: 1 }}>
-                  <div className="font-semibold text-sm">{e.name}</div>
-                  <div className="text-muted">
-                    {new Date(e.start_date ?? e.end_date).toLocaleDateString()} – {new Date(e.end_date).toLocaleDateString()}
-                  </div>
-                </div>
-                <span className={`badge ${leaveTypeBadge(e.leave_type)}`}>{e.leave_type}</span>
+                <span className={`status-dot ${leaveTypeDot(e.leave_type)}`}>{e.leave_type}</span>
               </div>
             ))
           )}
@@ -574,11 +448,14 @@ export default function DashboardPage() {
         <div className="card">
           <div className="flex justify-between items-center mb-4">
             <h2 className="card-title" style={{ marginBottom: 0 }}>Today's Standups</h2>
-            <Link href="/standups" className="text-sm" style={{ color: 'var(--color-accent)' }}>Feed</Link>
+            <Link href="/standups" className="card-link">See all</Link>
           </div>
           {standups.length === 0 ? (
             <div className="empty-state">
-              <div style={{ fontSize: 32 }}>📝</div>
+              <span
+                className="icon-mask empty-state-icon"
+                style={{ WebkitMaskImage: 'url(/icons/edit-3.svg)', maskImage: 'url(/icons/edit-3.svg)' }}
+              />
               <p>No standups submitted yet today</p>
             </div>
           ) : (
@@ -594,32 +471,76 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Upcoming events */}
-        <div className="card">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="card-title" style={{ marginBottom: 0 }}>Upcoming Events</h2>
-            <Link href="/culture" className="text-sm" style={{ color: 'var(--color-accent)' }}>All events</Link>
-          </div>
-          {events.length === 0 ? (
-            <div className="empty-state">
-              <div style={{ fontSize: 32 }}>🎊</div>
-              <p>No upcoming events in the next 30 days</p>
-            </div>
-          ) : (
-            events.slice(0, 5).map(e => (
-              <div key={e.id} className="flex items-center gap-3 mb-3">
-                <div style={{ fontSize: 22 }}>{eventIcon(e.event_type)}</div>
-                <div style={{ flex: 1 }}>
-                  <div className="font-semibold text-sm">{e.title}</div>
-                  {e.employee_name && <div className="text-muted">{e.employee_name}</div>}
-                </div>
-                <div className="text-muted text-sm">
-                  {new Date(e.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </div>
-              </div>
-            ))
-          )}
+      </div>
+
+      {/* Recently joined — compact table, full width */}
+      <div className="card" style={{ marginTop: 16, padding: 0, overflow: 'hidden' }}>
+        <div className="flex justify-between items-center" style={{ padding: '20px 24px 0' }}>
+          <h2 className="card-title" style={{ marginBottom: 0 }}>Team Directory</h2>
+          <Link href="/employees" className="card-link">See all</Link>
         </div>
+
+        {recentEmployees.length === 0 ? (
+          <div className="empty-state" style={{ padding: '24px 24px 32px' }}>
+            <span
+              className="icon-mask empty-state-icon"
+              style={{ WebkitMaskImage: 'url(/icons/user-plus.svg)', maskImage: 'url(/icons/user-plus.svg)' }}
+            />
+            <p>No recent hires to show</p>
+          </div>
+        ) : (
+          <>
+            <div className="table-wrap" style={{ padding: '16px 24px 24px' }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Designation</th>
+                    <th>Department</th>
+                    <th>Joined</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentEmployees.map(e => (
+                    <tr key={e.id}>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          <div className="avatar avatar-sm">{initials(e.name)}</div>
+                          <div>
+                            <div className="cell-title">{e.name}</div>
+                            <div className="cell-subtitle">{e.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{e.designation}</td>
+                      <td>{e.department}</td>
+                      <td>{new Date(e.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="row-cards" style={{ padding: '16px 24px 24px' }}>
+              {recentEmployees.map(e => (
+                <div key={e.id} className="row-card">
+                  <div className="row-card-top">
+                    <div className="flex items-center gap-3">
+                      <div className="avatar avatar-sm">{initials(e.name)}</div>
+                      <div>
+                        <div className="cell-title">{e.name}</div>
+                        <div className="cell-subtitle">{e.designation} · {e.department}</div>
+                      </div>
+                    </div>
+                    <span className="row-card-meta">
+                      {new Date(e.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

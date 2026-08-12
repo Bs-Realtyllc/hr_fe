@@ -1,5 +1,9 @@
 'use client';
 import { useEffect, useRef, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import DatePicker from 'react-datepicker';
+import { flip, shift } from '@floating-ui/dom';
+import 'react-datepicker/dist/react-datepicker.css';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
@@ -33,6 +37,17 @@ const MONTHS = [
   'January','February','March','April','May','June',
   'July','August','September','October','November','December',
 ];
+
+interface ReportRange {
+  from: Date | null;
+  to: Date | null;
+}
+
+const emptyRange: ReportRange = { from: null, to: null };
+
+function fmtRangeDate(d: Date) {
+  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 function fileIcon(name: string) {
   const ext = name?.split('.').pop()?.toLowerCase();
@@ -136,7 +151,11 @@ function ReportCard({
           onClick={() => download(report.id)}
           title="Download file"
         >
-          ↓ Download
+          <span
+            className="icon-mask"
+            style={{ WebkitMaskImage: 'url(/icons/download.svg)', maskImage: 'url(/icons/download.svg)' }}
+          />
+          Download
         </button>
         {canDelete && (
           <button
@@ -151,14 +170,68 @@ function ReportCard({
   );
 }
 
+// ── Shared From/To month-range filter ─────────────────────────────────────
+
+function RangeFilter({
+  range, setRange, now,
+}: {
+  range: ReportRange;
+  setRange: (v: ReportRange) => void;
+  now: Date;
+}) {
+  const hasRange = !!(range.from || range.to);
+
+  // Default label shows the current month's range even before the user picks anything,
+  // matching a real "from date - to date" display rather than a vague "All Time" placeholder.
+  const displayFrom = range.from ?? new Date(now.getFullYear(), now.getMonth(), 1);
+  const displayTo   = range.to   ?? now;
+  const label = `${fmtRangeDate(displayFrom)} - ${fmtRangeDate(displayTo)}`;
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <DatePicker
+        selectsRange
+        monthsShown={2}
+        startDate={range.from}
+        endDate={range.to}
+        maxDate={now}
+        onChange={(dates) => {
+          const [from, to] = dates as [Date | null, Date | null];
+          setRange({ from, to });
+        }}
+        customInput={
+          <button type="button" className="btn btn-ghost btn-sm" style={{ minWidth: 220, justifyContent: 'flex-start' }}>
+            <span
+              className="icon-mask"
+              style={{
+                width: 16, height: 16,
+                WebkitMaskImage: 'url(/icons/calendar.svg)', maskImage: 'url(/icons/calendar.svg)',
+              }}
+            />
+            {label}
+          </button>
+        }
+        isClearable={false}
+        popperPlacement="bottom-start"
+        popperModifiers={[shift({ padding: 16 }), flip()]}
+        popperContainer={({ children }) => createPortal(children, document.body)}
+      />
+
+      {hasRange && (
+        <button className="btn btn-ghost btn-sm" onClick={() => setRange(emptyRange)}>Clear</button>
+      )}
+    </div>
+  );
+}
+
 // ── Admin / Lead view — grouped by month ──────────────────────────────────
 
 function AdminView({
-  reports, filterYear, setFilterYear, onDelete, now,
+  reports, range, setRange, onDelete, now,
 }: {
   reports: Report[];
-  filterYear: string;
-  setFilterYear: (v: string) => void;
+  range: ReportRange;
+  setRange: (v: ReportRange) => void;
   onDelete: (id: number) => void;
   now: Date;
 }) {
@@ -201,28 +274,22 @@ function AdminView({
     });
   }
 
-  const years = Array.from({ length: 4 }, (_, i) => now.getFullYear() - i);
-
   return (
     <div>
-      {/* Year filter + summary */}
+      {/* Date range filter + summary */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <select className="form-select" style={{ width: 130 }}
-          value={filterYear} onChange={e => setFilterYear(e.target.value)}>
-          <option value="">All Years</option>
-          {years.map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-        {filterYear && (
-          <button className="btn btn-ghost btn-sm" onClick={() => setFilterYear('')}>Clear</button>
-        )}
+        <RangeFilter range={range} setRange={setRange} now={now} />
         <span style={{ fontSize: 13, color: 'var(--color-text-muted)', marginLeft: 'auto' }}>
           {reports.length} report{reports.length !== 1 ? 's' : ''} across {groups.length} month{groups.length !== 1 ? 's' : ''}
         </span>
       </div>
 
       {groups.length === 0 && (
-        <div className="card" style={{ padding: 48, textAlign: 'center', color: 'var(--color-text-muted)' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
+        <div className="empty-state card">
+          <span
+            className="icon-mask empty-state-icon"
+            style={{ WebkitMaskImage: 'url(/icons/inbox.svg)', maskImage: 'url(/icons/inbox.svg)' }}
+          />
           <p>No reports found for the selected period.</p>
         </div>
       )}
@@ -247,7 +314,13 @@ function AdminView({
                   transition: 'background 0.15s',
                 }}
               >
-                <span style={{ fontSize: 18 }}>📅</span>
+                <span
+                  className="icon-mask"
+                  style={{
+                    width: 18, height: 18,
+                    WebkitMaskImage: 'url(/icons/calendar.svg)', maskImage: 'url(/icons/calendar.svg)',
+                  }}
+                />
                 <span style={{ fontWeight: 700, fontSize: 15, flex: 1 }}>{group.label}</span>
 
                 {isCurrentMonth && (
@@ -298,11 +371,11 @@ function AdminView({
 // ── Employee view — own reports grouped by year ───────────────────────────
 
 function EmployeeView({
-  reports, filterYear, setFilterYear, onDelete, now,
+  reports, range, setRange, onDelete, now,
 }: {
   reports: Report[];
-  filterYear: string;
-  setFilterYear: (v: string) => void;
+  range: ReportRange;
+  setRange: (v: ReportRange) => void;
   onDelete: (id: number) => void;
   now: Date;
 }) {
@@ -316,28 +389,22 @@ function EmployeeView({
     return Array.from(map.entries()).sort((a, b) => b[0] - a[0]);
   }, [reports]);
 
-  const years = Array.from({ length: 4 }, (_, i) => now.getFullYear() - i);
-
   return (
     <div>
-      {/* Year filter */}
+      {/* Date range filter */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <select className="form-select" style={{ width: 130 }}
-          value={filterYear} onChange={e => setFilterYear(e.target.value)}>
-          <option value="">All Years</option>
-          {years.map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-        {filterYear && (
-          <button className="btn btn-ghost btn-sm" onClick={() => setFilterYear('')}>Clear</button>
-        )}
+        <RangeFilter range={range} setRange={setRange} now={now} />
         <span style={{ fontSize: 13, color: 'var(--color-text-muted)', marginLeft: 'auto' }}>
           {reports.length} submission{reports.length !== 1 ? 's' : ''} total
         </span>
       </div>
 
       {reports.length === 0 && (
-        <div className="card" style={{ padding: 48, textAlign: 'center', color: 'var(--color-text-muted)' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>📁</div>
+        <div className="empty-state card">
+          <span
+            className="icon-mask empty-state-icon"
+            style={{ WebkitMaskImage: 'url(/icons/folder.svg)', maskImage: 'url(/icons/folder.svg)' }}
+          />
           <p>You haven't submitted any reports yet.</p>
         </div>
       )}
@@ -410,7 +477,13 @@ function EmployeeView({
                   </div>
 
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                    <button className="btn btn-sm btn-ghost" onClick={() => download(r.id)}>↓ Download</button>
+                    <button className="btn btn-sm btn-ghost" onClick={() => download(r.id)}>
+                      <span
+                        className="icon-mask"
+                        style={{ WebkitMaskImage: 'url(/icons/download.svg)', maskImage: 'url(/icons/download.svg)' }}
+                      />
+                      Download
+                    </button>
                     <button className="btn btn-sm btn-danger" onClick={() => onDelete(r.id)}>Delete</button>
                   </div>
                 </div>
@@ -434,7 +507,7 @@ export default function ReportsPage() {
 
   const [reports, setReports]       = useState<Report[]>([]);
   const [loading, setLoading]       = useState(false);
-  const [filterYear, setFilterYear] = useState('');
+  const [range, setRange]           = useState<ReportRange>(emptyRange);
   const [showModal, setShowModal]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg]   = useState('');
@@ -448,7 +521,14 @@ export default function ReportsPage() {
   const load = () => {
     setLoading(true);
     const params = new URLSearchParams();
-    if (filterYear) params.set('year', filterYear);
+    if (range.from) {
+      params.set('fromYear', String(range.from.getFullYear()));
+      params.set('fromMonth', String(range.from.getMonth() + 1));
+    }
+    if (range.to) {
+      params.set('toYear', String(range.to.getFullYear()));
+      params.set('toMonth', String(range.to.getMonth() + 1));
+    }
     const token = getToken();
     fetch(`${BASE}/reports?${params}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -462,7 +542,7 @@ export default function ReportsPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [filterYear]);
+  useEffect(() => { load(); }, [range.from, range.to]);
 
   const openModal = () => {
     setForm({ title: '', month: String(now.getMonth() + 1), year: String(now.getFullYear()), notes: '', file: null });
@@ -522,7 +602,13 @@ export default function ReportsPage() {
                 : 'Your submitted reports and presentations'}
             </p>
           </div>
-          <button className="btn btn-primary" onClick={openModal}>+ Submit Report</button>
+          <button className="btn btn-primary btn-sm" onClick={openModal}>
+            <span
+              className="icon-mask"
+              style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
+            />
+            Submit Report
+          </button>
         </div>
       </div>
 
@@ -533,16 +619,16 @@ export default function ReportsPage() {
       ) : isPrivileged ? (
         <AdminView
           reports={reports}
-          filterYear={filterYear}
-          setFilterYear={setFilterYear}
+          range={range}
+          setRange={setRange}
           onDelete={handleDelete}
           now={now}
         />
       ) : (
         <EmployeeView
           reports={reports}
-          filterYear={filterYear}
-          setFilterYear={setFilterYear}
+          range={range}
+          setRange={setRange}
           onDelete={handleDelete}
           now={now}
         />

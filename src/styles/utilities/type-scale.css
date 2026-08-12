@@ -1,0 +1,89 @@
+/*
+ * Typography utility & role classes.
+ *
+ * The underlying tokens (--font-heading, --font-body, --text-*, --display-*,
+ * --headline-*, --title-*, --body-*, --label-*) now live in
+ * src/styles/tokens/typography.primitives.css and typography.semantic.css.
+ * This file keeps only the CSS rules that apply those tokens as classes —
+ * tokens files should hold custom properties only, never selectors.
+ *
+ * TEMPORARY LOCATION: per CSS-ARCHITECTURE.md, these rules belong in
+ * utilities/type-scale.css once the components/utilities layers are
+ * migrated (Phase 5). Left here for now so this phase stays token-only.
+ */
+
+.text-5xl,
+.text-4xl,
+.text-3xl,
+.text-2xl,
+.text-xl,
+.text-lg,
+.text-base,
+.text-sm,
+.text-xs {
+  font-family: var(--font-heading);
+  line-height: var(--leading-scale);
+  font-weight: 400;
+}
+
+.text-5xl { font-size: var(--text-5xl); }
+.text-4xl { font-size: var(--text-4xl); }
+.text-3xl { font-size: var(--text-3xl); }
+.text-2xl { font-size: var(--text-2xl); }
+.text-xl  { font-size: var(--text-xl); }
+.text-lg  { font-size: var(--text-lg); }
+.text-base { font-size: var(--text-base); }
+.text-sm  { font-size: var(--text-sm); }
+.text-xs  { font-size: var(--text-xs); }
+
+[class*='type-'] {
+  font-family: var(--font-body);
+}
+
+.type-display-lg { font-size: var(--display-lg-size); line-height: var(--display-lg-leading); font-weight: 400; }
+.type-display-lg.emphasized { line-height: var(--display-lg-leading-emphasized); font-weight: 600; }
+
+.type-display-md { font-size: var(--display-md-size); line-height: var(--display-md-leading); font-weight: 400; }
+.type-display-md.emphasized { font-weight: 600; }
+
+.type-display-sm { font-size: var(--display-sm-size); line-height: var(--display-sm-leading); font-weight: 400; }
+.type-display-sm.emphasized { font-weight: 600; }
+
+.type-headline-lg { font-size: var(--headline-lg-size); line-height: var(--headline-lg-leading); font-weight: 400; }
+.type-headline-lg.emphasized { font-weight: 500; }
+
+.type-headline-md { font-size: var(--headline-md-size); line-height: var(--headline-md-leading); font-weight: 400; }
+.type-headline-md.emphasized { font-weight: 500; }
+
+.type-headline-sm { font-size: var(--headline-sm-size); line-height: var(--headline-sm-leading); font-weight: 400; }
+.type-headline-sm.emphasized { font-weight: 500; }
+
+.type-title-lg { font-size: var(--title-lg-size); line-height: var(--title-lg-leading); font-weight: 400; }
+.type-title-lg.emphasized { font-weight: 500; }
+
+.type-title-md { font-size: var(--title-md-size); line-height: var(--title-md-leading); font-weight: 400; }
+.type-title-md.emphasized { font-weight: 600; letter-spacing: 0.15px; }
+
+.type-title-sm { font-size: var(--title-sm-size); line-height: var(--title-sm-leading); font-weight: 400; }
+.type-title-sm.emphasized { font-weight: 600; }
+
+.type-body-xl { font-size: var(--body-xl-size); line-height: var(--body-xl-leading); font-weight: 400; }
+.type-body-xl.emphasized { font-weight: 500; }
+
+.type-body-lg { font-size: var(--body-lg-size); line-height: var(--body-lg-leading); font-weight: 400; }
+.type-body-lg.emphasized { font-weight: 500; }
+
+.type-body-md { font-size: var(--body-md-size); line-height: var(--body-md-leading); font-weight: 400; }
+.type-body-md.emphasized { font-weight: 500; }
+
+.type-body-sm { font-size: var(--body-sm-size); line-height: var(--body-sm-leading); font-weight: 400; }
+.type-body-sm.emphasized { font-weight: 500; }
+
+.type-label-lg { font-size: var(--label-lg-size); line-height: var(--label-lg-leading); font-weight: 500; }
+.type-label-lg.emphasized { font-weight: 600; }
+
+.type-label-md { font-size: var(--label-md-size); line-height: var(--label-md-leading); font-weight: 500; }
+.type-label-md.emphasized { font-weight: 600; }
+
+.type-label-sm { font-size: var(--label-sm-size); line-height: var(--label-sm-leading); font-weight: 500; }
+.type-label-sm.emphasized { font-weight: 600; }

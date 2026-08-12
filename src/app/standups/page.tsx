@@ -108,8 +108,20 @@ export default function StandupsPage() {
             <p>Team daily updates — what we did, what's next, any blockers</p>
           </div>
           <div className="flex gap-2">
-            <button className="btn btn-ghost" onClick={exportExcel} disabled={standups.length === 0}>Export Excel</button>
-            <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Post Standup</button>
+            <button className="btn btn-secondary btn-sm" onClick={exportExcel} disabled={standups.length === 0}>
+              <span
+                className="icon-mask"
+                style={{ WebkitMaskImage: 'url(/icons/download.svg)', maskImage: 'url(/icons/download.svg)' }}
+              />
+              Export Excel
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={() => setShowModal(true)}>
+              <span
+                className="icon-mask"
+                style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
+              />
+              Post Standup
+            </button>
           </div>
         </div>
       </div>
@@ -218,7 +230,10 @@ export default function StandupsPage() {
 
       {standups.length === 0 && (
         <div className="empty-state card">
-          <div style={{ fontSize: 40 }}>📋</div>
+          <span
+            className="icon-mask empty-state-icon"
+            style={{ WebkitMaskImage: 'url(/icons/clipboard.svg)', maskImage: 'url(/icons/clipboard.svg)' }}
+          />
           <p>{hasFilters ? 'No standups match the selected filters.' : 'No standups found. Be the first to post!'}</p>
         </div>
       )}

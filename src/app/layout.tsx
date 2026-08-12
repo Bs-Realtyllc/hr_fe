@@ -1,6 +1,20 @@
 import type { Metadata, Viewport } from 'next';
-import './globals.css';
+import { Plus_Jakarta_Sans, IBM_Plex_Sans } from 'next/font/google';
+import '../styles/global.css';
 import AppShell from '@/components/AppShell';
+import StoreProvider from '@/store/storeProvider';
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-plus-jakarta-sans',
+});
+
+const ibmPlexSans = IBM_Plex_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-ibm-plex-sans',
+});
 
 export const metadata: Metadata = {
   title: 'HR Platform',
@@ -19,9 +33,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${plusJakartaSans.variable} ${ibmPlexSans.variable}`}>
       <body>
+        <StoreProvider>
         <AppShell>{children}</AppShell>
+        </StoreProvider>
       </body>
     </html>
   );

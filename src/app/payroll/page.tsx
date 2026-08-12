@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import PillTabs from '@/components/PillTabs';
 
 interface PayrollRow {
   id: number;
@@ -217,35 +218,28 @@ export default function PayrollPage() {
     ? Number(((taxTotals.annualTax / taxTotals.annualSalary) * 100).toFixed(1))
     : 0;
 
-  if (loading) return <div className="page-header"><h1>{isPrivileged ? 'Payroll' : 'My Payroll'}</h1><p>Loading…</p></div>;
+  if (loading) return <div className="page-header"><div><h1>{isPrivileged ? 'Payroll' : 'My Payroll'}</h1><p>Loading…</p></div></div>;
 
   return (
     <div>
       <div className="page-header">
-        <h1>{isPrivileged ? 'Payroll & Taxes' : 'My Payroll & Taxes'}</h1>
-        <p>{isPrivileged ? 'Manage employee salaries, tax profiles, and account access' : 'Your salary, pay details, and estimated tax breakdown'}</p>
+        <div>
+          <h1>{isPrivileged ? 'Payroll & Taxes' : 'My Payroll & Taxes'}</h1>
+          <p>{isPrivileged ? 'Manage employee salaries, tax profiles, and account access' : 'Your salary, pay details, and estimated tax breakdown'}</p>
+        </div>
       </div>
 
       {/* Tab bar */}
-      <div className="flex items-center gap-2" style={{ marginBottom: 20 }}>
-        <button
-          className={`btn btn-sm ${tab === 'salaries' ? 'btn-primary' : 'btn-ghost'}`}
-          onClick={() => setTab('salaries')}
-        >
-          Salaries
-        </button>
-        <button
-          className={`btn btn-sm ${tab === 'taxes' ? 'btn-primary' : 'btn-ghost'}`}
-          onClick={() => setTab('taxes')}
-        >
-          Taxes
-        </button>
-        <button
-          className={`btn btn-sm ${tab === 'adjustments' ? 'btn-primary' : 'btn-ghost'}`}
-          onClick={() => setTab('adjustments')}
-        >
-          Overtime & Adjustments
-        </button>
+      <div className="mb-4">
+        <PillTabs
+          value={tab}
+          onChange={v => setTab(v as typeof tab)}
+          options={[
+            { value: 'salaries',    label: 'Salaries' },
+            { value: 'taxes',       label: 'Taxes' },
+            { value: 'adjustments', label: 'Overtime & Adjustments' },
+          ]}
+        />
       </div>
 
       {tab === 'salaries' && (
@@ -270,83 +264,153 @@ export default function PayrollPage() {
             </div>
           )}
 
-          <div className="card" style={{ overflowX: 'auto' }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>Department</th>
-                  <th>Role</th>
-                  <th>Pay Frequency</th>
-                  <th>Monthly Salary</th>
-                  {isAdmin && <th>Actions</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(r => (
-                  <tr key={r.id}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div className="avatar avatar-sm">{initials(r.name)}</div>
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: 14 }}>{r.name}</div>
-                          <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{r.designation}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{r.department || '—'}</td>
-                    <td>
-                      <span className={`badge ${r.role === 'admin' ? 'badge-error' : r.role === 'lead' ? 'badge-accent' : 'badge-neutral'}`}>
-                        {r.role}
-                      </span>
-                    </td>
-                    <td>
-                      {editId === r.id ? (
-                        <select className="form-input" style={{ padding: '4px 8px', fontSize: 13 }}
-                          value={editFreq} onChange={e => setEditFreq(e.target.value)}>
-                          <option value="monthly">Monthly</option>
-                          <option value="biweekly">Biweekly</option>
-                          <option value="weekly">Weekly</option>
-                        </select>
-                      ) : (
-                        <span style={{ fontSize: 13, textTransform: 'capitalize' }}>{r.pay_frequency ?? 'monthly'}</span>
-                      )}
-                    </td>
-                    <td>
-                      {editId === r.id ? (
-                        <input className="form-input" style={{ padding: '4px 8px', fontSize: 13, width: 120 }}
-                          type="number" value={editSalary} onChange={e => setEditSalary(e.target.value)} placeholder="0.00" />
-                      ) : r.salary ? (
-                        <span style={{ fontWeight: 600 }}>Rs. {r.salary.toLocaleString()}</span>
-                      ) : (
-                        <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Not set</span>
-                      )}
-                    </td>
-                    {isAdmin && (
+          <div className="card">
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Department</th>
+                    <th>Role</th>
+                    <th>Pay Frequency</th>
+                    <th>Monthly Salary</th>
+                    {isAdmin && <th>Actions</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(r => (
+                    <tr key={r.id}>
                       <td>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                          {editId === r.id ? (
-                            <>
-                              <button className="btn btn-primary" style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => saveSalary(r.id)}>Save</button>
-                              <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => setEditId(null)}>Cancel</button>
-                            </>
-                          ) : (
-                            <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }}
-                              onClick={() => { setEditId(r.id); setEditSalary(r.salary?.toString() ?? ''); setEditFreq(r.pay_frequency ?? 'monthly'); }}>
-                              Edit Salary
-                            </button>
-                          )}
-                          <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }}
-                            onClick={() => { setResetId(r.id); setResetMsg(''); setResetPw(''); }}>
-                            Reset PW
-                          </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div className="avatar avatar-sm">{initials(r.name)}</div>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 14 }}>{r.name}</div>
+                            <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{r.designation}</div>
+                          </div>
                         </div>
                       </td>
+                      <td style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{r.department || '—'}</td>
+                      <td>
+                        <span className={`badge ${r.role === 'admin' ? 'badge-error' : r.role === 'lead' ? 'badge-accent' : 'badge-neutral'}`}>
+                          {r.role}
+                        </span>
+                      </td>
+                      <td>
+                        {editId === r.id ? (
+                          <select className="form-input" style={{ padding: '4px 8px', fontSize: 13 }}
+                            value={editFreq} onChange={e => setEditFreq(e.target.value)}>
+                            <option value="monthly">Monthly</option>
+                            <option value="biweekly">Biweekly</option>
+                            <option value="weekly">Weekly</option>
+                          </select>
+                        ) : (
+                          <span style={{ fontSize: 13, textTransform: 'capitalize' }}>{r.pay_frequency ?? 'monthly'}</span>
+                        )}
+                      </td>
+                      <td>
+                        {editId === r.id ? (
+                          <input className="form-input" style={{ padding: '4px 8px', fontSize: 13, width: 120 }}
+                            type="number" value={editSalary} onChange={e => setEditSalary(e.target.value)} placeholder="0.00" />
+                        ) : r.salary ? (
+                          <span style={{ fontWeight: 600 }}>Rs. {r.salary.toLocaleString()}</span>
+                        ) : (
+                          <span style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>Not set</span>
+                        )}
+                      </td>
+                      {isAdmin && (
+                        <td>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            {editId === r.id ? (
+                              <>
+                                <button className="btn btn-primary btn-xs" onClick={() => saveSalary(r.id)}>Save</button>
+                                <button className="btn btn-secondary btn-xs" onClick={() => setEditId(null)}>Cancel</button>
+                              </>
+                            ) : (
+                              <button className="btn btn-secondary btn-xs"
+                                onClick={() => { setEditId(r.id); setEditSalary(r.salary?.toString() ?? ''); setEditFreq(r.pay_frequency ?? 'monthly'); }}>
+                                Edit Salary
+                              </button>
+                            )}
+                            <button className="btn btn-secondary btn-xs"
+                              onClick={() => { setResetId(r.id); setResetMsg(''); setResetPw(''); }}>
+                              Reset PW
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile replacement for the table above — same data, card-per-row */}
+            <div className="row-cards">
+              {rows.map(r => (
+                <div key={r.id} className="row-card">
+                  <div className="row-card-top">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div className="avatar avatar-sm">{initials(r.name)}</div>
+                      <div>
+                        <div className="cell-title">{r.name}</div>
+                        <div className="cell-subtitle">{r.designation}</div>
+                      </div>
+                    </div>
+                    {editId !== r.id && (
+                      r.salary ? (
+                        <div style={{ fontWeight: 600 }}>Rs. {r.salary.toLocaleString()}</div>
+                      ) : (
+                        <div className="row-card-meta">Not set</div>
+                      )
                     )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  </div>
+
+                  <div className="row-card-line" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span className="text-muted text-sm">{r.department || '—'}</span>
+                    <span className={`badge ${r.role === 'admin' ? 'badge-error' : r.role === 'lead' ? 'badge-accent' : 'badge-neutral'}`}>
+                      {r.role}
+                    </span>
+                  </div>
+
+                  {editId === r.id ? (
+                    <div className="row-card-line" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <select className="form-input" style={{ padding: '4px 8px', fontSize: 13, flex: 1 }}
+                        value={editFreq} onChange={e => setEditFreq(e.target.value)}>
+                        <option value="monthly">Monthly</option>
+                        <option value="biweekly">Biweekly</option>
+                        <option value="weekly">Weekly</option>
+                      </select>
+                      <input className="form-input" style={{ padding: '4px 8px', fontSize: 13, flex: 1 }}
+                        type="number" value={editSalary} onChange={e => setEditSalary(e.target.value)} placeholder="0.00" />
+                    </div>
+                  ) : (
+                    <div className="row-card-line text-sm" style={{ textTransform: 'capitalize' }}>
+                      {r.pay_frequency ?? 'monthly'}
+                    </div>
+                  )}
+
+                  {isAdmin && (
+                    <div className="row-card-actions">
+                      {editId === r.id ? (
+                        <>
+                          <button className="btn btn-primary btn-xs" onClick={() => saveSalary(r.id)}>Save</button>
+                          <button className="btn btn-secondary btn-xs" onClick={() => setEditId(null)}>Cancel</button>
+                        </>
+                      ) : (
+                        <button className="btn btn-secondary btn-xs"
+                          onClick={() => { setEditId(r.id); setEditSalary(r.salary?.toString() ?? ''); setEditFreq(r.pay_frequency ?? 'monthly'); }}>
+                          Edit Salary
+                        </button>
+                      )}
+                      <button className="btn btn-secondary btn-xs"
+                        onClick={() => { setResetId(r.id); setResetMsg(''); setResetPw(''); }}>
+                        Reset PW
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </>
       )}
@@ -385,62 +449,108 @@ export default function PayrollPage() {
               )}
 
               {isPrivileged ? (
-                <div className="card" style={{ overflowX: 'auto' }}>
-                  <table className="table">
-                    <thead>
-                      <tr>
-                        <th>Employee</th>
-                        <th>Tax ID</th>
-                        <th>Filing Status</th>
-                        <th>Regime</th>
-                        <th>Annual Salary</th>
-                        <th>Exemptions</th>
-                        <th>Taxable Income</th>
-                        <th>Est. Annual Tax</th>
-                        <th>Eff. Rate</th>
-                        {isAdmin && <th>Actions</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {taxRows.map(r => (
-                        <tr key={r.id}>
-                          <td>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <div className="avatar avatar-sm">{initials(r.name)}</div>
-                              <div>
-                                <div style={{ fontWeight: 600, fontSize: 14 }}>{r.name}</div>
-                                <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{r.designation}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td style={{ fontSize: 13 }}>
-                            {r.tax_id || <span style={{ color: 'var(--color-text-muted)' }}>Not set</span>}
-                          </td>
-                          <td style={{ fontSize: 13 }}>{FILING_STATUS_LABEL[r.filing_status]}</td>
-                          <td><span className="badge badge-neutral" style={{ textTransform: 'capitalize' }}>{r.tax_regime}</span></td>
-                          <td style={{ fontSize: 13 }}>Rs. {r.annual_salary.toLocaleString()}</td>
-                          <td style={{ fontSize: 13 }}>Rs. {Math.round(r.exemptions).toLocaleString()}</td>
-                          <td style={{ fontSize: 13 }}>Rs. {r.taxable_income.toLocaleString()}</td>
-                          <td>
-                            <div style={{ fontWeight: 700 }}>Rs. {r.estimated_annual_tax.toLocaleString()}</div>
-                            <div className="text-muted" style={{ fontSize: 11 }}>Rs. {r.estimated_monthly_tax.toLocaleString()}/mo</div>
-                          </td>
-                          <td>
-                            <span className={`badge ${r.effective_rate >= 15 ? 'badge-warning' : r.effective_rate > 0 ? 'badge-info' : 'badge-neutral'}`}>
-                              {r.effective_rate}%
-                            </span>
-                          </td>
-                          {isAdmin && (
-                            <td>
-                              <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 12 }} onClick={() => openTaxEdit(r)}>
-                                Edit
-                              </button>
-                            </td>
-                          )}
+                <div className="card">
+                  <div className="table-wrap">
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Employee</th>
+                          <th>Tax ID</th>
+                          <th>Filing Status</th>
+                          <th>Regime</th>
+                          <th>Annual Salary</th>
+                          <th>Exemptions</th>
+                          <th>Taxable Income</th>
+                          <th>Est. Annual Tax</th>
+                          <th>Eff. Rate</th>
+                          {isAdmin && <th>Actions</th>}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {taxRows.map(r => (
+                          <tr key={r.id}>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div className="avatar avatar-sm">{initials(r.name)}</div>
+                                <div>
+                                  <div style={{ fontWeight: 600, fontSize: 14 }}>{r.name}</div>
+                                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{r.designation}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ fontSize: 13 }}>
+                              {r.tax_id || <span style={{ color: 'var(--color-text-muted)' }}>Not set</span>}
+                            </td>
+                            <td style={{ fontSize: 13 }}>{FILING_STATUS_LABEL[r.filing_status]}</td>
+                            <td><span className="badge badge-neutral" style={{ textTransform: 'capitalize' }}>{r.tax_regime}</span></td>
+                            <td style={{ fontSize: 13 }}>Rs. {r.annual_salary.toLocaleString()}</td>
+                            <td style={{ fontSize: 13 }}>Rs. {Math.round(r.exemptions).toLocaleString()}</td>
+                            <td style={{ fontSize: 13 }}>Rs. {r.taxable_income.toLocaleString()}</td>
+                            <td>
+                              <div style={{ fontWeight: 700 }}>Rs. {r.estimated_annual_tax.toLocaleString()}</div>
+                              <div className="text-muted" style={{ fontSize: 11 }}>Rs. {r.estimated_monthly_tax.toLocaleString()}/mo</div>
+                            </td>
+                            <td>
+                              <span className={`badge ${r.effective_rate >= 15 ? 'badge-warning' : r.effective_rate > 0 ? 'badge-info' : 'badge-neutral'}`}>
+                                {r.effective_rate}%
+                              </span>
+                            </td>
+                            {isAdmin && (
+                              <td>
+                                <button className="btn btn-secondary btn-xs" onClick={() => openTaxEdit(r)}>
+                                  Edit
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile replacement for the table above — same data, card-per-row */}
+                  <div className="row-cards">
+                    {taxRows.map(r => (
+                      <div key={r.id} className="row-card">
+                        <div className="row-card-top">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div className="avatar avatar-sm">{initials(r.name)}</div>
+                            <div>
+                              <div className="cell-title">{r.name}</div>
+                              <div className="cell-subtitle">{r.designation}</div>
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontWeight: 700 }}>Rs. {r.estimated_annual_tax.toLocaleString()}</div>
+                            <div className="row-card-meta">Rs. {r.estimated_monthly_tax.toLocaleString()}/mo</div>
+                          </div>
+                        </div>
+
+                        <div className="row-card-line" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span className="badge badge-neutral" style={{ textTransform: 'capitalize' }}>{r.tax_regime}</span>
+                          <span className={`badge ${r.effective_rate >= 15 ? 'badge-warning' : r.effective_rate > 0 ? 'badge-info' : 'badge-neutral'}`}>
+                            {r.effective_rate}%
+                          </span>
+                          <span className="text-muted text-sm">{FILING_STATUS_LABEL[r.filing_status]}</span>
+                        </div>
+
+                        <div className="row-card-line text-sm text-muted">
+                          Tax ID: {r.tax_id || 'Not set'}
+                        </div>
+                        <div className="row-card-line text-sm text-muted">
+                          Rs. {r.annual_salary.toLocaleString()} annual · Rs. {Math.round(r.exemptions).toLocaleString()} exempt · Rs. {r.taxable_income.toLocaleString()} taxable
+                        </div>
+
+                        {isAdmin && (
+                          <div className="row-card-actions">
+                            <button className="btn btn-secondary btn-xs" onClick={() => openTaxEdit(r)}>
+                              Edit
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 taxRows.length > 0 && (() => {
@@ -546,12 +656,12 @@ export default function PayrollPage() {
                 <div className="stat-card">
                   <div className="stat-card-dot" style={{ background: 'var(--color-success)' }} />
                   <div className="stat-card-label">Overtime Pay (this month)</div>
-                  <div className="stat-card-value" style={{ color: 'var(--color-success)' }}>Rs. {Math.round(summaryTotals.overtime).toLocaleString()}</div>
+                  <div className="stat-card-value">Rs. {Math.round(summaryTotals.overtime).toLocaleString()}</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-card-dot" style={{ background: 'var(--color-error)' }} />
                   <div className="stat-card-label">Leave Deductions (this month)</div>
-                  <div className="stat-card-value" style={{ color: 'var(--color-error)' }}>Rs. {Math.round(Math.abs(summaryTotals.deduction)).toLocaleString()}</div>
+                  <div className="stat-card-value">Rs. {Math.round(Math.abs(summaryTotals.deduction)).toLocaleString()}</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-card-dot" style={{ background: 'var(--color-accent)' }} />
@@ -582,57 +692,93 @@ export default function PayrollPage() {
                 </p>
               )}
 
-              <div className="card" style={{ overflowX: 'auto' }}>
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Employee</th>
-                      <th>Base Monthly</th>
-                      <th>Overtime Pay</th>
-                      <th>Leave Deduction</th>
-                      <th>Year-End Bonus</th>
-                      <th>Net Pay</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {summaryRows.map(r => (
-                      <tr key={r.id}>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div className="avatar avatar-sm">{initials(r.name)}</div>
-                            <div>
-                              <div style={{ fontWeight: 600, fontSize: 14 }}>{r.name}</div>
-                              <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{r.designation}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ fontSize: 13 }}>Rs. {r.base_monthly.toLocaleString()}</td>
-                        <td>
-                          {r.overtime_pay > 0 ? (
-                            <span className="badge badge-success">+ Rs. {r.overtime_pay.toLocaleString()}</span>
-                          ) : (
-                            <span className="text-muted" style={{ fontSize: 13 }}>—</span>
-                          )}
-                        </td>
-                        <td>
-                          {r.leave_deduction < 0 ? (
-                            <span className="badge badge-error">- Rs. {Math.abs(r.leave_deduction).toLocaleString()}</span>
-                          ) : (
-                            <span className="text-muted" style={{ fontSize: 13 }}>—</span>
-                          )}
-                        </td>
-                        <td>
-                          {r.leave_bonus > 0 ? (
-                            <span className="badge badge-accent">+ Rs. {r.leave_bonus.toLocaleString()}</span>
-                          ) : (
-                            <span className="text-muted" style={{ fontSize: 13 }}>—</span>
-                          )}
-                        </td>
-                        <td style={{ fontWeight: 700 }}>Rs. {r.net_pay.toLocaleString()}</td>
+              <div className="card">
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Employee</th>
+                        <th>Base Monthly</th>
+                        <th>Overtime Pay</th>
+                        <th>Leave Deduction</th>
+                        <th>Year-End Bonus</th>
+                        <th>Net Pay</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {summaryRows.map(r => (
+                        <tr key={r.id}>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div className="avatar avatar-sm">{initials(r.name)}</div>
+                              <div>
+                                <div style={{ fontWeight: 600, fontSize: 14 }}>{r.name}</div>
+                                <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{r.designation}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td style={{ fontSize: 13 }}>Rs. {r.base_monthly.toLocaleString()}</td>
+                          <td>
+                            {r.overtime_pay > 0 ? (
+                              <span className="badge badge-success">+ Rs. {r.overtime_pay.toLocaleString()}</span>
+                            ) : (
+                              <span className="text-muted" style={{ fontSize: 13 }}>—</span>
+                            )}
+                          </td>
+                          <td>
+                            {r.leave_deduction < 0 ? (
+                              <span className="badge badge-error">- Rs. {Math.abs(r.leave_deduction).toLocaleString()}</span>
+                            ) : (
+                              <span className="text-muted" style={{ fontSize: 13 }}>—</span>
+                            )}
+                          </td>
+                          <td>
+                            {r.leave_bonus > 0 ? (
+                              <span className="badge badge-accent">+ Rs. {r.leave_bonus.toLocaleString()}</span>
+                            ) : (
+                              <span className="text-muted" style={{ fontSize: 13 }}>—</span>
+                            )}
+                          </td>
+                          <td style={{ fontWeight: 700 }}>Rs. {r.net_pay.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile replacement for the table above — same data, card-per-row */}
+                <div className="row-cards">
+                  {summaryRows.map(r => (
+                    <div key={r.id} className="row-card">
+                      <div className="row-card-top">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div className="avatar avatar-sm">{initials(r.name)}</div>
+                          <div>
+                            <div className="cell-title">{r.name}</div>
+                            <div className="cell-subtitle">{r.designation}</div>
+                          </div>
+                        </div>
+                        <div style={{ fontWeight: 700 }}>Rs. {r.net_pay.toLocaleString()}</div>
+                      </div>
+
+                      <div className="row-card-line text-sm text-muted">
+                        Base Rs. {r.base_monthly.toLocaleString()}
+                      </div>
+
+                      <div className="row-card-line" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {r.overtime_pay > 0 && (
+                          <span className="badge badge-success">+ Rs. {r.overtime_pay.toLocaleString()} OT</span>
+                        )}
+                        {r.leave_deduction < 0 && (
+                          <span className="badge badge-error">- Rs. {Math.abs(r.leave_deduction).toLocaleString()} leave</span>
+                        )}
+                        {r.leave_bonus > 0 && (
+                          <span className="badge badge-accent">+ Rs. {r.leave_bonus.toLocaleString()} bonus</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {summaryRows.length === 0 && (

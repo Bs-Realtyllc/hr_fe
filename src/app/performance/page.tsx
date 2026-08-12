@@ -103,12 +103,16 @@ export default function PerformancePage() {
     setLoading(true);
     const params = new URLSearchParams();
     if (isPrivileged && employeeFilter) params.set('employee_id', employeeFilter);
-    if (statusFilter) params.set('status', statusFilter);
     const q = params.toString() ? `?${params.toString()}` : '';
     api.get<Review[]>(`/performance${q}`).then(setReviews).catch(() => {}).finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [employeeFilter, statusFilter]);
+  useEffect(() => { load(); }, [employeeFilter]);
+
+  const visibleReviews = useMemo(
+    () => statusFilter ? reviews.filter(r => r.status === statusFilter) : reviews,
+    [reviews, statusFilter]
+  );
 
   const trendEmployeeId = isPrivileged ? employeeFilter : user?.id;
   useEffect(() => {
@@ -176,7 +180,7 @@ export default function PerformancePage() {
     load();
   }
 
-  if (loading) return <div className="page-header"><h1>Performance</h1><p>Loading…</p></div>;
+  if (loading) return <div className="page-header"><div><h1>Performance</h1><p>Loading…</p></div></div>;
 
   return (
     <div>
@@ -186,50 +190,51 @@ export default function PerformancePage() {
             <h1>Performance Reviews</h1>
             <p>{isPrivileged ? 'Run review cycles and track ratings across the team' : 'Your performance review history and ratings'}</p>
           </div>
-          {isPrivileged && <button className="btn btn-primary" onClick={openCreate}>+ New Review</button>}
-        </div>
-      </div>
-
-      <div className="stat-grid" style={{ marginBottom: 24 }}>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-primary)' }} />
-          <div className="stat-card-label">Total Reviews</div>
-          <div className="stat-card-value">{reviews.length}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-warning)' }} />
-          <div className="stat-card-label">Awaiting Acknowledgement</div>
-          <div className="stat-card-value">{reviews.filter(r => r.status === 'submitted').length}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-success)' }} />
-          <div className="stat-card-label">Avg. Overall Rating</div>
-          <div className="stat-card-value">{avgRating || '—'} <span style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>/ 5</span></div>
-        </div>
-      </div>
-
-      <div className="card mb-4" style={{ padding: '14px 20px' }}>
-        <div className="flex items-center gap-3" style={{ flexWrap: 'wrap' }}>
           {isPrivileged && (
-            <div className="flex items-center gap-2">
-              <label className="form-label" style={{ margin: 0, whiteSpace: 'nowrap' }}>Employee</label>
-              <select className="form-select" style={{ width: 200 }} value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)}>
+            <button className="btn btn-primary btn-sm" onClick={openCreate}>
+              <span
+                className="icon-mask"
+                style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
+              />
+              New Review
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between" style={{ marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+        <div className="pill-group">
+          <button type="button" className={`pill ${statusFilter === '' ? 'pill-active' : ''}`} onClick={() => setStatusFilter('')}>
+            All ({reviews.length})
+          </button>
+          <button type="button" className={`pill ${statusFilter === 'draft' ? 'pill-active' : ''}`} onClick={() => setStatusFilter('draft')}>
+            Draft ({reviews.filter(r => r.status === 'draft').length})
+          </button>
+          <button type="button" className={`pill ${statusFilter === 'submitted' ? 'pill-active' : ''}`} onClick={() => setStatusFilter('submitted')}>
+            Awaiting Ack. ({reviews.filter(r => r.status === 'submitted').length})
+          </button>
+          <button type="button" className={`pill ${statusFilter === 'acknowledged' ? 'pill-active' : ''}`} onClick={() => setStatusFilter('acknowledged')}>
+            Acknowledged ({reviews.filter(r => r.status === 'acknowledged').length})
+          </button>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-muted text-sm" style={{ whiteSpace: 'nowrap' }}>
+            Avg. rating: <strong style={{ color: 'var(--color-text-h3)' }}>{avgRating || '—'} / 5</strong>
+          </span>
+          {isPrivileged && (
+            <div className="select-compact-wrap">
+              <select className="select-compact" value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)}>
                 <option value="">All employees</option>
                 {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
               </select>
+              <span
+                className="icon-mask"
+                style={{ WebkitMaskImage: 'url(/icons/chevron-down.svg)', maskImage: 'url(/icons/chevron-down.svg)' }}
+              />
             </div>
           )}
-          <div className="flex items-center gap-2">
-            <label className="form-label" style={{ margin: 0, whiteSpace: 'nowrap' }}>Status</label>
-            <select className="form-select" style={{ width: 160 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-              <option value="">All statuses</option>
-              <option value="draft">Draft</option>
-              <option value="submitted">Submitted</option>
-              <option value="acknowledged">Acknowledged</option>
-            </select>
-          </div>
-          {(employeeFilter || statusFilter) && (
-            <button className="btn btn-ghost btn-sm" onClick={() => { setEmployeeFilter(''); setStatusFilter(''); }}>Clear filters</button>
+          {employeeFilter && (
+            <button className="btn btn-text btn-xs" onClick={() => setEmployeeFilter('')}>Clear</button>
           )}
         </div>
       </div>
@@ -254,14 +259,19 @@ export default function PerformancePage() {
         </div>
       )}
 
-      {reviews.length === 0 ? (
+      {visibleReviews.length === 0 ? (
         <div className="empty-state card">
-          <div style={{ fontSize: 40 }}>📊</div>
-          <p>{isPrivileged ? 'No reviews created yet.' : 'No performance reviews yet.'}</p>
+          <span
+            className="icon-mask empty-state-icon"
+            style={{ WebkitMaskImage: 'url(/icons/bar-chart-2.svg)', maskImage: 'url(/icons/bar-chart-2.svg)' }}
+          />
+          <p>{reviews.length === 0
+            ? (isPrivileged ? 'No reviews created yet.' : 'No performance reviews yet.')
+            : 'No reviews match the selected status.'}</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {reviews.map(r => {
+          {visibleReviews.map(r => {
             const categories = parseCategoryRatings(r.category_ratings);
             return (
               <div key={r.id} className="card" style={{ padding: 20 }}>

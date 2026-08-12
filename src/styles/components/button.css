@@ -1,0 +1,188 @@
+/*
+ * Primary, Secondary & Text Buttons
+ * Source: Figma — HR Management System
+ *  "Buttons" (primary),  "Buttons" (secondary),  "Buttons" (text)
+ *
+ * Sizes: xs, sm, md (default), lg, xl, 2xl. Apply with:
+ *   <button class="btn btn-primary">Save</button>
+ *   <button class="btn btn-secondary btn-xs">Cancel</button>
+ *   <button class="btn btn-text">Learn more</button>
+ * States (hover / focus-visible / disabled) are handled automatically.
+ * Secondary rests as an outlined button and fills solid on hover/focus/disabled,
+ * matching the primary button's fill colors at those states. Text rests borderless
+ * and picks up the secondary button's outline on hover/focus.
+ */
+
+.btn-primary,
+.btn-secondary,
+.btn-text {
+  border: 1.5px solid transparent;
+  /* radius-md (not radius-lg): radius-lg reads as a full pill at this
+     button's height — square it off while keeping the rest of the box
+     model (size/padding/font) as designed. */
+  border-radius: var(--radius-lg);
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 500;
+}
+
+.btn-primary svg,
+.btn-secondary svg,
+.btn-text svg,
+.btn-primary .icon-mask,
+.btn-secondary .icon-mask,
+.btn-text .icon-mask { width: 18px; height: 18px; flex-shrink: 0; }
+
+/* ── Sizes (shared box model) ── */
+.btn-primary.btn-xs,
+.btn-secondary.btn-xs,
+.btn-text.btn-xs {
+  height: 32px;
+  padding: 8px;
+  gap: 4px;
+  border-radius: var(--radius-md);
+  border-width: 1.5px;
+  font-size: 12px;
+  line-height: 16px;
+}
+.btn-primary.btn-xs svg, .btn-secondary.btn-xs svg, .btn-text.btn-xs svg,
+.btn-primary.btn-xs .icon-mask, .btn-secondary.btn-xs .icon-mask, .btn-text.btn-xs .icon-mask { width: 14px; height: 14px; }
+
+.btn-primary.btn-sm,
+.btn-secondary.btn-sm,
+.btn-text.btn-sm {
+  height: 40px;
+  padding: 8px 12px;
+  gap: 4px;
+  border-width: 2px;
+  font-size: 14px;
+  line-height: 20px;
+}
+.btn-primary.btn-sm svg, .btn-secondary.btn-sm svg, .btn-text.btn-sm svg,
+.btn-primary.btn-sm .icon-mask, .btn-secondary.btn-sm .icon-mask, .btn-text.btn-sm .icon-mask { width: 16px; height: 16px; }
+
+.btn-primary.btn-lg,
+.btn-secondary.btn-lg,
+.btn-text.btn-lg {
+  padding: 12px;
+  border-width: 2.5px;
+}
+.btn-primary.btn-lg svg, .btn-secondary.btn-lg svg, .btn-text.btn-lg svg,
+.btn-primary.btn-lg .icon-mask, .btn-secondary.btn-lg .icon-mask, .btn-text.btn-lg .icon-mask { width: 20px; height: 20px; }
+
+.btn-primary.btn-xl,
+.btn-secondary.btn-xl,
+.btn-text.btn-xl {
+  height: 52px;
+  padding: 16px;
+  border-width: 2.5px;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 600;
+}
+.btn-primary.btn-xl svg, .btn-secondary.btn-xl svg, .btn-text.btn-xl svg,
+.btn-primary.btn-xl .icon-mask, .btn-secondary.btn-xl .icon-mask, .btn-text.btn-xl .icon-mask { width: 22px; height: 22px; }
+
+.btn-primary.btn-2xl,
+.btn-secondary.btn-2xl,
+.btn-text.btn-2xl {
+  height: 56px;
+  padding: 16px;
+  border-width: 3px;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 600;
+}
+.btn-primary.btn-2xl svg, .btn-secondary.btn-2xl svg, .btn-text.btn-2xl svg,
+.btn-primary.btn-2xl .icon-mask, .btn-secondary.btn-2xl .icon-mask, .btn-text.btn-2xl .icon-mask { width: 24px; height: 24px; }
+
+/* ── Primary colors ── */
+.btn-primary {
+  background: var(--color-primary);
+  color: #FEFEFE;
+}
+.btn-primary:hover:not(:disabled) { background: var(--color-primary-hover); }
+.btn-primary:focus-visible { border-color: var(--color-primary-focus-border); outline: none; }
+.btn-primary:disabled { background: var(--color-primary-disabled); cursor: not-allowed; }
+
+/* ── Secondary colors ── */
+.btn-secondary {
+  background: #FEFEFE;
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  color: #FEFEFE;
+  border-color: transparent;
+}
+.btn-secondary:focus-visible {
+  background: var(--color-primary);
+  color: #FEFEFE;
+  border-color: var(--color-primary-focus-border);
+  outline: none;
+}
+.btn-secondary:disabled {
+  background: var(--color-primary-disabled);
+  color: #FEFEFE;
+  border-color: transparent;
+  cursor: not-allowed;
+}
+
+/* ── Text (borderless) colors ──
+ * Rests as plain text; on hover/focus it borrows the secondary button's
+ * outlined box (border + radius bump), matching the Figma states. */
+.btn-text {
+  background: transparent;
+  color: var(--color-primary);
+  border-radius: var(--radius-md);
+}
+.btn-text.btn-sm { padding: 8px; }
+
+.btn-text:hover:not(:disabled),
+.btn-text:focus-visible {
+  background: #FEFEFE;
+  border-color: var(--color-primary);
+  border-radius: var(--radius-lg);
+}
+.btn-text.btn-xs:hover:not(:disabled),
+.btn-text.btn-xs:focus-visible {
+  border-radius: var(--radius-md);
+}
+.btn-text.btn-sm:hover:not(:disabled),
+.btn-text.btn-sm:focus-visible {
+  padding: 8px 12px;
+}
+.btn-text:focus-visible { border-color: var(--color-primary-focus-border); outline: none; }
+
+.btn-text:disabled {
+  color: var(--color-primary-disabled);
+  cursor: not-allowed;
+}
+
+/* ── Danger variant (e.g. destructive row actions) ── */
+.btn-text.btn-danger { color: var(--color-error); }
+.btn-text.btn-danger:hover:not(:disabled),
+.btn-text.btn-danger:focus-visible {
+  background: #FEFEFE;
+  border-color: var(--color-error);
+}
+.btn-text.btn-danger:disabled { color: var(--color-primary-disabled); }
+
+.btn-secondary.btn-danger {
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+.btn-secondary.btn-danger:hover:not(:disabled),
+.btn-secondary.btn-danger:focus-visible {
+  background: var(--color-error);
+  color: #FEFEFE;
+  border-color: var(--color-error);
+}
+.btn-secondary.btn-danger:disabled {
+  background: var(--color-primary-disabled);
+  color: #FEFEFE;
+  border-color: transparent;
+}

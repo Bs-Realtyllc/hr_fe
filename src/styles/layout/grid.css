@@ -1,0 +1,162 @@
+/* ── Grids ── */
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* 4 equal-width KpiCards + a wider TeamSummary card filling the rest of the
+   row (mirrors the reference "Jobs Summary" layout — narrow stat cards plus
+   one wider highlight card, sized so the row reaches the right edge instead
+   of leaving a gap after the last narrow card). */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr)) minmax(220px, 1.6fr);
+  gap: var(--space-16);
+  margin-bottom: var(--space-24);
+}
+
+@media (max-width: 1100px) {
+  .kpi-grid { grid-template-columns: repeat(2, minmax(150px, 1fr)); }
+  .kpi-grid > .kpi-grid-wide { grid-column: 1 / -1; }
+}
+
+@media (max-width: 560px) {
+  .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ── Projects page layout (projects/page.tsx) ──
+   Project list + detail panel side-by-side, list column pinned to a
+   280–340px minimum — that minimum alone is wider than most phones, so it
+   needs to collapse to a single stacked column on mobile. */
+.projects-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.projects-layout.has-detail {
+  grid-template-columns: minmax(280px, 340px) 1fr;
+}
+
+/* Back button that returns to the project list on mobile — desktop always
+   shows the list alongside the detail panel, so it has no job there. */
+.projects-back-btn {
+  display: none;
+}
+
+@media (max-width: 1120px) {
+  .projects-layout.has-detail {
+    grid-template-columns: 1fr;
+  }
+
+  
+  .projects-layout.has-detail .projects-list {
+    display: none;
+  }
+
+  .projects-back-btn {
+    display: inline-flex;
+    align-self: flex-start;
+  }
+}
+
+
+
+.servers-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (max-width: 1120px) {
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .stat-grid { grid-template-columns: 1fr 1fr; }
+
+
+  .stat-card { padding: 14px; gap: 4px; }
+  .stat-card-value { font-size: 20px; }
+  .stat-card-label { font-size: 11px; }
+}
+
+
+.cal-dow-short { display: none; }
+
+.cal-cell {
+  min-height: 150px;
+  padding: 15px 15px;
+}
+
+.cal-chip-compact {
+  display: none;
+}
+
+.cal-bottom-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* Month nav is rendered twice (identical markup) — once beside the title,
+   once in the control row below. Only one copy is ever visible at a time. */
+.cal-nav-mobile {
+  display: none;
+}
+
+/* 1120px matches the sidebar-collapse breakpoint in app-shell.css — the
+   calendar needs to compact (short day names, dot-only event chips,
+   smaller cells) exactly when the sidebar disappears, so tablet widths
+   never get the full desktop calendar squeezed against a fixed sidebar. */
+@media (max-width: 1120px) {
+  .cal-dow-full { display: none; }
+  .cal-dow-short { display: inline; }
+
+  .cal-cell {
+    min-height: 52px;
+    padding: 4px;
+  }
+
+  .cal-chip-full { display: none; }
+  .cal-chip-compact {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-wrap: wrap;
+  }
+
+  .cal-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+
+ 
+  .cal-header-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+  .cal-header-controls > * {
+    justify-content: center;
+  }
+  .cal-add-btn {
+    grid-column: 1 / -1;
+  }
+
+  /* The desktop copy of the month nav (inside .cal-header-controls) is
+     replaced by .cal-nav-mobile above, next to the title. */
+  .cal-nav-desktop {
+    display: none;
+  }
+  .cal-nav-mobile {
+    display: block;
+  }
+
+  .cal-title-row {
+    width: 100%;
+  }
+}

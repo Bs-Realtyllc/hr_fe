@@ -1,0 +1,2 @@
+/* ── Divider ── */
+.divider { border: none; border-top: 1px solid var(--color-border); margin: 20px 0; }

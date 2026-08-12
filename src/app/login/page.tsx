@@ -42,10 +42,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="login-page">
-      <div className="login-card">
-        <div className="login-header">
-          <div className="login-logo">
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-header">
+          <div className="auth-logo">
             <img src="/logos/hr-platform.svg" alt="HR Platform" width={28} height={28} />
           </div>
           <h1>HR Platform</h1>
@@ -83,7 +83,7 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div className={errorType === 'org' ? 'login-error login-error-org' : 'login-error'}>
+            <div className={errorType === 'org' ? 'auth-error auth-error-org' : 'auth-error'}>
               {errorType === 'org' && <span style={{ fontSize: 16, marginRight: 8 }}>🔒</span>}
               {error}
             </div>

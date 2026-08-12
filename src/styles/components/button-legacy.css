@@ -1,0 +1,51 @@
+/*
+ * Legacy button system — separate from button.css (the Figma-sourced
+ * .btn-primary/.btn-secondary/.btn-text system). Both are still actively
+ * used across the app (grep confirms ~23 files use this system, ~11 use the
+ * newer one) and BOTH define `.btn-primary` with different rules.
+ *
+ * Import order matters: this file must load BEFORE button.css (see
+ * styles/components/index.css) so button.css's `.btn-primary` wins on the
+ * shared class name — this preserves the exact cascade behavior that
+ * existed before this migration (globals.css was imported before
+ * buttons.css in the old layout.tsx). This collision predates this
+ * migration and was not introduced or resolved by it — worth a real
+ * follow-up decision on whether to unify the two systems.
+ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13.5px;
+  font-weight: 600;
+  border: none;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--color-primary-hover); }
+
+.btn-accent {
+  background: var(--color-accent);
+  color: var(--color-text-h1);
+}
+.btn-accent:hover { background: var(--color-accent-hover); }
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+}
+.btn-ghost:hover { background: var(--color-primary-light); }
+
+.btn-danger {
+  background: var(--color-error);
+  color: #fff;
+}
+
+.btn-sm { padding: 5px 10px; font-size: 12px; }

@@ -83,8 +83,10 @@ export default function LeaveReportPage() {
   if (loading) {
     return (
       <div className="page-header">
-        <h1>Leave Report</h1>
-        <p>Loading…</p>
+        <div>
+          <h1>Leave Report</h1>
+          <p>Loading…</p>
+        </div>
       </div>
     );
   }
@@ -97,7 +99,11 @@ export default function LeaveReportPage() {
           <p>Leave balances and monthly usage across all employees</p>
         </div>
         <button className="btn btn-ghost" onClick={exportExcel} disabled={!filtered.length}>
-          ⬇ Export Excel
+          <span
+            className="icon-mask"
+            style={{ WebkitMaskImage: 'url(/icons/download.svg)', maskImage: 'url(/icons/download.svg)' }}
+          />
+          Export Excel
         </button>
       </div>
 

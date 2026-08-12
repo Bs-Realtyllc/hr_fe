@@ -197,10 +197,12 @@ export default function ProfilePage() {
   });
 
   return (
-    <div style={{ maxWidth: 780, margin: '0 auto' }}>
+    <div>
       <div className="page-header">
-        <h1>My Profile</h1>
-        <p>Manage your personal information, documents, and account security</p>
+        <div>
+          <h1>My Profile</h1>
+          <p>Manage your personal information, documents, and account security</p>
+        </div>
       </div>
 
       {/* ── Profile Header Card ───────────────────────────────────────────── */}
@@ -284,7 +286,11 @@ export default function ProfilePage() {
           <button style={tabStyle('security')}  onClick={() => setTab('security')}>Security</button>
         </div>
 
-        <div style={{ padding: 28 }}>
+        {/* Form fields stay a comfortable reading width even though the page
+            itself is now full-width like every other page — otherwise a
+            2-column input grid would stretch each field edge-to-edge on a
+            wide viewport instead of the compact rows the reference shows. */}
+        <div style={{ padding: 28, maxWidth: 780 }}>
 
           {/* ── PERSONAL INFO ─────────────────────────────────────────────── */}
           {tab === 'personal' && (

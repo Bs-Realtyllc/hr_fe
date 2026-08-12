@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -20,19 +21,6 @@ interface Employee {
   is_active: boolean;
 }
 
-interface Project {
-  id: number;
-  name: string;
-  description: string;
-  status: string;
-  start_date?: string;
-  expected_end_date?: string;
-  assigned_role: string;
-  milestones: { id: number; title: string; due_date: string; status: string }[];
-  repo_url: string[];
-  docs_url: string[];
-}
-
 function initials(name: string) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
@@ -50,18 +38,6 @@ const roleColors: Record<string, string> = {
   admin: 'badge-error',
   lead: 'badge-accent',
   employee: 'badge-neutral',
-};
-
-const statusBadge: Record<string, string> = {
-  active: 'badge-success',
-  archived: 'badge-neutral',
-  on_hold: 'badge-warning',
-};
-
-const msBadge: Record<string, string> = {
-  completed: 'badge-success',
-  in_progress: 'badge-info',
-  pending: 'badge-neutral',
 };
 
 const UNASSIGNED_DEPARTMENT = 'Unassigned';
@@ -91,15 +67,13 @@ function groupByDepartment(list: Employee[]): [string, Employee[]][] {
 
 export default function EmployeesPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const isAdmin = user?.role === 'admin' || user?.role === 'lead';
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [search, setSearch] = useState('');
   const [myTeamOnly, setMyTeamOnly] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [selected, setSelected] = useState<Employee | null>(null);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loadingProjects, setLoadingProjects] = useState(false);
   const [form, setForm] = useState({
     name: '', email: '', phone: '', designation: '', department: '',
     manager_id: '', start_date: '', timezone: 'UTC', work_hours: '9 AM - 5 PM',
@@ -122,19 +96,6 @@ export default function EmployeesPage() {
 
   const sections = groupByDepartment(filtered);
   const departmentCount = new Set(filtered.map(e => e.department?.trim() || UNASSIGNED_DEPARTMENT)).size;
-
-  const selectEmployee = async (emp: Employee) => {
-    if (selected?.id === emp.id) {
-      setSelected(null);
-      setProjects([]);
-      return;
-    }
-    setSelected(emp);
-    setLoadingProjects(true);
-    const data = await api.get<Project[]>(`/projects/by-employee/${emp.id}`).catch(() => []);
-    setProjects(data);
-    setLoadingProjects(false);
-  };
 
   const submit = async (ev: React.FormEvent) => {
     ev.preventDefault();
@@ -159,30 +120,45 @@ export default function EmployeesPage() {
             </p>
           </div>
           {isAdmin && (
-            <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Add Employee</button>
+            <button className="btn btn-primary btn-sm" onClick={() => setShowModal(true)}>
+              <span
+                className="icon-mask"
+                style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
+              />
+              Add Employee
+            </button>
           )}
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 20, padding: '12px 16px' }}>
-        <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="search-bar" style={{ flex: 1 }}>
+          <span
+            className="icon-mask search-bar-icon"
+            style={{ WebkitMaskImage: 'url(/icons/search.svg)', maskImage: 'url(/icons/search.svg)' }}
+          />
           <input
             className="form-input"
             placeholder="Search by name, role, department..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            style={{ flex: 1, border: 'none', boxShadow: 'none', padding: '6px 0', fontSize: 14 }}
           />
-          <div style={{ width: 1, height: 24, background: 'var(--color-border)', flexShrink: 0 }} />
-          <button
-            className={`btn btn-sm ${myTeamOnly ? 'btn-primary' : 'btn-ghost'}`}
-            style={{ flexShrink: 0 }}
-            onClick={() => setMyTeamOnly(v => !v)}
-            title="Show only yourself and your direct reports"
-          >
-            {myTeamOnly ? '✓ My Team' : '◎ My Team'}
-          </button>
         </div>
+        <button
+          className={`btn btn-sm ${myTeamOnly ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ flexShrink: 0 }}
+          onClick={() => setMyTeamOnly(v => !v)}
+          title="Show only yourself and your direct reports"
+        >
+          <span
+            className="icon-mask"
+            style={{
+              WebkitMaskImage: `url(/icons/${myTeamOnly ? 'check.svg' : 'users.svg'})`,
+              maskImage: `url(/icons/${myTeamOnly ? 'check.svg' : 'users.svg'})`,
+            }}
+          />
+          My Team
+        </button>
       </div>
 
       {sections.map(([department, members]) => (
@@ -198,14 +174,13 @@ export default function EmployeesPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
             {members.map(emp => {
               const tech = parseTech(emp.tech_stack);
-              const isSelected = selected?.id === emp.id;
               const isMe = emp.id === user?.id;
               return (
                 <div
                   key={emp.id}
                   className="card"
-                  style={{ cursor: 'pointer', border: isSelected ? '2px solid var(--color-accent)' : '2px solid transparent' }}
-                  onClick={() => selectEmployee(emp)}
+                  style={{ cursor: 'pointer', border: '2px solid transparent' }}
+                  onClick={() => router.push(`/employees/${emp.id}`)}
                 >
                   <div className="flex items-center gap-3 mb-4">
                     <div className="avatar avatar-lg">{initials(emp.name)}</div>
@@ -256,7 +231,11 @@ export default function EmployeesPage() {
 
       {filtered.length === 0 && (
         <div className="empty-state card" style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 40 }}>👤</div>
+          <span
+            className="icon-mask empty-state-icon"
+            style={{ WebkitMaskImage: 'url(/icons/users.svg)', maskImage: 'url(/icons/users.svg)' }}
+          />
+
           <p>
             {myTeamOnly
               ? 'No one reports to you yet'
@@ -267,101 +246,9 @@ export default function EmployeesPage() {
         </div>
       )}
 
-      {/* Project history panel */}
-      {selected && (
-        <div className="card" style={{ marginTop: 24 }}>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="avatar avatar-sm">{initials(selected.name)}</div>
-            <div>
-              <div className="font-semibold">{selected.name}'s Projects</div>
-              <div className="text-muted text-sm">{selected.designation}</div>
-            </div>
-            <button onClick={() => { setSelected(null); setProjects([]); }}
-              style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--color-muted)' }}>×</button>
-          </div>
-
-          {loadingProjects && <p className="text-muted text-sm">Loading projects…</p>}
-
-          {!loadingProjects && projects.length === 0 && (
-            <p className="text-muted text-sm">Not assigned to any projects yet.</p>
-          )}
-
-          {!loadingProjects && projects.map(p => {
-            const repos = Array.isArray(p.repo_url) ? p.repo_url : [];
-            const docs = Array.isArray(p.docs_url) ? p.docs_url : [];
-            const pending = p.milestones.filter(m => m.status !== 'completed').length;
-            const total = p.milestones.length;
-            return (
-              <div key={p.id} style={{
-                background: 'var(--color-bg)', borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--color-border)', padding: 16, marginBottom: 12,
-              }}>
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <div className="font-semibold">{p.name}</div>
-                    {p.description && <div className="text-muted text-sm">{p.description}</div>}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <span className={`badge ${statusBadge[p.status]}`}>{p.status}</span>
-                    <span className="badge badge-accent">{p.assigned_role.replace(/_/g, ' ')}</span>
-                  </div>
-                </div>
-
-                <div className="flex gap-4 text-sm" style={{ marginBottom: p.milestones.length > 0 ? 12 : 0 }}>
-                  {p.start_date && (
-                    <span className="text-muted">
-                      Start: <strong>{new Date(p.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong>
-                    </span>
-                  )}
-                  {p.expected_end_date && (
-                    <span className="text-muted">
-                      Deadline: <strong style={{ color: new Date(p.expected_end_date) < new Date() && p.status !== 'archived' ? 'var(--color-error)' : 'inherit' }}>
-                        {new Date(p.expected_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </strong>
-                    </span>
-                  )}
-                  {total > 0 && (
-                    <span className="text-muted">
-                      Milestones: <strong>{total - pending}/{total} done</strong>
-                    </span>
-                  )}
-                </div>
-
-                {(repos.length > 0 || docs.length > 0) && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: p.milestones.length > 0 ? 10 : 0 }}>
-                    {repos.map((url, i) => (
-                      <a key={i} href={url} target="_blank" rel="noreferrer" className="text-sm"
-                        style={{ color: 'var(--color-accent)' }}>Repo {repos.length > 1 ? i + 1 : ''} ↗</a>
-                    ))}
-                    {docs.map((url, i) => (
-                      <a key={i} href={url} target="_blank" rel="noreferrer" className="text-sm"
-                        style={{ color: 'var(--color-accent)' }}>Docs {docs.length > 1 ? i + 1 : ''} ↗</a>
-                    ))}
-                  </div>
-                )}
-
-                {p.milestones.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {p.milestones.map(m => (
-                      <div key={m.id} className="flex items-center gap-3">
-                        <span className={`badge ${msBadge[m.status]}`} style={{ fontSize: 11 }}>{m.status.replace('_', ' ')}</span>
-                        <span className="text-sm">{m.title}</span>
-                        <span className="text-muted text-sm" style={{ marginLeft: 'auto' }}>
-                          {new Date(m.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" style={{ maxWidth: 600 }} onClick={e => e.stopPropagation()}>
+          <div className="modal" style={{ maxWidth: 600, maxHeight: '88vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Add Employee</h2>
               <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
@@ -409,16 +296,21 @@ export default function EmployeesPage() {
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Manager ID</label>
-                  <input className="form-input" type="number" value={form.manager_id} onChange={e => setForm({ ...form, manager_id: e.target.value })} />
+                  <label className="form-label">Manager</label>
+                  <select className="form-select" value={form.manager_id} onChange={e => setForm({ ...form, manager_id: e.target.value })}>
+                    <option value="">No manager</option>
+                    {employees.map(e => (
+                      <option key={e.id} value={e.id}>{e.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="form-group">
                 <label className="form-label">Tech Stack (comma-separated)</label>
                 <input className="form-input" value={form.tech_stack} onChange={e => setForm({ ...form, tech_stack: e.target.value })} placeholder="React, Node.js, Go, PostgreSQL" />
               </div>
-              <div className="flex gap-3 justify-between mt-4">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
+              <div className="flex gap-3 justify-end mt-4">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">Add Employee</button>
               </div>
             </form>

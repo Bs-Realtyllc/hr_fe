@@ -31,10 +31,10 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="login-page">
-      <div className="login-card">
-        <div className="login-header">
-          <div className="login-logo">
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-header">
+          <div className="auth-logo">
             <img src="/logos/hr-platform.svg" alt="HR Platform" width={28} height={28} />
           </div>
           <h1>Forgot Password</h1>
@@ -69,7 +69,7 @@ export default function ForgotPasswordPage() {
             </div>
 
             {error && (
-              <div className="login-error">{error}</div>
+              <div className="auth-error">{error}</div>
             )}
 
             <button className="btn btn-primary" type="submit" disabled={loading}

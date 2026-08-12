@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import PillTabs from '@/components/PillTabs';
 
 interface FeedbackNote {
   id: number;
@@ -124,7 +125,13 @@ export default function FeedbackPage() {
             <h1>Feedback</h1>
             <p>Peer recognition, manager notes, and constructive feedback across the team</p>
           </div>
-          <button className="btn btn-primary" onClick={openCreate}>+ Give Feedback</button>
+          <button className="btn btn-primary btn-sm" onClick={openCreate}>
+            <span
+              className="icon-mask"
+              style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
+            />
+            Give Feedback
+          </button>
         </div>
       </div>
 
@@ -148,27 +155,40 @@ export default function FeedbackPage() {
       )}
 
       {/* Tab bar */}
-      <div className="flex items-center gap-2" style={{ marginBottom: 16, flexWrap: 'wrap' }}>
-        <button className={`btn btn-sm ${scope === 'public' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setScope('public')}>Recognition Feed</button>
-        <button className={`btn btn-sm ${scope === 'received' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setScope('received')}>Received</button>
-        <button className={`btn btn-sm ${scope === 'sent' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setScope('sent')}>Sent</button>
+      <div className="flex items-center justify-between" style={{ marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <PillTabs
+          value={scope}
+          onChange={v => setScope(v as typeof scope)}
+          options={[
+            { value: 'public',   label: 'Recognition Feed' },
+            { value: 'received', label: 'Received' },
+            { value: 'sent',     label: 'Sent' },
+          ]}
+        />
 
-        <div style={{ width: 1, height: 24, background: 'var(--color-border)' }} />
-
-        <select className="form-select" style={{ width: 170 }} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-          <option value="">All types</option>
-          <option value="praise">Praise</option>
-          <option value="constructive">Constructive</option>
-          <option value="peer">Peer</option>
-          <option value="manager">Manager</option>
-        </select>
+        <div className="select-compact-wrap">
+          <select className="select-compact" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+            <option value="">All types</option>
+            <option value="praise">Praise</option>
+            <option value="constructive">Constructive</option>
+            <option value="peer">Peer</option>
+            <option value="manager">Manager</option>
+          </select>
+          <span
+            className="icon-mask"
+            style={{ WebkitMaskImage: 'url(/icons/chevron-down.svg)', maskImage: 'url(/icons/chevron-down.svg)' }}
+          />
+        </div>
       </div>
 
       {loading ? (
         <div className="card" style={{ padding: 48, textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading…</div>
       ) : notes.length === 0 ? (
         <div className="empty-state card">
-          <div style={{ fontSize: 40 }}>💬</div>
+          <span
+            className="icon-mask empty-state-icon"
+            style={{ WebkitMaskImage: 'url(/icons/message-circle.svg)', maskImage: 'url(/icons/message-circle.svg)' }}
+          />
           <p>
             {scope === 'public' && 'No public recognition posted yet. Be the first to give someone a shout-out!'}
             {scope === 'received' && 'No feedback received yet.'}
@@ -231,25 +251,23 @@ export default function FeedbackPage() {
                   ))}
                 </select>
               </div>
-              <div className="grid-2">
-                <div className="form-group">
-                  <label className="form-label">Type</label>
-                  <select className="form-select" value={form.feedback_type}
-                    onChange={e => setForm({ ...form, feedback_type: e.target.value })}>
-                    <option value="praise">Praise</option>
-                    <option value="constructive">Constructive</option>
-                    <option value="peer">Peer</option>
-                    <option value="manager">Manager</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Visibility</label>
-                  <select className="form-select" value={form.visibility}
-                    onChange={e => setForm({ ...form, visibility: e.target.value })}>
-                    <option value="public">Public — visible on the recognition feed</option>
-                    <option value="private">Private — only visible to both of you</option>
-                  </select>
-                </div>
+              <div className="form-group">
+                <label className="form-label">Type</label>
+                <select className="form-select" value={form.feedback_type}
+                  onChange={e => setForm({ ...form, feedback_type: e.target.value })}>
+                  <option value="praise">Praise</option>
+                  <option value="constructive">Constructive</option>
+                  <option value="peer">Peer</option>
+                  <option value="manager">Manager</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Visibility</label>
+                <select className="form-select" value={form.visibility}
+                  onChange={e => setForm({ ...form, visibility: e.target.value })}>
+                  <option value="public">Public — visible on the recognition feed</option>
+                  <option value="private">Private — only visible to both of you</option>
+                </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Message *</label>
@@ -258,8 +276,14 @@ export default function FeedbackPage() {
                   placeholder="Be specific — what did they do, and what was the impact?" required />
               </div>
               <div className="flex gap-3 justify-between mt-4">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowCreate(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Send Feedback</button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowCreate(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary btn-sm">
+                  <span
+                    className="icon-mask"
+                    style={{ WebkitMaskImage: 'url(/icons/send.svg)', maskImage: 'url(/icons/send.svg)' }}
+                  />
+                  Send Feedback
+                </button>
               </div>
             </form>
           </div>

@@ -3,6 +3,10 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import Sidebar from '@/components/Sidebar';
+import { useAppDispatch } from '@/store/hook';
+import { setSidebarOpen } from '@/store/sidebarSlice';
+import { RxHamburgerMenu } from 'react-icons/rx';
+
 
 function initials(name: string) {
   return name
@@ -17,6 +21,8 @@ function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading } = useAuth();
+  const dispatch = useAppDispatch();
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const PUBLIC_PATHS = ['/login', '/forgot-password', '/reset-password'];
@@ -38,6 +44,12 @@ function Shell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     import('@/lib/capacitor').then(m => m.initCapacitorPlugins());
   }, []);
+
+  // Route changes close the mobile drawer; harmless on desktop, where the
+  // sidebar's layout doesn't depend on this flag at all.
+  useEffect(() => {
+    dispatch(setSidebarOpen(false));
+  }, [pathname, dispatch]);
 
   if (isPublic) return <>{children}</>;
   if (loading || !user) return null;
@@ -72,6 +84,16 @@ function Shell({ children }: { children: React.ReactNode }) {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* ── Main content ── */}
+      <div className="mobile-topbar">
+        <button
+          className="mobile-topbar-toggle"
+          onClick={() => dispatch(setSidebarOpen(true))}
+          aria-label="Open menu"
+        >
+          <RxHamburgerMenu />
+        </button>
+        <span className="mobile-topbar-title">HR Platform</span>
+      </div>
       <main className="main-content">{children}</main>
     </div>
   );

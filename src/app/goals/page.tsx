@@ -84,7 +84,7 @@ export default function GoalsPage() {
   const [employees, setEmployees]   = useState<Employee[]>([]);
   const [loading, setLoading]       = useState(true);
   const [employeeFilter, setEmployeeFilter] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({
@@ -110,12 +110,11 @@ export default function GoalsPage() {
     setLoading(true);
     const params = new URLSearchParams();
     if (isPrivileged && employeeFilter) params.set('employee_id', employeeFilter);
-    if (categoryFilter) params.set('category', categoryFilter);
     const q = params.toString() ? `?${params.toString()}` : '';
     api.get<Goal[]>(`/goals${q}`).then(setGoals).catch(() => {}).finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [employeeFilter, categoryFilter]);
+  useEffect(() => { load(); }, [employeeFilter]);
 
   const columns = useMemo(() => {
     const map: Record<string, Goal[]> = {};
@@ -199,7 +198,7 @@ export default function GoalsPage() {
 
   const canManage = (g: Goal) => isPrivileged || g.employee_id === user?.id;
 
-  if (loading) return <div className="page-header"><h1>Goals &amp; KPIs</h1><p>Loading…</p></div>;
+  if (loading) return <div className="page-header"><div><h1>Goals &amp; KPIs</h1><p>Loading…</p></div></div>;
 
   return (
     <div>
@@ -209,67 +208,65 @@ export default function GoalsPage() {
             <h1>Goals &amp; KPIs</h1>
             <p>{isPrivileged ? 'Track individual, team, and company goals across the org' : 'Track your goals and key performance indicators'}</p>
           </div>
-          <button className="btn btn-primary" onClick={openCreate}>+ Add Goal</button>
+          <button className="btn btn-primary btn-sm" onClick={openCreate}>
+            <span
+              className="icon-mask"
+              style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
+            />
+            Add Goal
+          </button>
         </div>
       </div>
 
-      <div className="stat-grid" style={{ marginBottom: 24 }}>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-primary)' }} />
-          <div className="stat-card-label">Total Goals</div>
-          <div className="stat-card-value">{totals.total}</div>
+      <div className="flex items-center justify-between" style={{ marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+        <div className="pill-group">
+          <button type="button" className={`pill ${statusFilter === '' ? 'pill-active' : ''}`} onClick={() => setStatusFilter('')}>
+            All ({totals.total})
+          </button>
+          {STATUS_COLUMNS.map(col => (
+            <button
+              key={col.key}
+              type="button"
+              className={`pill ${statusFilter === col.key ? 'pill-active' : ''}`}
+              onClick={() => setStatusFilter(col.key)}
+            >
+              {col.label} ({columns[col.key].length})
+            </button>
+          ))}
         </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-success)' }} />
-          <div className="stat-card-label">Completed</div>
-          <div className="stat-card-value">{totals.completed}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-error)' }} />
-          <div className="stat-card-label">At Risk</div>
-          <div className="stat-card-value">{totals.atRisk}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-dot" style={{ background: 'var(--color-accent)' }} />
-          <div className="stat-card-label">Avg. Progress</div>
-          <div className="stat-card-value">{totals.avgProgress}%</div>
-        </div>
-      </div>
-
-      <div className="card mb-4" style={{ padding: '14px 20px' }}>
-        <div className="flex items-center gap-3" style={{ flexWrap: 'wrap' }}>
+        <div className="flex items-center gap-3">
+          <span className="text-muted text-sm" style={{ whiteSpace: 'nowrap' }}>
+            Avg. progress: <strong style={{ color: 'var(--color-text-h3)' }}>{totals.avgProgress}%</strong>
+          </span>
           {isPrivileged && (
-            <div className="flex items-center gap-2">
-              <label className="form-label" style={{ margin: 0, whiteSpace: 'nowrap' }}>Employee</label>
-              <select className="form-select" style={{ width: 200 }} value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)}>
+            <div className="select-compact-wrap">
+              <select className="select-compact" value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)}>
                 <option value="">All employees</option>
                 {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
               </select>
+              <span
+                className="icon-mask"
+                style={{ WebkitMaskImage: 'url(/icons/chevron-down.svg)', maskImage: 'url(/icons/chevron-down.svg)' }}
+              />
             </div>
           )}
-          <div className="flex items-center gap-2">
-            <label className="form-label" style={{ margin: 0, whiteSpace: 'nowrap' }}>Category</label>
-            <select className="form-select" style={{ width: 160 }} value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
-              <option value="">All categories</option>
-              <option value="individual">Individual</option>
-              <option value="team">Team</option>
-              <option value="company">Company</option>
-            </select>
-          </div>
-          {(employeeFilter || categoryFilter) && (
-            <button className="btn btn-ghost btn-sm" onClick={() => { setEmployeeFilter(''); setCategoryFilter(''); }}>Clear filters</button>
+          {employeeFilter && (
+            <button className="btn btn-text btn-xs" onClick={() => setEmployeeFilter('')}>Clear</button>
           )}
         </div>
       </div>
 
       {goals.length === 0 ? (
         <div className="empty-state card">
-          <div style={{ fontSize: 40 }}>🎯</div>
+          <span
+            className="icon-mask empty-state-icon"
+            style={{ WebkitMaskImage: 'url(/icons/target.svg)', maskImage: 'url(/icons/target.svg)' }}
+          />
           <p>No goals yet. Set one to start tracking progress.</p>
         </div>
       ) : (
         <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 8 }}>
-          {STATUS_COLUMNS.map(col => (
+          {STATUS_COLUMNS.filter(col => !statusFilter || col.key === statusFilter).map(col => (
             <div key={col.key} style={{ flex: '0 0 280px', width: 280 }}>
               <div className="flex items-center gap-2" style={{ marginBottom: 12 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: col.color, flexShrink: 0 }} />

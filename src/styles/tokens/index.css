@@ -1,0 +1,16 @@
+/*
+ * Tokens barrel — the entire tokens layer, in dependency order.
+ * Semantic files reference primitives via var(), so primitives import first.
+ *
+ * NOTE: not yet wrapped in `@layer tokens` — that requires consolidating
+ * all CSS (base/layout/components/utilities) into one root manifest first.
+ * See CSS-ARCHITECTURE.md §3 and §7 (Phase 6).
+ */
+
+@import './color.primitives.css';
+@import './color.semantic.css';
+@import './typography.primitives.css';
+@import './typography.semantic.css';
+@import './spacing.css';
+@import './radius.css';
+@import './shadow.css';
