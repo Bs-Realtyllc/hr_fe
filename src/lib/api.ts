@@ -1,6 +1,7 @@
 import { clearAuth, getToken } from '@/lib/auth';
 
-const BASE = '/api';
+// Hardcoded to match the successful backend routing domain path layout
+const BASE = 'https://hr.gitgi.com/api';
 
 async function req<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getToken();

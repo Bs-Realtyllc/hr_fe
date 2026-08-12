@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Authorize your live domain framework explicitly -->
+        <domain includeSubdomains="true">gitgi.com</domain>
+        <domain includeSubdomains="true">bsrealtyllc.com</domain>
+        <!-- Trust internal phone system loopbacks -->
+        <domain includeSubdomains="true">localhost</domain>
+    </domain-config>
+</network-security-config>

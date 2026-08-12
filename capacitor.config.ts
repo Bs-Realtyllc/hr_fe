@@ -9,6 +9,12 @@ const config: CapacitorConfig = {
     androidScheme: 'https',
   },
   plugins: {
+    CapacitorCookies: {
+      enabled: true,
+    },
+    CapacitorHttp: {
+      enabled: true,
+    },
     StatusBar: {
       style: 'Dark',
       backgroundColor: '#0F4C5C',

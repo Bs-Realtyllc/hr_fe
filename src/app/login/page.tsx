@@ -18,11 +18,14 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/login', {
+      const BASE = 'https://hr.gitgi.com/api';
+
+      const res = await fetch(`${BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
+
       const data = await res.json();
       if (!res.ok) {
         setErrorType(res.status === 403 ? 'org' : 'default');
@@ -47,6 +50,9 @@ export default function LoginPage() {
           </div>
           <h1>HR Platform</h1>
           <p>Sign in to your account</p>
+          <div style={{ color: 'green', fontSize: '12px', marginTop: '8px', wordBreak: 'break-all' }}>
+            DEBUG API ENDPOINT: https://hr.gitgi.com/api
+          </div>
         </div>
 
         <form onSubmit={handleSubmit}>
