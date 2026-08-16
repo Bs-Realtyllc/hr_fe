@@ -1,0 +1,30 @@
+{
+	"appId": "com.raralabs.hrplatform",
+	"appName": "HR Platform",
+	"webDir": "out",
+	"server": {
+		"androidScheme": "https"
+	},
+	"plugins": {
+		"StatusBar": {
+			"style": "Dark",
+			"backgroundColor": "#0F4C5C",
+			"overlaysWebView": false
+		},
+		"SplashScreen": {
+			"launchShowDuration": 1500,
+			"launchAutoHide": true,
+			"backgroundColor": "#0F4C5C",
+			"androidSplashResourceName": "splash",
+			"androidScaleType": "CENTER_CROP",
+			"showSpinner": false,
+			"splashFullScreen": true,
+			"splashImmersive": true
+		},
+		"Keyboard": {
+			"resize": "body",
+			"style": "DARK",
+			"resizeOnFullScreen": true
+		}
+	}
+}

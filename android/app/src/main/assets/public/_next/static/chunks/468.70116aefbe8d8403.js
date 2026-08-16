@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_N_E=self.webpackChunk_N_E||[]).push([[468],{9468:function(e,n,c){c.d(n,{SplashScreen:function(){return h}});let h=(0,c(7185).fo)("SplashScreen",{web:()=>c.e(653).then(c.bind(c,9653)).then(e=>new e.SplashScreenWeb)})}}]);
