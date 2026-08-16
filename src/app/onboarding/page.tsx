@@ -5,13 +5,14 @@ import Popup from 'reactjs-popup';
 // import 'reactjs-popup/dist/index.css';
 //mail template
 import { buildFillDetailsMailto } from '@/template/fillDetailsMailTemplate';
+import { api } from '@/lib/api';
 
 interface InactiveUser {
   id: number;
   name: string;
   dob: string | null;
   gender: string | null;
-  current_address: string | null;
+  address: string | null;
   permanent_address: string | null;
   education_level: string | null;
   institution_name: string | null;
@@ -58,9 +59,7 @@ const Page = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/employees/inactive');
-      if (!res.ok) throw new Error(`Failed to load (${res.status})`);
-      const data: InactiveUser[] = await res.json();
+      const data = await api.get<InactiveUser[]>('/employees/onboarding');
       setUsers(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong while loading users.');
@@ -80,17 +79,12 @@ const Page = () => {
   ) => {
     setActionState((prev) => ({ ...prev, [id]: 'loading' }));
     try {
-      const url =
+      const path =
         decision === 'approve'
-          ? `/api/employees/${id}`
-          : `/api/employees/${id}?send_mail=${send_mail}`;
+          ? `/employees/${id}/approve`
+          : `/employees/${id}/reject?send_mail=${send_mail}`;
 
-      const res = await fetch(url, {
-        method: decision === 'approve' ? 'PATCH' : 'DELETE',
-      });
-      const data = await res.json();
-      console.log(data);
-      if (!res.ok) throw new Error(`Failed to ${decision} (${res.status})`);
+      await api.put(path, {});
 
       // Remove the user from the list once actioned
       setUsers((prev) => prev.filter((u) => u.id !== id));

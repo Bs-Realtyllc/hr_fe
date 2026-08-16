@@ -77,7 +77,7 @@ export default function EmployeesPage() {
   const [form, setForm] = useState({
     name: '', email: '', phone: '', designation: '', department: '',
     manager_id: '', start_date: '', timezone: 'UTC', work_hours: '9 AM - 5 PM',
-    tech_stack: '', role: 'employee',
+    tech_stack: '', role: 'employee', status: 'active',
   });
 
   useEffect(() => {
@@ -291,8 +291,16 @@ export default function EmployeesPage() {
                   <label className="form-label">Role</label>
                   <select className="form-select" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}>
                     <option value="employee">Employee</option>
+                    <option value="intern">Intern</option>
                     <option value="lead">Lead</option>
                     <option value="admin">Admin</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Status</label>
+                  <select className="form-select" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+                    <option value="active">Active</option>
+                    <option value="onboarding">Onboarding (pending approval)</option>
                   </select>
                 </div>
                 <div className="form-group">
