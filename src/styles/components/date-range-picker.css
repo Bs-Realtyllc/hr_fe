@@ -1,0 +1,109 @@
+/*
+ * Theming for react-datepicker (used as a From/To calendar range picker,
+ * e.g. the Monthly Reports filter) to match the app's design tokens.
+ */
+
+.react-datepicker-popper {
+  z-index: 1000;
+}
+
+.react-datepicker {
+  font-family: inherit;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+  overflow: hidden;
+}
+
+.react-datepicker__header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.react-datepicker__current-month,
+.react-datepicker-time__header,
+.react-datepicker-year-header {
+  color: var(--color-text-h3);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.react-datepicker__day-name {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.react-datepicker__week {
+  display: flex;
+}
+
+.react-datepicker__day {
+  flex: 1;
+  margin: 0;
+  padding: 0.208em 0;
+  border-radius: 50%;
+  color: var(--color-text-body);
+  outline: none;
+}
+
+.react-datepicker__day:hover {
+  background: var(--color-primary-light);
+  border-radius: 50%;
+}
+
+/* react-datepicker gives day cells a native focus outline for keyboard nav;
+   it reads as a stray ring around whichever day last had focus, unrelated
+   to the actual selected range, so we suppress it. */
+.react-datepicker__day:focus,
+.react-datepicker__day:focus-visible {
+  outline: none;
+}
+
+/* This is purely a keyboard-focus marker, not a real selection — react-datepicker's
+   own stylesheet loads after ours (imported per-component, after global.css) so its
+   background wins the cascade unless forced transparent here. */
+.react-datepicker__day--keyboard-selected {
+  background: transparent !important;
+  color: var(--color-text-body) !important;
+}
+
+/* Flat band across the whole in-range stretch — no border-radius so days
+   connect edge-to-edge like the reference, instead of looking like separate pills. */
+.react-datepicker__day--in-range,
+.react-datepicker__day--in-selecting-range {
+  background: var(--color-primary-light) !important;
+  color: var(--color-text-h3) !important;
+  border-radius: 0 !important;
+}
+
+/* Solid filled circle for the two endpoints only. */
+.react-datepicker__day--range-start,
+.react-datepicker__day--range-end,
+.react-datepicker__day--selecting-range-start,
+.react-datepicker__day--selecting-range-end {
+  background: var(--color-primary) !important;
+  color: #fff !important;
+  border-radius: 50% !important;
+}
+
+.react-datepicker__day--today {
+  font-weight: 700;
+}
+
+.react-datepicker__day--today.react-datepicker__day--in-range,
+.react-datepicker__day--today.react-datepicker__day--in-selecting-range {
+  color: var(--color-primary) !important;
+}
+
+.react-datepicker__day--outside-month {
+  color: var(--color-text-muted);
+  opacity: 0.5;
+}
+
+.react-datepicker__navigation-icon::before {
+  border-color: var(--color-text-muted);
+}
+
+.react-datepicker__triangle {
+  display: none;
+}

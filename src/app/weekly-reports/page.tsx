@@ -164,14 +164,22 @@ function ReportCard({
           onClick={() => onPreview(report)}
           title="Preview file"
         >
-          🔍 Preview
+          <span
+            className="icon-mask"
+            style={{ WebkitMaskImage: 'url(/icons/eye.svg)', maskImage: 'url(/icons/eye.svg)' }}
+          />
+          Preview
         </button>
         <button
           className="btn btn-sm btn-ghost"
           onClick={() => download(report.id)}
           title="Download file"
         >
-          ↓ Download
+          <span
+            className="icon-mask"
+            style={{ WebkitMaskImage: 'url(/icons/download.svg)', maskImage: 'url(/icons/download.svg)' }}
+          />
+          Download
         </button>
         {canDelete && (
           <button
@@ -236,8 +244,11 @@ function AdminView({
       </div>
 
       {groups.length === 0 && (
-        <div className="card" style={{ padding: 48, textAlign: 'center', color: 'var(--color-text-muted)' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
+        <div className="empty-state card">
+          <span
+            className="icon-mask empty-state-icon"
+            style={{ WebkitMaskImage: 'url(/icons/inbox.svg)', maskImage: 'url(/icons/inbox.svg)' }}
+          />
           <p>No weekly updates found yet.</p>
         </div>
       )}
@@ -260,7 +271,13 @@ function AdminView({
                   transition: 'background 0.15s',
                 }}
               >
-                <span style={{ fontSize: 18 }}>🗂</span>
+                <span
+                  className="icon-mask"
+                  style={{
+                    width: 18, height: 18,
+                    WebkitMaskImage: 'url(/icons/folder.svg)', maskImage: 'url(/icons/folder.svg)',
+                  }}
+                />
                 <span style={{ fontWeight: 700, fontSize: 15, flex: 1 }}>{group.label}</span>
 
                 {isCurrentWeek && (
@@ -330,8 +347,11 @@ function EmployeeView({
   return (
     <div>
       {reports.length === 0 && (
-        <div className="card" style={{ padding: 48, textAlign: 'center', color: 'var(--color-text-muted)' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>📁</div>
+        <div className="empty-state card">
+          <span
+            className="icon-mask empty-state-icon"
+            style={{ WebkitMaskImage: 'url(/icons/folder.svg)', maskImage: 'url(/icons/folder.svg)' }}
+          />
           <p>You haven't submitted any weekly updates yet.</p>
         </div>
       )}
@@ -400,8 +420,20 @@ function EmployeeView({
                     </div>
 
                     <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                      <button className="btn btn-sm btn-ghost" onClick={() => onPreview(r)}>🔍 Preview</button>
-                      <button className="btn btn-sm btn-ghost" onClick={() => download(r.id)}>↓ Download</button>
+                      <button className="btn btn-sm btn-ghost" onClick={() => onPreview(r)}>
+                        <span
+                          className="icon-mask"
+                          style={{ WebkitMaskImage: 'url(/icons/eye.svg)', maskImage: 'url(/icons/eye.svg)' }}
+                        />
+                        Preview
+                      </button>
+                      <button className="btn btn-sm btn-ghost" onClick={() => download(r.id)}>
+                        <span
+                          className="icon-mask"
+                          style={{ WebkitMaskImage: 'url(/icons/download.svg)', maskImage: 'url(/icons/download.svg)' }}
+                        />
+                        Download
+                      </button>
                       <button className="btn btn-sm btn-danger" onClick={() => onDelete(r.id)}>Delete</button>
                     </div>
                   </div>
@@ -543,7 +575,13 @@ export default function WeeklyReportsPage() {
                 : 'Your weekly work update submissions'}
             </p>
           </div>
-          <button className="btn btn-primary" onClick={openModal}>+ Submit This Week's Update</button>
+          <button className="btn btn-primary btn-sm" onClick={openModal}>
+            <span
+              className="icon-mask"
+              style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
+            />
+            Submit This Week's Update
+          </button>
         </div>
       </div>
 
@@ -638,8 +676,11 @@ export default function WeeklyReportsPage() {
                   Loading preview…
                 </div>
               ) : previewError ? (
-                <div style={{ padding: 60, textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                  <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+                <div className="empty-state">
+                  <span
+                    className="icon-mask empty-state-icon"
+                    style={{ WebkitMaskImage: 'url(/icons/alert-triangle.svg)', maskImage: 'url(/icons/alert-triangle.svg)' }}
+                  />
                   <p>Couldn't load the preview.</p>
                 </div>
               ) : previewUrl ? (
@@ -650,10 +691,19 @@ export default function WeeklyReportsPage() {
                 />
               ) : null
             ) : (
-              <div style={{ padding: 48, textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                <div style={{ fontSize: 44, marginBottom: 12 }}>📊</div>
+              <div className="empty-state">
+                <span
+                  className="icon-mask empty-state-icon"
+                  style={{ WebkitMaskImage: 'url(/icons/file-text.svg)', maskImage: 'url(/icons/file-text.svg)' }}
+                />
                 <p style={{ marginBottom: 16 }}>Inline preview isn't available for PowerPoint files.</p>
-                <button className="btn btn-primary" onClick={() => download(previewReport.id)}>↓ Download to view</button>
+                <button className="btn btn-primary" onClick={() => download(previewReport.id)}>
+                  <span
+                    className="icon-mask"
+                    style={{ WebkitMaskImage: 'url(/icons/download.svg)', maskImage: 'url(/icons/download.svg)' }}
+                  />
+                  Download to view
+                </button>
               </div>
             )}
           </div>

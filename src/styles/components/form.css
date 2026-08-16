@@ -1,0 +1,184 @@
+/* ── Forms ── */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.form-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-body);
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--gray-light-active);
+  border-radius: var(--radius-sm);
+  padding: var(--space-12) var(--space-16);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.5rem;
+  color: var(--color-text-body);
+  background: var(--color-surface);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder { color: var(--gray-light-active); }
+
+.form-input:hover:not(:disabled):not(:focus),
+.form-select:hover:not(:disabled):not(:focus),
+.form-textarea:hover:not(:disabled):not(:focus) {
+  border-color: var(--gray-normal);
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.form-input:disabled,
+.form-select:disabled,
+.form-textarea:disabled {
+  background: var(--gray-light);
+  border-color: var(--gray-light);
+  color: var(--gray-dark);
+  cursor: not-allowed;
+}
+
+.form-textarea { resize: vertical; min-height: 80px; }
+
+/* ── Form field with trailing icon (e.g. password visibility toggle) ── */
+.form-field { position: relative; display: flex; }
+
+.form-field .form-input { padding-right: 44px; }
+
+.form-field-icons {
+  position: absolute;
+  right: var(--space-12);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  color: var(--gray-dark);
+}
+
+.form-field-icons button {
+  display: inline-flex;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+}
+
+.form-field-icons .icon-mask { width: 20px; height: 20px; }
+
+/* ── Compact inline dropdown (e.g. "Sort by: Date ⌄" filters) ──
+ * Lighter than .form-select — sized for an inline filter chip, not a form field. */
+.select-compact-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.select-compact {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  padding: 6px 30px 6px 12px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-body);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.select-compact-wrap { position: relative; }
+
+.select-compact-wrap .icon-mask {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.select-compact:hover { border-color: var(--gray-normal); }
+.select-compact:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-light); }
+
+/* ── Search bar (bordered field, matching the text-field component) ── */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  border: 1px solid var(--gray-light-active);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-16);
+  background: var(--color-surface);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.search-bar:hover:not(:focus-within) { border-color: var(--gray-normal); }
+.search-bar:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.search-bar-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--gray-normal);
+}
+
+.search-bar .form-input {
+  flex: 1;
+  border: none;
+  padding: var(--space-12) 0;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+.search-bar .form-input:focus { box-shadow: none; }
+
+.search-bar-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+/* ── Error state ── */
+.form-field-error .form-input,
+.form-input-error {
+  border-color: var(--error-normal);
+}
+
+.form-field-error .form-input:focus,
+.form-input-error:focus {
+  border-color: var(--error-normal);
+  box-shadow: 0 0 0 3px var(--error-light);
+}
+
+.form-field-error .form-field-icons { color: var(--error-normal); }
+
+.form-error-text {
+  margin-top: var(--space-4);
+  font-size: 0.813rem;
+  color: var(--error-normal);
+}

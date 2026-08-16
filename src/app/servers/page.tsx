@@ -114,7 +114,7 @@ export default function ServersPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20, alignItems: 'start' }}>
+      <div className="servers-layout">
         {/* Left: Service Groups */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
@@ -154,8 +154,8 @@ export default function ServersPage() {
           </div>
         </div>
 
-        {/* Right: Credential Panel */}
-        <div className="card" style={{ position: 'sticky', top: 20 }}>
+        {/* Credential Panel — always below the service groups above, not beside them */}
+        <div className="card servers-cred-panel">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
             <div style={{
               width: 40, height: 40, borderRadius: 10,

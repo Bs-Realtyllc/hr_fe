@@ -57,8 +57,10 @@ export default function FinancialReportPage() {
   return (
     <div>
       <div className="page-header">
-        <h1>{isPrivileged ? 'Financial Report' : 'My Financial Report'}</h1>
-        <p>{isPrivileged ? 'Base salary, overtime, deductions, and tax — the final payable amount per employee' : 'Your base salary, overtime, deductions, and tax breakdown'}</p>
+        <div>
+          <h1>{isPrivileged ? 'Financial Report' : 'My Financial Report'}</h1>
+          <p>{isPrivileged ? 'Base salary, overtime, deductions, and tax — the final payable amount per employee' : 'Your base salary, overtime, deductions, and tax breakdown'}</p>
+        </div>
       </div>
 
       <div className="flex justify-between items-center" style={{ marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
@@ -184,7 +186,10 @@ export default function FinancialReportPage() {
 
           {rows.length === 0 && (
             <div className="empty-state card">
-              <div style={{ fontSize: 40 }}>📊</div>
+              <span
+                className="icon-mask empty-state-icon"
+                style={{ WebkitMaskImage: 'url(/icons/bar-chart.svg)', maskImage: 'url(/icons/bar-chart.svg)' }}
+              />
               <p>No financial report data available yet.</p>
             </div>
           )}

@@ -13,12 +13,6 @@ export default function KpiCard({ label, value, trend }: KpiCardProps) {
     <div className="kpi-card">
       <div className="kpi-card-header">
         <span className="kpi-card-label">{label}</span>
-        <button type="button" className="kpi-card-menu" aria-label="More options">
-          <span
-            className="icon-mask"
-            style={{ WebkitMaskImage: 'url(/icons/more-horizontal.svg)', maskImage: 'url(/icons/more-horizontal.svg)' }}
-          />
-        </button>
       </div>
       <div className="kpi-card-body">
         <span className="kpi-card-value">{value}</span>

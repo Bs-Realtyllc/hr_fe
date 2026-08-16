@@ -188,6 +188,15 @@ export default function OvertimePage() {
         />
       </div>
 
+      {requests.length === 0 ? (
+        <div className="empty-state card">
+          <span
+            className="icon-mask empty-state-icon"
+            style={{ WebkitMaskImage: 'url(/icons/clock.svg)', maskImage: 'url(/icons/clock.svg)' }}
+          />
+          <p>No overtime requests found</p>
+        </div>
+      ) : (
       <div className="card">
         <div className="table-wrap">
           <table>
@@ -198,9 +207,6 @@ export default function OvertimePage() {
               </tr>
             </thead>
             <tbody>
-              {requests.length === 0 && (
-                <tr><td colSpan={9} style={{ textAlign: 'center', padding: 32, color: 'var(--color-text-muted)' }}>No overtime requests found</td></tr>
-              )}
               {requests.map(o => {
                 const isOwn = o.employee_id === user?.id;
                 const meta  = STATUS_META[o.status];
@@ -264,6 +270,7 @@ export default function OvertimePage() {
           </table>
         </div>
       </div>
+      )}
 
       {/* ── New Overtime Request Modal ───────────────────────────────────── */}
       {showModal && (

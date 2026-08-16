@@ -1,0 +1,55 @@
+/*
+ * Semantic Color Tokens
+ *
+ * These give the raw Figma ramps in color.primitives.css a job — what each
+ * color MEANS in this app, not what Figma calls it. Components should only
+ * ever reference these, never a primitive (--teal-*, --gray-*, etc.)
+ * directly, and never a raw hex value.
+ *
+ * Audit trail (verified against Figma, see CSS-ARCHITECTURE.md §6):
+ *  - Primary: exact-value match to the teal ramp's Normal/Normal:active/
+ *    Darker/Light:active steps.
+ *  - Status (success/warning/error/info): previous hardcoded hex values did
+ *    not match any step of the corresponding ramp — verified live against
+ *    Figma nodes 6:2796 / 6:2929 / 6:3062 / 6:3195 and corrected.
+ *  - Neutrals (bg/surface/border/text-muted): no exact ramp match exists;
+ *    wired to the nearest matching Gray/Soft White step.
+ */
+
+:root {
+  /* Primary */
+  --color-primary: var(--teal-normal);
+  --color-primary-hover: var(--teal-normal-active);
+  --color-primary-focus-border: var(--teal-darker);
+  --color-primary-disabled: var(--teal-light-active);
+  --color-primary-light: #E6F2F4; /* no exact match in the teal ramp */
+
+  /* Accent */
+  --color-accent: #2EC4B6;
+  --color-accent-hover: #22B0A3;
+  --color-highlight: #4EA8DE;
+
+  /* Status */
+  --color-success: var(--success-normal);
+  --color-warning: var(--warning-normal);
+  --color-error: var(--error-normal);
+  --color-info: var(--info-normal);
+
+  /* Neutrals */
+  --color-bg: #F7F8F9; /* soft white, no exact match in either ramp — deliberately a shade off --color-surface (#FEFEFE) so cards/table-row-hover keep contrast against the page */
+  --color-surface: var(--soft-white-light);
+  --color-border: var(--gray-light-hover);
+  --color-text-muted: var(--gray-normal);
+
+  /* Text */
+  --color-text-h1: #0F172A;
+  --color-text-h2: #0F172A;
+  --color-text-h3: #1F2937;
+  --color-text-body: #374151;
+
+  /* Sidebar (colors only — sizing lives in layout, not tokens) */
+  --sidebar-bg: var(--color-primary);
+  --sidebar-active: #2EC4B6;
+  --sidebar-text: #FFFFFF;
+  --sidebar-hover: rgba(255, 255, 255, 0.08);
+}

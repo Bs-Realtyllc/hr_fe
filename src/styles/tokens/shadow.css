@@ -1,0 +1,11 @@
+/*
+ * Shadow Scale
+ *
+ * NOTE: same caveat as radius.css — never extracted with a Figma node
+ * citation, values not yet verified against Figma. Follow-up audit item.
+ */
+
+:root {
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+}

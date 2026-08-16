@@ -296,6 +296,75 @@ export default function LeavesPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile replacement for the table above — same data, card-per-row (see .row-cards in table.css) */}
+        <div className="row-cards">
+          {leaves.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 32, color: 'var(--color-text-muted)' }}>No leave requests found</div>
+          )}
+          {leaves.map(l => {
+            const isOwn    = l.employee_id === user?.id;
+            const ds       = displayStatus(l);
+            const meta     = STATUS_META[ds];
+            const expired  = ds === 'expired';
+
+            const canApproveReject = l.status === 'pending' && !expired &&
+              (isAdmin || (user?.role === 'lead' && !isOwn));
+            const canEditCancel = l.status === 'pending' && !expired && isOwn;
+
+            return (
+              <div key={l.id} className="row-card" style={{ opacity: expired ? 0.6 : 1 }}>
+                <div className="row-card-top">
+                  <div>
+                    <div className="cell-title">{l.employee_name}</div>
+                    <div className="cell-subtitle">{l.designation}</div>
+                  </div>
+                  <div className="row-card-meta">{new Date(l.start_date).toLocaleDateString()}</div>
+                </div>
+
+                <div className="row-card-line">
+                  <span className="badge" style={{ background: `${LEAVE_COLORS[l.leave_type]}22`, color: LEAVE_COLORS[l.leave_type], fontWeight: 600, textTransform: 'capitalize' }}>
+                    {l.leave_type}
+                  </span>
+                </div>
+
+                {l.reason && (
+                  <div className="row-card-line truncate text-sm text-muted">{l.reason}</div>
+                )}
+
+                <div className="row-card-line" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                  background: meta.bg, color: meta.color,
+                }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: meta.dot, flexShrink: 0 }} />
+                  {meta.label}
+                  {(ds === 'approved' || ds === 'rejected') && l.reviewer_name && ` · by ${l.reviewer_name}`}
+                </div>
+
+                {(canApproveReject || canEditCancel || (expired && l.status === 'pending')) && (
+                  <div className="row-card-actions">
+                    {canApproveReject && (
+                      <>
+                        <button className="btn btn-sm btn-accent" onClick={() => approve(l.id)}>Approve</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => reject(l.id)}>Reject</button>
+                      </>
+                    )}
+                    {canEditCancel && (
+                      <>
+                        <button className="btn btn-sm btn-ghost" onClick={() => openEditModal(l)}>Edit</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => cancelLeave(l.id)}>Cancel</button>
+                      </>
+                    )}
+                    {expired && l.status === 'pending' && (
+                      <span className="text-muted" style={{ fontSize: 11 }}>No actions available</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* ── New Leave Request Modal ──────────────────────────────────────── */}

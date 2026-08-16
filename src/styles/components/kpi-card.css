@@ -1,0 +1,70 @@
+/* ── KPI Cards ──
+ * Source: Figma — Job Portal (node 275:2159, "KPI Card")
+ * Like Stat Cards, but bordered (not shadowed) with a header menu icon and
+ * an optional trend badge. Use where a change-over-time figure is available. */
+.kpi-card {
+  background: var(--color-surface);
+  border: 1px solid var(--gray-light-hover);
+  border-radius: var(--radius-lg);
+  padding: var(--space-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.kpi-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.kpi-card-label {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  color: var(--gray-dark);
+}
+
+.kpi-card-menu {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--gray-normal);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.kpi-card-menu .icon-mask { width: 16px; height: 16px; }
+
+.kpi-card-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.kpi-card-value {
+  font-family: var(--font-body);
+  font-size: 2rem;
+  line-height: 2.5rem;
+  font-weight: 600;
+  color: var(--neutral-darker);
+}
+
+.kpi-card-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.kpi-card-trend .icon-mask { width: 12px; height: 12px; }
+
+.kpi-card-trend-up { background: var(--success-light); color: var(--success-normal); }
+.kpi-card-trend-down { background: var(--error-light); color: var(--error-normal); }

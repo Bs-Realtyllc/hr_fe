@@ -2,10 +2,9 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { RxHamburgerMenu } from "react-icons/rx";
 //redux
 import { useAppSelector, useAppDispatch } from '@/store/hook';
-import { toggleSidebar } from '@/store/sidebarSlice'
+import { setSidebarOpen } from '@/store/sidebarSlice'
 
 type Role = 'admin' | 'lead' | 'employee';
 
@@ -30,6 +29,7 @@ const allNav: { section: string; items: NavItem[] }[] = [
     section: 'People',
     items: [
       { href: '/employees', label: 'Team Directory', icon: 'users.svg', roles: ['admin', 'lead'] as Role[] },
+      { href: '/onboarding', label: 'Onboarding', icon: 'users.svg', roles: ['admin', 'lead'] as Role[] },
       { href: '/leaves', label: 'Leave Requests', icon: 'calendar.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
       { href: '/overtime', label: 'Overtime Requests', icon: 'clock.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
       { href: '/documents', label: 'Documents & Signature', icon: 'file-text.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
@@ -115,70 +115,81 @@ export default function Sidebar() {
     router.replace('/login');
   }
 
+  // No-op on desktop (the sidebar isn't off-canvas there); closes the mobile drawer.
+  function closeMobileSidebar() {
+    dispatch(setSidebarOpen(false));
+  }
+
   return (
-    <aside className={`sidebar  ${!isOpen ? 'sidebar-closed' : ''}`}>
-      <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-        <img src="/logos/hr-platform.svg" alt="" width={30} height={30} style={{ flexShrink: 0 }} />
-        <div>
-          <h1>HR Platform</h1>
-          <span>Internal Tools</span>
-        </div>
-        <div className='hover:cursor-pointer'>
-          <RxHamburgerMenu className='text-white text-xl' onClick={() => dispatch(toggleSidebar())} />
-        </div>
-      </div>
-
-      <nav className="sidebar-nav">
-        {nav.map(group => (
-          <div key={group.section}>
-            <div className="sidebar-section-label">{group.section}</div>
-            {group.items.map(item => {
-              const iconStyle = {
-                WebkitMaskImage: `url(/icons/${item.icon})`,
-                maskImage: `url(/icons/${item.icon})`,
-              };
-              return item.external ? (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="sidebar-link"
-                >
-                  <span className="icon" style={iconStyle} />
-                  {item.label}
-                  <span className="sidebar-link-external">↗</span>
-                </a>
-              ) : (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`sidebar-link ${pathname === item.href ? 'active' : ''}`}
-                >
-                  <span className="icon" style={iconStyle} />
-                  {item.label}
-                </Link>
-              );
-            })}
+    <>
+      <div
+        className={`sidebar-backdrop ${isOpen ? 'sidebar-open' : ''}`}
+        onClick={closeMobileSidebar}
+        aria-hidden="true"
+      />
+      <aside className={`sidebar ${isOpen ? 'sidebar-open' : ''}`}>
+        <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+          <img src="/logos/hr-platform.svg" alt="" width={30} height={30} style={{ flexShrink: 0 }} />
+          <div>
+            <h1>HR Platform</h1>
+            <span>Internal Tools</span>
           </div>
-        ))}
-      </nav>
+        </div>
 
-      <div className="sidebar-profile">
-        <div className="sidebar-profile-avatar">
-          {user ? initials(user.name) : '?'}
+        <nav className="sidebar-nav">
+          {nav.map(group => (
+            <div key={group.section}>
+              <div className="sidebar-section-label">{group.section}</div>
+              {group.items.map(item => {
+                const iconStyle = {
+                  WebkitMaskImage: `url(/icons/${item.icon})`,
+                  maskImage: `url(/icons/${item.icon})`,
+                };
+                return item.external ? (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="sidebar-link"
+                    onClick={closeMobileSidebar}
+                  >
+                    <span className="icon" style={iconStyle} />
+                    {item.label}
+                    <span className="sidebar-link-external">↗</span>
+                  </a>
+                ) : (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`sidebar-link ${pathname === item.href ? 'active' : ''}`}
+                    onClick={closeMobileSidebar}
+                  >
+                    <span className="icon" style={iconStyle} />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+
+        <div className="sidebar-profile">
+          <div className="sidebar-profile-avatar">
+            {user ? initials(user.name) : '?'}
+          </div>
+          <div className="sidebar-profile-info">
+            <div className="sidebar-profile-name">{user?.name ?? ''}</div>
+            <div className="sidebar-profile-role">{user?.role ?? ''}</div>
+          </div>
+          <button className="sidebar-logout-btn" onClick={handleLogout} title="Sign out">
+            <span
+              className="icon"
+              style={{ WebkitMaskImage: 'url(/icons/log-out.svg)', maskImage: 'url(/icons/log-out.svg)' }}
+            />
+          </button>
         </div>
-        <div className="sidebar-profile-info">
-          <div className="sidebar-profile-name">{user?.name ?? ''}</div>
-          <div className="sidebar-profile-role">{user?.role ?? ''}</div>
-        </div>
-        <button className="sidebar-logout-btn" onClick={handleLogout} title="Sign out">
-          <span
-            className="icon"
-            style={{ WebkitMaskImage: 'url(/icons/log-out.svg)', maskImage: 'url(/icons/log-out.svg)' }}
-          />
-        </button>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }
