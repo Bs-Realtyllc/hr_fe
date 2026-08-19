@@ -22,26 +22,19 @@ interface InternFormData {
   name: string;
   dob: string;
   gender: string;
-  phone: string;
   email: string;
   current_address: string;
-  permanent_address: string;
   education_level: string;
   institution_name: string;
   field_of_study: string;
   graduation_date: string;
   previous_experience: string;
-  tech_stack: string;
   areas_of_interest: string;
   linkedin_url: string;
   github_url: string;
   portfolio_url: string;
-  emergency_contact_name: string;
-  emergency_contact: string;
   role: 'intern' | 'employee' | 'owner',
   additional_info: string;
-  is_active: true | false | null;
-
 }
 
 type FormKey = keyof InternFormData;
@@ -50,25 +43,19 @@ const initialState: InternFormData = {
   name: '',
   dob: '',
   gender: '',
-  phone: '',
   email: '',
   current_address: '',
-  permanent_address: '',
   education_level: '',
   institution_name: '',
   field_of_study: '',
   graduation_date: '',
   previous_experience: '',
-  tech_stack: '',
   areas_of_interest: '',
   linkedin_url: '',
   github_url: '',
   portfolio_url: '',
-  emergency_contact_name: '',
-  emergency_contact: '',
   role: 'intern',
   additional_info: '',
-  is_active: null,
 };
 
 export default function InternForm() {
@@ -170,25 +157,11 @@ export default function InternForm() {
               </select>
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Contact Number" required>
-              <input required type="tel" value={form.phone} onChange={update('phone')} className={inputClass} />
-            </Field>
-            <Field label="Email Address" required>
-              <input required type="email" value={form.email} onChange={update('email')} className={inputClass} />
-            </Field>
-          </div>
+          <Field label="Email Address" required>
+            <input required type="email" value={form.email} onChange={update('email')} className={inputClass} />
+          </Field>
           <Field label="Current Address" required>
             <textarea required rows={2} value={form.current_address} onChange={update('current_address')} className={inputClass} />
-          </Field>
-          <Field label="Permanent Address" required>
-            <textarea
-              required
-              rows={2}
-              value={form.permanent_address}
-              onChange={update('permanent_address')}
-              className={inputClass}
-            />
           </Field>
         </Section>
 
@@ -226,16 +199,6 @@ export default function InternForm() {
               placeholder="Roles, companies, dates — or leave blank if none"
             />
           </Field>
-          <Field label="Relevant Skills" required>
-            <textarea
-              required
-              rows={2}
-              value={form.tech_stack}
-              onChange={update('tech_stack')}
-              className={inputClass}
-              placeholder="e.g. React, SQL, Figma"
-            />
-          </Field>
           <Field label="Areas of Interest" required>
             <textarea
               required
@@ -261,14 +224,6 @@ export default function InternForm() {
 
         {/* Additional Information */}
         <Section title="Additional Information" note="04">
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Emergency Contact Name" required>
-              <input required type="text" value={form.emergency_contact_name} onChange={update('emergency_contact_name')} className={inputClass} />
-            </Field>
-            <Field label="Emergency Contact Number" required>
-              <input required type="tel" value={form.emergency_contact} onChange={update('emergency_contact')} className={inputClass} />
-            </Field>
-          </div>
           <Field label="Anything else HR should know" optional>
             <textarea
               rows={3}

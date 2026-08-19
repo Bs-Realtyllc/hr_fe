@@ -33,20 +33,15 @@ interface TaxRow {
   designation: string;
   department: string;
   role: string;
+  panNo: string | null;
   salary: number | null;
   pay_frequency: 'monthly' | 'biweekly' | 'weekly';
-  tax_id: string | null;
-  country: string;
-  filing_status: 'single' | 'married' | 'head_of_household';
-  tax_regime: 'old' | 'new';
-  exemptions: number;
-  additional_withholding: number;
-  notes: string | null;
+  amount: number;
+  tax_amount: number;
+  tax_perc: number;
   annual_salary: number;
-  taxable_income: number;
   estimated_annual_tax: number;
   estimated_monthly_tax: number;
-  effective_rate: number;
 }
 
 function initials(name: string) {
@@ -60,11 +55,10 @@ function toMonthly(salary: number | string, freq: string): number {
   return monthly;
 }
 
-const FILING_STATUS_LABEL: Record<string, string> = {
-  single: 'Single',
-  married: 'Married',
-  head_of_household: 'Head of Household',
-};
+const MONTH_LABELS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
 
 export default function PayrollPage() {
   const { user } = useAuth();
@@ -84,14 +78,13 @@ export default function PayrollPage() {
   const [resetMsg, setResetMsg] = useState('');
 
   /* ── Taxes state ─────────────────────────────────────────────────────── */
+  const now = new Date();
+  const [taxMonth, setTaxMonth] = useState(now.getMonth() + 1);
+  const [taxYear, setTaxYear]   = useState(now.getFullYear());
   const [taxRows, setTaxRows]         = useState<TaxRow[]>([]);
   const [taxLoading, setTaxLoading]   = useState(false);
-  const [taxLoaded, setTaxLoaded]     = useState(false);
   const [taxEdit, setTaxEdit]         = useState<TaxRow | null>(null);
-  const [taxForm, setTaxForm] = useState({
-    tax_id: '', country: 'Nepal', filing_status: 'single', tax_regime: 'new',
-    exemptions: '0', additional_withholding: '0', notes: '',
-  });
+  const [taxForm, setTaxForm] = useState({ amount: '', tax_amount: '', tax_perc: '' });
   const [taxSaving, setTaxSaving] = useState(false);
 
   /* ── Overtime & Adjustments state ────────────────────────────────────── */
@@ -110,15 +103,15 @@ export default function PayrollPage() {
 
   const loadTaxes = () => {
     setTaxLoading(true);
-    api.get<TaxRow[]>('/payroll/taxes')
+    api.get<TaxRow[]>(`/payroll/taxes?month=${taxMonth}&year=${taxYear}`)
       .then(setTaxRows)
       .catch(() => {})
-      .finally(() => { setTaxLoading(false); setTaxLoaded(true); });
+      .finally(() => setTaxLoading(false));
   };
 
   useEffect(() => {
-    if (tab === 'taxes' && !taxLoaded) loadTaxes();
-  }, [tab, taxLoaded]);
+    if (tab === 'taxes') loadTaxes();
+  }, [tab, taxMonth, taxYear]);
 
   const loadSummary = () => {
     setSummaryLoading(true);
@@ -182,13 +175,9 @@ export default function PayrollPage() {
   function openTaxEdit(row: TaxRow) {
     setTaxEdit(row);
     setTaxForm({
-      tax_id: row.tax_id ?? '',
-      country: row.country ?? 'Nepal',
-      filing_status: row.filing_status ?? 'single',
-      tax_regime: row.tax_regime ?? 'new',
-      exemptions: String(row.exemptions ?? 0),
-      additional_withholding: String(row.additional_withholding ?? 0),
-      notes: row.notes ?? '',
+      amount: String(row.amount ?? ''),
+      tax_amount: String(row.tax_amount ?? ''),
+      tax_perc: String(row.tax_perc ?? ''),
     });
   }
 
@@ -197,9 +186,11 @@ export default function PayrollPage() {
     setTaxSaving(true);
     try {
       await api.put(`/payroll/${taxEdit.id}/tax-profile`, {
-        ...taxForm,
-        exemptions: parseFloat(taxForm.exemptions) || 0,
-        additional_withholding: parseFloat(taxForm.additional_withholding) || 0,
+        month: taxMonth,
+        year: taxYear,
+        amount: taxForm.amount === '' ? null : parseFloat(taxForm.amount),
+        tax_amount: taxForm.tax_amount === '' ? null : parseFloat(taxForm.tax_amount),
+        tax_perc: taxForm.tax_perc === '' ? null : parseFloat(taxForm.tax_perc),
       });
       setTaxEdit(null);
       loadTaxes();
@@ -211,7 +202,7 @@ export default function PayrollPage() {
   const taxTotals = taxRows.reduce((acc, r) => {
     acc.annualTax += r.estimated_annual_tax;
     acc.annualSalary += r.annual_salary;
-    acc.configured += r.tax_id ? 1 : 0;
+    acc.configured += r.panNo ? 1 : 0;
     return acc;
   }, { annualTax: 0, annualSalary: 0, configured: 0 });
   const avgEffectiveRate = taxTotals.annualSalary > 0
@@ -420,8 +411,19 @@ export default function PayrollPage() {
           <div className="card" style={{ marginBottom: 20, padding: '12px 16px', display: 'flex', gap: 8, alignItems: 'center' }}>
             <span style={{ fontSize: 18 }}>ℹ️</span>
             <span className="text-muted text-sm">
-              Tax figures are a simplified <strong>estimate</strong> based on Nepal's individual income tax slabs, annual salary, and configured exemptions — for planning purposes only, not a substitute for a certified tax filing.
+              Tax figures are a simplified <strong>estimate</strong> based on Nepal's individual income tax slabs and annual salary — for planning purposes only, not a substitute for a certified tax filing.
             </span>
+          </div>
+
+          <div className="flex gap-2 items-center" style={{ marginBottom: 20 }}>
+            <select className="form-select" style={{ width: 160 }} value={taxMonth} onChange={e => setTaxMonth(Number(e.target.value))}>
+              {MONTH_LABELS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+            </select>
+            <select className="form-select" style={{ width: 110 }} value={taxYear} onChange={e => setTaxYear(Number(e.target.value))}>
+              {Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i).map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
           </div>
 
           {taxLoading ? (
@@ -455,14 +457,11 @@ export default function PayrollPage() {
                       <thead>
                         <tr>
                           <th>Employee</th>
-                          <th>Tax ID</th>
-                          <th>Filing Status</th>
-                          <th>Regime</th>
+                          <th>PAN No</th>
                           <th>Annual Salary</th>
-                          <th>Exemptions</th>
-                          <th>Taxable Income</th>
-                          <th>Est. Annual Tax</th>
-                          <th>Eff. Rate</th>
+                          <th>Monthly Amount</th>
+                          <th>Monthly Tax</th>
+                          <th>Tax %</th>
                           {isAdmin && <th>Actions</th>}
                         </tr>
                       </thead>
@@ -479,20 +478,14 @@ export default function PayrollPage() {
                               </div>
                             </td>
                             <td style={{ fontSize: 13 }}>
-                              {r.tax_id || <span style={{ color: 'var(--color-text-muted)' }}>Not set</span>}
+                              {r.panNo || <span style={{ color: 'var(--color-text-muted)' }}>Not set</span>}
                             </td>
-                            <td style={{ fontSize: 13 }}>{FILING_STATUS_LABEL[r.filing_status]}</td>
-                            <td><span className="badge badge-neutral" style={{ textTransform: 'capitalize' }}>{r.tax_regime}</span></td>
                             <td style={{ fontSize: 13 }}>Rs. {r.annual_salary.toLocaleString()}</td>
-                            <td style={{ fontSize: 13 }}>Rs. {Math.round(r.exemptions).toLocaleString()}</td>
-                            <td style={{ fontSize: 13 }}>Rs. {r.taxable_income.toLocaleString()}</td>
+                            <td style={{ fontSize: 13 }}>Rs. {Math.round(r.amount).toLocaleString()}</td>
+                            <td style={{ fontWeight: 700 }}>Rs. {Math.round(r.tax_amount).toLocaleString()}</td>
                             <td>
-                              <div style={{ fontWeight: 700 }}>Rs. {r.estimated_annual_tax.toLocaleString()}</div>
-                              <div className="text-muted" style={{ fontSize: 11 }}>Rs. {r.estimated_monthly_tax.toLocaleString()}/mo</div>
-                            </td>
-                            <td>
-                              <span className={`badge ${r.effective_rate >= 15 ? 'badge-warning' : r.effective_rate > 0 ? 'badge-info' : 'badge-neutral'}`}>
-                                {r.effective_rate}%
+                              <span className={`badge ${r.tax_perc >= 15 ? 'badge-warning' : r.tax_perc > 0 ? 'badge-info' : 'badge-neutral'}`}>
+                                {r.tax_perc}%
                               </span>
                             </td>
                             {isAdmin && (
@@ -521,24 +514,22 @@ export default function PayrollPage() {
                             </div>
                           </div>
                           <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontWeight: 700 }}>Rs. {r.estimated_annual_tax.toLocaleString()}</div>
-                            <div className="row-card-meta">Rs. {r.estimated_monthly_tax.toLocaleString()}/mo</div>
+                            <div style={{ fontWeight: 700 }}>Rs. {Math.round(r.tax_amount).toLocaleString()}</div>
+                            <div className="row-card-meta">tax this month</div>
                           </div>
                         </div>
 
                         <div className="row-card-line" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <span className="badge badge-neutral" style={{ textTransform: 'capitalize' }}>{r.tax_regime}</span>
-                          <span className={`badge ${r.effective_rate >= 15 ? 'badge-warning' : r.effective_rate > 0 ? 'badge-info' : 'badge-neutral'}`}>
-                            {r.effective_rate}%
+                          <span className={`badge ${r.tax_perc >= 15 ? 'badge-warning' : r.tax_perc > 0 ? 'badge-info' : 'badge-neutral'}`}>
+                            {r.tax_perc}%
                           </span>
-                          <span className="text-muted text-sm">{FILING_STATUS_LABEL[r.filing_status]}</span>
                         </div>
 
                         <div className="row-card-line text-sm text-muted">
-                          Tax ID: {r.tax_id || 'Not set'}
+                          PAN No: {r.panNo || 'Not set'}
                         </div>
                         <div className="row-card-line text-sm text-muted">
-                          Rs. {r.annual_salary.toLocaleString()} annual · Rs. {Math.round(r.exemptions).toLocaleString()} exempt · Rs. {r.taxable_income.toLocaleString()} taxable
+                          Rs. {r.annual_salary.toLocaleString()} annual · Rs. {Math.round(r.amount).toLocaleString()} this month
                         </div>
 
                         {isAdmin && (
@@ -563,23 +554,16 @@ export default function PayrollPage() {
                           <div className="font-semibold" style={{ fontSize: 16 }}>{r.name}</div>
                           <div className="text-muted">{r.designation}</div>
                         </div>
-                        <span className={`badge ${r.tax_regime === 'new' ? 'badge-accent' : 'badge-neutral'}`} style={{ marginLeft: 'auto', textTransform: 'capitalize' }}>
-                          {r.tax_regime} regime
-                        </span>
                       </div>
 
-                      <div className="grid-3" style={{ marginBottom: 20 }}>
+                      <div className="grid-2" style={{ marginBottom: 20, gap: 16 }}>
                         <div>
-                          <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>Tax ID</div>
-                          <div style={{ fontSize: 15, fontWeight: 600, marginTop: 4 }}>{r.tax_id || '—'}</div>
+                          <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>PAN No</div>
+                          <div style={{ fontSize: 15, fontWeight: 600, marginTop: 4 }}>{r.panNo || '—'}</div>
                         </div>
                         <div>
-                          <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>Filing Status</div>
-                          <div style={{ fontSize: 15, fontWeight: 600, marginTop: 4 }}>{FILING_STATUS_LABEL[r.filing_status]}</div>
-                        </div>
-                        <div>
-                          <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>Country</div>
-                          <div style={{ fontSize: 15, fontWeight: 600, marginTop: 4 }}>{r.country}</div>
+                          <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>Annual Salary</div>
+                          <div style={{ fontSize: 15, fontWeight: 600, marginTop: 4 }}>Rs. {r.annual_salary.toLocaleString()}</div>
                         </div>
                       </div>
 
@@ -587,20 +571,12 @@ export default function PayrollPage() {
 
                       <div className="grid-2" style={{ gap: 16 }}>
                         <div className="flex justify-between items-center">
-                          <span className="text-muted">Annual Salary</span>
-                          <span style={{ fontWeight: 600 }}>Rs. {r.annual_salary.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted">Exemptions</span>
-                          <span style={{ fontWeight: 600 }}>-Rs. {Math.round(r.exemptions).toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted">Taxable Income</span>
-                          <span style={{ fontWeight: 600 }}>Rs. {r.taxable_income.toLocaleString()}</span>
+                          <span className="text-muted">Amount This Month</span>
+                          <span style={{ fontWeight: 600 }}>Rs. {Math.round(r.amount).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-muted">Effective Rate</span>
-                          <span style={{ fontWeight: 600 }}>{r.effective_rate}%</span>
+                          <span style={{ fontWeight: 600 }}>{r.tax_perc}%</span>
                         </div>
                       </div>
 
@@ -613,14 +589,10 @@ export default function PayrollPage() {
                           <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-primary)' }}>Rs. {r.estimated_annual_tax.toLocaleString()}</div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-primary)', textTransform: 'uppercase' }}>Per Month</div>
-                          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-primary)' }}>Rs. {r.estimated_monthly_tax.toLocaleString()}</div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-primary)', textTransform: 'uppercase' }}>This Month</div>
+                          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-primary)' }}>Rs. {Math.round(r.tax_amount).toLocaleString()}</div>
                         </div>
                       </div>
-
-                      {r.notes && (
-                        <p className="text-muted text-sm" style={{ marginTop: 16, fontStyle: 'italic' }}>Note from admin: {r.notes}</p>
-                      )}
                     </div>
                   );
                 })()
@@ -831,49 +803,25 @@ export default function PayrollPage() {
                 <div className="text-muted text-sm">{taxEdit.designation}</div>
               </div>
             </div>
+            <p className="text-muted text-sm" style={{ marginBottom: 12 }}>
+              Editing {MONTH_LABELS[taxMonth - 1]} {taxYear}. Leave a field blank to auto-compute it from salary.
+            </p>
             <div className="grid-2">
               <div className="form-group">
-                <label className="form-label">Tax ID</label>
-                <input className="form-input" value={taxForm.tax_id}
-                  onChange={e => setTaxForm({ ...taxForm, tax_id: e.target.value })} placeholder="e.g. TIN-000000000" />
+                <label className="form-label">Amount (monthly pay)</label>
+                <input className="form-input" type="number" value={taxForm.amount}
+                  onChange={e => setTaxForm({ ...taxForm, amount: e.target.value })} placeholder="Auto-computed" />
               </div>
               <div className="form-group">
-                <label className="form-label">Country</label>
-                <input className="form-input" value={taxForm.country}
-                  onChange={e => setTaxForm({ ...taxForm, country: e.target.value })} />
+                <label className="form-label">Tax Amount</label>
+                <input className="form-input" type="number" value={taxForm.tax_amount}
+                  onChange={e => setTaxForm({ ...taxForm, tax_amount: e.target.value })} placeholder="Auto-computed" />
               </div>
               <div className="form-group">
-                <label className="form-label">Filing Status</label>
-                <select className="form-select" value={taxForm.filing_status}
-                  onChange={e => setTaxForm({ ...taxForm, filing_status: e.target.value })}>
-                  <option value="single">Single</option>
-                  <option value="married">Married</option>
-                  <option value="head_of_household">Head of Household</option>
-                </select>
+                <label className="form-label">Tax %</label>
+                <input className="form-input" type="number" value={taxForm.tax_perc}
+                  onChange={e => setTaxForm({ ...taxForm, tax_perc: e.target.value })} placeholder="Auto-computed" />
               </div>
-              <div className="form-group">
-                <label className="form-label">Tax Regime</label>
-                <select className="form-select" value={taxForm.tax_regime}
-                  onChange={e => setTaxForm({ ...taxForm, tax_regime: e.target.value })}>
-                  <option value="new">New</option>
-                  <option value="old">Old</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Annual Exemptions</label>
-                <input className="form-input" type="number" value={taxForm.exemptions}
-                  onChange={e => setTaxForm({ ...taxForm, exemptions: e.target.value })} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Additional Withholding</label>
-                <input className="form-input" type="number" value={taxForm.additional_withholding}
-                  onChange={e => setTaxForm({ ...taxForm, additional_withholding: e.target.value })} />
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Notes</label>
-              <textarea className="form-textarea" rows={2} value={taxForm.notes}
-                onChange={e => setTaxForm({ ...taxForm, notes: e.target.value })} placeholder="Visible to the employee" />
             </div>
             <div className="flex gap-3 justify-between mt-4">
               <button type="button" className="btn btn-ghost" onClick={() => setTaxEdit(null)}>Cancel</button>

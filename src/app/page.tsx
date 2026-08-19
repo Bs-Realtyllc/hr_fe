@@ -273,7 +273,7 @@ interface RecentEmployee {
   designation: string;
   department: string;
   start_date: string;
-  is_active: boolean;
+  status: string;
 }
 
 /* ─────────────────────────────── page ─────────────────────────────────── */
@@ -298,7 +298,7 @@ export default function DashboardPage() {
     api.get<RecentEmployee[]>('/employees')
       .then(list => setRecentEmployees(
         [...list]
-          .filter(e => e.is_active)
+          .filter(e => e.status !== 'terminated')
           .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
           .slice(0, 6)
       ))

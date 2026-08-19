@@ -13,7 +13,6 @@ interface InactiveUser {
   dob: string | null;
   gender: string | null;
   address: string | null;
-  permanent_address: string | null;
   education_level: string | null;
   institution_name: string | null;
   field_of_study: string | null;
@@ -23,27 +22,16 @@ interface InactiveUser {
   linkedin_url: string | null;
   github_url: string | null;
   portfolio_url: string | null;
-  emergency_contact_name: string | null;
   email: string;
   secondary_email: string | null;
-  phone: string | null;
   discord_username: string | null;
-  emergency_contact: string | null;
   profile_picture: string | null;
   designation: string | null;
   department: string | null;
   manager_id: number | null;
   start_date: string | null;
-  timezone: string | null;
-  work_hours: string | null;
-  tech_stack: string | null;
   role: string;
-  salary: number | null;
-  pay_frequency: string | null;
-  is_active: boolean | null;
-  created_at: string;
-  leave_policy_accepted: boolean | null;
-  leave_policy_accepted_at: string | null;
+  status: string | null;
   manager_name: string | null;
 }
 
@@ -224,16 +212,12 @@ const Page = () => {
                 </div>
 
                 <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-slate-100 pt-5 text-sm sm:grid-cols-3">
-                  <Detail label="Phone" value={user.phone} />
                   <Detail label="Date of Birth" value={formatDate(user.dob)} />
                   <Detail label="Gender" value={user.gender} />
                   <Detail label="Education" value={user.education_level} />
                   <Detail label="Institution" value={user.institution_name} />
                   <Detail label="Field of Study" value={user.field_of_study} />
                   <Detail label="Graduation Date" value={formatDate(user.graduation_date)} />
-                  <Detail label="Emergency Contact" value={user.emergency_contact_name} />
-                  <Detail label="Emergency Number" value={user.emergency_contact} />
-                  <Detail label="Applied On" value={formatDate(user.created_at)} />
                 </dl>
 
                 {(user.linkedin_url || user.github_url || user.portfolio_url) && (
