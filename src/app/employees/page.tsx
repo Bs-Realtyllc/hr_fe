@@ -222,6 +222,21 @@ export default function EmployeesPage() {
                       {tech.map(t => <span key={t} className="tag">{t}</span>)}
                     </div>
                   )}
+
+                  <div style={{
+                    marginTop: 14,
+                    paddingTop: 10,
+                    borderTop: '1px solid var(--color-border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: 12.5,
+                    color: 'var(--color-accent)',
+                    fontWeight: 600,
+                  }}>
+                    <span>View Profile, Tax & Compensation</span>
+                    <span>→</span>
+                  </div>
                 </div>
               );
             })}
