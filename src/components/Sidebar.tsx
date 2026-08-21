@@ -6,13 +6,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAppSelector, useAppDispatch } from '@/store/hook';
 import { setSidebarOpen } from '@/store/sidebarSlice'
 
-type Role = 'admin' | 'lead' | 'employee';
+import { roleRoutes, Role } from '@/lib/permissions';
 
 interface NavItem {
   href: string;
   label: string;
   icon: string;
-  roles: Role[];
   external?: boolean;
 }
 
@@ -22,67 +21,67 @@ const allNav: { section: string; items: NavItem[] }[] = [
   {
     section: 'Overview',
     items: [
-      { href: '/', label: 'Dashboard', icon: 'grid.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/', label: 'Dashboard', icon: 'grid.svg' },
     ],
   },
   {
     section: 'People',
     items: [
-      { href: '/employees', label: 'Team Directory', icon: 'users.svg', roles: ['admin', 'lead'] as Role[] },
-      { href: '/leaves', label: 'Leave Requests', icon: 'calendar.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/overtime', label: 'Overtime Requests', icon: 'clock.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/documents', label: 'Documents & Signature', icon: 'file-text.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/resources', label: 'Resources', icon: 'book-open.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/standups', label: 'Standups', icon: 'message-square.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/employees', label: 'Team Directory', icon: 'users.svg' },
+      { href: '/leaves', label: 'Leave Requests', icon: 'calendar.svg' },
+      { href: '/overtime', label: 'Overtime Requests', icon: 'clock.svg' },
+      { href: '/documents', label: 'Documents & Signature', icon: 'file-text.svg' },
+      { href: '/resources', label: 'Resources', icon: 'book-open.svg' },
+      { href: '/standups', label: 'Standups', icon: 'message-square.svg' },
     ],
   },
   {
     section: 'Finance',
     items: [
-      { href: '/payroll', label: 'Payroll & Taxes', icon: 'dollar-sign.svg', roles: ['admin'] as Role[] },
+      { href: '/payroll', label: 'Payroll & Taxes', icon: 'dollar-sign.svg' },
     ],
   },
   {
     section: 'Work',
     items: [
-      { href: '/projects', label: 'Projects', icon: 'briefcase.svg', roles: ['admin', 'lead'] as Role[] },
-      { href: '/servers', label: 'Services & Access', icon: 'server.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/calendar', label: 'Calendar', icon: 'calendar.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/projects', label: 'Projects', icon: 'briefcase.svg' },
+      { href: '/servers', label: 'Services & Access', icon: 'server.svg' },
+      { href: '/calendar', label: 'Calendar', icon: 'calendar.svg' },
     ],
   },
   {
     section: 'Growth',
     items: [
-      { href: '/goals', label: 'Goals & KPIs', icon: 'target.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/performance', label: 'Performance', icon: 'trending-up.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/feedback', label: 'Feedback', icon: 'message-circle.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/goals', label: 'Goals & KPIs', icon: 'target.svg' },
+      { href: '/performance', label: 'Performance', icon: 'trending-up.svg' },
+      { href: '/feedback', label: 'Feedback', icon: 'message-circle.svg' },
     ],
   },
   {
     section: 'Culture',
     items: [
-      { href: '/culture', label: 'Events & Milestones', icon: 'award.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/culture', label: 'Events & Milestones', icon: 'award.svg' },
     ],
   },
   {
     section: 'Learning',
     items: [
-      { href: LEARNING_URL, label: 'Learning', icon: 'book.svg', roles: ['admin', 'lead', 'employee'] as Role[], external: true },
+      { href: LEARNING_URL, label: 'Learning', icon: 'book.svg', external: true },
     ],
   },
   {
     section: 'Reports',
     items: [
-      { href: '/reports', label: 'Monthly Reports', icon: 'bar-chart.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/weekly-reports', label: 'Weekly Reports', icon: 'bar-chart-2.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/leave-report', label: 'Leave Report', icon: 'clipboard.svg', roles: ['admin'] as Role[] },
-      { href: '/financial-report', label: 'Financial Report', icon: 'pie-chart.svg', roles: ['admin'] as Role[] },
+      { href: '/reports', label: 'Monthly Reports', icon: 'bar-chart.svg' },
+      { href: '/weekly-reports', label: 'Weekly Reports', icon: 'bar-chart-2.svg' },
+      { href: '/leave-report', label: 'Leave Report', icon: 'clipboard.svg' },
+      { href: '/financial-report', label: 'Financial Report', icon: 'pie-chart.svg' },
     ],
   },
   {
     section: 'Account',
     items: [
-      { href: '/profile', label: 'My Profile', icon: 'user.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/profile', label: 'My Profile', icon: 'user.svg' },
     ],
   },
 ];
@@ -98,14 +97,13 @@ export default function Sidebar() {
   const isOpen = useAppSelector((state) => state.sidebar.isOpen);
   const dispatch = useAppDispatch();
 
-
-  //Sidebartoogle State:
-  const role: Role = user?.role ?? 'employee';
+  const role: Role = (user?.role as Role) ?? 'employee';
+  const allowedRoutes = roleRoutes[role as keyof typeof roleRoutes] || roleRoutes['employee'];
 
   const nav = allNav
     .map(group => ({
       ...group,
-      items: group.items.filter(item => item.roles.includes(role) && item.href),
+      items: group.items.filter(item => item.href && allowedRoutes.includes(item.href)),
     }))
     .filter(group => group.items.length > 0);
 
