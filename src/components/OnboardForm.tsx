@@ -11,6 +11,7 @@ import {
   useEffect,
 } from "react";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 
 interface InternFormData {
   name: string;
@@ -30,6 +31,9 @@ interface InternFormData {
   role: "intern" | "employee";
   additional_info: string;
   [key: string]: string; // allows unknown/extra keys returned by the API
+}
+interface InternFormProps {
+  type: "intern" | "employee";
 }
 
 type FormKey = keyof InternFormData;
@@ -189,7 +193,7 @@ const GRID_CLASS: Record<number, string> = {
   3: "grid grid-cols-3 gap-4",
 };
 
-export default function InternForm() {
+export default function InternForm(type: InternFormProps) {
   const [form, setForm] = useState<InternFormData>(initialState);
   const [contract, setContract] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -201,11 +205,12 @@ export default function InternForm() {
   const [layoutLoading, setLayoutLoading] = useState(true);
   const [layoutError, setLayoutError] = useState("");
 
+  // console.log(type.type)
   useEffect(() => {
     const getForm = async () => {
       try {
         const { data } = await api.get<LayoutResponse>(
-          `/form-layout?type=intern`,
+          `/form-layout?type=${type.type}`,
         );
         setLayout(data as unknown as LayoutResponse);
       } catch (err) {
@@ -260,29 +265,86 @@ export default function InternForm() {
     handleFile(e.dataTransfer.files?.[0]);
   };
 
+  // const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  //   e.preventDefault();
+  //   form.role = type.type;
+  //   setLoading(true);
+
+  //   // Only send fields that were actually rendered on the form except role field,
+  //   // i.e. keys the API returned in the layout response.
+  //   const payload = Object.fromEntries(
+  //     Object.entries(form).filter(
+  //       ([key]) => key in allFieldsByKey || key === "role",
+  //     ),
+  //   );
+
+  //   console.log("formData:", JSON.stringify(payload), contract);
+
+  //   try {
+  //     const res: Response = await api.post("/onboard", {payload});
+  //     window.location.href = "/login";
+  //   } catch (err) {
+  //     console.error("ERROR", err);
+  //     window.alert("Failed to save data");
+  //     // window.location.reload();
+  //   }
+  //   setLoading(false);
+  // };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!contract) {
+      setErrorMsg("Please attach your signed contract before submitting.");
+      return;
+    }
+
+    setErrorMsg("");
     setLoading(true);
 
-    // Only send fields that were actually rendered on the form except role field,
-    // i.e. keys the API returned in the layout response.
+    // Only send fields that were actually rendered on the form, plus role.
     const payload = Object.fromEntries(
-      Object.entries(form).filter(
+      Object.entries({ ...form, role: type.type }).filter(
         ([key]) => key in allFieldsByKey || key === "role",
       ),
     );
 
-    // console.log("formData:", JSON.stringify(payload));
-
+    const body = new FormData();
+    body.append("payload", JSON.stringify(payload));
+    body.append("contract", contract, contract.name);
+    for (const [key, value] of body.entries()) {
+      console.log(key, value);
+    }
     try {
-      const res: Response = await api.post("/onboard", payload);
+      const token = localStorage.getItem("hr_token");
+      // await api.post("/onboard", body);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/onboard`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body,
+      });
+      if (!res.ok) {
+        let message = `Request failed (${res.status})`;
+        try {
+          const errBody = await res.json();
+          message = errBody.error || errBody.message || message;
+          // console.log("error", errBody);
+        } catch {
+          // response wasn't JSON (e.g. an HTML error page) — fall back to status text
+          message = res.statusText || message;
+        }
+        throw new Error(message);
+      }
+
       window.location.href = "/login";
     } catch (err) {
       console.error("ERROR", err);
-      window.alert("Failed to save data");
-      // window.location.reload();
+      window.alert(err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // ---------- Build a lookup of every field the API returned, keyed by field key ----------
@@ -457,10 +519,15 @@ export default function InternForm() {
           ))}
 
           <Section
-            title="Contract File Upload"
+            title={
+              <span>
+                Contract File Upload <span className="text-red-500">*</span>
+              </span>
+            }
             note={String(renderedSections.length + 1).padStart(2, "0")}
           >
             <div className="flex gap-4 sm:flex-row">
+              {/* <span>*</span> */}
               <div
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -480,6 +547,7 @@ export default function InternForm() {
                   type="file"
                   accept=".pdf,.doc,.docx"
                   className="hidden"
+                  required
                   onChange={(e) => handleFile(e.target.files?.[0])}
                 />
                 {contract ? (
@@ -560,7 +628,7 @@ function Section({
   note,
   children,
 }: {
-  title: string;
+  title: ReactNode;
   note: string;
   children: ReactNode;
 }) {

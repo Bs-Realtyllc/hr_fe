@@ -33,14 +33,18 @@ interface InactiveUser {
   role: string;
   status: string | null;
   manager_name: string | null;
+  nda_path: string;
 }
 
 type ActionState = "idle" | "loading";
+
+type RoleFilter = "all" | "intern" | "employee";
 
 const Page = () => {
   const [users, setUsers] = useState<InactiveUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [actionState, setActionState] = useState<Record<number, ActionState>>(
     {},
   );
@@ -51,7 +55,6 @@ const Page = () => {
     try {
       const data = await api.get<InactiveUser[]>("/onboard?type=all");
       setUsers(data);
-      // console.log(data);
     } catch (err) {
       setError(
         err instanceof Error
@@ -66,6 +69,36 @@ const Page = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  const filteredUsers =
+    roleFilter === "all" ? users : users.filter((u) => u.role === roleFilter);
+
+  const handleViewContract = async (userId: number) => {
+    try {
+      const token = localStorage.getItem("hr_token");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/onboard/${userId}/contract`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+      if (!res.ok) {
+        throw new Error(`Failed to load contract (${res.status})`);
+      }
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      // Opens in a new tab/window; browser's native PDF/doc viewer handles display
+      window.open(blobUrl, "_blank", "noopener,noreferrer");
+      // release memory once the tab has had a chance to load it
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+    } catch (err) {
+      window.alert(
+        err instanceof Error ? err.message : "Could not open contract.",
+      );
+    }
+  };
 
   const handleDecision = async (
     id: number,
@@ -107,16 +140,33 @@ const Page = () => {
 
   return (
     <div className="mx-auto  px-6 py-14">
-      <header className="mb-8 border-b border-slate-200 pb-6">
-        <p className="text-sm font-medium uppercase tracking-wide text-amber-700">
-          HR Review
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold text-slate-900">
-          Inactive Users
-        </h1>
-        <p className="mt-2 text-slate-600">
-          Review pending applications and approve or disapprove each one.
-        </p>
+      <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-6">
+        <div>
+          <p className="text-sm font-medium uppercase tracking-wide text-amber-700">
+            HR Review
+          </p>
+          <h1 className="mt-1 text-3xl font-semibold text-slate-900">
+            Inactive Users
+          </h1>
+          <p className="mt-2 text-slate-600">
+            Review pending applications and approve or disapprove each one.
+          </p>
+        </div>
+
+        <label className="flex flex-col text-sm">
+          <span className="mb-1 font-medium text-slate-700">
+            Filter by role
+          </span>
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value as RoleFilter)}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+          >
+            <option value="all">All</option>
+            <option value="intern">Intern</option>
+            <option value="employee">Employee</option>
+          </select>
+        </label>
       </header>
 
       {error && (
@@ -139,7 +189,7 @@ const Page = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {users.map((user) => {
+          {filteredUsers.map((user) => {
             const state = actionState[user.id] ?? "idle";
             const isLoading = state === "loading";
 
@@ -235,6 +285,11 @@ const Page = () => {
                       >
                         Portfolio
                       </a>
+                    )}
+                    {user.nda_path && (
+                      <button onClick={() => handleViewContract(user.id)}>
+                        View contract
+                      </button>
                     )}
                   </div>
                 )}

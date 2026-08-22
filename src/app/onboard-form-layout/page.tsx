@@ -330,6 +330,7 @@ import { api } from "@/lib/api";
 
 type FieldType = "text" | "date" | "option" | "file";
 type FieldSection = "personal" | "education" | "professional" | "additional";
+type FormLayoutType = "intern" | "employee";
 
 interface FieldDefinition {
   key: string;
@@ -460,6 +461,7 @@ const initialRequired = (): RequiredMap =>
   Object.fromEntries(FIELD_DEFINITIONS.map((f) => [f.key, true]));
 
 const Page = () => {
+  const [layoutType, setLayoutType] = useState<FormLayoutType>("intern");
   const [selected, setSelected] = useState<SelectedMap>(initialSelected());
   const [required, setRequired] = useState<RequiredMap>(initialRequired());
 
@@ -493,7 +495,7 @@ const Page = () => {
 
     console.log(JSON.stringify(grouped, null, 2));
     const response = await api.post<any>("/form-layout", {
-      name: "intern",
+      name: layoutType,
       data: JSON.stringify(grouped),
     });
   };
@@ -505,12 +507,26 @@ const Page = () => {
           Admin
         </p>
         <h1 className="mt-1 text-3xl font-semibold text-slate-900">
-          Intern Form Builder
+          Form Builder
         </h1>
         <p className="mt-2 text-slate-600">
           Choose which fields appear on the intern onboarding form, and mark
           each as required or optional.
         </p>
+
+        <div className="mt-4 max-w-xs">
+          <label className="block text-sm font-medium text-slate-700">
+            Form Type
+          </label>
+          <select
+            value={layoutType}
+            onChange={(e) => setLayoutType(e.target.value as FormLayoutType)}
+            className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+          >
+            <option value="intern">Intern</option>
+            <option value="employee">Employee</option>
+          </select>
+        </div>
       </header>
 
       <div className="space-y-8">
