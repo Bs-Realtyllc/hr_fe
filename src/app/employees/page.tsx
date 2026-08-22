@@ -8,30 +8,17 @@ interface Employee {
   id: number;
   name: string;
   email: string;
-  phone?: string;
   designation: string;
   department: string;
   manager_id?: number;
   manager_name?: string;
   start_date: string;
-  timezone: string;
-  work_hours: string;
-  tech_stack: string[] | string | null;
   role: string;
-  is_active: boolean;
+  status: string;
 }
 
 function initials(name: string) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-}
-
-function parseTech(ts: string[] | string | null | undefined): string[] {
-  if (!ts) return [];
-  if (Array.isArray(ts)) return ts;
-  try {
-    const parsed = JSON.parse(ts as string);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch { return []; }
 }
 
 const roleColors: Record<string, string> = {
@@ -75,9 +62,8 @@ export default function EmployeesPage() {
   const [myTeamOnly, setMyTeamOnly] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({
-    name: '', email: '', phone: '', designation: '', department: '',
-    manager_id: '', start_date: '', timezone: 'UTC', work_hours: '9 AM - 5 PM',
-    tech_stack: '', role: 'employee',
+    name: '', email: '', designation: '', department: '',
+    manager_id: '', start_date: '', role: 'employee', status: 'active',
   });
 
   useEffect(() => {
@@ -101,7 +87,6 @@ export default function EmployeesPage() {
     ev.preventDefault();
     await api.post('/employees', {
       ...form,
-      tech_stack: form.tech_stack.split(',').map(s => s.trim()).filter(Boolean),
       manager_id: form.manager_id ? parseInt(form.manager_id) : null,
     });
     setShowModal(false);
@@ -173,7 +158,6 @@ export default function EmployeesPage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
             {members.map(emp => {
-              const tech = parseTech(emp.tech_stack);
               const isMe = emp.id === user?.id;
               return (
                 <div
@@ -205,10 +189,6 @@ export default function EmployeesPage() {
                         <span className="text-sm">{emp.manager_name}</span>
                       </div>
                     )}
-                    <div className="flex gap-2 items-center">
-                      <span className="text-muted" style={{ width: 80, flexShrink: 0 }}>Hours</span>
-                      <span className="text-sm">{emp.work_hours} <span style={{ color: 'var(--color-accent)' }}>({emp.timezone})</span></span>
-                    </div>
                     {emp.start_date && (
                       <div className="flex gap-2 items-center">
                         <span className="text-muted" style={{ width: 80, flexShrink: 0 }}>Since</span>
@@ -217,11 +197,6 @@ export default function EmployeesPage() {
                     )}
                   </div>
 
-                  {tech.length > 0 && (
-                    <div style={{ marginTop: 12 }}>
-                      {tech.map(t => <span key={t} className="tag">{t}</span>)}
-                    </div>
-                  )}
                 </div>
               );
             })}
@@ -264,10 +239,6 @@ export default function EmployeesPage() {
                   <input className="form-input" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Phone</label>
-                  <input className="form-input" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
-                </div>
-                <div className="form-group">
                   <label className="form-label">Designation</label>
                   <input className="form-input" value={form.designation} onChange={e => setForm({ ...form, designation: e.target.value })} />
                 </div>
@@ -280,19 +251,19 @@ export default function EmployeesPage() {
                   <input className="form-input" type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Timezone</label>
-                  <input className="form-input" value={form.timezone} onChange={e => setForm({ ...form, timezone: e.target.value })} placeholder="e.g. GMT+5:30" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Work Hours</label>
-                  <input className="form-input" value={form.work_hours} onChange={e => setForm({ ...form, work_hours: e.target.value })} placeholder="9 AM - 5 PM" />
-                </div>
-                <div className="form-group">
                   <label className="form-label">Role</label>
                   <select className="form-select" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}>
                     <option value="employee">Employee</option>
+                    <option value="intern">Intern</option>
                     <option value="lead">Lead</option>
                     <option value="admin">Admin</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Status</label>
+                  <select className="form-select" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+                    <option value="active">Active</option>
+                    <option value="onboarding">Onboarding (pending approval)</option>
                   </select>
                 </div>
                 <div className="form-group">
@@ -304,10 +275,6 @@ export default function EmployeesPage() {
                     ))}
                   </select>
                 </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Tech Stack (comma-separated)</label>
-                <input className="form-input" value={form.tech_stack} onChange={e => setForm({ ...form, tech_stack: e.target.value })} placeholder="React, Node.js, Go, PostgreSQL" />
               </div>
               <div className="flex gap-3 justify-end mt-4">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>

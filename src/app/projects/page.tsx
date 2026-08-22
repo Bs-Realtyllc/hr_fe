@@ -27,7 +27,6 @@ interface Assignment {
   name: string;
   designation: string;
   role: string;
-  timezone: string;
 }
 
 interface Employee {
