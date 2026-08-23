@@ -29,6 +29,8 @@ const allNav: { section: string; items: NavItem[] }[] = [
     section: 'People',
     items: [
       { href: '/employees', label: 'Team Directory', icon: 'users.svg', roles: ['admin', 'lead'] as Role[] },
+      { href: '/onboarding', label: 'Onboarding', icon: 'add_people.svg', roles: ['admin', 'lead'] as Role[] },
+      { href: '/onboard-form-layout', label: 'Change Form Layout', icon: 'edit.svg', roles: ['admin', 'lead'] as Role[] },
       { href: '/leaves', label: 'Leave Requests', icon: 'calendar.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
       { href: '/overtime', label: 'Overtime Requests', icon: 'clock.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
       { href: '/documents', label: 'Documents & Signature', icon: 'file-text.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
@@ -77,6 +79,7 @@ const allNav: { section: string; items: NavItem[] }[] = [
       { href: '/weekly-reports', label: 'Weekly Reports', icon: 'bar-chart-2.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
       { href: '/leave-report', label: 'Leave Report', icon: 'clipboard.svg', roles: ['admin'] as Role[] },
       { href: '/financial-report', label: 'Financial Report', icon: 'pie-chart.svg', roles: ['admin'] as Role[] },
+      { href: '/performance-report', label: 'Performance Reports', icon: 'task.svg', roles: ['admin', 'lead', 'employee'] as Role[] }
     ],
   },
   {

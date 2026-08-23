@@ -9,21 +9,13 @@ interface Profile {
   id: number;
   name: string;
   email: string;
-  phone: string;
-  alt_phone: string;
-  emergency_contact: string;
   designation: string;
   department: string;
   dob: string;
-  bio: string;
   address: string;
-  qualifications: string[];
   profile_picture: string;
   citizenship_front: string;
   citizenship_back: string;
-  timezone: string;
-  work_hours: string;
-  tech_stack: string[];
   role: string;
   start_date: string;
 }
@@ -52,18 +44,16 @@ export default function ProfilePage() {
   const [msgType, setMsgType] = useState<'ok' | 'err'>('ok');
 
   // personal info form state
-  const [form, setForm] = useState({
-    phone: '', alt_phone: '', emergency_contact: '', dob: '',
-    bio: '', address: '', timezone: '', work_hours: '',
-  });
-  const [qualifications, setQualifications] = useState<string[]>([]);
-  const [newQual, setNewQual] = useState('');
+  const [form, setForm] = useState({ dob: '', address: '' });
 
   // security
   const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm: '' });
   const [pwMsg, setPwMsg]   = useState('');
   const [pwType, setPwType] = useState<'ok' | 'err'>('ok');
   const [pwSaving, setPwSaving] = useState(false);
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
 
   // file upload ref (photo only — citizenship refs live inside DocUploadCard)
   const photoRef = useRef<HTMLInputElement>(null);
@@ -77,16 +67,9 @@ export default function ProfilePage() {
       const p = await api.get<Profile>('/profile');
       setProfile(p);
       setForm({
-        phone:             p.phone || '',
-        alt_phone:         p.alt_phone || '',
-        emergency_contact: p.emergency_contact || '',
-        dob:               p.dob ? p.dob.split('T')[0] : '',
-        bio:               p.bio || '',
-        address:           p.address || '',
-        timezone:          p.timezone || '',
-        work_hours:        p.work_hours || '',
+        dob:     p.dob ? p.dob.split('T')[0] : '',
+        address: p.address || '',
       });
-      setQualifications(p.qualifications || []);
       setPhotoPreview(avatarUrl(p.profile_picture));
       setFrontPreview(docUrl(p.citizenship_front));
       setBackPreview(docUrl(p.citizenship_back));
@@ -104,7 +87,7 @@ export default function ProfilePage() {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.put('/profile', { ...form, qualifications });
+      await api.put('/profile', form);
       flash('Profile updated successfully.');
       load();
     } catch {
@@ -308,19 +291,6 @@ export default function ProfilePage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div className="form-group">
-                  <label className="form-label">Phone</label>
-                  <input className="form-input" type="tel" placeholder="+977 98XXXXXXXX"
-                    value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Alt. Phone</label>
-                  <input className="form-input" type="tel" placeholder="Secondary number"
-                    value={form.alt_phone} onChange={e => setForm(f => ({ ...f, alt_phone: e.target.value }))} />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div className="form-group">
                   <label className="form-label">Date of Birth</label>
                   <input className="form-input" type="date"
                     value={form.dob} onChange={e => setForm(f => ({ ...f, dob: e.target.value }))} />
@@ -331,82 +301,9 @@ export default function ProfilePage() {
                   )}
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Emergency Contact</label>
-                  <input className="form-input" placeholder="Name & phone"
-                    value={form.emergency_contact}
-                    onChange={e => setForm(f => ({ ...f, emergency_contact: e.target.value }))} />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Bio / About Me <span className="text-muted" style={{ fontWeight: 400 }}>(optional)</span></label>
-                <textarea className="form-textarea" rows={3}
-                  placeholder="A short intro about yourself…"
-                  value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Address <span className="text-muted" style={{ fontWeight: 400 }}>(optional)</span></label>
-                <input className="form-input" placeholder="City, Country"
-                  value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div className="form-group">
-                  <label className="form-label">Timezone</label>
-                  <input className="form-input" placeholder="e.g. Asia/Kathmandu"
-                    value={form.timezone} onChange={e => setForm(f => ({ ...f, timezone: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Work Hours</label>
-                  <input className="form-input" placeholder="e.g. 9 AM – 6 PM"
-                    value={form.work_hours} onChange={e => setForm(f => ({ ...f, work_hours: e.target.value }))} />
-                </div>
-              </div>
-
-              {/* Qualifications */}
-              <div className="form-group">
-                <label className="form-label">Qualifications & Certifications</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-                  {qualifications.map((q, i) => (
-                    <span key={i} style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                      background: '#f1f5f9', borderRadius: 20, padding: '4px 12px',
-                      fontSize: 13, fontWeight: 500,
-                    }}>
-                      {q}
-                      <button type="button"
-                        onClick={() => setQualifications(qs => qs.filter((_, j) => j !== i))}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer',
-                                 color: 'var(--color-text-muted)', fontSize: 15, lineHeight: 1, padding: 0 }}>
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <input className="form-input" placeholder="e.g. Bachelor's in CS, AWS Certified…"
-                    value={newQual}
-                    onChange={e => setNewQual(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const v = newQual.trim();
-                        if (v) { setQualifications(qs => [...qs, v]); setNewQual(''); }
-                      }
-                    }}
-                    style={{ flex: 1 }}
-                  />
-                  <button type="button" className="btn btn-ghost"
-                    onClick={() => {
-                      const v = newQual.trim();
-                      if (v) { setQualifications(qs => [...qs, v]); setNewQual(''); }
-                    }}>
-                    + Add
-                  </button>
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 4 }}>
-                  Press Enter or click Add to add each item.
+                  <label className="form-label">Address <span className="text-muted" style={{ fontWeight: 400 }}>(optional)</span></label>
+                  <input className="form-input" placeholder="City, Country"
+                    value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
                 </div>
               </div>
 
@@ -473,27 +370,60 @@ export default function ProfilePage() {
 
               <div className="form-group">
                 <label className="form-label">Current Password</label>
-                <input className="form-input" type="password" autoComplete="current-password"
-                  placeholder="••••••••"
-                  value={pwForm.current_password}
-                  onChange={e => setPwForm(f => ({ ...f, current_password: e.target.value }))}
-                  required />
+                <div style={{ position: 'relative' }}>
+                  <input className="form-input" type={showCurrentPw ? 'text' : 'password'} autoComplete="current-password"
+                    placeholder="••••••••"
+                    value={pwForm.current_password}
+                    onChange={e => setPwForm(f => ({ ...f, current_password: e.target.value }))}
+                    required style={{ paddingRight: 42 }} />
+                  <button type="button" onClick={() => setShowCurrentPw(v => !v)}
+                    aria-label={showCurrentPw ? 'Hide password' : 'Show password'}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', color: 'var(--color-text-muted, #888)' }}>
+                    {showCurrentPw ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    )}
+                  </button>
+                </div>
               </div>
               <div className="form-group">
                 <label className="form-label">New Password</label>
-                <input className="form-input" type="password" autoComplete="new-password"
-                  placeholder="••••••••"
-                  value={pwForm.new_password}
-                  onChange={e => setPwForm(f => ({ ...f, new_password: e.target.value }))}
-                  required />
+                <div style={{ position: 'relative' }}>
+                  <input className="form-input" type={showNewPw ? 'text' : 'password'} autoComplete="new-password"
+                    placeholder="••••••••"
+                    value={pwForm.new_password}
+                    onChange={e => setPwForm(f => ({ ...f, new_password: e.target.value }))}
+                    required style={{ paddingRight: 42 }} />
+                  <button type="button" onClick={() => setShowNewPw(v => !v)}
+                    aria-label={showNewPw ? 'Hide password' : 'Show password'}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', color: 'var(--color-text-muted, #888)' }}>
+                    {showNewPw ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    )}
+                  </button>
+                </div>
               </div>
               <div className="form-group">
                 <label className="form-label">Confirm New Password</label>
-                <input className="form-input" type="password" autoComplete="new-password"
-                  placeholder="••••••••"
-                  value={pwForm.confirm}
-                  onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))}
-                  required />
+                <div style={{ position: 'relative' }}>
+                  <input className="form-input" type={showConfirmPw ? 'text' : 'password'} autoComplete="new-password"
+                    placeholder="••••••••"
+                    value={pwForm.confirm}
+                    onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))}
+                    required style={{ paddingRight: 42 }} />
+                  <button type="button" onClick={() => setShowConfirmPw(v => !v)}
+                    aria-label={showConfirmPw ? 'Hide password' : 'Show password'}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', color: 'var(--color-text-muted, #888)' }}>
+                    {showConfirmPw ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    )}
+                  </button>
+                </div>
               </div>
 
               <button type="submit" className="btn btn-primary" disabled={pwSaving}>

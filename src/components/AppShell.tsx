@@ -15,7 +15,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const dispatch = useAppDispatch();
 
 
-  const PUBLIC_PATHS = ['/login', '/forgot-password', '/reset-password'];
+  const PUBLIC_PATHS = ['/login', '/forgot-password', '/reset-password', '/onboard/'];
   const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p));
 
   useEffect(() => {

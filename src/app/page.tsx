@@ -10,6 +10,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import KpiCard from '@/components/KpiCard';
+//redux
+import { useAppDispatch, useAppSelector } from '@/store/hook';
+
+//icon
+import { RxHamburgerMenu } from "react-icons/rx";
+import { toggleSidebar } from '@/store/sidebarSlice';
 
 /* ─────────────────────────────── helpers ──────────────────────────────── */
 
@@ -267,7 +273,7 @@ interface RecentEmployee {
   designation: string;
   department: string;
   start_date: string;
-  is_active: boolean;
+  status: string;
 }
 
 /* ─────────────────────────────── page ─────────────────────────────────── */
@@ -292,7 +298,7 @@ export default function DashboardPage() {
     api.get<RecentEmployee[]>('/employees')
       .then(list => setRecentEmployees(
         [...list]
-          .filter(e => e.is_active)
+          .filter(e => e.status !== 'terminated')
           .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
           .slice(0, 6)
       ))
