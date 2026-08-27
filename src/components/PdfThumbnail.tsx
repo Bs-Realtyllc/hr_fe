@@ -21,7 +21,7 @@ export default function PdfThumbnail({ url }: PdfThumbnailProps) {
         const pdfjsLib = await import('pdfjs-dist');
         pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
 
-        const pdf = await pdfjsLib.getDocument(url).promise;
+        const pdf = await pdfjsLib.getDocument({ url }).promise;
         const page = await pdf.getPage(1);
         if (cancelled) return;
 
@@ -40,7 +40,7 @@ export default function PdfThumbnail({ url }: PdfThumbnailProps) {
         if (!ctx) return;
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        await page.render({ canvasContext: ctx, viewport }).promise;
+        await page.render({ canvas, canvasContext: ctx, viewport }).promise;
       } catch {
         if (!cancelled) setFailed(true);
       }
