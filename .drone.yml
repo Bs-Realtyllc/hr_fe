@@ -15,8 +15,8 @@ clone:
 
 steps:
 
-  # ── build & push ghcr.io/bs-realtyllc/hr_fe:<branch> and :<branch>-<sha> ────
-  - name: build-and-push
+  # ── build & push ghcr.io/bs-realtyllc/hr_fe:main (baked for hr.gitgi.com) ───
+  - name: build-and-push-main
     image: plugins/docker
     settings:
       registry: ghcr.io
@@ -31,6 +31,39 @@ steps:
       password:
         from_secret: ghcr_token
       cache_from: "ghcr.io/bs-realtyllc/hr_fe:${DRONE_COMMIT_BRANCH}"
+      build_args:
+        - NEXT_PUBLIC_API_URL=https://hr.gitgi.com/api
+        - NEXT_PUBLIC_LEARNING_URL=http://72.61.5.47:2345/
+    when:
+      branch:
+        - main
+
+  # ── build & push ghcr.io/bs-realtyllc/hr_fe:dev ─────────────────────────────
+  - name: build-and-push-dev
+    image: plugins/docker
+    settings:
+      registry: ghcr.io
+      repo: ghcr.io/bs-realtyllc/hr_fe
+      tags:
+        - "${DRONE_COMMIT_BRANCH}"
+        - "${DRONE_COMMIT_BRANCH}-${DRONE_COMMIT_SHA:0:8}"
+      dockerfile: Dockerfile
+      context:    .
+      username:
+        from_secret: ghcr_username
+      password:
+        from_secret: ghcr_token
+      cache_from: "ghcr.io/bs-realtyllc/hr_fe:${DRONE_COMMIT_BRANCH}"
+      build_args_from_env:
+        - NEXT_PUBLIC_API_URL
+        - NEXT_PUBLIC_LEARNING_URL
+    environment:
+      NEXT_PUBLIC_API_URL:
+        from_secret: next_public_api_url_dev
+      NEXT_PUBLIC_LEARNING_URL: http://72.61.5.47:2345/
+    when:
+      branch:
+        - dev
 
   - name: copy-configs-dev
     image: appleboy/drone-scp
@@ -48,7 +81,7 @@ steps:
       branch:
         - dev
     depends_on:
-      - build-and-push
+      - build-and-push-dev
 
   - name: copy-configs-main
     image: appleboy/drone-scp
@@ -66,7 +99,7 @@ steps:
       branch:
         - main
     depends_on:
-      - build-and-push
+      - build-and-push-main
 
   # ── deploy: branch picks the compose file, target dir, and container name ──
   - name: deploy
