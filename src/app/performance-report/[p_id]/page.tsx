@@ -16,7 +16,7 @@ import { CgAdd } from "react-icons/cg";
 import Popup from "reactjs-popup";
 import AddWorkItem from "../_components/addWorkItem";
 import Stats from "../_components/stats";
-import CustomInsights from "../_components/customInsight";
+import CustomInsights from "../_components/cutsomInsight";
 import Graph from "../_components/graph";
 import TaskCard from "../_components/taskCard";
 import { BarComponent, AreaComponent } from "../_components/adminAnalytics";
