@@ -7,7 +7,7 @@ import Popup from "reactjs-popup";
 import { buildFillDetailsMailto } from "@/template/fillDetailsMailTemplate";
 import { api } from "@/lib/api";
 
-interface InactiveUser {
+interface User {
   id: number;
   name: string;
   dob: string | null;
@@ -34,6 +34,11 @@ interface InactiveUser {
   status: string | null;
   manager_name: string | null;
   nda_path: string;
+  citizenship_front_path: string;
+  citizenship_back_path: string;
+  pan_path: string;
+  passout_certificate_path: string;
+  photo_path: string;
 }
 
 type ActionState = "idle" | "loading";
@@ -41,7 +46,7 @@ type ActionState = "idle" | "loading";
 type RoleFilter = "all" | "intern" | "employee";
 
 const Page = () => {
-  const [users, setUsers] = useState<InactiveUser[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
@@ -53,7 +58,7 @@ const Page = () => {
     setLoading(true);
     setError("");
     try {
-      const data = await api.get<InactiveUser[]>("/onboard?type=all");
+      const data = await api.get<User[]>("/onboard?type=all");
       setUsers(data);
     } catch (err) {
       setError(
@@ -73,11 +78,16 @@ const Page = () => {
   const filteredUsers =
     roleFilter === "all" ? users : users.filter((u) => u.role === roleFilter);
 
-  const handleViewContract = async (userId: number) => {
+  interface SumbitButtonType {
+    id: number;
+    type: "nda" | "photo" | "citizenship" | "certificate" | "pan";
+  }
+
+  const handleViewContract = async ({ id, type }: SumbitButtonType) => {
     try {
       const token = localStorage.getItem("hr_token");
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/onboard/${userId}/contract`,
+        `${process.env.NEXT_PUBLIC_API_URL}/onboard/${id}/${type}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -123,7 +133,7 @@ const Page = () => {
       setActionState((prev) => ({ ...prev, [id]: "idle" }));
     }
   };
-  const sendMail = (user: InactiveUser) => {
+  const sendMail = (user: User) => {
     const { subject, body, mailtoLink } = buildFillDetailsMailto({
       to: user.email,
       name: user.name,
@@ -139,35 +149,31 @@ const Page = () => {
   };
 
   return (
-    <div className="mx-auto  px-6 py-14">
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-6">
-        <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-amber-700">
-            HR Review
-          </p>
-          <h1 className="mt-1 text-3xl font-semibold text-slate-900">
-            Inactive Users
-          </h1>
-          <p className="mt-2 text-slate-600">
-            Review pending applications and approve or disapprove each one.
-          </p>
+    <div className="">
+      <div className="page-header">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1>Team Directory</h1>
+            <p>
+              Review pending applications and approve or disapprove each one.
+            </p>
+          </div>
+          <label className="flex flex-col text-sm">
+            <span className="mb-1 font-medium text-slate-700">
+              Filter by role
+            </span>
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value as RoleFilter)}
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+            >
+              <option value="all">All</option>
+              <option value="intern">Intern</option>
+              <option value="employee">Employee</option>
+            </select>
+          </label>
         </div>
-
-        <label className="flex flex-col text-sm">
-          <span className="mb-1 font-medium text-slate-700">
-            Filter by role
-          </span>
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value as RoleFilter)}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-          >
-            <option value="all">All</option>
-            <option value="intern">Intern</option>
-            <option value="employee">Employee</option>
-          </select>
-        </label>
-      </header>
+      </div>
 
       {error && (
         <div className="mb-6 flex items-center justify-between rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -229,7 +235,7 @@ const Page = () => {
                         <button
                           onClick={() => handleDecision(user.id, "approve")}
                           disabled={isLoading}
-                          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                          className="rounded-md bg-(--teal-normal) px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-(--teal-dark) disabled:cursor-not-allowed disabled:bg-slate-300"
                         >
                           Approve
                         </button>{" "}
@@ -251,46 +257,95 @@ const Page = () => {
                     value={formatDate(user.graduation_date)}
                   />
                 </dl>
-
                 {(user.linkedin_url ||
                   user.github_url ||
                   user.portfolio_url) && (
-                  <div className="mt-4 flex flex-wrap gap-4 border-t border-slate-100 pt-4 text-sm">
-                    {user.linkedin_url && (
-                      <a
-                        href={user.linkedin_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-amber-700 hover:underline"
-                      >
-                        LinkedIn
-                      </a>
-                    )}
-                    {user.github_url && (
-                      <a
-                        href={user.github_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-amber-700 hover:underline"
-                      >
-                        GitHub
-                      </a>
-                    )}
-                    {user.portfolio_url && (
-                      <a
-                        href={user.portfolio_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-amber-700 hover:underline"
-                      >
-                        Portfolio
-                      </a>
-                    )}
-                    {user.nda_path && (
-                      <button onClick={() => handleViewContract(user.id)}>
-                        View contract
-                      </button>
-                    )}
+                  <div className="mt-4 flex justify-between flex-wrap border-t border-slate-100 pt-4 text-sm">
+                    <div className="flex flex-wrap gap-4">
+                      {user.linkedin_url && (
+                        <a
+                          href={user.linkedin_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-amber-700 hover:underline"
+                        >
+                          LinkedIn
+                        </a>
+                      )}
+                      {user.github_url && (
+                        <a
+                          href={user.github_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-amber-700 hover:underline"
+                        >
+                          GitHub
+                        </a>
+                      )}
+                      {user.portfolio_url && (
+                        <a
+                          href={user.portfolio_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-amber-700 hover:underline"
+                        >
+                          Portfolio
+                        </a>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-4">
+                      {user.nda_path && (
+                        <button
+                          onClick={() =>
+                            handleViewContract({ id: user.id, type: "nda" })
+                          }
+                        >
+                          contract
+                        </button>
+                      )}
+                      {user.photo_path && (
+                        <button
+                          onClick={() =>
+                            handleViewContract({ id: user.id, type: "photo" })
+                          }
+                        >
+                          Photo
+                        </button>
+                      )}
+                      {user.citizenship_front_path && (
+                        <button
+                          onClick={() =>
+                            handleViewContract({
+                              id: user.id,
+                              type: "citizenship",
+                            })
+                          }
+                        >
+                          Citizenship
+                        </button>
+                      )}
+                      {user.passout_certificate_path && (
+                        <button
+                          onClick={() =>
+                            handleViewContract({
+                              id: user.id,
+                              type: "certificate",
+                            })
+                          }
+                        >
+                          Certificate
+                        </button>
+                      )}
+                      {user.pan_path && (
+                        <button
+                          onClick={() =>
+                            handleViewContract({ id: user.id, type: "pan" })
+                          }
+                        >
+                          PAN card
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
