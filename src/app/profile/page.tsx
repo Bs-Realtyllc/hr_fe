@@ -51,6 +51,9 @@ export default function ProfilePage() {
   const [pwMsg, setPwMsg]   = useState('');
   const [pwType, setPwType] = useState<'ok' | 'err'>('ok');
   const [pwSaving, setPwSaving] = useState(false);
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
 
   // file upload ref (photo only — citizenship refs live inside DocUploadCard)
   const photoRef = useRef<HTMLInputElement>(null);
@@ -367,27 +370,60 @@ export default function ProfilePage() {
 
               <div className="form-group">
                 <label className="form-label">Current Password</label>
-                <input className="form-input" type="password" autoComplete="current-password"
-                  placeholder="••••••••"
-                  value={pwForm.current_password}
-                  onChange={e => setPwForm(f => ({ ...f, current_password: e.target.value }))}
-                  required />
+                <div style={{ position: 'relative' }}>
+                  <input className="form-input" type={showCurrentPw ? 'text' : 'password'} autoComplete="current-password"
+                    placeholder="••••••••"
+                    value={pwForm.current_password}
+                    onChange={e => setPwForm(f => ({ ...f, current_password: e.target.value }))}
+                    required style={{ paddingRight: 42 }} />
+                  <button type="button" onClick={() => setShowCurrentPw(v => !v)}
+                    aria-label={showCurrentPw ? 'Hide password' : 'Show password'}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', color: 'var(--color-text-muted, #888)' }}>
+                    {showCurrentPw ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    )}
+                  </button>
+                </div>
               </div>
               <div className="form-group">
                 <label className="form-label">New Password</label>
-                <input className="form-input" type="password" autoComplete="new-password"
-                  placeholder="••••••••"
-                  value={pwForm.new_password}
-                  onChange={e => setPwForm(f => ({ ...f, new_password: e.target.value }))}
-                  required />
+                <div style={{ position: 'relative' }}>
+                  <input className="form-input" type={showNewPw ? 'text' : 'password'} autoComplete="new-password"
+                    placeholder="••••••••"
+                    value={pwForm.new_password}
+                    onChange={e => setPwForm(f => ({ ...f, new_password: e.target.value }))}
+                    required style={{ paddingRight: 42 }} />
+                  <button type="button" onClick={() => setShowNewPw(v => !v)}
+                    aria-label={showNewPw ? 'Hide password' : 'Show password'}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', color: 'var(--color-text-muted, #888)' }}>
+                    {showNewPw ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    )}
+                  </button>
+                </div>
               </div>
               <div className="form-group">
                 <label className="form-label">Confirm New Password</label>
-                <input className="form-input" type="password" autoComplete="new-password"
-                  placeholder="••••••••"
-                  value={pwForm.confirm}
-                  onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))}
-                  required />
+                <div style={{ position: 'relative' }}>
+                  <input className="form-input" type={showConfirmPw ? 'text' : 'password'} autoComplete="new-password"
+                    placeholder="••••••••"
+                    value={pwForm.confirm}
+                    onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))}
+                    required style={{ paddingRight: 42 }} />
+                  <button type="button" onClick={() => setShowConfirmPw(v => !v)}
+                    aria-label={showConfirmPw ? 'Hide password' : 'Show password'}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', color: 'var(--color-text-muted, #888)' }}>
+                    {showConfirmPw ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    )}
+                  </button>
+                </div>
               </div>
 
               <button type="submit" className="btn btn-primary" disabled={pwSaving}>

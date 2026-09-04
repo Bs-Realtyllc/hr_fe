@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { getToken } from "@/lib/auth";
 
 type FieldType = "text" | "date" | "option" | "file";
 type FieldSection = "personal" | "education" | "professional" | "additional";
@@ -135,10 +136,104 @@ const initialSelected = (): SelectedMap =>
 const initialRequired = (): RequiredMap =>
   Object.fromEntries(FIELD_DEFINITIONS.map((f) => [f.key, true]));
 
+interface ContractTemplateInfo {
+  filename: string;
+  originalName: string;
+}
+
 const Page = () => {
   const [layoutType, setLayoutType] = useState<FormLayoutType>("intern");
   const [selected, setSelected] = useState<SelectedMap>(initialSelected());
   const [required, setRequired] = useState<RequiredMap>(initialRequired());
+
+  const [currentTemplate, setCurrentTemplate] =
+    useState<ContractTemplateInfo | null>(null);
+  const [templateFile, setTemplateFile] = useState<File | null>(null);
+  const [templateBusy, setTemplateBusy] = useState(false);
+  const [templateMsg, setTemplateMsg] = useState("");
+  const templateInputRef = useRef<HTMLInputElement>(null);
+
+  // Reflect whichever layout type is selected — the template is stored per type.
+  useEffect(() => {
+    let cancelled = false;
+    setCurrentTemplate(null);
+    setTemplateMsg("");
+
+    (async () => {
+      try {
+        const res = await api.get<{ data: Record<string, unknown> | null }>(
+          `/form-layout?type=${layoutType}`,
+        );
+        if (!cancelled) {
+          setCurrentTemplate(
+            (res.data?.contractTemplate as ContractTemplateInfo) ?? null,
+          );
+        }
+      } catch {
+        // Layout not configured yet, or fetch failed — no template to show.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [layoutType]);
+
+  const handleUploadTemplate = async () => {
+    if (!templateFile) return;
+    setTemplateBusy(true);
+    setTemplateMsg("");
+
+    try {
+      const body = new FormData();
+      body.append("file", templateFile, templateFile.name);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/form-layout/template?type=${layoutType}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${getToken()}` },
+          body,
+        },
+      );
+      if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+
+      setCurrentTemplate({ filename: "", originalName: templateFile.name });
+      setTemplateFile(null);
+      if (templateInputRef.current) templateInputRef.current.value = "";
+      setTemplateMsg("Template saved.");
+    } catch (err) {
+      setTemplateMsg(
+        err instanceof Error ? err.message : "Could not upload template.",
+      );
+    } finally {
+      setTemplateBusy(false);
+    }
+  };
+
+  const handleRemoveTemplate = async () => {
+    setTemplateBusy(true);
+    setTemplateMsg("");
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/form-layout/template?type=${layoutType}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${getToken()}` },
+        },
+      );
+      if (!res.ok) throw new Error(`Remove failed (${res.status})`);
+
+      setCurrentTemplate(null);
+      setTemplateMsg("Reverted to the default template.");
+    } catch (err) {
+      setTemplateMsg(
+        err instanceof Error ? err.message : "Could not remove template.",
+      );
+    } finally {
+      setTemplateBusy(false);
+    }
+  };
 
   const toggleSelected = (key: string) => {
     setSelected((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -196,6 +291,63 @@ const Page = () => {
         <option value="intern">Intern</option>
         <option value="employee">Employee</option>
       </select>
+
+      <section className="mb-8 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Default Contract Template
+        </h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Uploaded here, this file replaces the built-in default as the
+          &quot;Download template&quot; option on the {layoutType} onboarding
+          form.
+        </p>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <input
+            ref={templateInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx"
+            onChange={(e) => setTemplateFile(e.target.files?.[0] ?? null)}
+            className="text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+          />
+          <button
+            type="button"
+            onClick={handleUploadTemplate}
+            disabled={!templateFile || templateBusy}
+            className="rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {templateBusy ? "Saving…" : "Upload"}
+          </button>
+          {currentTemplate && (
+            <button
+              type="button"
+              onClick={handleRemoveTemplate}
+              disabled={templateBusy}
+              className="text-sm font-medium text-red-600 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Revert to default
+            </button>
+          )}
+        </div>
+
+        {currentTemplate ? (
+          <p className="mt-3 text-sm text-slate-500">
+            Current file:{" "}
+            <span className="font-medium text-slate-700">
+              {currentTemplate.originalName}
+            </span>
+          </p>
+        ) : (
+          <p className="mt-3 text-sm text-slate-400">
+            No custom template set — the built-in default is used.
+          </p>
+        )}
+
+        {templateMsg && (
+          <p className="mt-2 text-sm text-amber-700">{templateMsg}</p>
+        )}
+      </section>
+
       <div className="space-y-8">
         {SECTION_ORDER.map((section) => (
           <div key={section}>

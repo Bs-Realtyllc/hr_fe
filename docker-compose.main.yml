@@ -3,7 +3,8 @@
 #
 # Deployed by Drone to /opt/hr-fe/frontend on push to `main`.
 # Pulls ghcr.io/bs-realtyllc/hr_fe:main. Host nginx (nginx.conf) terminates
-# TLS and reverse-proxies hr.bsrealtyllc.com to localhost:6001.
+# TLS and reverse-proxies hr.gitgi.com to localhost:6001 (and /api/* to the
+# backend on localhost:6002 — see nginx.conf).
 # =============================================================================
 
 name: hr-fe-frontend

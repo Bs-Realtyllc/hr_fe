@@ -134,8 +134,8 @@ export default function FinancialReportPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map(r => (
-                  <tr key={r.id}>
+                {rows.map((r, index) => (
+                  <tr key={index}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div className="avatar avatar-sm">{initials(r.name)}</div>

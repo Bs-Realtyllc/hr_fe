@@ -23,11 +23,11 @@ interface PlaneWorkItem {
   sequence_id: number;
   state: string;
   assignees: string[];
-  labels:string[];
+  labels: string[];
   state_name: string;
   state_group: string; // "backlog" | "unstarted" | "started" | "completed" | "cancelled"
   created_by_name: string;
-  updated_by_name:string;
+  updated_by_name: string;
   assignee_names: string[];
   label_names: string[];
 }

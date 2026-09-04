@@ -70,7 +70,20 @@ interface ApiField {
   required: boolean;
 }
 
-type LayoutResponse = Record<string, ApiField[]>;
+interface ContractTemplateInfo {
+  filename: string;
+  originalName: string;
+}
+
+// Sections are keyed by name -> field list; the admin-configured contract
+// template (if any) rides alongside them under a reserved key.
+interface LayoutResponse {
+  contractTemplate?: ContractTemplateInfo | null;
+  [section: string]: ApiField[] | ContractTemplateInfo | null | undefined;
+}
+
+const isFieldArray = (value: unknown): value is ApiField[] =>
+  Array.isArray(value);
 
 // ---------- Widget-level rendering hints ----------
 // The API tells us the label/required/section for a field, but not which
@@ -417,6 +430,7 @@ export default function InternForm(type: InternFormProps) {
   const allFieldsByKey: Record<string, ApiField> = {};
   if (layout) {
     Object.values(layout).forEach((fields) => {
+      if (!isFieldArray(fields)) return;
       fields.forEach((f) => {
         allFieldsByKey[f.key] = f;
       });
@@ -494,7 +508,7 @@ export default function InternForm(type: InternFormProps) {
 
     SECTIONS_CONFIG.forEach((section) => {
       const sectionFields = effectiveFieldSource[section.key];
-      if (!sectionFields || sectionFields.length === 0) return; // whole section absent
+      if (!isFieldArray(sectionFields) || sectionFields.length === 0) return; // whole section absent
 
       const sectionKeys = new Set(sectionFields.map((f) => f.key));
       const rowNodes: ReactNode[] = [];
@@ -537,17 +551,29 @@ export default function InternForm(type: InternFormProps) {
     // Any entirely new section the API introduces that we have no config for.
     Object.keys(effectiveFieldSource)
       .filter(
-        (sectionKey) => !SECTIONS_CONFIG.some((s) => s.key === sectionKey),
+        (sectionKey) =>
+          sectionKey !== "contractTemplate" &&
+          !SECTIONS_CONFIG.some((s) => s.key === sectionKey),
       )
       .forEach((sectionKey) => {
         const fields = effectiveFieldSource[sectionKey];
-        if (!fields || fields.length === 0) return;
+        if (!isFieldArray(fields) || fields.length === 0) return;
         renderedSections.push({
           title: sectionKey.charAt(0).toUpperCase() + sectionKey.slice(1),
           content: fields.map((f) => <div key={f.key}>{renderField(f)}</div>),
         });
       });
   }
+
+  // Admins can upload their own contract template on the Form Builder page
+  // (onboard-form-layout); fall back to the bundled default when none is set.
+  const adminTemplate = layout?.contractTemplate;
+  const templateHref = adminTemplate
+    ? `${process.env.NEXT_PUBLIC_API_URL}/form-layout/template?type=${type.type}`
+    : "/templates/onboard_intern_template.pdf";
+  const templateDownloadName = adminTemplate
+    ? adminTemplate.originalName
+    : undefined;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-14">
@@ -659,8 +685,8 @@ export default function InternForm(type: InternFormProps) {
               </div>
 
               <a
-                href="/templates/onboard_intern_template.pdf"
-                download
+                href={templateHref}
+                download={templateDownloadName ?? true}
                 onClick={(e) => e.stopPropagation()}
                 className="flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-6 py-10 text-center transition-colors hover:border-slate-300 hover:bg-slate-100 sm:w-56"
               >

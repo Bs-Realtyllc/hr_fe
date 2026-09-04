@@ -7,6 +7,15 @@ COPY scripts ./scripts
 RUN npm ci
 
 COPY . .
+
+# NEXT_PUBLIC_* vars are inlined into the client bundle at build time by
+# webpack — they must be passed in here as build-args, not just as runtime
+# env vars on the container. See docker-compose.main.yml / .drone.yml.
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_LEARNING_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_LEARNING_URL=$NEXT_PUBLIC_LEARNING_URL
+
 RUN npm run build
 
 # ── runtime ──────────────────────────────────────────────────────────────────
