@@ -14,16 +14,20 @@ import {
 interface PlaneWorkItem {
   id: string;
   name: string;
-  description_stripped: string | null;
+  description_html: string | null;
   priority: string;
   target_date: string | null;
   start_date: string | null;
   created_at: string;
   completed_at: string | null;
   sequence_id: number;
+  state: string;
+  assignees: string[];
+  labels: string[];
   state_name: string;
   state_group: string; // "backlog" | "unstarted" | "started" | "completed" | "cancelled"
   created_by_name: string;
+  updated_by_name: string;
   assignee_names: string[];
   label_names: string[];
 }

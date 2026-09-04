@@ -19,7 +19,7 @@ export default function PdfThumbnail({ url }: PdfThumbnailProps) {
         if (!canvas || !container) return;
 
         const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
         const pdf = await pdfjsLib.getDocument({ url }).promise;
         const page = await pdf.getPage(1);

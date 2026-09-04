@@ -10,8 +10,6 @@ import {
   type ReactNode,
   useEffect,
 } from "react";
-import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 
 interface InternFormData {
   name: string;
@@ -35,6 +33,12 @@ interface InternFormData {
 interface InternFormProps {
   type: "intern" | "employee";
 }
+type DocKey =
+  | "citizenshipFront"
+  | "citizenshipBack"
+  | "panCard"
+  | "passoutCertificate"
+  | "passportPhoto";
 
 type FormKey = keyof InternFormData;
 
@@ -206,6 +210,77 @@ const GRID_CLASS: Record<number, string> = {
   3: "grid grid-cols-3 gap-4",
 };
 
+const DOCUMENT_FIELDS: { key: DocKey; label: string }[] = [
+  { key: "citizenshipFront", label: "Citizenship (Front)" },
+  { key: "citizenshipBack", label: "Citizenship (Back)" },
+  { key: "panCard", label: "PAN Card" },
+  { key: "passoutCertificate", label: "Recent Passout Certificate" },
+  { key: "passportPhoto", label: "Recent Passport Size Photo" },
+];
+
+function DocDropzone({
+  label,
+  file,
+  onChange,
+}: {
+  label: string;
+  file: File | null;
+  onChange: (file: File | undefined) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragActive, setDragActive] = useState(false);
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragActive(false);
+    onChange(e.dataTransfer.files?.[0]);
+  };
+
+  return (
+    <div>
+      <p className="mb-2 text-sm font-medium text-slate-700">
+        {label} <span className="text-red-500">*</span>
+      </p>
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragActive(true);
+        }}
+        onDragLeave={() => setDragActive(false)}
+        onDrop={handleDrop}
+        onClick={() => inputRef.current?.click()}
+        className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 py-8 text-center transition-colors ${
+          dragActive
+            ? "border-amber-500 bg-amber-50"
+            : "border-slate-300 hover:border-slate-400"
+        }`}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".jpg,.jpeg,.pdf"
+          className="hidden"
+          required
+          onChange={(e) => onChange(e.target.files?.[0])}
+        />
+        {file ? (
+          <div className="text-sm">
+            <p className="font-medium text-slate-900 break-all">{file.name}</p>
+            <p className="mt-1 text-slate-500">
+              {(file.size / 1024).toFixed(0)} KB — click to replace
+            </p>
+          </div>
+        ) : (
+          <div className="text-sm text-slate-600">
+            <p className="font-medium">Drop file here, or click to browse</p>
+            <p className="mt-1 text-slate-400">JPEG or PDF, up to 10MB</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function InternForm(type: InternFormProps) {
   const [form, setForm] = useState<InternFormData>(initialState);
   const [contract, setContract] = useState<File | null>(null);
@@ -217,6 +292,14 @@ export default function InternForm(type: InternFormProps) {
   const [layout, setLayout] = useState<LayoutResponse | null>(null);
   const [layoutLoading, setLayoutLoading] = useState(true);
   const [layoutError, setLayoutError] = useState("");
+
+  const [documents, setDocuments] = useState<Record<DocKey, File | null>>({
+    citizenshipFront: null,
+    citizenshipBack: null,
+    panCard: null,
+    passoutCertificate: null,
+    passportPhoto: null,
+  });
 
   // console.log(type.type)
   useEffect(() => {
@@ -278,42 +361,19 @@ export default function InternForm(type: InternFormProps) {
     handleFile(e.dataTransfer.files?.[0]);
   };
 
-  // const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-  //   e.preventDefault();
-  //   form.role = type.type;
-  //   setLoading(true);
-
-  //   // Only send fields that were actually rendered on the form except role field,
-  //   // i.e. keys the API returned in the layout response.
-  //   const payload = Object.fromEntries(
-  //     Object.entries(form).filter(
-  //       ([key]) => key in allFieldsByKey || key === "role",
-  //     ),
-  //   );
-
-  //   console.log("formData:", JSON.stringify(payload), contract);
-
-  //   try {
-  //     const res: Response = await api.post("/onboard", {payload});
-  //     window.location.href = "/login";
-  //   } catch (err) {
-  //     console.error("ERROR", err);
-  //     window.alert("Failed to save data");
-  //     // window.location.reload();
-  //   }
-  //   setLoading(false);
-  // };
-
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     if (!contract) {
       setErrorMsg("Please attach your signed contract before submitting.");
       return;
     }
-
+    const missingDoc = DOCUMENT_FIELDS.find(({ key }) => !documents[key]);
+    if (missingDoc) {
+      setErrorMsg(`Please attach your ${missingDoc.label} before submitting.`);
+      return;
+    }
     setErrorMsg("");
-    setLoading(true);
+    // setLoading(true);
 
     // Only send fields that were actually rendered on the form, plus role.
     const payload = Object.fromEntries(
@@ -325,6 +385,12 @@ export default function InternForm(type: InternFormProps) {
     const body = new FormData();
     body.append("payload", JSON.stringify(payload));
     body.append("contract", contract, contract.name);
+    for (const { key } of DOCUMENT_FIELDS) {
+      const file = documents[key];
+      if (file) {
+        body.append(key, file, file.name);
+      }
+    }
     for (const [key, value] of body.entries()) {
       console.log(key, value);
     }
@@ -511,18 +577,17 @@ export default function InternForm(type: InternFormProps) {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-14">
-      <header className="mb-10 border-b border-slate-200 pb-6">
-        <p className="text-sm font-medium uppercase tracking-wide text-amber-700">
-          Intern Onboarding
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold text-slate-900">
-          Tell us about yourself
-        </h1>
-        <p className="mt-2 text-slate-600">
-          This information sets up your HR record. Fields marked optional can be
-          skipped.
-        </p>
-      </header>
+      <div className="page-header">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1>Tell us about yourself</h1>
+            <p>
+              This information sets up your HR record. Fields marked optional
+              can be skipped.
+            </p>
+          </div>
+        </div>
+      </div>
 
       {layoutLoading ? (
         <p className="text-sm text-slate-500">Loading form…</p>
@@ -547,10 +612,32 @@ export default function InternForm(type: InternFormProps) {
           <Section
             title={
               <span>
-                Contract File Upload <span className="text-red-500">*</span>
+                Documents Upload<span className="text-red-500">*</span>
               </span>
             }
             note={String(renderedSections.length + 1).padStart(2, "0")}
+          >
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {DOCUMENT_FIELDS.map(({ key, label }) => (
+                <DocDropzone
+                  key={key}
+                  label={label}
+                  file={documents[key]}
+                  onChange={(file) =>
+                    setDocuments((prev) => ({ ...prev, [key]: file ?? null }))
+                  }
+                />
+              ))}
+            </div>
+          </Section>
+
+          <Section
+            title={
+              <span>
+                Contract File Upload <span className="text-red-500">*</span>
+              </span>
+            }
+            note={String(renderedSections.length + 2).padStart(2, "0")}
           >
             <div className="flex gap-4 sm:flex-row">
               {/* <span>*</span> */}
@@ -661,7 +748,7 @@ function Section({
   return (
     <section>
       <div className="mb-5 flex items-baseline gap-3">
-        <span className="text-xs font-medium text-amber-700">{note}</span>
+        <span className="text-xs font-medium text-(--teal-normal)">{note}</span>
         <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
       </div>
       <div className="space-y-4">{children}</div>

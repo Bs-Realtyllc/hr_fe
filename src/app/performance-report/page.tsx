@@ -1,284 +1,213 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  Circle,
-  CircleDashed,
-  CircleDot,
-  CheckCircle2,
-  X,
-  ArrowUpDown,
-  BarChart as BarChartIcon,
-} from "lucide-react";
-import { FcCancel } from "react-icons/fc";
-import Stats from "./_components/stats";
-import CustomInsights from "./_components/customInsight";
-import TaskCard from "./_components/taskCard";
-import Graph from "./_components/graph";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Users, Calendar, ShieldCheck, Layers } from "lucide-react";
 
-interface PlaneWorkItem {
+interface Project {
   id: string;
+  total_members: string;
+  is_member: boolean;
+  member_role: number;
+  is_deployed: boolean;
+  cover_image_url: string;
+  created_at: Date;
+  updated_at: Date;
   name: string;
-  description_stripped: string | null;
-  priority: string;
-  target_date: string | null;
-  start_date: string | null;
-  created_at: string;
-  completed_at: string | null;
-  sequence_id: number;
-  state_name: string;
-  state_group: string; // "backlog" | "unstarted" | "started" | "completed" | "cancelled"
-  created_by_name: string;
-  assignee_names: string[];
-  label_names: string[];
+  description: string;
+  identifier: string;
+  emoji: string;
+  created_by: string;
+  updated_by: string;
 }
 
-interface PlaneWorkItemsResponse {
-  results: PlaneWorkItem[];
-  error?: string;
+interface UserType {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  role: number;
+  avatar: string;
+  display_name:string;
+  avatar_url: string;
 }
 
-const COLUMNS: {
-  key: string;
-  label: string;
-  icon: React.ReactNode;
-  headerColor: string;
-}[] = [
-  {
-    key: "backlog",
-    label: "Backlog",
-    icon: <CircleDashed size={15} className="text-gray-400" />,
-    headerColor: "border-gray-300",
-  },
-  {
-    key: "unstarted",
-    label: "Todo",
-    icon: <Circle size={15} className="text-slate-400" />,
-    headerColor: "border-slate-400",
-  },
-  {
-    key: "started",
-    label: "In Progress",
-    icon: <CircleDot size={15} className="text-yellow-500" />,
-    headerColor: "border-yellow-400",
-  },
-  {
-    key: "completed",
-    label: "Done",
-    icon: <CheckCircle2 size={15} className="text-green-500" />,
-    headerColor: "border-green-400",
-  },
-  {
-    key: "cancelled",
-    label: "Cancelled",
-    icon: <FcCancel size={15} className="text-red-500" />,
-    headerColor: "border-green-400",
-  },
-];
+// 5 = Guest, 15 = Member, 20 = Admin (Plane's numeric role scale)
+const ROLE_LABELS: Record<number, { label: string; className: string }> = {
+  15: { label: "Admin", className: "bg-purple-100 text-purple-700" },
+  20: { label: "Member", className: "bg-blue-100 text-blue-700" },
+  5: { label: "Guest", className: "bg-gray-100 text-gray-600" },
+};
 
-
-function AnalyticsPanel({
-  items,
-  open,
-  onClose,
-}: {
-  items: PlaneWorkItem[];
-  open: boolean;
-  onClose: () => void;
-}) {
-  const stats = useMemo(() => {
-    const total = items.length;
-    const byState: Record<string, number> = {};
-    for (const item of items) {
-      byState[item.state_group] = (byState[item.state_group] ?? 0) + 1;
-    }
-    return {
-      total,
-      started: byState.started ?? 0,
-      backlog: byState.backlog ?? 0,
-      unstarted: byState.unstarted ?? 0,
-      completed: byState.completed ?? 0,
-    };
-  }, [items]);
-
-
-  return (
-    <>
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        className={`fixed inset-0 bg-black/40 z-40 transition-opacity ${
-          open
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
-        }`}
-      />
-
-      {/* Slide-over panel */}
-      <div
-        className={`fixed top-0 right-0 h-full w-[52vw] bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out overflow-y-auto ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-            <BarChartIcon size={18} />
-            Analytics
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-700 transition"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-8">
-          {/* Summary cards */}
-          <Stats stats={stats} />
-
-          {/* Custom Insight chart */}
-          <CustomInsights items={items} />
-
-          {/* Created vs Resolved */}
-          <Graph items={items} />
-
-
-        </div>
-      </div>
-    </>
-  );
+function formatDate(date: Date | string) {
+  return new Date(date).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
-export default function PerformanceReportPage() {
-  const [items, setItems] = useState<PlaneWorkItem[]>([]);
+const Projects = () => {
+  const router = useRouter();
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortByPriority, setSortByPriority] = useState(false);
-  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [user, setUser] = useState<UserType>();
+  // const planeBaseURL = process.env.PLANE_BASE_URL;
+
+  const fetchProjects = async () => {
+    try {
+      const res = await fetch("/apis/plane/projects", { method: "GET" });
+      //also fetch user profile
+      const { me } = await (
+        await fetch("/apis/plane/me", { method: "GET" })
+      ).json();
+      // console.log(me);
+      setUser(me);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || `Request failed: ${res.status}`);
+      }
+
+      setProjects(data.projects ?? []);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch("/apis/plane", { method: "GET" });
-        const data: PlaneWorkItemsResponse = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error || `Request failed: ${response.status}`);
-        }
-        setItems(data.results);
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    fetchProjects();
   }, []);
 
-  const grouped = useMemo(() => {
-    const map: Record<string, PlaneWorkItem[]> = {
-      backlog: [],
-      unstarted: [],
-      started: [],
-      completed: [],
-      cancelled: [],
-    };
-
-    for (const item of items) {
-      if (map[item.state_group]) {
-        map[item.state_group].push(item);
-      }
-    }
-
-    if (sortByPriority) {
-      const order: Record<string, number> = {
-        urgent: 0,
-        high: 1,
-        medium: 2,
-        low: 3,
-        none: 4,
-      };
-      for (const key of Object.keys(map)) {
-        map[key] = [...map[key]].sort(
-          (a, b) => (order[a.priority] ?? 5) - (order[b.priority] ?? 5),
-        );
-      }
-    }
-
-    return map;
-  }, [items, sortByPriority]);
-
   if (loading) {
-    return <p className="text-gray-500 p-4">Loading board...</p>;
+    return <p className="text-gray-500 p-6">Loading projects...</p>;
   }
 
   if (error) {
-    return <p className="text-red-500 p-4">Error: {error}</p>;
+    return <p className="text-red-500 p-6">Error: {error}</p>;
   }
 
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <h2 className="text-lg font-semibold text-gray-800">
-          Performance Report
-        </h2>
+    <div className="">
+      <div className="page-header">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1>Projects</h1>
+            <p>
+              {projects.length} {projects.length === 1 ? "project" : "projects"}{" "}
+              across the workspace
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* User Profile Component */}
+            <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
+              {user?.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt={user.display_name ?? "User"}
+                  className="w-9 h-9 rounded-full object-cover border border-gray-200"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-(--teal-normal) text-white flex items-center justify-center font-semibold text-sm">
+                  {user?.first_name?.[0] || user?.display_name?.[0] || "U"}
+                </div>
+              )}
 
-        <div className="flex gap-2">
-          <button
-            onClick={() => setSortByPriority((prev) => !prev)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border transition ${
-              sortByPriority
-                ? "bg-gray-800 text-white border-gray-800"
-                : "bg-white text-gray-700 border-gray-300"
-            }`}
-          >
-            <ArrowUpDown size={14} />
-            Sort by Priority
-          </button>
-
-          <button
-            onClick={() => setShowAnalytics(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border transition bg-gray-800 text-white border-gray-800"
-          >
-            <BarChartIcon size={14} />
-            Analytics
-          </button>
+              <div className="flex flex-col text-left">
+                <span className="text-sm font-medium text-gray-900 leading-tight">
+                  {user?.first_name} {user?.last_name}
+                </span>
+                <span className="text-xs text-gray-500 leading-tight">
+                  {user?.email}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <AnalyticsPanel
-        items={items}
-        open={showAnalytics}
-        onClose={() => setShowAnalytics(false)}
-      />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {projects.map((project) => {
+          const role = ROLE_LABELS[project.member_role];
 
-      <div className="flex gap-3 overflow-x-auto pb-4">
-        {COLUMNS.map((col) => (
-          <div key={col.key} className="flex-1 min-w-[260px]">
+          return (
             <div
-              className={`flex items-center gap-2 px-1 pb-2 mb-2 border-b-2 ${col.headerColor}`}
+              key={project.id}
+              onClick={() => router.push(`/performance-report/${project.id}`)}
+              className="group bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md hover:border-gray-300 transition cursor-pointer flex flex-col"
             >
-              {col.icon}
-              <span className="text-sm font-medium text-gray-700">
-                {col.label}
-              </span>
-              <span className="text-xs text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5">
-                {grouped[col.key]?.length ?? 0}
-              </span>
-            </div>
+              {/* Cover */}
+              <div className="h-28 w-full relative bg-gradient-to-br from-indigo-100 via-slate-100 to-teal-100">
+                {project.cover_image_url && (
+                  <img
+                    src={`https://plane.bsrealtyllc.com${project.cover_image_url}`}
+                    alt={project.name}
+                    className="w-full h-full object-cover"
+                  />
+                )}
+                <div className="absolute -bottom-5 left-4 w-11 h-11 rounded-lg bg-white border border-gray-200 shadow-sm flex items-center justify-center text-xl">
+                  {project.emoji || "📁"}
+                </div>
+              </div>
 
-            <div className="space-y-2">
-              {grouped[col.key]?.map((item) => (
-                <TaskCard key={item.id} item={item} COLUMNS={COLUMNS} />
-              ))}
-              {grouped[col.key]?.length === 0 && (
-                <p className="text-xs text-gray-400 px-1">No tasks</p>
-              )}
+              {/* Body */}
+              <div className="pt-8 px-4 pb-4 flex flex-col flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="text-md font-semibold text-gray-900 leading-snug group-hover:text-(--teal-dark) transition line-clamp-1">
+                    {project.name}
+                  </h3>
+                  {role && (
+                    <span
+                      className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-medium ${role.className}`}
+                    >
+                      {role.label}
+                    </span>
+                  )}
+                </div>
+
+                <span className="inline-flex items-center gap-1 text-[11px] text-gray-400 mt-1 uppercase tracking-wide">
+                  <Layers size={11} />
+                  {project.identifier}
+                </span>
+
+                {project.description && (
+                  <p className="text-sm text-gray-500 mt-2 mb-2 line-clamp-2">
+                    {project.description}
+                  </p>
+                )}
+
+                <div className="mt-auto pt-4 flex items-center justify-between text-xs text-gray-400 border-t border-gray-100 mt-3">
+                  <span className="flex items-center gap-1">
+                    <Users size={12} />
+                    {project.total_members}{" "}
+                    {Number(project.total_members) === 1 ? "member" : "members"}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Calendar size={12} />
+                    {formatDate(project.created_at)}
+                  </span>
+                </div>
+
+                {project.is_member && (
+                  <span className="flex items-center gap-1 text-[11px] text-green-600 mt-2">
+                    <ShieldCheck size={12} />
+                    You're a member
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
+      {projects.length === 0 && (
+        <p className="text-sm text-gray-400 mt-6">No projects found.</p>
+      )}
     </div>
   );
-}
+};
+
+export default Projects;
