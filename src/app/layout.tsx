@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans, IBM_Plex_Sans } from 'next/font/google';
 import '../styles/global.css';
+import '@bsrealtyllc/design-system/style.css';
 import AppShell from '@/components/AppShell';
 import StoreProvider from '@/store/storeProvider';
 

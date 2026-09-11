@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { BSRealtyButton } from '@bsrealtyllc/design-system';
 
 interface Employee {
   id: number;
@@ -105,13 +106,14 @@ export default function EmployeesPage() {
             </p>
           </div>
           {isAdmin && (
-            <button className="btn btn-primary btn-sm" onClick={() => setShowModal(true)}>
-              <span
-                className="icon-mask"
-                style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
-              />
-              Add Employee
-            </button>
+            <BSRealtyButton
+              label="Add Employee"
+              variant="primary"
+              size="small"
+              showLeftIcon={false}
+              showRightIcon={false}
+              onClick={() => setShowModal(true)}
+            />
           )}
         </div>
       </div>
