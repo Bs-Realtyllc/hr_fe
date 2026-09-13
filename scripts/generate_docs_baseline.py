@@ -31,10 +31,13 @@ MANIFEST_PATH = REPO_ROOT / "docs" / "_meta" / "manifest.json"
 IGNORED_DIR_PARTS = {
     "node_modules", "dist", "build", "coverage", ".git", ".github",
     "docs", "uploads", "vendor", "__pycache__", ".venv", "venv",
+    "scripts",  # this scaffold's own tooling, not product source
+    "android", "ios",  # commonly vendored/generated native shells, not hand-written features
 }
-IGNORED_FILES = {"package-lock.json", "yarn.lock", "pnpm-lock.yaml"}
+IGNORED_FILES = {"package-lock.json", "yarn.lock", "pnpm-lock.yaml", "CLAUDE.md", "README.md"}
 ROUTE_LIKE_DIRS = {"routes", "controllers", "handlers", "api"}
 MAX_BUCKET_CHARS = 40_000  # per-feature context cap for a free-tier model
+MAX_BUCKET_FILES = 60  # a bucket bigger than this is almost certainly a mis-grouped vendor/generated dir
 
 
 def sh(*args: str) -> str:
@@ -45,10 +48,12 @@ def tracked_files() -> list[str]:
     files = sh("git", "ls-files").splitlines()
     out = []
     for f in files:
-        parts = Path(f).parts
-        if any(p in IGNORED_DIR_PARTS for p in parts):
+        path = Path(f)
+        if len(path.parts) == 1:
+            continue  # root-level files are config/meta (Dockerfile, .gitignore, tsconfig.json, ...), never a feature
+        if any(p in IGNORED_DIR_PARTS for p in path.parts):
             continue
-        if Path(f).name in IGNORED_FILES:
+        if path.name in IGNORED_FILES:
             continue
         out.append(f)
     return out
@@ -65,6 +70,12 @@ def bucket_files(files: list[str]) -> dict[str, list[str]]:
             top = path.parts[0]
             key = f"{top}/{path.parts[1]}/" if top == "src" and len(path.parts) > 2 else f"{top}/"
         buckets.setdefault(key, []).append(f)
+
+    oversized = [k for k, v in buckets.items() if len(v) > MAX_BUCKET_FILES]
+    for k in oversized:
+        print(f"  ! skipping bucket {k} — {len(buckets[k])} files, likely mis-grouped vendor/generated content", file=sys.stderr)
+        del buckets[k]
+
     return buckets
 
 
@@ -129,7 +140,7 @@ def main() -> None:
 
         context = bucket_context(files)
         prompt = build_prompt(claude_md, doc_path, context)
-        content = llm_client.complete(client, prompt, max_tokens=3000)
+        content = llm_client.complete(client, prompt, max_tokens=6000)
 
         doc_file = REPO_ROOT / doc_path
         doc_file.parent.mkdir(parents=True, exist_ok=True)

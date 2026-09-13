@@ -37,15 +37,39 @@ def get_client() -> openai.OpenAI:
 
 
 def complete(client: openai.OpenAI, prompt: str, max_tokens: int = 4000) -> str:
-    """One-shot completion: single user turn in, plain text out."""
+    """One-shot completion: single user turn in, plain text out.
+
+    Free-tier reasoning models (common on OpenRouter) can spend the whole
+    max_tokens budget on hidden reasoning and never emit visible content —
+    `message.content` comes back None with `finish_reason: "length"`, not
+    an error. Retry once with a bigger budget before giving up, and fail
+    with a clear message rather than a raw TypeError two frames down.
+    """
     model = os.environ.get("LLM_MODEL")
     if not model:
         print("LLM_MODEL must be set.", file=sys.stderr)
         sys.exit(1)
 
-    resp = client.chat.completions.create(
-        model=model,
-        max_tokens=max_tokens,
-        messages=[{"role": "user", "content": prompt}],
+    for attempt_tokens in (max_tokens, max_tokens * 3):
+        resp = client.chat.completions.create(
+            model=model,
+            max_tokens=attempt_tokens,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        choice = resp.choices[0]
+        content = choice.message.content
+        if content:
+            return content.strip()
+        print(
+            f"  ! empty completion (finish_reason={choice.finish_reason}, "
+            f"max_tokens={attempt_tokens}) — "
+            f"{'retrying with a bigger budget' if attempt_tokens == max_tokens else 'giving up'}",
+            file=sys.stderr,
+        )
+
+    raise RuntimeError(
+        f"'{model}' returned no content after retrying with a larger token budget. "
+        "If this keeps happening, the model may be spending its whole budget on "
+        "hidden reasoning — try a non-reasoning free model, or raise the max_tokens "
+        "passed to complete()."
     )
-    return resp.choices[0].message.content.strip()

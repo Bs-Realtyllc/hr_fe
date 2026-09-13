@@ -138,7 +138,7 @@ def main() -> None:
         diff = "\n".join(diff_parts)
 
         prompt = build_prompt(claude_md, doc_path, diff, existing_doc, is_new)
-        content = llm_client.complete(client, prompt, max_tokens=3000)
+        content = llm_client.complete(client, prompt, max_tokens=6000)
 
         doc_file.parent.mkdir(parents=True, exist_ok=True)
         doc_file.write_text(content.strip() + "\n")
