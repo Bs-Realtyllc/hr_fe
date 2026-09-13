@@ -19,6 +19,12 @@ jobs:
         with:
           node-version: "20" # adjust per repo if it pins a different version
 
+      # Needed for `npm run generate:openapi` on backend repos (npm ci, not
+      # install, to match the committed lockfile exactly); harmless no-op
+      # cost on frontend/mobile repos that don't have that script.
+      - name: Install node dependencies
+        run: npm ci
+
       - name: Install script dependencies
         run: pip install -r scripts/requirements.txt
 
