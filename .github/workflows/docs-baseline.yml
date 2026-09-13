@@ -1,0 +1,66 @@
+name: Docs Baseline (one-time / re-baseline)
+
+on:
+  workflow_dispatch: {} # run manually from the Actions tab
+
+jobs:
+  baseline-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write # needed to create the automated-docs label if it doesn't exist yet
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20" # adjust per repo if it pins a different version
+
+      - name: Install script dependencies
+        run: pip install -r scripts/requirements.txt
+
+      # Uses whatever OpenAI-compatible endpoint LLM_BASE_URL points at
+      # (OpenRouter by default) — swapping provider or model is a secret/
+      # variable change, not a code change. See scripts/llm_client.py.
+      #
+      # Honest limitation: this is a mechanical, bounded-context pass, not
+      # an agentic file-by-file exploration — see the docstring in
+      # generate_docs_baseline.py. Expect to review and hand-edit the
+      # result, especially the first time on a given repo.
+      - name: Generate baseline docs
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+        run: python scripts/generate_docs_baseline.py
+
+      - name: Open baseline PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "Nothing was generated — exiting cleanly."
+            exit 0
+          fi
+
+          short_sha="$(git rev-parse --short HEAD)"
+          branch="docs/baseline-${short_sha}"
+
+          git config user.name "docs-bot"
+          git config user.email "docs-bot@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add docs/
+          git commit -m "docs: initial baseline"
+          git push origin "$branch"
+
+          gh label create automated-docs --color 0e8a16 --description "Opened by the docs-generation workflow" --force
+
+          gh pr create \
+            --title "docs: initial baseline" \
+            --body "Automated initial documentation baseline as of ${short_sha}. This is a mechanical, best-effort pass (see generate_docs_baseline.py) — review carefully before merging, especially the Known limitations sections." \
+            --label automated-docs \
+            --base main \
+            --head "$branch"

@@ -1,0 +1,36 @@
+name: Notify Docs Hub
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  notify:
+    if: >
+      github.event.pull_request.merged == true &&
+      contains(github.event.pull_request.labels.*.name, 'automated-docs')
+    runs-on: ubuntu-latest
+    steps:
+      # This file is copied into every product repo (fe/be/mobile alike).
+      # `product`/`variant` MUST be edited per copy to match that repo's
+      # row in docs-hub/products.json — e.g. hr_be is (product=hr,
+      # variant=api), hr_fe is (product=hr, variant=web). Nothing here
+      # infers it automatically; get it wrong and docs-hub syncs the wrong
+      # folder.
+      - name: Mint installation token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.DOCS_BOT_APP_ID }}
+          private-key: ${{ secrets.DOCS_BOT_PRIVATE_KEY }}
+          owner: Bs-Realtyllc
+          repositories: docs-hub
+
+      - name: Dispatch docs-hub rebuild
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh api repos/Bs-Realtyllc/docs-hub/dispatches \
+            -f event_type=docs-updated \
+            -f "client_payload[product]=hr" \
+            -f "client_payload[variant]=web"
