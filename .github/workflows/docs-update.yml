@@ -1,0 +1,64 @@
+name: Docs Update
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write # needed to create the automated-docs label if it doesn't exist yet
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history — a batched push can have `before` far behind `after`
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20" # adjust per repo if it pins a different version
+
+      - name: Install script dependencies
+        run: pip install -r scripts/requirements.txt
+
+      # Uses whatever OpenAI-compatible endpoint LLM_BASE_URL points at
+      # (OpenRouter by default) — swapping provider or model is a secret/
+      # variable change, not a code change. See scripts/llm_client.py.
+      - name: Generate docs for this push
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+        run: python scripts/generate_docs_incremental.py --base "${{ github.event.before }}" --head "${{ github.event.after }}"
+
+      - name: Open PR if anything changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "Nothing doc-relevant changed — exiting cleanly."
+            exit 0
+          fi
+
+          short_sha="$(git rev-parse --short "${{ github.event.after }}")"
+          branch="docs/update-${short_sha}"
+
+          git config user.name "docs-bot"
+          git config user.email "docs-bot@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add docs/
+          git commit -m "docs: update for ${short_sha}"
+          git push origin "$branch"
+
+          gh label create automated-docs --color 0e8a16 --description "Opened by the docs-generation workflow" --force
+
+          body="$(cat /tmp/docs_pr_summary.txt 2>/dev/null || echo "Automated docs update for commit ${short_sha}.")"
+
+          gh pr create \
+            --title "docs: update for ${short_sha}" \
+            --body "$body" \
+            --label automated-docs \
+            --base main \
+            --head "$branch"
