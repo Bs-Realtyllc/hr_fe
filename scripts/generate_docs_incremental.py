@@ -129,6 +129,7 @@ def main() -> None:
         return
 
     client = llm_client.get_client()
+    failed: list[str] = []
     for doc_path, src_files in by_doc.items():
         doc_file = REPO_ROOT / doc_path
         is_new = not doc_file.exists()
@@ -137,12 +138,26 @@ def main() -> None:
         diff_parts = [sh("git", "diff", f"{args.base}..{args.head}", "--", f) for f in dict.fromkeys(src_files)]
         diff = "\n".join(diff_parts)
 
-        prompt = build_prompt(claude_md, doc_path, diff, existing_doc, is_new)
-        content = llm_client.complete(client, prompt, max_tokens=6000)
+        # One doc file failing (flaky free-tier model, transient provider
+        # error) shouldn't discard every other doc file already generated
+        # in this same push.
+        try:
+            prompt = build_prompt(claude_md, doc_path, diff, existing_doc, is_new)
+            content = llm_client.complete(client, prompt, max_tokens=6000)
+        except RuntimeError as e:
+            print(f"  ! giving up on {doc_path}: {e}", file=sys.stderr)
+            failed.append(doc_path)
+            continue
 
         doc_file.parent.mkdir(parents=True, exist_ok=True)
         doc_file.write_text(content.strip() + "\n")
         print(f"{'Created' if is_new else 'Updated'} {doc_path}")
+
+    if failed and len(failed) == len(by_doc):
+        print("Every doc file failed — nothing to commit.", file=sys.stderr)
+        sys.exit(1)
+    if failed:
+        print(f"\n{len(failed)} doc file(s) failed and were skipped: {', '.join(failed)}", file=sys.stderr)
 
     MANIFEST_PATH.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
@@ -156,8 +171,11 @@ Diff that prompted this update:
 ```
 
 Respond with ONLY the paragraph, no heading, no commentary."""
-    summary = llm_client.complete(client, summary_prompt, max_tokens=300)
-    PR_SUMMARY_PATH.write_text(summary.strip() + "\n")
+    try:
+        summary = llm_client.complete(client, summary_prompt, max_tokens=300)
+        PR_SUMMARY_PATH.write_text(summary.strip() + "\n")
+    except RuntimeError as e:
+        print(f"  ! couldn't generate a PR summary, falling back to a generic one: {e}", file=sys.stderr)
 
     package_json = REPO_ROOT / "package.json"
     if package_json.exists() and '"generate:openapi"' in package_json.read_text():
