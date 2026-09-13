@@ -130,11 +130,11 @@ type SelectedMap = Record<string, boolean>;
 // key -> whether it's required (only meaningful if selected)
 type RequiredMap = Record<string, boolean>;
 
-const initialSelected = (): SelectedMap =>
-  Object.fromEntries(FIELD_DEFINITIONS.map((f) => [f.key, true]));
+const emptySelected = (): SelectedMap =>
+  Object.fromEntries(FIELD_DEFINITIONS.map((f) => [f.key, false]));
 
-const initialRequired = (): RequiredMap =>
-  Object.fromEntries(FIELD_DEFINITIONS.map((f) => [f.key, true]));
+const emptyRequired = (): RequiredMap =>
+  Object.fromEntries(FIELD_DEFINITIONS.map((f) => [f.key, false]));
 
 interface ContractTemplateInfo {
   filename: string;
@@ -143,11 +143,14 @@ interface ContractTemplateInfo {
 
 const Page = () => {
   const [layoutType, setLayoutType] = useState<FormLayoutType>("intern");
-  const [selected, setSelected] = useState<SelectedMap>(initialSelected());
-  const [required, setRequired] = useState<RequiredMap>(initialRequired());
+  const [selected, setSelected] = useState<SelectedMap>(emptySelected());
+  const [required, setRequired] = useState<RequiredMap>(emptyRequired());
+  const [layoutLoading, setLayoutLoading] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<
+    "idle" | "saving" | "success" | "error"
+  >("idle");
 
-  const [currentTemplate, setCurrentTemplate] =
-    useState<ContractTemplateInfo | null>(null);
+  const [currentTemplate, setCurrentTemplate] = useState<ContractTemplateInfo | null>(null);
   const [templateFile, setTemplateFile] = useState<File | null>(null);
   const [templateBusy, setTemplateBusy] = useState(false);
   const [templateMsg, setTemplateMsg] = useState("");
@@ -158,19 +161,57 @@ const Page = () => {
     let cancelled = false;
     setCurrentTemplate(null);
     setTemplateMsg("");
+    setLayoutLoading(true);
 
     (async () => {
       try {
-        const res = await api.get<{ data: Record<string, unknown> | null }>(
-          `/form-layout?type=${layoutType}`,
+        const res = await api.get<{
+          data: Record<
+            string,
+            FieldDefinition[] & { required: boolean }[]
+          > | null;
+          contractTemplate?: ContractTemplateInfo;
+        }>(`/form-layout?type=${layoutType}`);
+
+        if (cancelled) return;
+
+        setCurrentTemplate(
+          (res.data?.contractTemplate as any) ?? null,
         );
-        if (!cancelled) {
-          setCurrentTemplate(
-            (res.data?.contractTemplate as ContractTemplateInfo) ?? null,
+
+        // Flatten the saved sections into a lookup by field key
+        const savedByKey: Record<string, { required: boolean }> = {};
+        const savedData = (res as any).data?.data ?? res.data ?? null;
+        if (savedData) {
+          Object.values(savedData as Record<string, any[]>).forEach(
+            (sectionFields) => {
+              (sectionFields ?? []).forEach((f) => {
+                savedByKey[f.key] = { required: !!f.required };
+              });
+            },
           );
         }
+
+        const newSelected: SelectedMap = {};
+        const newRequired: RequiredMap = {};
+        FIELD_DEFINITIONS.forEach((f) => {
+          const saved = savedByKey[f.key];
+          newSelected[f.key] = !!saved;
+          newRequired[f.key] = saved ? saved.required : false;
+        });
+
+        setSelected(newSelected);
+        setRequired(newRequired);
       } catch {
-        // Layout not configured yet, or fetch failed — no template to show.
+        // Layout not configured yet, or fetch failed — fall back to nothing
+        // selected, not "everything selected", so a failed load can't
+        // silently blow away a good saved layout on the next Save click.
+        if (!cancelled) {
+          setSelected(emptySelected());
+          setRequired(emptyRequired());
+        }
+      } finally {
+        if (!cancelled) setLayoutLoading(false);
       }
     })();
 
@@ -244,6 +285,8 @@ const Page = () => {
   };
 
   const handleSetForm = async () => {
+    setSaveStatus("saving");
+
     const flatFields = FIELD_DEFINITIONS.filter((f) => selected[f.key]).map(
       (f) => ({
         key: f.key,
@@ -254,7 +297,6 @@ const Page = () => {
       }),
     );
 
-    // Grouped by section — mirrors InternForm's Personal/Education/Professional/Additional layout
     const grouped = SECTION_ORDER.reduce(
       (acc, section) => {
         acc[section] = flatFields.filter((f) => f.section === section);
@@ -263,11 +305,16 @@ const Page = () => {
       {} as Record<FieldSection, typeof flatFields>,
     );
 
-    console.log(JSON.stringify(grouped, null, 2));
-    const response = await api.post<any>("/form-layout", {
-      name: layoutType,
-      data: JSON.stringify(grouped),
-    });
+    try {
+      await api.post<any>("/form-layout", {
+        name: layoutType,
+        data: JSON.stringify(grouped),
+      });
+      setSaveStatus("success");
+    } catch (err) {
+      console.error("Failed to save form layout", err);
+      setSaveStatus("error");
+    }
   };
 
   return (
@@ -401,12 +448,23 @@ const Page = () => {
       </div>
 
       <div className="mt-8 flex justify-end">
-        <button
-          onClick={handleSetForm}
-          className="rounded-md bg-slate-900 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-700"
-        >
-          Set form
-        </button>
+        <div className="mt-8 flex items-center justify-end gap-4">
+          {saveStatus === "success" && (
+            <span className="text-sm font-medium text-emerald-600">Saved</span>
+          )}
+          {saveStatus === "error" && (
+            <span className="text-sm font-medium text-red-600">
+              Could not save. Try again.
+            </span>
+          )}
+          <button
+            onClick={handleSetForm}
+            disabled={layoutLoading || saveStatus === "saving"}
+            className="rounded-md bg-slate-900 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saveStatus === "saving" ? "Saving…" : "Set form"}
+          </button>
+        </div>
       </div>
     </div>
   );

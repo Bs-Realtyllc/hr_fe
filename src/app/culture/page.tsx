@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CultureEvent {
   id: number;
@@ -162,6 +163,10 @@ export default function CulturePage() {
   const [showAll, setShowAll] = useState(false);
   const [form, setForm] = useState({ title: '', event_type: 'team_event', event_date: '', description: '', employee_id: '' });
 
+  const { user } = useAuth();
+  const isPrivileged = user?.role === "admin" || user?.role === "lead";
+  console.log(user)
+
   const load = () => api.get<CultureEvent[]>('/events').then(setEvents).catch(() => {});
 
   useEffect(() => {
@@ -196,6 +201,8 @@ export default function CulturePage() {
             <h1>Culture & Events</h1>
             <p>Birthdays, anniversaries, and team milestones</p>
           </div>
+          {
+          isPrivileged &&
           <button className="btn btn-primary btn-sm" onClick={() => setShowModal(true)}>
             <span
               className="icon-mask"
@@ -203,6 +210,7 @@ export default function CulturePage() {
             />
             Add Event
           </button>
+          }
         </div>
       </div>
 
