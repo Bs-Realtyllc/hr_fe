@@ -20,6 +20,7 @@ Usage:
 import json
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 import llm_client
@@ -101,18 +102,24 @@ def bucket_context(files: list[str]) -> str:
     return "\n".join(parts)
 
 
-def build_prompt(claude_md: str, doc_path: str, context: str) -> str:
+def build_prompt(claude_md: str, doc_path: str, context: str, today: str, short_sha: str) -> str:
     return f"""{claude_md}
 
 ---
 
 Draft `{doc_path}` from scratch, following the Feature doc format above.
+Use exactly "{today}" for **Last updated** and "{short_sha}" for the commit —
+never invent a date or SHA of your own.
+
 This is a best-effort baseline pass, not a full audit — write what's
 reasonably inferable from the source below, and use the "Known
 limitations / in-progress" section to flag anything genuinely unclear
-rather than guessing confidently. If this looks like a backend module with
-no UI of its own, write "N/A — backend service" under "Where it lives in
-the UI" and note what consumes it instead.
+rather than guessing confidently. "Where it lives in the UI" means: does a
+person navigate to a screen for this? A backend API route, or frontend
+infrastructure with no screen of its own (a shared context/store/lib/
+component library), both get "N/A" — say what consumes it instead of
+listing screens. Only list actual routes/screens for things a user
+actually navigates to.
 
 Source files for this feature:
 ```
@@ -130,6 +137,9 @@ def main() -> None:
         print("No source files found to document.", file=sys.stderr)
         sys.exit(1)
 
+    today = date.today().isoformat()
+    short_sha = sh("git", "rev-parse", "--short", "HEAD").strip()
+
     client = llm_client.get_client()
     manifest: dict[str, list[str]] = {}
     index_entries: list[tuple[str, str]] = []
@@ -144,7 +154,7 @@ def main() -> None:
 
         try:
             context = bucket_context(files)
-            prompt = build_prompt(claude_md, doc_path, context)
+            prompt = build_prompt(claude_md, doc_path, context, today, short_sha)
             content = llm_client.complete(client, prompt, max_tokens=6000)
         except RuntimeError as e:
             print(f"  ! giving up on {doc_path}: {e}", file=sys.stderr)

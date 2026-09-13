@@ -22,6 +22,7 @@ import argparse
 import json
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 import llm_client
@@ -83,7 +84,7 @@ def new_feature_folders(unmatched: list[str]) -> dict[str, list[str]]:
     return groups
 
 
-def build_prompt(claude_md: str, doc_path: str, diff: str, existing_doc: str, is_new: bool) -> str:
+def build_prompt(claude_md: str, doc_path: str, diff: str, existing_doc: str, is_new: bool, today: str, short_sha: str) -> str:
     return f"""{claude_md}
 
 ---
@@ -99,8 +100,10 @@ Here is the diff of the source files mapped to this doc (unified diff format):
 
 Write the COMPLETE new content for `{doc_path}` following the Feature doc
 format exactly. Only update sections affected by this diff — preserve
-everything else. Respond with ONLY the markdown content, no commentary, no
-code fences around the whole file."""
+everything else, EXCEPT always set **Last updated** to exactly "{today}"
+— from commit "{short_sha}" (never invent a date or SHA, and never leave
+a stale one from the previous version). Respond with ONLY the markdown
+content, no commentary, no code fences around the whole file."""
 
 
 def main() -> None:
@@ -128,6 +131,9 @@ def main() -> None:
         print("Diff touches nothing doc-relevant. Exiting cleanly.")
         return
 
+    today = date.today().isoformat()
+    short_sha = sh("git", "rev-parse", "--short", args.head).strip()
+
     client = llm_client.get_client()
     failed: list[str] = []
     for doc_path, src_files in by_doc.items():
@@ -142,7 +148,7 @@ def main() -> None:
         # error) shouldn't discard every other doc file already generated
         # in this same push.
         try:
-            prompt = build_prompt(claude_md, doc_path, diff, existing_doc, is_new)
+            prompt = build_prompt(claude_md, doc_path, diff, existing_doc, is_new, today, short_sha)
             content = llm_client.complete(client, prompt, max_tokens=6000)
         except RuntimeError as e:
             print(f"  ! giving up on {doc_path}: {e}", file=sys.stderr)
