@@ -133,15 +133,25 @@ def main() -> None:
     client = llm_client.get_client()
     manifest: dict[str, list[str]] = {}
     index_entries: list[tuple[str, str]] = []
+    failed: list[str] = []
 
+    # One bucket failing (a flaky free-tier model, a transient provider
+    # error) shouldn't throw away every other bucket that already
+    # succeeded — collect failures and keep going, so a partial run still
+    # produces a partial PR instead of nothing at all.
     for key, files in sorted(buckets.items()):
         doc_path = doc_path_for(key)
+
+        try:
+            context = bucket_context(files)
+            prompt = build_prompt(claude_md, doc_path, context)
+            content = llm_client.complete(client, prompt, max_tokens=6000)
+        except RuntimeError as e:
+            print(f"  ! giving up on {doc_path}: {e}", file=sys.stderr)
+            failed.append(doc_path)
+            continue
+
         manifest.setdefault(key, []).append(doc_path)
-
-        context = bucket_context(files)
-        prompt = build_prompt(claude_md, doc_path, context)
-        content = llm_client.complete(client, prompt, max_tokens=6000)
-
         doc_file = REPO_ROOT / doc_path
         doc_file.parent.mkdir(parents=True, exist_ok=True)
         doc_file.write_text(content.strip() + "\n")
@@ -149,6 +159,14 @@ def main() -> None:
         title = content.strip().splitlines()[0].lstrip("#").strip() if content.strip() else Path(doc_path).stem
         index_entries.append((title, Path(doc_path).name))
         print(f"Wrote {doc_path} (from {len(files)} file(s))")
+
+    if not index_entries:
+        print("Every bucket failed — nothing was generated.", file=sys.stderr)
+        sys.exit(1)
+
+    if failed:
+        print(f"\n{len(failed)} bucket(s) failed and were skipped: {', '.join(failed)}", file=sys.stderr)
+        print("Re-running this workflow will regenerate everything from scratch (including buckets that already succeeded) — there's no partial-resume yet.", file=sys.stderr)
 
     index_path = REPO_ROOT / "docs" / "features" / "index.md"
     index_body = "\n".join(f"- [{title}]({name})" for title, name in sorted(index_entries))

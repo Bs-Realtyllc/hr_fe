@@ -19,6 +19,7 @@ not just OpenAI itself).
 
 import os
 import sys
+import time
 
 import openai
 
@@ -36,40 +37,55 @@ def get_client() -> openai.OpenAI:
     return openai.OpenAI(api_key=api_key, base_url=base_url)
 
 
-def complete(client: openai.OpenAI, prompt: str, max_tokens: int = 4000) -> str:
-    """One-shot completion: single user turn in, plain text out.
+# Free-tier gateways (OpenRouter especially) are flaky under load: transient
+# 5xx/rate-limit/upstream-provider errors are common and usually succeed on
+# retry, and some of them come back as HTTP 200 with no `choices` at all
+# instead of raising — so both exceptions and a malformed response body are
+# treated as retryable here, not just the openai SDK's own exception types.
+RETRY_DELAYS = (5, 15, 30)
 
-    Free-tier reasoning models (common on OpenRouter) can spend the whole
-    max_tokens budget on hidden reasoning and never emit visible content —
-    `message.content` comes back None with `finish_reason: "length"`, not
-    an error. Retry once with a bigger budget before giving up, and fail
-    with a clear message rather than a raw TypeError two frames down.
-    """
+
+def complete(client: openai.OpenAI, prompt: str, max_tokens: int = 4000) -> str:
+    """One-shot completion: single user turn in, plain text out."""
     model = os.environ.get("LLM_MODEL")
     if not model:
         print("LLM_MODEL must be set.", file=sys.stderr)
         sys.exit(1)
 
-    for attempt_tokens in (max_tokens, max_tokens * 3):
-        resp = client.chat.completions.create(
-            model=model,
-            max_tokens=attempt_tokens,
-            messages=[{"role": "user", "content": prompt}],
-        )
+    last_error = None
+    for attempt, delay in enumerate((0, *RETRY_DELAYS)):
+        if delay:
+            print(f"  ! retrying in {delay}s ({last_error})", file=sys.stderr)
+            time.sleep(delay)
+
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                max_tokens=max_tokens,
+                messages=[{"role": "user", "content": prompt}],
+            )
+        except openai.APIError as e:
+            last_error = f"API error: {e}"
+            continue
+
+        if not resp.choices:
+            last_error = f"response had no choices (raw: {str(resp)[:500]})"
+            continue
+
         choice = resp.choices[0]
         content = choice.message.content
         if content:
             return content.strip()
-        print(
-            f"  ! empty completion (finish_reason={choice.finish_reason}, "
-            f"max_tokens={attempt_tokens}) — "
-            f"{'retrying with a bigger budget' if attempt_tokens == max_tokens else 'giving up'}",
-            file=sys.stderr,
-        )
+
+        # Empty content with a real choice usually means a reasoning model
+        # burned its whole budget on hidden reasoning before answering —
+        # give it more room rather than just retrying with the same budget.
+        if choice.finish_reason == "length" and max_tokens < 20_000:
+            max_tokens *= 3
+        last_error = f"empty completion (finish_reason={choice.finish_reason})"
 
     raise RuntimeError(
-        f"'{model}' returned no content after retrying with a larger token budget. "
-        "If this keeps happening, the model may be spending its whole budget on "
-        "hidden reasoning — try a non-reasoning free model, or raise the max_tokens "
-        "passed to complete()."
+        f"'{model}' failed after {len(RETRY_DELAYS) + 1} attempts: {last_error}. "
+        "If this keeps happening, the free model/endpoint may be overloaded or "
+        "rate-limited — try a different free model, or check the provider's status."
     )
