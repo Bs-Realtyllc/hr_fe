@@ -29,7 +29,7 @@ Each file in `docs/features/` must have this structure:
 ```md
 # <Feature name>
 
-**Status:** <in-development | beta | released> (~<rough %> complete, if known)
+**Status:** <in-development|beta|released> (~<percent>% complete)
 **Last updated:** <ISO date> — from commit <short sha>
 
 ## What it does
@@ -44,6 +44,12 @@ Numbered steps for the 1-3 main user journeys.
 ## Known limitations / in-progress
 Anything partially built. Don't hide this — flag it explicitly.
 ```
+
+Every `<angle-bracket>` above is a placeholder — replace each with a real
+value and never copy the placeholder text itself into the output (e.g.
+don't write the literal string "in-development|beta|released"; pick one).
+Drop the "(~<percent>% complete)" part entirely if you can't estimate one
+rather than guessing.
 
 ## How a run is scoped
 

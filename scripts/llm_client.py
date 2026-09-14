@@ -56,6 +56,21 @@ import requests
 RETRY_DELAYS = (5, 15, 30)
 
 
+def _strip_code_fence(text: str) -> str:
+    """qwen2.5:3b sometimes wraps its whole answer in a ```/```markdown
+    fence despite being told not to — small models are less reliable at
+    following that kind of formatting instruction than frontier ones.
+    Strip a single wrapping fence rather than relying on the prompt alone."""
+    text = text.strip()
+    if text.startswith("```"):
+        lines = text.split("\n")
+        lines = lines[1:]  # drop the opening ``` or ```lang line
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+    return text
+
+
 def get_client() -> dict:
     """Returns a small config dict, not a real SDK client object — this
     endpoint's shape doesn't match any SDK, so complete() just uses
@@ -99,7 +114,7 @@ def complete(client: dict, prompt: str, max_tokens: int = 4000) -> str:
         data = resp.json()
         content = data.get("response")
         if content:
-            return content.strip()
+            return _strip_code_fence(content)
         last_error = f"empty response (raw: {str(data)[:500]})"
 
     raise RuntimeError(
