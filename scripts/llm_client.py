@@ -1,30 +1,65 @@
 """
-Thin, provider-agnostic LLM client shared by the doc-generation scripts.
+Thin LLM client shared by the doc-generation scripts.
 
-Talks to any OpenAI-compatible chat completions endpoint — OpenRouter,
-Groq, Together, a local Ollama server, or Anthropic's own OpenAI-compat
-endpoint — so swapping providers or models is a config change (env vars),
-never a code change:
+Current provider: the org's internal LLM gateway
+(https://qwen-api.bsrealtyllc.com — self-hosted, currently serving
+qwen2.5:3b). Switched to this from OpenRouter's free tier because
+OpenRouter caps free-model usage at 50 requests/day, which this pipeline
+blew through in a single day of testing across just two repos — not
+workable across 5 products' worth of baseline + ongoing runs. See
+docs-generator-scaffold's project memory for that history.
 
-    LLM_API_KEY   required. API key for whichever endpoint LLM_BASE_URL points at.
-    LLM_BASE_URL  required. e.g. https://openrouter.ai/api/v1
-    LLM_MODEL     required. e.g. "deepseek/deepseek-chat-v3.1:free" (OpenRouter),
-                  or any model slug the endpoint serves. Free-tier model
-                  availability changes over time — check the provider's own
-                  model list rather than assuming a specific slug still exists.
+This is NOT an OpenAI-compatible endpoint — it's a small custom FastAPI
+wrapper with a single POST /chat route:
+    request:  {"message": str, "history": [{"role","content"}]=[], "system": str|None}
+    response: {"response": str, "model": str}
+    auth:     `x-api-key` header
+No max_tokens / output-length control exists on this endpoint — the
+max_tokens argument below is accepted for interface compatibility with
+callers but has no effect.
 
-Requires: `openai` pip package (works against any OpenAI-compatible API,
-not just OpenAI itself).
+    LLM_API_KEY   required. Sent as the `x-api-key` header.
+    LLM_BASE_URL  required. e.g. https://qwen-api.bsrealtyllc.com
+    LLM_MODEL     not used by this endpoint (the model is fixed
+                  server-side) — kept as an accepted env var so the
+                  interface doesn't change if a future endpoint needs it.
+
+Requires: `requests` pip package.
+
+---
+
+Previous provider (OpenRouter, OpenAI-compatible, `openai` pip package)
+kept here commented out in case of a future revert — this is what every
+call in this file looked like before the switch above:
+
+    import openai
+    def get_client() -> openai.OpenAI:
+        return openai.OpenAI(api_key=..., base_url=...)  # e.g. https://openrouter.ai/api/v1
+    def complete(client, prompt, max_tokens=4000) -> str:
+        resp = client.chat.completions.create(
+            model=os.environ["LLM_MODEL"],  # e.g. "deepseek/deepseek-chat-v3.1:free"
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return resp.choices[0].message.content.strip()
+    # (plus the same retry-on-empty-completion/retry-on-APIError handling
+    # as the current complete() below, and the free-model finish_reason ==
+    # "length" -> retry with a bigger max_tokens special case)
 """
 
 import os
 import sys
 import time
 
-import openai
+import requests
+
+RETRY_DELAYS = (5, 15, 30)
 
 
-def get_client() -> openai.OpenAI:
+def get_client() -> dict:
+    """Returns a small config dict, not a real SDK client object — this
+    endpoint's shape doesn't match any SDK, so complete() just uses
+    `requests` directly."""
     api_key = os.environ.get("LLM_API_KEY")
     base_url = os.environ.get("LLM_BASE_URL")
     if not api_key or not base_url:
@@ -34,24 +69,15 @@ def get_client() -> openai.OpenAI:
             file=sys.stderr,
         )
         sys.exit(1)
-    return openai.OpenAI(api_key=api_key, base_url=base_url)
+    return {"api_key": api_key, "base_url": base_url.rstrip("/")}
 
 
-# Free-tier gateways (OpenRouter especially) are flaky under load: transient
-# 5xx/rate-limit/upstream-provider errors are common and usually succeed on
-# retry, and some of them come back as HTTP 200 with no `choices` at all
-# instead of raising — so both exceptions and a malformed response body are
-# treated as retryable here, not just the openai SDK's own exception types.
-RETRY_DELAYS = (5, 15, 30)
+def complete(client: dict, prompt: str, max_tokens: int = 4000) -> str:
+    """One-shot completion: single user turn in, plain text out.
 
-
-def complete(client: openai.OpenAI, prompt: str, max_tokens: int = 4000) -> str:
-    """One-shot completion: single user turn in, plain text out."""
-    model = os.environ.get("LLM_MODEL")
-    if not model:
-        print("LLM_MODEL must be set.", file=sys.stderr)
-        sys.exit(1)
-
+    max_tokens is accepted for interface compatibility with callers but
+    this endpoint has no output-length control — it's unused here.
+    """
     last_error = None
     for attempt, delay in enumerate((0, *RETRY_DELAYS)):
         if delay:
@@ -59,33 +85,23 @@ def complete(client: openai.OpenAI, prompt: str, max_tokens: int = 4000) -> str:
             time.sleep(delay)
 
         try:
-            resp = client.chat.completions.create(
-                model=model,
-                max_tokens=max_tokens,
-                messages=[{"role": "user", "content": prompt}],
+            resp = requests.post(
+                f"{client['base_url']}/chat",
+                headers={"x-api-key": client["api_key"]},
+                json={"message": prompt},
+                timeout=180,  # a 3B local model can be slow on long prompts
             )
-        except openai.APIError as e:
-            last_error = f"API error: {e}"
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            last_error = f"request failed: {e}"
             continue
 
-        if not resp.choices:
-            last_error = f"response had no choices (raw: {str(resp)[:500]})"
-            continue
-
-        choice = resp.choices[0]
-        content = choice.message.content
+        data = resp.json()
+        content = data.get("response")
         if content:
             return content.strip()
-
-        # Empty content with a real choice usually means a reasoning model
-        # burned its whole budget on hidden reasoning before answering —
-        # give it more room rather than just retrying with the same budget.
-        if choice.finish_reason == "length" and max_tokens < 20_000:
-            max_tokens *= 3
-        last_error = f"empty completion (finish_reason={choice.finish_reason})"
+        last_error = f"empty response (raw: {str(data)[:500]})"
 
     raise RuntimeError(
-        f"'{model}' failed after {len(RETRY_DELAYS) + 1} attempts: {last_error}. "
-        "If this keeps happening, the free model/endpoint may be overloaded or "
-        "rate-limited — try a different free model, or check the provider's status."
+        f"qwen-api failed after {len(RETRY_DELAYS) + 1} attempts: {last_error}."
     )

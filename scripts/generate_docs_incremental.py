@@ -30,7 +30,7 @@ import llm_client
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST_PATH = REPO_ROOT / "docs" / "_meta" / "manifest.json"
 CLAUDE_MD_PATH = REPO_ROOT / "CLAUDE.md"
-MAX_CONTEXT_CHARS = 40_000  # keep prompts small enough for a free-tier model's context window
+MAX_CONTEXT_CHARS = 12_000  # qwen2.5:3b is a small self-hosted model; keep prompts conservative
 
 # Outside the repo tree on purpose: the calling workflow's `git status
 # --porcelain` check decides whether anything changed, so this must never

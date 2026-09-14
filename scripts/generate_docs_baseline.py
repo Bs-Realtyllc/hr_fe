@@ -37,7 +37,7 @@ IGNORED_DIR_PARTS = {
 }
 IGNORED_FILES = {"package-lock.json", "yarn.lock", "pnpm-lock.yaml", "CLAUDE.md", "README.md"}
 ROUTE_LIKE_DIRS = {"routes", "controllers", "handlers", "api"}
-MAX_BUCKET_CHARS = 40_000  # per-feature context cap for a free-tier model
+MAX_BUCKET_CHARS = 12_000  # qwen2.5:3b is a small self-hosted model; keep prompts conservative
 MAX_BUCKET_FILES = 60  # a bucket bigger than this is almost certainly a mis-grouped vendor/generated dir
 
 
