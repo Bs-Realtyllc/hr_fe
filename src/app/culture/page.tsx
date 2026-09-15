@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { BSRealtyButton } from '@bsrealtyllc/design-system';
 
 interface CultureEvent {
   id: number;
@@ -57,15 +58,15 @@ function FlagIcon({ size = 14, color }: IconProps) {
 }
 
 const TYPE_CONFIG: Record<CultureEvent['event_type'], { color: string; bg: string; Icon: (p: IconProps) => JSX.Element; label: string }> = {
-  birthday:    { color: '#db2777', bg: '#fdf2f8', Icon: CakeIcon,  label: 'Birthday' },
+  birthday: { color: '#db2777', bg: '#fdf2f8', Icon: CakeIcon, label: 'Birthday' },
   anniversary: { color: '#7c3aed', bg: '#f5f3ff', Icon: AwardIcon, label: 'Anniversary' },
-  team_event:  { color: '#0ea5e9', bg: '#e0f2fe', Icon: UsersIcon, label: 'Team Event' },
-  milestone:   { color: '#d97706', bg: '#fef3c7', Icon: FlagIcon,  label: 'Milestone' },
+  team_event: { color: '#0ea5e9', bg: '#e0f2fe', Icon: UsersIcon, label: 'Team Event' },
+  milestone: { color: '#d97706', bg: '#fef3c7', Icon: FlagIcon, label: 'Milestone' },
 };
 
 function daysUntil(dateStr: string): number {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const d = new Date(dateStr); d.setHours(0,0,0,0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const d = new Date(dateStr); d.setHours(0, 0, 0, 0);
   return Math.round((d.getTime() - today.getTime()) / 86400000);
 }
 
@@ -162,11 +163,11 @@ export default function CulturePage() {
   const [showAll, setShowAll] = useState(false);
   const [form, setForm] = useState({ title: '', event_type: 'team_event', event_date: '', description: '', employee_id: '' });
 
-  const load = () => api.get<CultureEvent[]>('/events').then(setEvents).catch(() => {});
+  const load = () => api.get<CultureEvent[]>('/events').then(setEvents).catch(() => { });
 
   useEffect(() => {
     load();
-    api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+    api.get<Employee[]>('/employees').then(setEmployees).catch(() => { });
   }, []);
 
   const submit = async (e: React.FormEvent) => {
@@ -196,13 +197,15 @@ export default function CulturePage() {
             <h1>Culture & Events</h1>
             <p>Birthdays, anniversaries, and team milestones</p>
           </div>
-          <button className="btn btn-primary btn-sm" onClick={() => setShowModal(true)}>
-            <span
-              className="icon-mask"
-              style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
-            />
-            Add Event
-          </button>
+
+          <BSRealtyButton
+            label='+ Add Event'
+            variant="primary"
+            size="small"
+            showLeftIcon={false}
+            showRightIcon={false}
+            onClick={() => { setShowModal(true) }}
+          />
         </div>
       </div>
 

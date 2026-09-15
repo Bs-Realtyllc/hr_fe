@@ -1,8 +1,9 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import PillTabs from '@/components/PillTabs';
+import { BSRealtyButton } from '@bsrealtyllc/design-system';
 
 interface Leave {
   id: number;
@@ -32,9 +33,9 @@ function displayStatus(leave: Leave): DisplayStatus {
 
 const STATUS_META: Record<DisplayStatus, { label: string; color: string; bg: string; dot: string }> = {
   unverified: { label: 'Unverified', color: '#b45309', bg: '#fef3c7', dot: '#f59e0b' },
-  approved:   { label: 'Approved',   color: '#15803d', bg: '#f0fdf4', dot: '#22c55e' },
-  rejected:   { label: 'Rejected',   color: '#b91c1c', bg: '#fef2f2', dot: '#ef4444' },
-  expired:    { label: 'Expired',    color: '#64748b', bg: '#f1f5f9', dot: '#94a3b8' },
+  approved: { label: 'Approved', color: '#15803d', bg: '#f0fdf4', dot: '#22c55e' },
+  rejected: { label: 'Rejected', color: '#b91c1c', bg: '#fef2f2', dot: '#ef4444' },
+  expired: { label: 'Expired', color: '#64748b', bg: '#f1f5f9', dot: '#94a3b8' },
 };
 
 interface EmailSettings {
@@ -67,20 +68,20 @@ function toDateInput(iso: string) {
 
 export default function LeavesPage() {
   const { user } = useAuth();
-  const isAdmin     = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin';
   const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
 
-  const [leaves, setLeaves]                 = useState<Leave[]>([]);
-  const [filter, setFilter]                 = useState('all');
+  const [leaves, setLeaves] = useState<Leave[]>([]);
+  const [filter, setFilter] = useState('all');
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showEmailSetup, setShowEmailSetup] = useState(false);
   const [emailConfigured, setEmailConfigured] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(false);
-  const [saveStatus, setSaveStatus]         = useState('');
-
+  const [saveStatus, setSaveStatus] = useState('');
+  const leveFormRef = useRef<HTMLFormElement>(null);
   // Edit-leave state
-  const [editingLeave, setEditingLeave]   = useState<Leave | null>(null);
-  const [editForm, setEditForm]           = useState({ leave_type: 'sick', start_date: '', end_date: '', reason: '' });
+  const [editingLeave, setEditingLeave] = useState<Leave | null>(null);
+  const [editForm, setEditForm] = useState({ leave_type: 'sick', start_date: '', end_date: '', reason: '' });
 
   // Email settings form
   const [emailForm, setEmailForm] = useState<EmailSettings>(BLANK_SETTINGS);
@@ -92,7 +93,7 @@ export default function LeavesPage() {
   });
 
   const load = () =>
-    api.get<Leave[]>(`/leaves${filter !== 'all' ? `?status=${filter}` : ''}`).then(setLeaves).catch(() => {});
+    api.get<Leave[]>(`/leaves${filter !== 'all' ? `?status=${filter}` : ''}`).then(setLeaves).catch(() => { });
 
   useEffect(() => { load(); }, [filter]);
 
@@ -106,7 +107,7 @@ export default function LeavesPage() {
           setForm(f => ({ ...f, to: cfg.default_to || '', cc: cfg.default_cc || '', bcc: cfg.default_bcc || '' }));
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [user?.id]);
 
   const openLeaveModal = () => {
@@ -135,8 +136,8 @@ export default function LeavesPage() {
     setEditForm({
       leave_type: l.leave_type,
       start_date: toDateInput(l.start_date),
-      end_date:   toDateInput(l.end_date),
-      reason:     l.reason || '',
+      end_date: toDateInput(l.end_date),
+      reason: l.reason || '',
     });
   };
 
@@ -173,7 +174,7 @@ export default function LeavesPage() {
   };
 
   const approve = async (id: number) => { await api.put(`/leaves/${id}/approve`, {}); load(); };
-  const reject  = async (id: number) => { await api.put(`/leaves/${id}/reject`,  {}); load(); };
+  const reject = async (id: number) => { await api.put(`/leaves/${id}/reject`, {}); load(); };
 
   return (
     <div>
@@ -194,13 +195,15 @@ export default function LeavesPage() {
               />
               {emailConfigured ? 'Email Settings' : 'Setup Email'}
             </button>
-            <button className="btn btn-primary btn-sm" onClick={openLeaveModal}>
-              <span
-                className="icon-mask"
-                style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
-              />
-              New Request
-            </button>
+
+            <BSRealtyButton
+              label="+ New Request"
+              variant="primary"
+              size="small"
+              showLeftIcon={false}
+              showRightIcon={false}
+              onClick={() => { openLeaveModal() }}
+            />
           </div>
         </div>
       </div>
@@ -211,8 +214,8 @@ export default function LeavesPage() {
           value={filter}
           onChange={setFilter}
           options={[
-            { value: 'all',      label: 'All' },
-            { value: 'pending',  label: 'Unverified' },
+            { value: 'all', label: 'All' },
+            { value: 'pending', label: 'Unverified' },
             { value: 'approved', label: 'Approved' },
             { value: 'rejected', label: 'Rejected' },
           ]}
@@ -230,10 +233,10 @@ export default function LeavesPage() {
                 <tr><td colSpan={6} style={{ textAlign: 'center', padding: 32, color: 'var(--color-text-muted)' }}>No leave requests found</td></tr>
               )}
               {leaves.map(l => {
-                const isOwn    = l.employee_id === user?.id;
-                const ds       = displayStatus(l);
-                const meta     = STATUS_META[ds];
-                const expired  = ds === 'expired';
+                const isOwn = l.employee_id === user?.id;
+                const ds = displayStatus(l);
+                const meta = STATUS_META[ds];
+                const expired = ds === 'expired';
 
                 // Actions only allowed while leave dates are still in the future
                 const canApproveReject = l.status === 'pending' && !expired &&
@@ -303,10 +306,10 @@ export default function LeavesPage() {
             <div style={{ textAlign: 'center', padding: 32, color: 'var(--color-text-muted)' }}>No leave requests found</div>
           )}
           {leaves.map(l => {
-            const isOwn    = l.employee_id === user?.id;
-            const ds       = displayStatus(l);
-            const meta     = STATUS_META[ds];
-            const expired  = ds === 'expired';
+            const isOwn = l.employee_id === user?.id;
+            const ds = displayStatus(l);
+            const meta = STATUS_META[ds];
+            const expired = ds === 'expired';
 
             const canApproveReject = l.status === 'pending' && !expired &&
               (isAdmin || (user?.role === 'lead' && !isOwn));
@@ -375,7 +378,7 @@ export default function LeavesPage() {
               <h2>New Leave Request</h2>
               <button className="modal-close" onClick={() => setShowLeaveModal(false)}>×</button>
             </div>
-            <form onSubmit={submitLeave}>
+            <form ref={leveFormRef} onSubmit={submitLeave}>
               <div className="form-group">
                 <label className="form-label">Leave Type</label>
                 <select className="form-select" value={form.leave_type} onChange={e => setForm({ ...form, leave_type: e.target.value })}>
@@ -440,9 +443,15 @@ export default function LeavesPage() {
 
               <div className="flex gap-3 justify-between" style={{ marginTop: 16 }}>
                 <button type="button" className="btn btn-ghost" onClick={() => setShowLeaveModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">
-                  {emailConfigured && form.to.trim() ? 'Submit & Notify' : 'Submit Request'}
-                </button>
+
+                <BSRealtyButton
+                  label={emailConfigured && form.to.trim() ? 'Submit & Notify' : 'Submit Request'}
+                  variant="primary"
+                  size="small"
+                  showLeftIcon={false}
+                  showRightIcon={false}
+                  onClick={() => leveFormRef.current?.requestSubmit()}
+                />
               </div>
             </form>
           </div>

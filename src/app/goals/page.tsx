@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { BSRealtyButton } from '@bsrealtyllc/design-system';
 
 interface Goal {
   id: number;
@@ -30,11 +31,11 @@ interface Employee {
 }
 
 const STATUS_COLUMNS: { key: Goal['status']; label: string; color: string }[] = [
-  { key: 'at_risk',     label: 'At Risk',     color: 'var(--color-error)' },
+  { key: 'at_risk', label: 'At Risk', color: 'var(--color-error)' },
   { key: 'in_progress', label: 'In Progress', color: 'var(--color-info)' },
   { key: 'not_started', label: 'Not Started', color: 'var(--color-text-muted)' },
-  { key: 'completed',   label: 'Completed',   color: 'var(--color-success)' },
-  { key: 'missed',      label: 'Missed',      color: 'var(--color-warning)' },
+  { key: 'completed', label: 'Completed', color: 'var(--color-success)' },
+  { key: 'missed', label: 'Missed', color: 'var(--color-warning)' },
 ];
 
 const STATUS_BADGE: Record<string, string> = {
@@ -80,9 +81,9 @@ export default function GoalsPage() {
   const { user } = useAuth();
   const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
 
-  const [goals, setGoals]           = useState<Goal[]>([]);
-  const [employees, setEmployees]   = useState<Employee[]>([]);
-  const [loading, setLoading]       = useState(true);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
   const [employeeFilter, setEmployeeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
@@ -103,7 +104,7 @@ export default function GoalsPage() {
   });
 
   useEffect(() => {
-    if (isPrivileged) api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+    if (isPrivileged) api.get<Employee[]>('/employees').then(setEmployees).catch(() => { });
   }, [isPrivileged]);
 
   const load = () => {
@@ -111,7 +112,7 @@ export default function GoalsPage() {
     const params = new URLSearchParams();
     if (isPrivileged && employeeFilter) params.set('employee_id', employeeFilter);
     const q = params.toString() ? `?${params.toString()}` : '';
-    api.get<Goal[]>(`/goals${q}`).then(setGoals).catch(() => {}).finally(() => setLoading(false));
+    api.get<Goal[]>(`/goals${q}`).then(setGoals).catch(() => { }).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [employeeFilter]);
@@ -208,13 +209,15 @@ export default function GoalsPage() {
             <h1>Goals &amp; KPIs</h1>
             <p>{isPrivileged ? 'Track individual, team, and company goals across the org' : 'Track your goals and key performance indicators'}</p>
           </div>
-          <button className="btn btn-primary btn-sm" onClick={openCreate}>
-            <span
-              className="icon-mask"
-              style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
-            />
-            Add Goal
-          </button>
+
+          <BSRealtyButton
+            label='+ Add Goal'
+            variant="primary"
+            size="small"
+            showLeftIcon={false}
+            showRightIcon={false}
+            onClick={() => { openCreate() }}
+          />
         </div>
       </div>
 

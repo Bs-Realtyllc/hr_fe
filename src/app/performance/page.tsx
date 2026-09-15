@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { BSRealtyButton } from '@bsrealtyllc/design-system';
 
 interface Review {
   id: number;
@@ -78,12 +79,12 @@ export default function PerformancePage() {
   const { user } = useAuth();
   const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
 
-  const [reviews, setReviews]       = useState<Review[]>([]);
-  const [employees, setEmployees]   = useState<Employee[]>([]);
-  const [loading, setLoading]       = useState(true);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
   const [employeeFilter, setEmployeeFilter] = useState('');
-  const [statusFilter, setStatusFilter]     = useState('');
-  const [trend, setTrend]           = useState<TrendPoint[]>([]);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [trend, setTrend] = useState<TrendPoint[]>([]);
 
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({
@@ -96,7 +97,7 @@ export default function PerformancePage() {
   const [ackComments, setAckComments] = useState('');
 
   useEffect(() => {
-    if (isPrivileged) api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+    if (isPrivileged) api.get<Employee[]>('/employees').then(setEmployees).catch(() => { });
   }, [isPrivileged]);
 
   const load = () => {
@@ -104,7 +105,7 @@ export default function PerformancePage() {
     const params = new URLSearchParams();
     if (isPrivileged && employeeFilter) params.set('employee_id', employeeFilter);
     const q = params.toString() ? `?${params.toString()}` : '';
-    api.get<Review[]>(`/performance${q}`).then(setReviews).catch(() => {}).finally(() => setLoading(false));
+    api.get<Review[]>(`/performance${q}`).then(setReviews).catch(() => { }).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [employeeFilter]);
@@ -191,13 +192,15 @@ export default function PerformancePage() {
             <p>{isPrivileged ? 'Run review cycles and track ratings across the team' : 'Your performance review history and ratings'}</p>
           </div>
           {isPrivileged && (
-            <button className="btn btn-primary btn-sm" onClick={openCreate}>
-              <span
-                className="icon-mask"
-                style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
-              />
-              New Review
-            </button>
+
+            <BSRealtyButton
+              label='+ New Review'
+              variant="primary"
+              size="small"
+              showLeftIcon={false}
+              showRightIcon={false}
+              onClick={() => { openCreate() }}
+            />
           )}
         </div>
       </div>

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import PillTabs from '@/components/PillTabs';
+import { BSRealtyButton } from '@bsrealtyllc/design-system';
 
 interface FeedbackNote {
   id: number;
@@ -63,11 +64,11 @@ export default function FeedbackPage() {
   const { user } = useAuth();
   const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
 
-  const [scope, setScope]         = useState<'public' | 'received' | 'sent'>('public');
-  const [notes, setNotes]         = useState<FeedbackNote[]>([]);
+  const [scope, setScope] = useState<'public' | 'received' | 'sent'>('public');
+  const [notes, setNotes] = useState<FeedbackNote[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [summary, setSummary]     = useState<FeedbackSummaryRow[]>([]);
-  const [loading, setLoading]     = useState(true);
+  const [summary, setSummary] = useState<FeedbackSummaryRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
 
   const [showCreate, setShowCreate] = useState(false);
@@ -76,8 +77,8 @@ export default function FeedbackPage() {
   });
 
   useEffect(() => {
-    api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
-    if (isPrivileged) api.get<FeedbackSummaryRow[]>('/feedback/summary').then(setSummary).catch(() => {});
+    api.get<Employee[]>('/employees').then(setEmployees).catch(() => { });
+    if (isPrivileged) api.get<FeedbackSummaryRow[]>('/feedback/summary').then(setSummary).catch(() => { });
   }, [isPrivileged]);
 
   const load = () => {
@@ -85,7 +86,7 @@ export default function FeedbackPage() {
     const params = new URLSearchParams();
     params.set('scope', scope);
     if (typeFilter) params.set('type', typeFilter);
-    api.get<FeedbackNote[]>(`/feedback?${params.toString()}`).then(setNotes).catch(() => {}).finally(() => setLoading(false));
+    api.get<FeedbackNote[]>(`/feedback?${params.toString()}`).then(setNotes).catch(() => { }).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [scope, typeFilter]);
@@ -101,7 +102,7 @@ export default function FeedbackPage() {
       await api.post('/feedback', { ...form, to_employee_id: parseInt(form.to_employee_id) });
       setShowCreate(false);
       load();
-      if (isPrivileged) api.get<FeedbackSummaryRow[]>('/feedback/summary').then(setSummary).catch(() => {});
+      if (isPrivileged) api.get<FeedbackSummaryRow[]>('/feedback/summary').then(setSummary).catch(() => { });
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to send feedback');
     }
@@ -125,13 +126,15 @@ export default function FeedbackPage() {
             <h1>Feedback</h1>
             <p>Peer recognition, manager notes, and constructive feedback across the team</p>
           </div>
-          <button className="btn btn-primary btn-sm" onClick={openCreate}>
-            <span
-              className="icon-mask"
-              style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
-            />
-            Give Feedback
-          </button>
+
+          <BSRealtyButton
+            label='+ Give Feedback'
+            variant="primary"
+            size="small"
+            showLeftIcon={false}
+            showRightIcon={false}
+            onClick={() => { openCreate() }}
+          />
         </div>
       </div>
 
@@ -160,9 +163,9 @@ export default function FeedbackPage() {
           value={scope}
           onChange={v => setScope(v as typeof scope)}
           options={[
-            { value: 'public',   label: 'Recognition Feed' },
+            { value: 'public', label: 'Recognition Feed' },
             { value: 'received', label: 'Received' },
-            { value: 'sent',     label: 'Sent' },
+            { value: 'sent', label: 'Sent' },
           ]}
         />
 
@@ -284,6 +287,15 @@ export default function FeedbackPage() {
                   />
                   Send Feedback
                 </button>
+                {/* <BSRealtyButton
+                  type='submit'
+                  label='Send Feedback'
+                  variant="primary"
+                  size="small"
+                  showLeftIcon={false}
+                  showRightIcon={false}
+                  onClick={() => { }}
+                /> */}
               </div>
             </form>
           </div>

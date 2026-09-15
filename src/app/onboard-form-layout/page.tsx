@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { getToken } from "@/lib/auth";
+import { BSRealtyButton } from "@bsrealtyllc/design-system";
 
 type FieldType = "text" | "date" | "option" | "file";
 type FieldSection = "personal" | "education" | "professional" | "additional";
@@ -377,11 +378,10 @@ const Page = () => {
                     </label>
 
                     <label
-                      className={`flex items-center gap-1.5 text-xs ${
-                        selected[field.key]
-                          ? "text-slate-600"
-                          : "text-slate-300"
-                      }`}
+                      className={`flex items-center gap-1.5 text-xs ${selected[field.key]
+                        ? "text-slate-600"
+                        : "text-slate-300"
+                        }`}
                     >
                       <input
                         type="checkbox"
@@ -401,12 +401,15 @@ const Page = () => {
       </div>
 
       <div className="mt-8 flex justify-end">
-        <button
-          onClick={handleSetForm}
-          className="rounded-md bg-slate-900 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-700"
-        >
-          Set form
-        </button>
+
+        <BSRealtyButton
+          label="Set form"
+          variant="primary"
+          size="small"
+          showLeftIcon={false}
+          showRightIcon={false}
+          onClick={() => { handleSetForm() }}
+        />
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { getUser } from '@/lib/auth';
+import { BSRealtyButton } from '@bsrealtyllc/design-system';
 
 interface CalEvent {
   date: string;
@@ -44,8 +45,8 @@ function getFirstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).getDay();
 }
 
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const DAYS_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const DAYS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function addMonths(year: number, month: number, delta: number) {
   const d = new Date(year, month + delta, 1);
@@ -91,7 +92,7 @@ function ScheduleModal({ defaultDate, onClose, onCreated }: ScheduleModalProps) 
     startTime: '10:00', endTime: '10:30', attendees: '',
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
+  const [error, setError] = useState('');
 
   const set = (k: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -109,7 +110,7 @@ function ScheduleModal({ defaultDate, onClose, onCreated }: ScheduleModalProps) 
         title: form.title,
         description: form.description,
         start_datetime: `${form.date}T${form.startTime}:00`,
-        end_datetime:   `${form.date}T${form.endTime}:00`,
+        end_datetime: `${form.date}T${form.endTime}:00`,
         attendees: form.attendees
           ? form.attendees.split(',').map(s => s.trim()).filter(Boolean)
           : [],
@@ -182,14 +183,14 @@ interface HolidayListModalProps {
 }
 
 function HolidayListModal({ holidays, isAdmin, onClose, onChanged }: HolidayListModalProps) {
-  const [form, setForm]     = useState({ name: '', holiday_date: '', message: '' });
+  const [form, setForm] = useState({ name: '', holiday_date: '', message: '' });
   const [saving, setSaving] = useState(false);
-  const [error, setError]   = useState('');
+  const [error, setError] = useState('');
 
   const todayStart = new Date(new Date().toDateString());
   const sorted = [...holidays].sort((a, b) => a.holiday_date.localeCompare(b.holiday_date));
   const upcoming = sorted.filter(h => new Date(h.holiday_date) >= todayStart);
-  const past     = sorted.filter(h => new Date(h.holiday_date) < todayStart);
+  const past = sorted.filter(h => new Date(h.holiday_date) < todayStart);
 
   const addHoliday = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -417,22 +418,22 @@ function DayEventsDrawer({ dateStr, dayEvents, onClose, onAddMeeting }: DayEvent
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function CalendarPage() {
-  const today   = new Date();
-  const user    = getUser();
+  const today = new Date();
+  const user = getUser();
   const isAdmin = user?.role === 'admin';
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-  const [year, setYear]     = useState(today.getFullYear());
-  const [month, setMonth]   = useState(today.getMonth());
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth());
   const [events, setEvents] = useState<CalEvent[]>([]);
-  const [selected, setSelected]   = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [dayDrawerDate, setDayDrawerDate] = useState<string | null>(null);
   const [showHolidays, setShowHolidays] = useState(false);
-  const [holidays, setHolidays]   = useState<Holiday[]>([]);
-  const [syncing, setSyncing]     = useState(false);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [syncing, setSyncing] = useState(false);
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus | null>(null);
-  const [hoverIdx, setHoverIdx]   = useState<number | null>(null);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   useEffect(() => {
     api.get<GoogleStatus>('/google/status').then(setGoogleStatus).catch(() => null);
@@ -445,7 +446,7 @@ export default function CalendarPage() {
       api.get<GoogleStatus>('/google/status').then(setGoogleStatus).catch(() => null);
       handleSync();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadEvents = useCallback(() => {
@@ -496,12 +497,12 @@ export default function CalendarPage() {
     setGoogleStatus({ connected: false, webhookActive: false });
   }
 
-  const prevMonth = () => month === 0  ? (setYear(y => y-1), setMonth(11))  : setMonth(m => m-1);
-  const nextMonth = () => month === 11 ? (setYear(y => y+1), setMonth(0))   : setMonth(m => m+1);
-  const goToday   = () => { setYear(today.getFullYear()); setMonth(today.getMonth()); setSelected(todayStr); };
+  const prevMonth = () => month === 0 ? (setYear(y => y - 1), setMonth(11)) : setMonth(m => m - 1);
+  const nextMonth = () => month === 11 ? (setYear(y => y + 1), setMonth(0)) : setMonth(m => m + 1);
+  const goToday = () => { setYear(today.getFullYear()); setMonth(today.getMonth()); setSelected(todayStr); };
 
   const daysInMonth = getDaysInMonth(year, month);
-  const firstDay    = getFirstDayOfMonth(year, month);
+  const firstDay = getFirstDayOfMonth(year, month);
 
   const { y: prevY, m: prevM } = addMonths(year, month, -1);
   const { y: nextY, m: nextM } = addMonths(year, month, 1);
@@ -521,10 +522,10 @@ export default function CalendarPage() {
   }));
   const cells: CalCell[] = [...leading, ...current, ...trailing];
 
-  const dateStrOf = (c: CalCell) => `${c.y}-${String(c.m+1).padStart(2,'0')}-${String(c.day).padStart(2,'0')}`;
+  const dateStrOf = (c: CalCell) => `${c.y}-${String(c.m + 1).padStart(2, '0')}-${String(c.day).padStart(2, '0')}`;
 
   const eventsForDay = (day: number) => {
-    const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const ds = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     return events.filter(e => e.date === ds);
   };
 
@@ -607,9 +608,18 @@ export default function CalendarPage() {
             {/* Google Calendar controls */}
             {googleStatus?.connected ? (
               <>
-                <button className="btn btn-secondary btn-sm" onClick={handleSync} disabled={syncing}>
+                {/* <button className="btn btn-secondary btn-sm" onClick={handleSync} disabled={syncing}>
                   {syncing ? '⟳ Syncing…' : '⟳ Sync'}
-                </button>
+                </button> */}
+                <BSRealtyButton
+                  label={syncing ? '⟳ Syncing…' : '⟳ Sync'}
+                  variant="primary"
+                  size="small"
+                  showLeftIcon={false}
+                  showRightIcon={false}
+                  onClick={() => { handleSync() }}
+                  disabled={syncing}
+                />
                 {googleStatus.webhookActive && (
                   <span style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14,
@@ -628,15 +638,26 @@ export default function CalendarPage() {
                 )}
               </>
             ) : isAdmin ? (
-              <button className="btn btn-primary btn-sm" onClick={connectGoogle}>
-                Connect Google Calendar
-              </button>
+             
+              <BSRealtyButton
+                label='Connect Google Calendar'
+                variant="primary"
+                size="small"
+                showLeftIcon={false}
+                showRightIcon={false}
+                onClick={() => { connectGoogle() }}
+              />
             ) : null}
 
-            <button className="btn btn-primary btn-sm cal-add-btn"
-              onClick={() => { if (!selected) setSelected(todayStr); setShowModal(true); }}>
-              + Meeting
-            </button>
+
+            <BSRealtyButton
+              label='+ Meeting'
+              variant="primary"
+              size="small"
+              showLeftIcon={false}
+              showRightIcon={false}
+              onClick={() => { if (!selected) setSelected(todayStr); setShowModal(true) }}
+            />
           </div>
         </div>
       </div>
@@ -662,14 +683,14 @@ export default function CalendarPage() {
         {/* Day cells */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
           {cells.map((c, i) => {
-            const dateStr    = dateStrOf(c);
-            const dayEvents  = c.inMonth ? eventsForDay(c.day) : [];
-            const isToday    = c.inMonth && dateStr === todayStr;
-            const isSel      = c.inMonth && dateStr === selected;
-            const visible    = dayEvents.slice(0, 2);
-            const overflow   = dayEvents.length - visible.length;
-            const isHover    = hoverIdx === i;
-            const isLastCol  = i % 7 === 6;
+            const dateStr = dateStrOf(c);
+            const dayEvents = c.inMonth ? eventsForDay(c.day) : [];
+            const isToday = c.inMonth && dateStr === todayStr;
+            const isSel = c.inMonth && dateStr === selected;
+            const visible = dayEvents.slice(0, 2);
+            const overflow = dayEvents.length - visible.length;
+            const isHover = hoverIdx === i;
+            const isLastCol = i % 7 === 6;
 
             const handleCellClick = () => {
               if (!c.inMonth) return;
@@ -863,9 +884,15 @@ export default function CalendarPage() {
           <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>
             {holidays.length} fixed paid holidays this year
           </p>
-          <button className="btn btn-primary" onClick={() => setShowHolidays(true)}>
-            View full list of holidays
-          </button>
+
+          <BSRealtyButton
+            label='View full list of holidays'
+            variant="primary"
+            size="small"
+            showLeftIcon={false}
+            showRightIcon={false}
+            onClick={() => { setShowHolidays(true) }}
+          />
         </div>
       </div>
     </div>

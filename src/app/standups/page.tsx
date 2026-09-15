@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import * as XLSX from 'xlsx';
+import { BSRealtyButton } from '@bsrealtyllc/design-system';
 
 interface Standup {
   id: number;
@@ -34,27 +35,27 @@ export default function StandupsPage() {
   const { user } = useAuth();
   const isPrivileged = ['admin', 'lead'].includes(user?.role ?? '');
 
-  const [standups, setStandups]           = useState<Standup[]>([]);
-  const [employees, setEmployees]         = useState<Employee[]>([]);
+  const [standups, setStandups] = useState<Standup[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState('');
-  const [startDate, setStartDate]         = useState('');
-  const [endDate, setEndDate]             = useState('');
-  const [showModal, setShowModal]         = useState(false);
-  const [form, setForm]                   = useState({ yesterday: '', today: '', blockers: '' });
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({ yesterday: '', today: '', blockers: '' });
 
   useEffect(() => {
     if (isPrivileged) {
-      api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+      api.get<Employee[]>('/employees').then(setEmployees).catch(() => { });
     }
   }, [isPrivileged]);
 
   const load = () => {
     const params = new URLSearchParams();
     if (selectedEmployee) params.set('employee_id', selectedEmployee);
-    if (startDate)        params.set('start_date', startDate);
-    if (endDate)          params.set('end_date', endDate);
+    if (startDate) params.set('start_date', startDate);
+    if (endDate) params.set('end_date', endDate);
     const q = params.toString() ? `?${params.toString()}` : '';
-    api.get<Standup[]>(`/standups${q}`).then(setStandups).catch(() => {});
+    api.get<Standup[]>(`/standups${q}`).then(setStandups).catch(() => { });
   };
 
   useEffect(() => { load(); }, [selectedEmployee, startDate, endDate]);
@@ -77,12 +78,12 @@ export default function StandupsPage() {
 
   const exportExcel = () => {
     const rows = standups.map(s => ({
-      Employee:       s.employee_name,
-      Designation:    s.designation,
-      Date:           s.standup_date.split('T')[0],
-      Yesterday:      s.yesterday,
-      Today:          s.today,
-      Blockers:       s.blockers || '',
+      Employee: s.employee_name,
+      Designation: s.designation,
+      Date: s.standup_date.split('T')[0],
+      Yesterday: s.yesterday,
+      Today: s.today,
+      Blockers: s.blockers || '',
       'Submitted At': new Date(s.created_at).toLocaleString(),
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -108,20 +109,30 @@ export default function StandupsPage() {
             <p>Team daily updates — what we did, what's next, any blockers</p>
           </div>
           <div className="flex gap-2">
-            <button className="btn btn-secondary btn-sm" onClick={exportExcel} disabled={standups.length === 0}>
+            {/* <button className="btn btn-secondary btn-sm" onClick={exportExcel} disabled={standups.length === 0}>
               <span
                 className="icon-mask"
                 style={{ WebkitMaskImage: 'url(/icons/download.svg)', maskImage: 'url(/icons/download.svg)' }}
               />
               Export Excel
-            </button>
-            <button className="btn btn-primary btn-sm" onClick={() => setShowModal(true)}>
-              <span
-                className="icon-mask"
-                style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
-              />
-              Post Standup
-            </button>
+            </button> */}
+            <BSRealtyButton
+              label=" Post Standup"
+              variant="primary"
+              size="small"
+              showLeftIcon={false}
+              showRightIcon={false}
+              onClick={exportExcel} disabled={standups.length === 0}
+            />
+
+            <BSRealtyButton
+              label="+ Post Standup"
+              variant="primary"
+              size="small"
+              showLeftIcon={false}
+              showRightIcon={false}
+              onClick={() => { setShowModal(true) }}
+            />
           </div>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import PdfThumbnail from './PdfThumbnail';
+import { BSRealtyButton } from '@bsrealtyllc/design-system';
 
 const BACKEND = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api').replace('/api', '');
 
@@ -82,11 +83,11 @@ export default function PolicyDocuments({
   const isAdmin = user?.role === 'admin';
 
   const [policies, setPolicies] = useState<Policy[]>([]);
-  const [search, setSearch]     = useState('');
-  const [loading, setLoading]   = useState(true);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
   const [previewFor, setPreviewFor] = useState<{ title: string; url: string } | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [error, setError]       = useState('');
+  const [error, setError] = useState('');
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [pinningId, setPinningId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -106,13 +107,13 @@ export default function PolicyDocuments({
   const ackFor = (policyId: number) => myAcks.find(a => a.policy_id === policyId);
 
   const loadMyAcks = () =>
-    api.get<Acknowledgement[]>('/policies/acknowledgements/mine').then(setMyAcks).catch(() => {});
+    api.get<Acknowledgement[]>('/policies/acknowledgements/mine').then(setMyAcks).catch(() => { });
 
   useEffect(() => { if (requiresSignature && !isAdmin) loadMyAcks(); }, [requiresSignature, isAdmin]);
 
   const load = () =>
     api.get<Policy[]>(category ? `/policies?category=${category}` : '/policies')
-      .then(setPolicies).catch(() => {}).finally(() => setLoading(false));
+      .then(setPolicies).catch(() => { }).finally(() => setLoading(false));
 
   useEffect(() => { load(); }, [category]);
 
@@ -289,13 +290,16 @@ export default function PolicyDocuments({
           </div>
           {isAdmin && (
             <>
-              <button
-                className="btn btn-primary btn-sm"
+              <BSRealtyButton
+                label={uploading ? 'Uploading…' : '+ Upload document'}
+                variant="primary"
+                size="small"
+                showLeftIcon={false}
+                showRightIcon={false}
                 onClick={() => { setError(''); fileInputRef.current?.click(); }}
                 disabled={uploading}
-              >
-                {uploading ? 'Uploading…' : '+ Upload document'}
-              </button>
+              />
+
               <input
                 ref={fileInputRef}
                 type="file"
@@ -399,12 +403,12 @@ export default function PolicyDocuments({
                     const ack = ackFor(p.id);
                     const badgeClass = !ack ? 'badge-neutral'
                       : ack.status === 'approved' ? 'badge-success'
-                      : ack.status === 'rejected' ? 'badge-error'
-                      : 'badge-warning';
+                        : ack.status === 'rejected' ? 'badge-error'
+                          : 'badge-warning';
                     const badgeLabel = !ack ? 'Not Signed'
                       : ack.status === 'approved' ? 'Approved'
-                      : ack.status === 'rejected' ? 'Rejected'
-                      : 'Pending Review';
+                        : ack.status === 'rejected' ? 'Rejected'
+                          : 'Pending Review';
                     return (
                       <div>
                         <span className={`badge ${badgeClass}`}>{badgeLabel}</span>

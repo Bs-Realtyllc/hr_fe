@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { BSRealtyButton } from '@bsrealtyllc/design-system';
 
 interface Credential {
   service_name: string;
@@ -25,16 +26,16 @@ interface Service {
 }
 
 const INTERNAL_SERVICES: Service[] = [
-  { key: 'drone',     name: 'Drone CI',   url: 'https://drone.bsrealtyllc.com', logoSrc: '/logos/drone.svg',      color: '#1565C0' },
-  { key: 'sonarqube', name: 'SonarQube',  url: 'https://sonar.bsrealtyllc.com', logoSrc: '/logos/sonar.svg',      color: '#00897B' },
-  { key: 'design',    name: 'Design',     url: 'https://design.bsrealtyllc.org', logoSrc: '/logos/storybook.svg', color: '#FF4785' },
+  { key: 'drone', name: 'Drone CI', url: 'https://drone.bsrealtyllc.com', logoSrc: '/logos/drone.svg', color: '#1565C0' },
+  { key: 'sonarqube', name: 'SonarQube', url: 'https://sonar.bsrealtyllc.com', logoSrc: '/logos/sonar.svg', color: '#00897B' },
+  { key: 'design', name: 'Design', url: 'https://design.bsrealtyllc.org', logoSrc: '/logos/storybook.svg', color: '#FF4785' },
 ];
 
 const EXTERNAL_SERVICES: Service[] = [
-  { key: 'bsrealty',   name: 'BS Realty',   url: 'https://bsrealtyllc.com',          logoSrc: '/logos/bsrealty.png',   color: '#1e3a5f' },
-  { key: 'insurance',  name: 'Insurance',   url: 'https://insurance.bsrealtyllc.com', logoSrc: '/logos/insurance.png',  color: '#2563eb' },
-  { key: 'gitgi',      name: 'GITGI',       url: 'https://gitgi.com',                logoSrc: '/logos/gitgi.svg',      color: '#235e94' },
-  { key: 'job-portal', name: 'Job Portal',  url: 'https://jobportal.gitgi.com',      logoSrc: '/logos/job-portal.svg', color: '#863bff' },
+  { key: 'bsrealty', name: 'BS Realty', url: 'https://bsrealtyllc.com', logoSrc: '/logos/bsrealty.png', color: '#1e3a5f' },
+  { key: 'insurance', name: 'Insurance', url: 'https://insurance.bsrealtyllc.com', logoSrc: '/logos/insurance.png', color: '#2563eb' },
+  { key: 'gitgi', name: 'GITGI', url: 'https://gitgi.com', logoSrc: '/logos/gitgi.svg', color: '#235e94' },
+  { key: 'job-portal', name: 'Job Portal', url: 'https://jobportal.gitgi.com', logoSrc: '/logos/job-portal.svg', color: '#863bff' },
 ];
 
 const ALL_SERVICES = [...INTERNAL_SERVICES, ...EXTERNAL_SERVICES];
@@ -96,7 +97,7 @@ export default function ServersPage() {
       username: form.username,
       password: form.password,
       notes: form.notes,
-    }).catch(() => {});
+    }).catch(() => { });
     setSaving(false);
     setSaved(true);
     await loadCredentials();
@@ -255,6 +256,17 @@ export default function ServersPage() {
               )}
               {saved ? 'Saved' : saving ? 'Saving…' : 'Save Credentials'}
             </button>
+
+            {/* <BSRealtyButton
+            // type='submit'
+              label={saved ? 'Saved' : saving ? 'Saving…' : 'Save Credentials'}
+              variant="primary"
+              size="small"
+              showLeftIcon={false}
+              showRightIcon={false}
+              onClick={() => { }}
+              disabled={saving}
+            /> */}
           </form>
         </div>
       </div>

@@ -1,12 +1,15 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
+import { BSRealtyButton, BSRealtyTextField } from '@bsrealtyllc/design-system';
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail]   = useState('');
-  const [sent, setSent]     = useState(false);
+  const [email, setEmail] = useState('');
+  const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState('');
+  const [error, setError] = useState('');
+  const forgetFormRef = useRef<HTMLFormElement>(null);
+
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -54,17 +57,17 @@ export default function ForgotPasswordPage() {
             </Link>
           </div>
         ) : (
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} ref={forgetFormRef}>
             <div className="form-group">
               <label className="form-label">Email address</label>
-              <input
-                className="form-input"
-                type="email"
-                value={email}
+
+              <BSRealtyTextField
+                {...({ autoComplete: 'email' } as any)}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="you@company.com"
-                autoComplete="email"
                 required
+                type='email'
+                value={email}
               />
             </div>
 
@@ -72,10 +75,11 @@ export default function ForgotPasswordPage() {
               <div className="auth-error">{error}</div>
             )}
 
-            <button className="btn btn-primary" type="submit" disabled={loading}
-              style={{ width: '100%', marginTop: 8 }}>
-              {loading ? 'Sending…' : 'Send Reset Link'}
-            </button>
+
+            <BSRealtyButton
+              label={loading ? 'Sending…' : 'Send Reset Link'} variant='primary' showRightIcon={false} showLeftIcon={false} size='small' onClick={() => { forgetFormRef.current?.requestSubmit() }}
+              disabled={loading}
+            />
 
             <div style={{ textAlign: 'center', marginTop: 16 }}>
               <Link href="/login" style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>

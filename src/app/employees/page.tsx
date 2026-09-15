@@ -1,9 +1,9 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { BSRealtyButton } from '@bsrealtyllc/design-system';
+import { BSRealtyButton, BSRealtyDropdown, BSRealtyTextField } from '@bsrealtyllc/design-system';
 
 interface Employee {
   id: number;
@@ -57,6 +57,7 @@ export default function EmployeesPage() {
   const { user } = useAuth();
   const router = useRouter();
   const isAdmin = user?.role === 'admin' || user?.role === 'lead';
+  const addEmpFormRef = useRef<HTMLFormElement>(null);
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [search, setSearch] = useState('');
@@ -68,7 +69,7 @@ export default function EmployeesPage() {
   });
 
   useEffect(() => {
-    api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+    api.get<Employee[]>('/employees').then(setEmployees).catch(() => { });
   }, []);
 
   const searched = employees.filter(e =>
@@ -91,7 +92,7 @@ export default function EmployeesPage() {
       manager_id: form.manager_id ? parseInt(form.manager_id) : null,
     });
     setShowModal(false);
-    api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+    api.get<Employee[]>('/employees').then(setEmployees).catch(() => { });
   };
 
   return (
@@ -107,7 +108,7 @@ export default function EmployeesPage() {
           </div>
           {isAdmin && (
             <BSRealtyButton
-              label="Add Employee"
+              label="+ Add Employee"
               variant="primary"
               size="small"
               showLeftIcon={false}
@@ -230,27 +231,47 @@ export default function EmployeesPage() {
               <h2>Add Employee</h2>
               <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
             </div>
-            <form onSubmit={submit}>
+            <form ref={addEmpFormRef} onSubmit={submit}>
               <div className="grid-2">
                 <div className="form-group">
                   <label className="form-label">Full Name *</label>
-                  <input className="form-input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
+
+                  <BSRealtyTextField
+                    onChange={e => setForm({ ...form, name: e.target.value })}
+                    required
+                    placeholder="Enter your full name"
+                    value={form.name}
+                  />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Email *</label>
-                  <input className="form-input" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
+                  <BSRealtyTextField
+                    onChange={e => setForm({ ...form, email: e.target.value })}
+                    placeholder="Enter your email address"
+                    type='email'
+                    value={form.email}
+                    required
+                  />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Designation</label>
-                  <input className="form-input" value={form.designation} onChange={e => setForm({ ...form, designation: e.target.value })} />
+
+                  <BSRealtyTextField
+                    value={form.designation} onChange={e => setForm({ ...form, designation: e.target.value })}
+                    placeholder='Designation'
+                  />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Department</label>
-                  <input className="form-input" value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} />
+                  <BSRealtyTextField
+                    value={form.department} onChange={e => setForm({ ...form, department: e.target.value })}
+                    placeholder='Department'
+                  />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Start Date</label>
                   <input className="form-input" type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} />
+
                 </div>
                 <div className="form-group">
                   <label className="form-label">Role</label>
@@ -260,6 +281,34 @@ export default function EmployeesPage() {
                     <option value="lead">Lead</option>
                     <option value="admin">Admin</option>
                   </select>
+                  {/* <BSRealtyDropdown
+                    value={form.role}
+                    onChange={(value) =>
+                      setForm({
+                        ...form,
+                        role: value,
+                      })
+                    }
+                    options={[
+                      {
+                        label: 'Employee',
+                        value: 'employee',
+                      },
+                      {
+                        label: 'Intern',
+                        value: 'intern',
+                      },
+                      {
+                        label: 'Lead',
+                        value: 'lead',
+                      },
+                      {
+                        label: 'Admin',
+                        value: 'admin',
+                      },
+                    ]}
+                    placeholder="Choose role"
+                  /> */}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Status</label>
@@ -267,6 +316,25 @@ export default function EmployeesPage() {
                     <option value="active">Active</option>
                     <option value="onboarding">Onboarding (pending approval)</option>
                   </select>
+                  {/* <BSRealtyDropdown
+                    value={form.status} onChange={(value) =>
+                      setForm({
+                        ...form,
+                        status: value,
+                      })
+                    }
+                    options={[
+                      {
+                        label: 'Active',
+                        value: 'active',
+                      },
+                      {
+                        label: 'Onboarding (pending approval)',
+                        value: 'onboarding',
+                      },
+                    ]}
+                    placeholder="Choose role"
+                  /> */}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Manager</label>
@@ -279,8 +347,20 @@ export default function EmployeesPage() {
                 </div>
               </div>
               <div className="flex gap-3 justify-end mt-4">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Add Employee</button>
+
+                <BSRealtyButton
+                  label='Cancle'
+                  variant='text'
+                  showRightIcon={false} showLeftIcon={false} size='small'
+                  onClick={() => setShowModal(false)}
+                />
+
+                <BSRealtyButton
+                  label='+ Add Employee' variant='primary'
+                  showRightIcon={false} showLeftIcon={false} size='small'
+                  onClick={() => addEmpFormRef.current?.requestSubmit()}
+
+                />
               </div>
             </form>
           </div>

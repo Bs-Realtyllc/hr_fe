@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
+import { BSRealtyButton } from '@bsrealtyllc/design-system';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL;
 
@@ -29,9 +30,9 @@ interface WeekGroup {
 
 function fileIcon(name: string) {
   const ext = name?.split('.').pop()?.toLowerCase();
-  if (ext === 'pdf')                    return { icon: '📄', color: '#ef4444', bg: '#fef2f2' };
-  if (ext === 'pptx' || ext === 'ppt')  return { icon: '📊', color: '#f59e0b', bg: '#fffbeb' };
-  return                                 { icon: '📝', color: '#6366f1', bg: '#eef2ff' };
+  if (ext === 'pdf') return { icon: '📄', color: '#ef4444', bg: '#fef2f2' };
+  if (ext === 'pptx' || ext === 'ppt') return { icon: '📊', color: '#f59e0b', bg: '#fffbeb' };
+  return { icon: '📝', color: '#6366f1', bg: '#eef2ff' };
 }
 
 function fmtSize(bytes: number) {
@@ -451,23 +452,23 @@ function EmployeeView({
 
 export default function WeeklyReportsPage() {
   const { user } = useAuth();
-  const fileRef  = useRef<HTMLInputElement>(null);
-  const now      = new Date();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const now = new Date();
   const currentWeekStart = mondayOf(now);
-  const currentWeekKey   = isoDate(currentWeekStart);
+  const currentWeekKey = isoDate(currentWeekStart);
 
   const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
 
-  const [reports, setReports]       = useState<Report[]>([]);
-  const [loading, setLoading]       = useState(false);
-  const [showModal, setShowModal]   = useState(false);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [submitMsg, setSubmitMsg]   = useState('');
+  const [submitMsg, setSubmitMsg] = useState('');
 
   const [previewReport, setPreviewReport] = useState<Report | null>(null);
-  const [previewUrl, setPreviewUrl]       = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError]     = useState(false);
+  const [previewError, setPreviewError] = useState(false);
 
   const [form, setForm] = useState({
     title: '', notes: '',
@@ -485,7 +486,7 @@ export default function WeeklyReportsPage() {
         return r.json();
       })
       .then(data => setReports(Array.isArray(data) ? data : []))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   };
 
@@ -504,10 +505,10 @@ export default function WeeklyReportsPage() {
     setSubmitting(true); setSubmitMsg('');
 
     const fd = new FormData();
-    fd.append('file',        form.file);
+    fd.append('file', form.file);
     fd.append('employee_id', String(user?.id));
-    fd.append('title',       form.title);
-    fd.append('notes',       form.notes);
+    fd.append('title', form.title);
+    fd.append('notes', form.notes);
 
     try {
       const token = getToken();
@@ -575,13 +576,15 @@ export default function WeeklyReportsPage() {
                 : 'Your weekly work update submissions'}
             </p>
           </div>
-          <button className="btn btn-primary btn-sm" onClick={openModal}>
-            <span
-              className="icon-mask"
-              style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
-            />
-            Submit This Week's Update
-          </button>
+
+          <BSRealtyButton
+            label={`+ Submit This Week's Update`}
+            variant="primary"
+            size="small"
+            showLeftIcon={false}
+            showRightIcon={false}
+            onClick={() => { openModal() }}
+          />
         </div>
       </div>
 

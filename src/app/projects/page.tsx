@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { BSRealtyButton } from '@bsrealtyllc/design-system';
 
 interface Project {
   id: number;
@@ -43,12 +44,12 @@ interface ServiceDef {
 }
 
 const ALL_SERVICES: ServiceDef[] = [
-  { key: 'drone',      name: 'Drone CI',   logoSrc: '/logos/drone.svg',      color: '#1565C0' },
-  { key: 'sonarqube',  name: 'SonarQube',  logoSrc: '/logos/sonar.svg',      color: '#00897B' },
-  { key: 'design',     name: 'Design',     logoSrc: '/logos/storybook.svg',  color: '#FF4785' },
-  { key: 'bsrealty',   name: 'BS Realty',  logoSrc: '/logos/bsrealty.png',   color: '#1e3a5f' },
-  { key: 'insurance',  name: 'Insurance',  logoSrc: '/logos/insurance.png',  color: '#2563eb' },
-  { key: 'gitgi',      name: 'GITGI',      logoSrc: '/logos/gitgi.svg',      color: '#235e94' },
+  { key: 'drone', name: 'Drone CI', logoSrc: '/logos/drone.svg', color: '#1565C0' },
+  { key: 'sonarqube', name: 'SonarQube', logoSrc: '/logos/sonar.svg', color: '#00897B' },
+  { key: 'design', name: 'Design', logoSrc: '/logos/storybook.svg', color: '#FF4785' },
+  { key: 'bsrealty', name: 'BS Realty', logoSrc: '/logos/bsrealty.png', color: '#1e3a5f' },
+  { key: 'insurance', name: 'Insurance', logoSrc: '/logos/insurance.png', color: '#2563eb' },
+  { key: 'gitgi', name: 'GITGI', logoSrc: '/logos/gitgi.svg', color: '#235e94' },
   { key: 'job-portal', name: 'Job Portal', logoSrc: '/logos/job-portal.svg', color: '#863bff' },
 ];
 
@@ -174,8 +175,8 @@ export default function ProjectsPage() {
     api.get<Project[]>('/projects').then(list => {
       setProjects(list);
       if (list.length > 0) selectProject(list[0]);
-    }).catch(() => {});
-    api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+    }).catch(() => { });
+    api.get<Employee[]>('/employees').then(setEmployees).catch(() => { });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -195,10 +196,10 @@ export default function ProjectsPage() {
     if (!selected) return;
     const active = projectServices.includes(serviceKey);
     if (active) {
-      await api.delete(`/projects/${selected.id}/services/${serviceKey}`).catch(() => {});
+      await api.delete(`/projects/${selected.id}/services/${serviceKey}`).catch(() => { });
       setProjectServices(prev => prev.filter(k => k !== serviceKey));
     } else {
-      await api.post(`/projects/${selected.id}/services`, { service_key: serviceKey }).catch(() => {});
+      await api.post(`/projects/${selected.id}/services`, { service_key: serviceKey }).catch(() => { });
       setProjectServices(prev => [...prev, serviceKey]);
     }
   };
@@ -213,7 +214,7 @@ export default function ProjectsPage() {
     await api.post('/projects', payload);
     setShowModal(false);
     setForm({ name: '', description: '', status: 'active', repo_url: [], docs_url: [], start_date: '', expected_end_date: '' });
-    api.get<Project[]>('/projects').then(setProjects).catch(() => {});
+    api.get<Project[]>('/projects').then(setProjects).catch(() => { });
   };
 
   const submitAssign = async (e: React.FormEvent) => {
@@ -231,7 +232,7 @@ export default function ProjectsPage() {
 
   const removeAssignment = async (empId: number) => {
     if (!selected) return;
-    await api.delete(`/projects/${selected.id}/assignments/${empId}`).catch(() => {});
+    await api.delete(`/projects/${selected.id}/assignments/${empId}`).catch(() => { });
     const as = await api.get<Assignment[]>(`/projects/${selected.id}/assignments`).catch(() => []);
     setAssignments(as);
   };
@@ -248,14 +249,14 @@ export default function ProjectsPage() {
 
   const updateMsStatus = async (ms: Milestone, status: string) => {
     if (!selected) return;
-    await api.put(`/projects/${selected.id}/milestones/${ms.id}`, { status }).catch(() => {});
+    await api.put(`/projects/${selected.id}/milestones/${ms.id}`, { status }).catch(() => { });
     const updated = await api.get<Milestone[]>(`/projects/${selected.id}/milestones`).catch(() => []);
     setMilestones(updated);
   };
 
   const deleteProject = async (p: Project) => {
     if (!window.confirm(`Delete "${p.name}"? This removes its assignments, milestones, and services. This cannot be undone.`)) return;
-    await api.delete(`/projects/${p.id}`).catch(() => {});
+    await api.delete(`/projects/${p.id}`).catch(() => { });
     const remaining = projects.filter(proj => proj.id !== p.id);
     setProjects(remaining);
     if (selected?.id === p.id) {
@@ -279,13 +280,15 @@ export default function ProjectsPage() {
             <p>Assignments, milestones, and project timelines</p>
           </div>
           {isAdmin && (
-            <button className="btn btn-primary btn-sm" onClick={() => setShowModal(true)}>
-              <span
-                className="icon-mask"
-                style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
-              />
-              New Project
-            </button>
+
+            <BSRealtyButton
+              label="+ New Project"
+              variant="primary"
+              size="small"
+              showLeftIcon={false}
+              showRightIcon={false}
+              onClick={() => { setShowModal(true) }}
+            />
           )}
         </div>
       </div>
@@ -307,7 +310,7 @@ export default function ProjectsPage() {
             const isSelected = selected?.id === p.id;
             const progressColor = p.status === 'on_hold' ? 'var(--color-warning)'
               : p.status === 'archived' ? 'var(--color-text-muted)'
-              : 'var(--color-accent)';
+                : 'var(--color-accent)';
             return (
               <div
                 key={p.id}
