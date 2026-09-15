@@ -29,14 +29,15 @@ jobs:
       - name: Install script dependencies
         run: pip install -r scripts/requirements.txt
 
-      # Uses whatever OpenAI-compatible endpoint LLM_BASE_URL points at
-      # (OpenRouter by default) — swapping provider or model is a secret/
-      # variable change, not a code change. See scripts/llm_client.py.
+      # Talks to whatever LLM_BASE_URL points at (see scripts/llm_client.py
+      # for the current provider) — swapping provider or model is a secret
+      # change, not a code change.
       - name: Generate docs for this push
         env:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          PYTHONUNBUFFERED: "1" # otherwise piped stdout buffers fully and progress is invisible until the process exits
         run: python scripts/generate_docs_incremental.py --base "${{ github.event.before }}" --head "${{ github.event.after }}"
 
       - name: Open PR if anything changed
