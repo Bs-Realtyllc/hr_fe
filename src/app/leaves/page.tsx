@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import PillTabs from '@/components/PillTabs';
+import { showToast } from '@/lib/toast';
 
 interface Leave {
   id: number;
@@ -92,7 +93,7 @@ export default function LeavesPage() {
   });
 
   const load = () =>
-    api.get<Leave[]>(`/leaves${filter !== 'all' ? `?status=${filter}` : ''}`).then(setLeaves).catch(() => {});
+    api.get<Leave[]>(`/leaves${filter !== 'all' ? `?status=${filter}` : ''}`).then(setLeaves).catch(() => {showToast('error', "Failed to load leaves")});
 
   useEffect(() => { load(); }, [filter]);
 
@@ -116,18 +117,23 @@ export default function LeavesPage() {
 
   const submitLeave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { to, cc, bcc, ...leaveFields } = form;
-    await api.post<{ id: number }>('/leaves', {
-      ...leaveFields,
-      employee_id: user?.id,
-      ...(emailConfigured && to.trim() && {
-        to: to.trim(),
-        cc: cc.trim() || undefined,
-        bcc: bcc.trim() || undefined,
-      }),
-    });
-    setShowLeaveModal(false);
-    load();
+    try{
+      const { to, cc, bcc, ...leaveFields } = form;
+      await api.post<{ id: number }>('/leaves', {
+        ...leaveFields,
+        employee_id: user?.id,
+        ...(emailConfigured && to.trim() && {
+          to: to.trim(),
+          cc: cc.trim() || undefined,
+          bcc: bcc.trim() || undefined,
+        }),
+      })
+      setShowLeaveModal(false);
+      load();
+      showToast('success', "Leave request added sucessfully")
+    }catch(err){
+      showToast('error', "Failed to add leave request")
+    }
   };
 
   const openEditModal = (l: Leave) => {

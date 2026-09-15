@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import * as XLSX from "xlsx";
+import { showToast } from "@/lib/toast";
 
 interface Standup {
   id: number;
@@ -52,14 +53,14 @@ export default function StandupsPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ yesterday: "", today: "", blockers: "" });
+  const [form, setForm] = useState({ workedOn: "", completed: "", inProgress: "", nextUp:'', blockers:'', links:'' });
 
   useEffect(() => {
     if (isPrivileged) {
       api
         .get<Employee[]>("/employees")
         .then(setEmployees)
-        .catch(() => {});
+        .catch(() => {showToast('error', 'Failed to load employee data')});
     }
   }, [isPrivileged]);
 
@@ -72,7 +73,7 @@ export default function StandupsPage() {
     api
       .get<Standup[]>(`/standups${q}`)
       .then(setStandups)
-      .catch(() => {});
+      .catch(() => {showToast('error', 'Failed to load standups')});
   };
 
   useEffect(() => {
@@ -89,10 +90,15 @@ export default function StandupsPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await api.post("/standups", { ...form, employee_id: user?.id });
-    setShowModal(false);
-    setForm({ yesterday: "", today: "", blockers: "" });
-    load();
+    try{
+      await api.post("/standups", { ...form, employee_id: user?.id });
+      setShowModal(false);
+      setForm({ workedOn: "", completed: "", inProgress: "", nextUp:'', blockers:'', links:'' });
+      load();
+      showToast('success','Standup posted sucessfully')
+    }catch(err){
+      showToast('error', 'Failed to post standup')
+    }
   };
 
   const exportExcel = () => {
@@ -391,66 +397,105 @@ export default function StandupsPage() {
         </div>
       )}
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Post Daily Standup</h2>
-              <button
-                className="modal-close"
-                onClick={() => setShowModal(false)}
-              >
-                ×
-              </button>
-            </div>
-            <form onSubmit={submit}>
-              <div className="form-group">
-                <label className="form-label">What did you do yesterday?</label>
-                <textarea
-                  className="form-textarea"
-                  value={form.yesterday}
-                  onChange={(e) =>
-                    setForm({ ...form, yesterday: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">What are you doing today?</label>
-                <textarea
-                  className="form-textarea"
-                  value={form.today}
-                  onChange={(e) => setForm({ ...form, today: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Any blockers?</label>
-                <textarea
-                  className="form-textarea"
-                  placeholder="Leave empty if none"
-                  value={form.blockers}
-                  onChange={(e) =>
-                    setForm({ ...form, blockers: e.target.value })
-                  }
-                />
-              </div>
-              <div className="flex gap-3 justify-between">
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={() => setShowModal(false)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Post
-                </button>
-              </div>
-            </form>
-          </div>
+{showModal && (
+  <div
+    className="modal-overlay flex items-center justify-center p-4"
+    onClick={() => setShowModal(false)}
+  >
+    <div
+      className="modal flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="modal-header shrink-0">
+        <h2>Post Daily Standup</h2>
+        <button
+          className="modal-close"
+          onClick={() => setShowModal(false)}
+        >
+          ×
+        </button>
+      </div>
+
+      <form
+        onSubmit={submit}
+        className="flex-1 overflow-y-auto scrollbar-none"
+      >
+        <div className="form-group">
+          <label className="form-label">What did you work on yesterday? (specific project, module, page, feature, or task)</label>
+          <textarea
+            className="form-textarea !min-h-[48px]"
+            rows={2}
+            value={form.workedOn}
+            onChange={(e) => setForm({ ...form, workedOn: e.target.value })}
+            required
+          />
         </div>
-      )}
+        <div className="form-group">
+          <label className="form-label"> What did you complete yesterday? (describe the actual work and changes made)</label>
+          <textarea
+            className="form-textarea !min-h-[48px]"
+            rows={2}
+            value={form.completed}
+            onChange={(e) => setForm({ ...form, completed: e.target.value })}
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label className="form-label">What is still in progress? (unfinished work — reply "none" if nothing)</label>
+          <textarea
+            className="form-textarea !min-h-[48px]"
+            rows={2}
+            value={form.inProgress}
+            onChange={(e) => setForm({ ...form, inProgress: e.target.value })}
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label className="form-label">What will you work on today? (specific tasks for today)</label>
+          <textarea
+            className="form-textarea !min-h-[48px]"
+            rows={2}
+            value={form.nextUp}
+            onChange={(e) => setForm({ ...form, nextUp: e.target.value })}
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Any problems or blockers? (technical, project, or resource-related — reply "none" if none)</label>
+          <textarea
+            className="form-textarea !min-h-[40px]"
+            rows={1}
+            placeholder="Leave empty if none"
+            value={form.blockers}
+            onChange={(e) => setForm({ ...form, blockers: e.target.value })}
+          />
+        </div>
+        <div className="form-group">
+          <label className="form-label"> Any relevant links, PRs, commits, or screenshots? (paste a link and/or attach an image, or reply "none")</label>
+          <textarea
+            className="form-textarea !min-h-[40px]"
+            rows={1}
+            placeholder="Leave empty if none"
+            value={form.links}
+            onChange={(e) => setForm({ ...form, links: e.target.value })}
+          />
+        </div>
+        <div className="flex gap-3 justify-between sticky bottom-0 bg-[var(--color-surface)] pt-4">
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => setShowModal(false)}
+          >
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-primary">
+            Post
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
     </div>
   );
 }

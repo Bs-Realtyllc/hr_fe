@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
+import { showToast } from '@/lib/toast';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL;
 
@@ -485,7 +486,7 @@ export default function WeeklyReportsPage() {
         return r.json();
       })
       .then(data => setReports(Array.isArray(data) ? data : []))
-      .catch(() => {})
+      .catch(() => {showToast('error', 'Failed to load weekly report')})
       .finally(() => setLoading(false));
   };
 
@@ -531,7 +532,7 @@ export default function WeeklyReportsPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this weekly update?')) return;
-    await api.delete(`/weekly-reports/${id}`);
+    await api.delete(`/weekly-reports/${id}`).catch(()=> {showToast('error', 'Failed to delete weekly update')});
     load();
   };
 

@@ -7,6 +7,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
+import { showToast } from '@/lib/toast';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL;
 
@@ -538,7 +539,7 @@ export default function ReportsPage() {
         return r.json();
       })
       .then(data => setReports(Array.isArray(data) ? data : []))
-      .catch(() => {})
+      .catch(() => {showToast('error', "Failed to load reports")})
       .finally(() => setLoading(false));
   };
 

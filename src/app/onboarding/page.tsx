@@ -6,6 +6,7 @@ import Popup from "reactjs-popup";
 //mail template
 import { buildFillDetailsMailto } from "@/template/fillDetailsMailTemplate";
 import { api } from "@/lib/api";
+import { showToast } from "@/lib/toast";
 
 interface User {
   id: number;
@@ -104,9 +105,10 @@ const Page = () => {
       // release memory once the tab has had a chance to load it
       setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
     } catch (err) {
-      window.alert(
-        err instanceof Error ? err.message : "Could not open contract.",
-      );
+      // window.alert(
+      //   err instanceof Error ? err.message : "Could not open contract.",
+      // );
+      showToast('error', "Could not open the file.")
     }
   };
 
@@ -118,8 +120,10 @@ const Page = () => {
     try {
       if (decision === "approve") {
         await api.patch(`/onboard/${id}/approve`, {});
+        showToast('success', "Onboarding sucessfull");
       } else {
         await api.delete(`/onboard/${id}`);
+        showToast('success', "Sucessfully rejected");
       }
 
       // Remove the user from the list once actioned
