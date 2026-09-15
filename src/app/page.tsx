@@ -16,6 +16,8 @@ import { useAppDispatch, useAppSelector } from '@/store/hook';
 //icon
 import { RxHamburgerMenu } from "react-icons/rx";
 import { toggleSidebar } from '@/store/sidebarSlice';
+import { toast } from 'react-toastify';
+import { showToast } from '@/lib/toast';
 
 /* ─────────────────────────────── helpers ──────────────────────────────── */
 
@@ -291,30 +293,43 @@ export default function DashboardPage() {
   const [showWeeklyPopup, setShowWeeklyPopup] = useState(false);
   const [showPptPopup, setShowPptPopup] = useState(false);
 
-  useEffect(() => {
-    api.get<DashboardStats>('/dashboard/stats').then(setStats).catch(() => { });
-    api.get<OutEmployee[]>('/leaves/out/today').then(setOutToday).catch(() => { });
-    api.get<Standup[]>('/standups/today').then(setStandups).catch(() => { });
-    api.get<RecentEmployee[]>('/employees')
-      .then(list => setRecentEmployees(
-        [...list]
-          .filter(e => e.status !== 'terminated')
-          .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
-          .slice(0, 6)
-      ))
-      .catch(() => { });
-    api.get<TrendPoint[]>('/dashboard/standup-trend')
-      .then(d => setStandupTrend(fillDays(d, 30))).catch(() => { });
-    api.get<TrendPoint[]>('/dashboard/leave-trend')
-      .then(d => setLeaveTrend(fillDays(d, 30))).catch(() => { });
+useEffect(() => {
+  api.get<DashboardStats>('/dashboard/stats')
+    .then(setStats)
+    .catch((err) => showToast('error',err ,'Could not load dashboard stats'));
 
-    if (isWeeklyFormDay() && !localStorage.getItem(getDismissKey())) {
-      setShowWeeklyPopup(true);
-    }
-    if (isPptReminderTime() && !localStorage.getItem(getPptDismissKey())) {
-      setShowPptPopup(true);
-    }
-  }, []);
+  api.get<OutEmployee[]>('/leaves/out/today')
+    .then(setOutToday)
+    .catch((err) => showToast('error',err ,'Could not load today\'s leave list'));
+
+  api.get<Standup[]>('/standups/today')
+    .then(setStandups)
+    .catch((err) => showToast('error',err ,'Could not load standups'));
+
+  api.get<RecentEmployee[]>('/employees')
+    .then(list => setRecentEmployees(
+      [...list]
+        .filter(e => e.status !== 'terminated')
+        .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
+        .slice(0, 6)
+    ))
+    .catch((err) => showToast('error',err ,'Could not load recent employees'));
+
+  api.get<TrendPoint[]>('/dashboard/standup-trend')
+    .then(d => setStandupTrend(fillDays(d, 30)))
+    .catch((err) => showToast('error',err ,'Could not load standup trend'));
+
+  api.get<TrendPoint[]>('/dashboard/leave-trend')
+    .then(d => setLeaveTrend(fillDays(d, 30)))
+    .catch((err) => showToast('error',err ,'Could not load leave trend'));
+
+  if (isWeeklyFormDay() && !localStorage.getItem(getDismissKey())) {
+    setShowWeeklyPopup(true);
+  }
+  if (isPptReminderTime() && !localStorage.getItem(getPptDismissKey())) {
+    setShowPptPopup(true);
+  }
+}, []);
 
   const dismissWeeklyPopup = () => {
     localStorage.setItem(getDismissKey(), '1');

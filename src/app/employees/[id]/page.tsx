@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { showToast } from '@/lib/toast';
 
 interface Employee {
   id: number;
@@ -99,7 +100,7 @@ export default function EmployeeProfilePage() {
       api.get<Project[]>(`/projects/by-employee/${id}`).catch(() => []),
     ])
       .then(([emp, proj]) => { setEmployee(emp); setProjects(proj); })
-      .catch(() => {})
+      .catch(() => {showToast('error', 'Failed to load employee data')})
       .finally(() => setLoading(false));
   }, [id]);
 

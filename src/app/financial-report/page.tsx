@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { showToast } from '@/lib/toast';
 
 interface FinancialReportRow {
   id: number;
@@ -41,7 +42,7 @@ export default function FinancialReportPage() {
     setLoading(true);
     api.get<{ year: number; month: number; report: FinancialReportRow[] }>(`/payroll/financial-report?year=${year}&month=${month}`)
       .then(res => setRows(res.report))
-      .catch(() => {})
+      .catch(() => {showToast('error', 'Failed to load payroll data')})
       .finally(() => setLoading(false));
   }, [year, month]);
 

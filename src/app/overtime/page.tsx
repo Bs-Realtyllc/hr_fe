@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import PillTabs from '@/components/PillTabs';
+import { showToast } from '@/lib/toast';
 
 interface OvertimeRequest {
   id: number;
@@ -57,7 +58,7 @@ export default function OvertimePage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm]   = useState(BLANK_FORM);
 
-  const loadAll = () => api.get<OvertimeRequest[]>('/overtime').then(setAllRequests).catch(() => {});
+  const loadAll = () => api.get<OvertimeRequest[]>('/overtime').then(setAllRequests).catch(() => {showToast('error','Failed to load overtime')});
 
   const load = () => {
     api.get<OvertimeRequest[]>(`/overtime${filter !== 'all' ? `?status=${filter}` : ''}`).then(setRequests).catch(() => {});
@@ -133,11 +134,21 @@ export default function OvertimePage() {
     try {
       await api.put(`/overtime/${id}/approve`, {});
       load();
+      showToast('success','Overtime accepted')
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Approve failed');
+      // alert(err instanceof Error ? err.message : 'Approve failed');
+      showToast('error', "Approve failed")
     }
   };
-  const reject = async (id: number) => { await api.put(`/overtime/${id}/reject`, {}); load(); };
+  const reject = async (id: number) => { 
+    try{
+      await api.put(`/overtime/${id}/reject`, {}); 
+      load(); 
+      showToast('success','Overtime Rejected')
+    }catch(err){
+      showToast('error','Reject failed')
+    }
+  };
 
   const pendingCount  = allRequests.filter(r => r.status === 'pending').length;
   const approvedCount = allRequests.filter(r => r.status === 'approved').length;

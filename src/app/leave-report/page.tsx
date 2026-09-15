@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import * as XLSX from 'xlsx';
+import { showToast } from '@/lib/toast';
 
 interface LeaveReportRow {
   employee_id: number;
@@ -41,7 +42,7 @@ export default function LeaveReportPage() {
     if (!isAdmin) return;
     api.get<LeaveReportRow[]>('/leaves/report')
       .then(setRows)
-      .catch(() => {})
+      .catch(() => {showToast('error', "Failed to load leave reports")})
       .finally(() => setLoading(false));
   }, [isAdmin]);
 
