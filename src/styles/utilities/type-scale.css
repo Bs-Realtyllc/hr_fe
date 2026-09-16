@@ -2,14 +2,10 @@
  * Typography utility & role classes.
  *
  * The underlying tokens (--font-heading, --font-body, --text-*, --display-*,
- * --headline-*, --title-*, --body-*, --label-*) now live in
+ * --headline-*, --title-*, --body-*, --label-*) live in
  * src/styles/tokens/typography.primitives.css and typography.semantic.css.
  * This file keeps only the CSS rules that apply those tokens as classes —
  * tokens files should hold custom properties only, never selectors.
- *
- * TEMPORARY LOCATION: per CSS-ARCHITECTURE.md, these rules belong in
- * utilities/type-scale.css once the components/utilities layers are
- * migrated (Phase 5). Left here for now so this phase stays token-only.
  */
 
 .text-5xl,
