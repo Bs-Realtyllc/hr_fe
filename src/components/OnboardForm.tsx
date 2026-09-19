@@ -33,6 +33,7 @@ interface InternFormData {
 interface InternFormProps {
   type: "intern" | "employee";
 }
+
 type DocKey =
   | "citizenshipFront"
   | "citizenshipBack"

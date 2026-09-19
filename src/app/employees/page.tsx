@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+
 import { BSRealtyButton } from '@bsrealtyllc/design-system';
+import { showToast } from '@/lib/toast';
 
 interface Employee {
   id: number;
@@ -68,7 +70,7 @@ export default function EmployeesPage() {
   });
 
   useEffect(() => {
-    api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+    api.get<Employee[]>('/employees').then(setEmployees).catch(() => {showToast('error','Failed to load employee')});
   }, []);
 
   const searched = employees.filter(e =>
@@ -86,12 +88,19 @@ export default function EmployeesPage() {
 
   const submit = async (ev: React.FormEvent) => {
     ev.preventDefault();
-    await api.post('/employees', {
-      ...form,
-      manager_id: form.manager_id ? parseInt(form.manager_id) : null,
-    });
-    setShowModal(false);
-    api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+    try{
+      await api.post('/employees', {
+        ...form,
+        manager_id: form.manager_id ? parseInt(form.manager_id) : null,
+      });
+      setShowModal(false);
+      showToast('success', "Sucessfully added employee")
+
+    }catch(err){
+      showToast('error', 'Failed to add employee')
+    }finally{
+      api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+    }
   };
 
   return (

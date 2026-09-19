@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { showToast } from '@/lib/toast';
 
 interface Project {
   id: number;
@@ -175,7 +176,7 @@ export default function ProjectsPage() {
       setProjects(list);
       if (list.length > 0) selectProject(list[0]);
     }).catch(() => {});
-    api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+    api.get<Employee[]>('/employees').then(setEmployees).catch(() => {showToast('error', "Failed to load employee data")});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -210,28 +211,39 @@ export default function ProjectsPage() {
       repo_url: form.repo_url.filter(Boolean),
       docs_url: form.docs_url.filter(Boolean),
     };
-    await api.post('/projects', payload);
-    setShowModal(false);
-    setForm({ name: '', description: '', status: 'active', repo_url: [], docs_url: [], start_date: '', expected_end_date: '' });
-    api.get<Project[]>('/projects').then(setProjects).catch(() => {});
+    try{
+      await api.post('/projects', payload);
+      setShowModal(false);
+      setForm({ name: '', description: '', status: 'active', repo_url: [], docs_url: [], start_date: '', expected_end_date: '' });
+      api.get<Project[]>('/projects').then(setProjects).catch(() => {});
+      showToast('success', "Project created sucessfully");
+    }catch(err){
+      showToast('error', "Failed to create project")
+
+    }
   };
 
   const submitAssign = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selected) return;
-    await api.post(`/projects/${selected.id}/assignments`, {
-      employee_id: parseInt(assignForm.employee_id),
-      role: assignForm.role,
-    });
-    setShowAssignModal(false);
-    setAssignForm({ employee_id: '', role: 'developer' });
-    const as = await api.get<Assignment[]>(`/projects/${selected.id}/assignments`).catch(() => []);
-    setAssignments(as);
+    try{
+      await api.post(`/projects/${selected.id}/assignments`, {
+        employee_id: parseInt(assignForm.employee_id),
+        role: assignForm.role,
+      });
+      setShowAssignModal(false);
+      setAssignForm({ employee_id: '', role: '' });
+      const as = await api.get<Assignment[]>(`/projects/${selected.id}/assignments`).catch(() => []);
+      setAssignments(as);
+      showToast('success', 'Sucessfully added to the team')
+    }catch(err){
+      showToast('error', 'Failed to assign to the team')
+    }
   };
 
   const removeAssignment = async (empId: number) => {
     if (!selected) return;
-    await api.delete(`/projects/${selected.id}/assignments/${empId}`).catch(() => {});
+    await api.delete(`/projects/${selected.id}/assignments/${empId}`).catch(() => {showToast('error', 'Failed to remove user from the team')});
     const as = await api.get<Assignment[]>(`/projects/${selected.id}/assignments`).catch(() => []);
     setAssignments(as);
   };
@@ -239,34 +251,44 @@ export default function ProjectsPage() {
   const submitMilestone = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selected) return;
-    await api.post(`/projects/${selected.id}/milestones`, msForm);
-    setShowMsModal(false);
-    setMsForm({ title: '', due_date: '', status: 'pending' });
-    const ms = await api.get<Milestone[]>(`/projects/${selected.id}/milestones`).catch(() => []);
-    setMilestones(ms);
+    try{
+      await api.post(`/projects/${selected.id}/milestones`, msForm);
+      setShowMsModal(false);
+      setMsForm({ title: '', due_date: '', status: 'pending' });
+      const ms = await api.get<Milestone[]>(`/projects/${selected.id}/milestones`).catch(() => []);
+      setMilestones(ms);
+      showToast('success', 'Successfully added milestone')
+    }catch(err){
+      showToast('error', 'Failed to add milestone')
+    }
   };
 
   const updateMsStatus = async (ms: Milestone, status: string) => {
     if (!selected) return;
-    await api.put(`/projects/${selected.id}/milestones/${ms.id}`, { status }).catch(() => {});
+    await api.put(`/projects/${selected.id}/milestones/${ms.id}`, { status }).catch(() => {showToast('error', 'Failed to update status of milestone')});
     const updated = await api.get<Milestone[]>(`/projects/${selected.id}/milestones`).catch(() => []);
     setMilestones(updated);
   };
 
   const deleteProject = async (p: Project) => {
     if (!window.confirm(`Delete "${p.name}"? This removes its assignments, milestones, and services. This cannot be undone.`)) return;
-    await api.delete(`/projects/${p.id}`).catch(() => {});
-    const remaining = projects.filter(proj => proj.id !== p.id);
-    setProjects(remaining);
-    if (selected?.id === p.id) {
-      if (remaining.length > 0) {
-        selectProject(remaining[0]);
-      } else {
-        setSelected(null);
-        setMilestones([]);
-        setAssignments([]);
-        setProjectServices([]);
+    try{
+      await api.delete(`/projects/${p.id}`).catch(() => {});
+      const remaining = projects.filter(proj => proj.id !== p.id);
+      setProjects(remaining);
+      if (selected?.id === p.id) {
+        if (remaining.length > 0) {
+          selectProject(remaining[0]);
+        } else {
+          setSelected(null);
+          setMilestones([]);
+          setAssignments([]);
+          setProjectServices([]);
+        }
       }
+      showToast('success', "Sucessfully deleted project")
+    }catch(err){
+      showToast('error', "Failed to delete project");
     }
   };
 
