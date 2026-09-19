@@ -23,12 +23,15 @@ export default function LoginPage() {
     setLoading(true);
     try {
       if (requiresOtp) {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/verify-otp`, {
+        const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/verify-otp`;
+        console.log('[AUTH] POST', url, { code: otp });
+        const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code: otp, tempToken }),
         });
         const data = await res.json();
+        console.log('[AUTH] verify-otp response', res.status, data);
         if (!res.ok) {
           setError(data.error ?? 'Verification failed');
           return;
@@ -36,12 +39,15 @@ export default function LoginPage() {
         login(data.token as string, data.user as AuthUser);
         router.replace('/');
       } else {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+        const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/login`;
+        console.log('[AUTH] POST', url, { email });
+        const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
         });
         const data = await res.json();
+        console.log('[AUTH] login response', res.status, data);
         if (!res.ok) {
           setErrorType(res.status === 403 ? 'org' : 'default');
           setError(data.error ?? 'Login failed');
@@ -56,7 +62,8 @@ export default function LoginPage() {
         login(data.token as string, data.user as AuthUser);
         router.replace('/');
       }
-    } catch {
+    } catch (err) {
+      console.error('[AUTH] fetch error', err);
       setError('Unable to connect to server');
     } finally {
       setLoading(false);

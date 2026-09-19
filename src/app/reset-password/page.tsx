@@ -29,16 +29,20 @@ function ResetPasswordForm() {
     }
     setError(''); setLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/reset-password`, {
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/reset-password`;
+      console.log('[AUTH] POST', url);
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, new_password: form.new_password }),
       });
       const data = await res.json().catch(() => ({}));
+      console.log('[AUTH] reset-password response', res.status, data);
       if (!res.ok) throw new Error(data.error || 'Reset failed');
       setDone(true);
       setTimeout(() => router.replace('/login'), 3000);
     } catch (err: unknown) {
+      console.error('[AUTH] fetch error', err);
       setError(err instanceof Error ? err.message : 'Reset failed');
     } finally {
       setLoading(false);

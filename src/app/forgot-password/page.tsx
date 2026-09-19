@@ -13,17 +13,21 @@ export default function ForgotPasswordPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/forgot-password`, {
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/forgot-password`;
+      console.log('[AUTH] POST', url, { email });
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
+      console.log('[AUTH] forgot-password response', res.status);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Something went wrong');
       }
       setSent(true);
     } catch (err: unknown) {
+      console.error('[AUTH] fetch error', err);
       setError(err instanceof Error ? err.message : 'Request failed');
     } finally {
       setLoading(false);
