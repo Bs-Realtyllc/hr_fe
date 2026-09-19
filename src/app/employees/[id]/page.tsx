@@ -1,5 +1,17 @@
 'use client';
 import { useEffect, useState } from 'react';
+
+export async function generateStaticParams() {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api';
+  try {
+    const res = await fetch(`${apiUrl}/employees`);
+    if (!res.ok) return [];
+    const employees: { id: number }[] = await res.json();
+    return employees.map(e => ({ id: String(e.id) }));
+  } catch {
+    return [];
+  }
+}
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
