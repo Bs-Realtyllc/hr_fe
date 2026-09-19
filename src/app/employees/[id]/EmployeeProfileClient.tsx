@@ -42,7 +42,7 @@ interface Acknowledgement {
   submitted_at: string;
 }
 
-const BACKEND = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api').replace('/api', '');
+const BACKEND = process.env.NEXT_PUBLIC_API_URL!.replace('/api', '');
 
 function initials(name: string) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();

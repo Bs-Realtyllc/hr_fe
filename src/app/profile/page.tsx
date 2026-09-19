@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 
-const BACKEND = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api').replace('/api', '');
+const BACKEND = process.env.NEXT_PUBLIC_API_URL!.replace('/api', '');
 
 interface Profile {
   id: number;

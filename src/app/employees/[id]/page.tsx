@@ -1,7 +1,7 @@
 import EmployeeProfileClient from './EmployeeProfileClient';
 
 export async function generateStaticParams() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL!;
   try {
     const res = await fetch(`${apiUrl}/employees`);
     if (!res.ok) return [{ id: '0' }];

@@ -23,7 +23,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       if (requiresOtp) {
-        const res = await fetch('/api/auth/verify-otp', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/verify-otp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code: otp, tempToken }),
@@ -36,7 +36,7 @@ export default function LoginPage() {
         login(data.token as string, data.user as AuthUser);
         router.replace('/');
       } else {
-        const res = await fetch('/api/auth/login', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
