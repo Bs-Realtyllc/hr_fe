@@ -1,0 +1,26 @@
+{
+  "src/app/": [
+    "docs/features/app.md"
+  ],
+  "src/components/": [
+    "docs/features/components.md"
+  ],
+  "src/contexts/": [
+    "docs/features/contexts.md"
+  ],
+  "src/lib/": [
+    "docs/features/lib.md"
+  ],
+  "src/store/": [
+    "docs/features/store.md"
+  ],
+  "src/styles/": [
+    "docs/features/styles.md"
+  ],
+  "src/template/": [
+    "docs/features/template.md"
+  ],
+  "src/types/": [
+    "docs/features/types.md"
+  ]
+}
