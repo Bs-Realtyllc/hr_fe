@@ -130,7 +130,7 @@ function TaskCard({
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await fetch(`/apis/plane/${item.id}?projectId=${encodeURIComponent(p_id)}`, {
+      const res = await fetch(`/apis/plane/work-item?id=${encodeURIComponent(item.id)}&projectId=${encodeURIComponent(p_id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -215,7 +215,7 @@ function TaskCard({
     if (activitiesLoaded) return;
     setLoadingActivities(true);
     try {
-      const res = await fetch(`/apis/plane/${item.id}/activities`, {
+      const res = await fetch(`/apis/plane/work-item/activities?id=${encodeURIComponent(item.id)}`, {
         method: "GET",
       });
       const data = await res.json();
