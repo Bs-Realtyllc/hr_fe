@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import * as XLSX from "xlsx";
+import Button from "@/components/Button/Button";
 
 interface Standup {
   id: number;
@@ -59,7 +60,7 @@ export default function StandupsPage() {
       api
         .get<Employee[]>("/employees")
         .then(setEmployees)
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [isPrivileged]);
 
@@ -72,7 +73,7 @@ export default function StandupsPage() {
     api
       .get<Standup[]>(`/standups${q}`)
       .then(setStandups)
-      .catch(() => {});
+      .catch(() => { });
   };
 
   useEffect(() => {
@@ -136,33 +137,33 @@ export default function StandupsPage() {
             <p>Team daily updates — what we did, what's next, any blockers</p>
           </div>
           <div className="flex gap-2">
-            <button
-              className="btn btn-secondary btn-sm"
+
+            <Button variant="secondary"
+              size="small"
               onClick={exportExcel}
               disabled={standups.length === 0}
-            >
-              <span
+              leftIcon={<span
                 className="icon-mask"
                 style={{
+                  height: 16, width: 16,
                   WebkitMaskImage: "url(/icons/download.svg)",
                   maskImage: "url(/icons/download.svg)",
                 }}
-              />
-              Export Excel
-            </button>
-            <button
-              className="btn btn-primary btn-sm"
+              />}
+            >Export Excel</Button>
+
+            <Button variant="primary"
+              size="small"
               onClick={() => setShowModal(true)}
-            >
-              <span
+              leftIcon={<span
                 className="icon-mask"
                 style={{
+                  height: 16, width: 16,
                   WebkitMaskImage: "url(/icons/plus.svg)",
                   maskImage: "url(/icons/plus.svg)",
                 }}
-              />
-              Post Standup
-            </button>
+              />}
+            >Export Excel</Button>
           </div>
         </div>
       </div>
@@ -396,12 +397,12 @@ export default function StandupsPage() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Post Daily Standup</h2>
-              <button
-                className="modal-close"
+
+              <Button variant="text"
+                size="small"
                 onClick={() => setShowModal(false)}
-              >
-                ×
-              </button>
+
+              >X</Button>
             </div>
             <form onSubmit={submit}>
               <div className="form-group">
@@ -436,16 +437,17 @@ export default function StandupsPage() {
                 />
               </div>
               <div className="flex gap-3 justify-between">
-                <button
-                  type="button"
-                  className="btn btn-ghost"
+
+                <Button variant="text"
+                  size="small"
                   onClick={() => setShowModal(false)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Post
-                </button>
+
+                >Cancel</Button>
+
+                <Button variant="primary"
+                  type="submit"
+                  size="small"
+                >Post</Button>
               </div>
             </form>
           </div>

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
+import Button from '@/components/Button/Button';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL;
 
@@ -29,9 +30,9 @@ interface WeekGroup {
 
 function fileIcon(name: string) {
   const ext = name?.split('.').pop()?.toLowerCase();
-  if (ext === 'pdf')                    return { icon: '📄', color: '#ef4444', bg: '#fef2f2' };
-  if (ext === 'pptx' || ext === 'ppt')  return { icon: '📊', color: '#f59e0b', bg: '#fffbeb' };
-  return                                 { icon: '📝', color: '#6366f1', bg: '#eef2ff' };
+  if (ext === 'pdf') return { icon: '📄', color: '#ef4444', bg: '#fef2f2' };
+  if (ext === 'pptx' || ext === 'ppt') return { icon: '📊', color: '#f59e0b', bg: '#fffbeb' };
+  return { icon: '📝', color: '#6366f1', bg: '#eef2ff' };
 }
 
 function fmtSize(bytes: number) {
@@ -159,8 +160,7 @@ function ReportCard({
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-        <button
-          className="btn btn-sm btn-ghost"
+        <Button className="outline" variant='text' size='xs'
           onClick={() => onPreview(report)}
           title="Preview file"
         >
@@ -169,9 +169,8 @@ function ReportCard({
             style={{ WebkitMaskImage: 'url(/icons/eye.svg)', maskImage: 'url(/icons/eye.svg)' }}
           />
           Preview
-        </button>
-        <button
-          className="btn btn-sm btn-ghost"
+        </Button>
+        <Button className="outline" variant='text' size='xs'
           onClick={() => download(report.id)}
           title="Download file"
         >
@@ -180,7 +179,7 @@ function ReportCard({
             style={{ WebkitMaskImage: 'url(/icons/download.svg)', maskImage: 'url(/icons/download.svg)' }}
           />
           Download
-        </button>
+        </Button>
         {canDelete && (
           <button
             className="btn btn-sm btn-danger"
@@ -451,23 +450,23 @@ function EmployeeView({
 
 export default function WeeklyReportsPage() {
   const { user } = useAuth();
-  const fileRef  = useRef<HTMLInputElement>(null);
-  const now      = new Date();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const now = new Date();
   const currentWeekStart = mondayOf(now);
-  const currentWeekKey   = isoDate(currentWeekStart);
+  const currentWeekKey = isoDate(currentWeekStart);
 
   const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
 
-  const [reports, setReports]       = useState<Report[]>([]);
-  const [loading, setLoading]       = useState(false);
-  const [showModal, setShowModal]   = useState(false);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [submitMsg, setSubmitMsg]   = useState('');
+  const [submitMsg, setSubmitMsg] = useState('');
 
   const [previewReport, setPreviewReport] = useState<Report | null>(null);
-  const [previewUrl, setPreviewUrl]       = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError]     = useState(false);
+  const [previewError, setPreviewError] = useState(false);
 
   const [form, setForm] = useState({
     title: '', notes: '',
@@ -485,7 +484,7 @@ export default function WeeklyReportsPage() {
         return r.json();
       })
       .then(data => setReports(Array.isArray(data) ? data : []))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   };
 
@@ -504,10 +503,10 @@ export default function WeeklyReportsPage() {
     setSubmitting(true); setSubmitMsg('');
 
     const fd = new FormData();
-    fd.append('file',        form.file);
+    fd.append('file', form.file);
     fd.append('employee_id', String(user?.id));
-    fd.append('title',       form.title);
-    fd.append('notes',       form.notes);
+    fd.append('title', form.title);
+    fd.append('notes', form.notes);
 
     try {
       const token = getToken();
@@ -575,13 +574,13 @@ export default function WeeklyReportsPage() {
                 : 'Your weekly work update submissions'}
             </p>
           </div>
-          <button className="btn btn-primary btn-sm" onClick={openModal}>
-            <span
-              className="icon-mask"
-              style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
-            />
+          <Button variant='primary' size='small' onClick={openModal} leftIcon={<span
+            className="icon-mask"
+            style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
+          />}>
+
             Submit This Week's Update
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -601,7 +600,14 @@ export default function WeeklyReportsPage() {
           <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Submit Weekly Update</h2>
-              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
+
+              <Button variant='text' size='xs' onClick={() => setShowModal(false)}
+                leftIcon={<span
+                  className="icon-mask"
+                  style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/x.svg)', maskImage: 'url(/icons/x.svg)' }}
+                />}
+                children={false}>
+              </Button>
             </div>
             <form onSubmit={submit}>
               <div className="form-group">
@@ -648,10 +654,10 @@ export default function WeeklyReportsPage() {
                 </div>
               )}
               <div className="flex gap-3 justify-between">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                <Button variant='text' size='small' type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</Button>
+                <Button size='small' type="submit" className="btn btn-primary" disabled={submitting}>
                   {submitting ? 'Uploading…' : 'Submit Update'}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

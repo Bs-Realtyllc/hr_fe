@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import Button from '@/components/Button/Button';
 
 interface Review {
   id: number;
@@ -78,12 +79,12 @@ export default function PerformancePage() {
   const { user } = useAuth();
   const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
 
-  const [reviews, setReviews]       = useState<Review[]>([]);
-  const [employees, setEmployees]   = useState<Employee[]>([]);
-  const [loading, setLoading]       = useState(true);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
   const [employeeFilter, setEmployeeFilter] = useState('');
-  const [statusFilter, setStatusFilter]     = useState('');
-  const [trend, setTrend]           = useState<TrendPoint[]>([]);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [trend, setTrend] = useState<TrendPoint[]>([]);
 
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({
@@ -96,7 +97,7 @@ export default function PerformancePage() {
   const [ackComments, setAckComments] = useState('');
 
   useEffect(() => {
-    if (isPrivileged) api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+    if (isPrivileged) api.get<Employee[]>('/employees').then(setEmployees).catch(() => { });
   }, [isPrivileged]);
 
   const load = () => {
@@ -104,7 +105,7 @@ export default function PerformancePage() {
     const params = new URLSearchParams();
     if (isPrivileged && employeeFilter) params.set('employee_id', employeeFilter);
     const q = params.toString() ? `?${params.toString()}` : '';
-    api.get<Review[]>(`/performance${q}`).then(setReviews).catch(() => {}).finally(() => setLoading(false));
+    api.get<Review[]>(`/performance${q}`).then(setReviews).catch(() => { }).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [employeeFilter]);
@@ -191,13 +192,14 @@ export default function PerformancePage() {
             <p>{isPrivileged ? 'Run review cycles and track ratings across the team' : 'Your performance review history and ratings'}</p>
           </div>
           {isPrivileged && (
-            <button className="btn btn-primary btn-sm" onClick={openCreate}>
-              <span
+            <Button variant='primary' size='small' onClick={openCreate}
+              leftIcon={<span
                 className="icon-mask"
-                style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
-              />
+                style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
+              />}>
+
               New Review
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -349,8 +351,9 @@ export default function PerformancePage() {
                   <div className="flex gap-2">
                     {isPrivileged && r.status === 'draft' && (
                       <>
-                        <button className="btn btn-secondary btn-sm" onClick={() => submitReview(r.id)}>Submit to Employee</button>
-                        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--color-error)' }} onClick={() => deleteReview(r.id)}>Delete</button>
+                        <Button className='outline' variant='text' size='small' onClick={() => submitReview(r.id)}>Submit to Employee</Button>
+
+                        <Button className='outline' variant='text' size='small' style={{ color: 'var(--color-error)' }} onClick={() => deleteReview(r.id)}>Delete</Button>
                       </>
                     )}
                     {!isPrivileged && r.status === 'submitted' && r.employee_id === user?.id && (
@@ -370,7 +373,7 @@ export default function PerformancePage() {
           <div className="modal" style={{ maxWidth: 600 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>New Performance Review</h2>
-              <button className="modal-close" onClick={() => setShowCreate(false)}>×</button>
+              <Button variant='text' size='small' className="modal-close" onClick={() => setShowCreate(false)}>X</Button>
             </div>
             <form onSubmit={submitCreate}>
               <div className="grid-2">
@@ -431,8 +434,8 @@ export default function PerformancePage() {
                 Saved as a draft — nothing is visible to the employee until you submit it.
               </p>
               <div className="flex gap-3 justify-between">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowCreate(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Save Draft</button>
+                <Button variant='text' size='small' type="button" onClick={() => setShowCreate(false)}>Cancel</Button>
+                <Button size='small' type="submit" >Save Draft</Button>
               </div>
             </form>
           </div>
@@ -445,7 +448,7 @@ export default function PerformancePage() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Acknowledge Review</h3>
-              <button className="modal-close" onClick={() => setAckReview(null)}>×</button>
+              <Button variant='text' size='small' onClick={() => setAckReview(null)}>X</Button>
             </div>
             <p className="text-muted text-sm" style={{ marginBottom: 16 }}>
               Confirm you've read this review for period {ackReview.review_period}. You may optionally add your own comments.
@@ -455,8 +458,8 @@ export default function PerformancePage() {
               <textarea className="form-textarea" rows={3} value={ackComments} onChange={e => setAckComments(e.target.value)} />
             </div>
             <div className="flex gap-3 justify-between mt-4">
-              <button className="btn btn-ghost" onClick={() => setAckReview(null)}>Cancel</button>
-              <button className="btn btn-primary" onClick={submitAck}>Acknowledge</button>
+              <Button variant='text' size='small' onClick={() => setAckReview(null)}>Cancel</Button>
+              <Button variant='primary' size='small' onClick={submitAck}>Acknowledge</Button>
             </div>
           </div>
         </div>

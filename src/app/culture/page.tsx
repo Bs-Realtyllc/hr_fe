@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import Button from '@/components/Button/Button';
 
 interface CultureEvent {
   id: number;
@@ -57,15 +58,15 @@ function FlagIcon({ size = 14, color }: IconProps) {
 }
 
 const TYPE_CONFIG: Record<CultureEvent['event_type'], { color: string; bg: string; Icon: (p: IconProps) => JSX.Element; label: string }> = {
-  birthday:    { color: '#db2777', bg: '#fdf2f8', Icon: CakeIcon,  label: 'Birthday' },
+  birthday: { color: '#db2777', bg: '#fdf2f8', Icon: CakeIcon, label: 'Birthday' },
   anniversary: { color: '#7c3aed', bg: '#f5f3ff', Icon: AwardIcon, label: 'Anniversary' },
-  team_event:  { color: '#0ea5e9', bg: '#e0f2fe', Icon: UsersIcon, label: 'Team Event' },
-  milestone:   { color: '#d97706', bg: '#fef3c7', Icon: FlagIcon,  label: 'Milestone' },
+  team_event: { color: '#0ea5e9', bg: '#e0f2fe', Icon: UsersIcon, label: 'Team Event' },
+  milestone: { color: '#d97706', bg: '#fef3c7', Icon: FlagIcon, label: 'Milestone' },
 };
 
 function daysUntil(dateStr: string): number {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const d = new Date(dateStr); d.setHours(0,0,0,0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const d = new Date(dateStr); d.setHours(0, 0, 0, 0);
   return Math.round((d.getTime() - today.getTime()) / 86400000);
 }
 
@@ -109,7 +110,14 @@ function FullEventsModal({ events, onClose }: FullEventsModalProps) {
       <div className="drawer" onClick={e => e.stopPropagation()}>
         <div className="drawer-header">
           <h2>All Events</h2>
-          <button className="modal-close" onClick={onClose}>×</button>
+
+          <Button variant='text' size='small' onClick={onClose}
+            leftIcon={<span
+              className="icon-mask"
+              style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/x.svg)', maskImage: 'url(/icons/x.svg)' }}
+            />}
+            children={false}>
+          </Button>
         </div>
         <div className="drawer-body">
           {events.length === 0 ? (
@@ -162,11 +170,11 @@ export default function CulturePage() {
   const [showAll, setShowAll] = useState(false);
   const [form, setForm] = useState({ title: '', event_type: 'team_event', event_date: '', description: '', employee_id: '' });
 
-  const load = () => api.get<CultureEvent[]>('/events').then(setEvents).catch(() => {});
+  const load = () => api.get<CultureEvent[]>('/events').then(setEvents).catch(() => { });
 
   useEffect(() => {
     load();
-    api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+    api.get<Employee[]>('/employees').then(setEmployees).catch(() => { });
   }, []);
 
   const submit = async (e: React.FormEvent) => {
@@ -196,13 +204,13 @@ export default function CulturePage() {
             <h1>Culture & Events</h1>
             <p>Birthdays, anniversaries, and team milestones</p>
           </div>
-          <button className="btn btn-primary btn-sm" onClick={() => setShowModal(true)}>
-            <span
-              className="icon-mask"
-              style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
-            />
+          <Button variant='primary' size='small' onClick={() => setShowModal(true)} leftIcon={<span
+            className="icon-mask"
+            style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
+          />}>
+
             Add Event
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -215,7 +223,7 @@ export default function CulturePage() {
             <div className="card-title" style={{ marginBottom: 4 }}>This Week</div>
             <div className="text-muted" style={{ fontSize: 12 }}>{fmtShort(weekStart)} – {fmtShort(weekEnd)}</div>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowAll(true)}>View Full Events List</button>
+          <Button className='outline' variant='text' size='small' onClick={() => setShowAll(true)}>View Full Events List</Button>
         </div>
 
         {weekEvents.length === 0 ? (
@@ -268,7 +276,14 @@ export default function CulturePage() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Add Event</h2>
-              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
+
+              <Button variant='text' size='small' onClick={() => setShowModal(false)}
+                leftIcon={<span
+                  className="icon-mask"
+                  style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/x.svg)', maskImage: 'url(/icons/x.svg)' }}
+                />}
+                children={false}>
+              </Button>
             </div>
             <form onSubmit={submit}>
               <div className="form-group">
@@ -304,8 +319,8 @@ export default function CulturePage() {
                 <textarea className="form-textarea" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
               </div>
               <div className="flex gap-3 justify-between mt-4">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Create Event</button>
+                <Button variant='text' size='small' type="button" onClick={() => setShowModal(false)}>Cancel</Button>
+                <Button variant='primary' size='small' type="submit" >Create Event</Button>
               </div>
             </form>
           </div>

@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import Button from '@/components/Button/Button';
 
 interface Goal {
   id: number;
@@ -30,11 +31,11 @@ interface Employee {
 }
 
 const STATUS_COLUMNS: { key: Goal['status']; label: string; color: string }[] = [
-  { key: 'at_risk',     label: 'At Risk',     color: 'var(--color-error)' },
+  { key: 'at_risk', label: 'At Risk', color: 'var(--color-error)' },
   { key: 'in_progress', label: 'In Progress', color: 'var(--color-info)' },
   { key: 'not_started', label: 'Not Started', color: 'var(--color-text-muted)' },
-  { key: 'completed',   label: 'Completed',   color: 'var(--color-success)' },
-  { key: 'missed',      label: 'Missed',      color: 'var(--color-warning)' },
+  { key: 'completed', label: 'Completed', color: 'var(--color-success)' },
+  { key: 'missed', label: 'Missed', color: 'var(--color-warning)' },
 ];
 
 const STATUS_BADGE: Record<string, string> = {
@@ -80,9 +81,9 @@ export default function GoalsPage() {
   const { user } = useAuth();
   const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
 
-  const [goals, setGoals]           = useState<Goal[]>([]);
-  const [employees, setEmployees]   = useState<Employee[]>([]);
-  const [loading, setLoading]       = useState(true);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
   const [employeeFilter, setEmployeeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
@@ -103,7 +104,7 @@ export default function GoalsPage() {
   });
 
   useEffect(() => {
-    if (isPrivileged) api.get<Employee[]>('/employees').then(setEmployees).catch(() => {});
+    if (isPrivileged) api.get<Employee[]>('/employees').then(setEmployees).catch(() => { });
   }, [isPrivileged]);
 
   const load = () => {
@@ -111,7 +112,7 @@ export default function GoalsPage() {
     const params = new URLSearchParams();
     if (isPrivileged && employeeFilter) params.set('employee_id', employeeFilter);
     const q = params.toString() ? `?${params.toString()}` : '';
-    api.get<Goal[]>(`/goals${q}`).then(setGoals).catch(() => {}).finally(() => setLoading(false));
+    api.get<Goal[]>(`/goals${q}`).then(setGoals).catch(() => { }).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [employeeFilter]);
@@ -208,13 +209,19 @@ export default function GoalsPage() {
             <h1>Goals &amp; KPIs</h1>
             <p>{isPrivileged ? 'Track individual, team, and company goals across the org' : 'Track your goals and key performance indicators'}</p>
           </div>
-          <button className="btn btn-primary btn-sm" onClick={openCreate}>
-            <span
+
+          <Button
+            size='small'
+            variant='primary'
+            onClick={openCreate}
+            leftIcon={<span
               className="icon-mask"
-              style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
-            />
-            Add Goal
-          </button>
+              style={{
+                height: 16,
+                width: 16,
+                WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)'
+              }}
+            />}>Add Goal</Button>
         </div>
       </div>
 
@@ -339,7 +346,12 @@ export default function GoalsPage() {
           <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Add Goal</h2>
-              <button className="modal-close" onClick={() => setShowCreate(false)}>×</button>
+
+              <Button
+                size='small'
+                variant='text'
+                onClick={() => setShowCreate(false)}
+              >X</Button>
             </div>
             <form onSubmit={submitCreate}>
               {isPrivileged && (
@@ -402,8 +414,13 @@ export default function GoalsPage() {
                 </div>
               </div>
               <div className="flex gap-3 justify-between mt-4">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowCreate(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Add Goal</button>
+                <Button variant='text' size='small' type="button" onClick={() => setShowCreate(false)}>Cancel</Button>
+
+                <Button
+                  size='small'
+                  variant='primary'
+                  type='submit'
+                >Add Goal</Button>
               </div>
             </form>
           </div>
@@ -434,8 +451,18 @@ export default function GoalsPage() {
               </select>
             </div>
             <div className="flex gap-3 justify-between mt-4">
-              <button className="btn btn-ghost" onClick={() => setProgressGoal(null)}>Cancel</button>
-              <button className="btn btn-primary" onClick={submitProgress}>Save Progress</button>
+
+              <Button
+                size='small'
+                variant='text'
+                onClick={() => setProgressGoal(null)}
+              >Cancel</Button>
+
+              <Button
+                size='small'
+                variant='primary'
+                onClick={submitProgress}
+              >Save Progress</Button>
             </div>
           </div>
         </div>
@@ -447,7 +474,7 @@ export default function GoalsPage() {
           <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Edit Goal</h2>
-              <button className="modal-close" onClick={() => setEditGoal(null)}>×</button>
+              <Button variant='text' onClick={() => setEditGoal(null)}>X</Button>
             </div>
             <form onSubmit={submitEdit}>
               <div className="form-group">
@@ -499,8 +526,18 @@ export default function GoalsPage() {
                 </div>
               </div>
               <div className="flex gap-3 justify-between mt-4">
-                <button type="button" className="btn btn-ghost" onClick={() => setEditGoal(null)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Save Changes</button>
+
+                <Button
+                  size='small'
+                  variant='text'
+                  onClick={() => setEditGoal(null)}
+                >Cancel</Button>
+
+                <Button
+                  size='small'
+                  variant='primary'
+                  type='submit'
+                >Save Changes</Button>
               </div>
             </form>
           </div>

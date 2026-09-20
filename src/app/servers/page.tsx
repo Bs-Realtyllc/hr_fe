@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import ProjectsTab from './ProjectsTab';
+import Button from '@/components/Button/Button';
 
 interface Credential {
   service_name: string;
@@ -26,18 +27,18 @@ interface Service {
 }
 
 const INTERNAL_SERVICES: Service[] = [
-  { key: 'drone',     name: 'Drone CI',   url: 'https://drone.bsrealtyllc.com', logoSrc: '/logos/drone.svg',      color: '#1565C0' },
-  { key: 'sonarqube', name: 'SonarQube',  url: 'https://sonar.bsrealtyllc.com', logoSrc: '/logos/sonar.svg',      color: '#00897B' },
-  { key: 'design',    name: 'Design',     url: 'https://design.bsrealtyllc.org', logoSrc: '/logos/storybook.svg', color: '#FF4785' },
+  { key: 'drone', name: 'Drone CI', url: 'https://drone.bsrealtyllc.com', logoSrc: '/logos/drone.svg', color: '#1565C0' },
+  { key: 'sonarqube', name: 'SonarQube', url: 'https://sonar.bsrealtyllc.com', logoSrc: '/logos/sonar.svg', color: '#00897B' },
+  { key: 'design', name: 'Design', url: 'https://design.bsrealtyllc.org', logoSrc: '/logos/storybook.svg', color: '#FF4785' },
 ];
 
 const EXTERNAL_SERVICES: Service[] = [
-  { key: 'bsrealty',   name: 'BS Realty',   url: 'https://bsrealtyllc.com',          logoSrc: '/logos/bsrealty.png',   color: '#1e3a5f' },
-  { key: 'insurance',  name: 'Insurance',   url: 'https://insurance.bsrealtyllc.com', logoSrc: '/logos/insurance.png',  color: '#2563eb' },
-  { key: 'gitgi',      name: 'GITGI',       url: 'https://gitgi.com',                logoSrc: '/logos/gitgi.svg',      color: '#235e94' },
-  { key: 'job-portal', name: 'Job Portal',  url: 'https://jobportal.gitgi.com',      logoSrc: '/logos/job-portal.svg', color: '#863bff' },
+  { key: 'bsrealty', name: 'BS Realty', url: 'https://bsrealtyllc.com', logoSrc: '/logos/bsrealty.png', color: '#1e3a5f' },
+  { key: 'insurance', name: 'Insurance', url: 'https://insurance.bsrealtyllc.com', logoSrc: '/logos/insurance.png', color: '#2563eb' },
+  { key: 'gitgi', name: 'GITGI', url: 'https://gitgi.com', logoSrc: '/logos/gitgi.svg', color: '#235e94' },
+  { key: 'job-portal', name: 'Job Portal', url: 'https://jobportal.gitgi.com', logoSrc: '/logos/job-portal.svg', color: '#863bff' },
   { key: 'education-portal', name: 'GITGI Portal', url: 'https://dev-education.bsrealtyllc.com', logoSrc: '/logos/gitgi-portal.svg', color: '#1e3a5f' },
-  { key: 'gitgi-hr',   name: 'GITGI HR',    url: 'https://hr.gitgi.com',             logoSrc: '/logos/gitgi-hr.svg',   color: '#1e3a5f' },
+  { key: 'gitgi-hr', name: 'GITGI HR', url: 'https://hr.gitgi.com', logoSrc: '/logos/gitgi-hr.svg', color: '#1e3a5f' },
 ];
 
 const ALL_SERVICES = [...INTERNAL_SERVICES, ...EXTERNAL_SERVICES];
@@ -101,7 +102,7 @@ function ServicesTab() {
       username: form.username,
       password: form.password,
       notes: form.notes,
-    }).catch(() => {});
+    }).catch(() => { });
     setSaving(false);
     setSaved(true);
     await loadCredentials();
@@ -235,21 +236,29 @@ function ServicesTab() {
             />
           </div>
 
-          <button type="submit" className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} disabled={saving}>
-            {!saving && (
-              <span
-                className="icon-mask"
-                style={{
-                  WebkitMaskImage: `url(/icons/${saved ? 'check.svg' : 'save.svg'})`,
-                  maskImage: `url(/icons/${saved ? 'check.svg' : 'save.svg'})`,
-                }}
-              />
-            )}
-            {saved ? 'Saved' : saving ? 'Saving…' : 'Save Credentials'}
-          </button>
+          <Button
+            className='w-full'
+            type='submit'
+            variant='primary' size='small'
+            disabled={saving}
+            leftIcon={
+              !saving ? (
+                <span
+                  className="icon-mask"
+                  style={{
+                    width: 16,
+                    height: 16,
+                    WebkitMaskImage: `url(/icons/${saved ? 'check.svg' : 'save.svg'})`,
+                    maskImage: `url(/icons/${saved ? 'check.svg' : 'save.svg'})`,
+                  }}
+                />
+              ) : null
+            }
+          >
+            {saved ? 'Saved' : saving ? 'Saving…' : 'Save Credentials'}</Button>
         </form>
       </div>
-    </div>
+    </div >
   );
 }
 

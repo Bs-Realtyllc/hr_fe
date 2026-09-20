@@ -7,6 +7,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
+import Button from '@/components/Button/Button';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL;
 
@@ -34,8 +35,8 @@ interface MonthGroup {
 }
 
 const MONTHS = [
-  'January','February','March','April','May','June',
-  'July','August','September','October','November','December',
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
 interface ReportRange {
@@ -51,9 +52,9 @@ function fmtRangeDate(d: Date) {
 
 function fileIcon(name: string) {
   const ext = name?.split('.').pop()?.toLowerCase();
-  if (ext === 'pdf')               return { icon: '📄', color: '#ef4444', bg: '#fef2f2' };
+  if (ext === 'pdf') return { icon: '📄', color: '#ef4444', bg: '#fef2f2' };
   if (ext === 'pptx' || ext === 'ppt') return { icon: '📊', color: '#f59e0b', bg: '#fffbeb' };
-  return                                  { icon: '📝', color: '#6366f1', bg: '#eef2ff' };
+  return { icon: '📝', color: '#6366f1', bg: '#eef2ff' };
 }
 
 function fmtSize(bytes: number) {
@@ -146,17 +147,20 @@ function ReportCard({
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-        <button
-          className="btn btn-sm btn-ghost"
+        <Button
+          className='outline'
+          variant='text'
+          size='xs'
           onClick={() => download(report.id)}
           title="Download file"
-        >
-          <span
+          leftIcon={<span
             className="icon-mask"
-            style={{ WebkitMaskImage: 'url(/icons/download.svg)', maskImage: 'url(/icons/download.svg)' }}
-          />
+            style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/download.svg)', maskImage: 'url(/icons/download.svg)' }}
+          />}
+        >
+
           Download
-        </button>
+        </Button>
         {canDelete && (
           <button
             className="btn btn-sm btn-danger"
@@ -184,7 +188,7 @@ function RangeFilter({
   // Default label shows the current month's range even before the user picks anything,
   // matching a real "from date - to date" display rather than a vague "All Time" placeholder.
   const displayFrom = range.from ?? new Date(now.getFullYear(), now.getMonth(), 1);
-  const displayTo   = range.to   ?? now;
+  const displayTo = range.to ?? now;
   const label = `${fmtRangeDate(displayFrom)} - ${fmtRangeDate(displayTo)}`;
 
   return (
@@ -500,17 +504,17 @@ function EmployeeView({
 
 export default function ReportsPage() {
   const { user } = useAuth();
-  const fileRef  = useRef<HTMLInputElement>(null);
-  const now      = new Date();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const now = new Date();
 
   const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
 
-  const [reports, setReports]       = useState<Report[]>([]);
-  const [loading, setLoading]       = useState(false);
-  const [range, setRange]           = useState<ReportRange>(emptyRange);
-  const [showModal, setShowModal]   = useState(false);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [range, setRange] = useState<ReportRange>(emptyRange);
+  const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [submitMsg, setSubmitMsg]   = useState('');
+  const [submitMsg, setSubmitMsg] = useState('');
 
   const [form, setForm] = useState({
     title: '', month: String(now.getMonth() + 1),
@@ -538,7 +542,7 @@ export default function ReportsPage() {
         return r.json();
       })
       .then(data => setReports(Array.isArray(data) ? data : []))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   };
 
@@ -557,12 +561,12 @@ export default function ReportsPage() {
     setSubmitting(true); setSubmitMsg('');
 
     const fd = new FormData();
-    fd.append('file',        form.file);
+    fd.append('file', form.file);
     fd.append('employee_id', String(user?.id));
-    fd.append('title',       form.title);
-    fd.append('month',       form.month);
-    fd.append('year',        form.year);
-    fd.append('notes',       form.notes);
+    fd.append('title', form.title);
+    fd.append('month', form.month);
+    fd.append('year', form.year);
+    fd.append('notes', form.notes);
 
     try {
       const token = getToken();
@@ -602,13 +606,12 @@ export default function ReportsPage() {
                 : 'Your submitted reports and presentations'}
             </p>
           </div>
-          <button className="btn btn-primary btn-sm" onClick={openModal}>
-            <span
-              className="icon-mask"
-              style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
-            />
+          <Button variant='primary' size='small' onClick={openModal} leftIcon={<span
+            className="icon-mask"
+            style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
+          />}>
             Submit Report
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -640,7 +643,14 @@ export default function ReportsPage() {
           <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Submit Monthly Report</h2>
-              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
+
+              <Button variant='text' size='small' onClick={() => setShowModal(false)}
+                leftIcon={<span
+                  className="icon-mask"
+                  style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/x.svg)', maskImage: 'url(/icons/x.svg)' }}
+                />}
+                children={false}>
+              </Button>
             </div>
             <form onSubmit={submit}>
               <div className="form-group">
@@ -695,10 +705,10 @@ export default function ReportsPage() {
                 </div>
               )}
               <div className="flex gap-3 justify-between">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                <Button variant='text' size='small' type="button" onClick={() => setShowModal(false)}>Cancel</Button>
+                <Button variant='primary' size='small' type="submit" disabled={submitting}>
                   {submitting ? 'Uploading…' : 'Submit Report'}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

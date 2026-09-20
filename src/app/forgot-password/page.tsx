@@ -1,12 +1,13 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
+import Button from '@/components/Button/Button';
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail]   = useState('');
-  const [sent, setSent]     = useState(false);
+  const [email, setEmail] = useState('');
+  const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState('');
+  const [error, setError] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -72,10 +73,13 @@ export default function ForgotPasswordPage() {
               <div className="auth-error">{error}</div>
             )}
 
-            <button className="btn btn-primary" type="submit" disabled={loading}
-              style={{ width: '100%', marginTop: 8 }}>
+            <Button
+              type="submit"
+              variant='primary'
+              size='small'
+              disabled={loading}>
               {loading ? 'Sending…' : 'Send Reset Link'}
-            </button>
+            </Button>
 
             <div style={{ textAlign: 'center', marginTop: 16 }}>
               <Link href="/login" style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>

@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import PdfThumbnail from './PdfThumbnail';
+import Button from './Button/Button';
 
 const BACKEND = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api').replace('/api', '');
 
@@ -82,11 +83,11 @@ export default function PolicyDocuments({
   const isAdmin = user?.role === 'admin';
 
   const [policies, setPolicies] = useState<Policy[]>([]);
-  const [search, setSearch]     = useState('');
-  const [loading, setLoading]   = useState(true);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
   const [previewFor, setPreviewFor] = useState<{ title: string; url: string } | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [error, setError]       = useState('');
+  const [error, setError] = useState('');
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [pinningId, setPinningId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -106,13 +107,13 @@ export default function PolicyDocuments({
   const ackFor = (policyId: number) => myAcks.find(a => a.policy_id === policyId);
 
   const loadMyAcks = () =>
-    api.get<Acknowledgement[]>('/policies/acknowledgements/mine').then(setMyAcks).catch(() => {});
+    api.get<Acknowledgement[]>('/policies/acknowledgements/mine').then(setMyAcks).catch(() => { });
 
   useEffect(() => { if (requiresSignature && !isAdmin) loadMyAcks(); }, [requiresSignature, isAdmin]);
 
   const load = () =>
     api.get<Policy[]>(category ? `/policies?category=${category}` : '/policies')
-      .then(setPolicies).catch(() => {}).finally(() => setLoading(false));
+      .then(setPolicies).catch(() => { }).finally(() => setLoading(false));
 
   useEffect(() => { load(); }, [category]);
 
@@ -289,13 +290,12 @@ export default function PolicyDocuments({
           </div>
           {isAdmin && (
             <>
-              <button
-                className="btn btn-primary btn-sm"
+
+              <Button
+                variant='primary'
+                size='small'
                 onClick={() => { setError(''); fileInputRef.current?.click(); }}
-                disabled={uploading}
-              >
-                {uploading ? 'Uploading…' : '+ Upload document'}
-              </button>
+                disabled={uploading}>{uploading ? 'Uploading…' : '+ Upload document'}</Button>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -399,12 +399,12 @@ export default function PolicyDocuments({
                     const ack = ackFor(p.id);
                     const badgeClass = !ack ? 'badge-neutral'
                       : ack.status === 'approved' ? 'badge-success'
-                      : ack.status === 'rejected' ? 'badge-error'
-                      : 'badge-warning';
+                        : ack.status === 'rejected' ? 'badge-error'
+                          : 'badge-warning';
                     const badgeLabel = !ack ? 'Not Signed'
                       : ack.status === 'approved' ? 'Approved'
-                      : ack.status === 'rejected' ? 'Rejected'
-                      : 'Pending Review';
+                        : ack.status === 'rejected' ? 'Rejected'
+                          : 'Pending Review';
                     return (
                       <div>
                         <span className={`badge ${badgeClass}`}>{badgeLabel}</span>
@@ -427,6 +427,7 @@ export default function PolicyDocuments({
                     >
                       View
                     </button>
+
                     <a
                       href={`${BACKEND}/uploads/policies/${p.file_path}`}
                       target="_blank"
@@ -465,13 +466,15 @@ export default function PolicyDocuments({
                         </button>
                       )}
                       {isAdmin && (
-                        <button
-                          className="btn btn-primary btn-sm"
-                          style={{ flex: 1, justifyContent: 'center' }}
+
+                        <Button
+                          className='w-full'
+                          variant='primary'
+                          size='small'
                           onClick={() => openReview(p)}
                         >
                           Submissions
-                        </button>
+                        </Button>
                       )}
                     </div>
                   )}
@@ -521,7 +524,8 @@ export default function PolicyDocuments({
           >
             <div className="modal-header">
               <h2>Submissions — {reviewFor.title}</h2>
-              <button className="modal-close" onClick={() => setReviewFor(null)}>×</button>
+
+              <Button variant='text' size='small' onClick={() => setReviewFor(null)}>X</Button>
             </div>
 
             <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>

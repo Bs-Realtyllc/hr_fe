@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import Button from '@/components/Button';
 
 interface Employee {
   id: number;
@@ -99,7 +100,7 @@ export default function EmployeeProfilePage() {
       api.get<Project[]>(`/projects/by-employee/${id}`).catch(() => []),
     ])
       .then(([emp, proj]) => { setEmployee(emp); setProjects(proj); })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -224,13 +225,13 @@ export default function EmployeeProfilePage() {
                       Download
                     </a>
                     {ack.status !== 'approved' && (
-                      <button
-                        className="btn btn-primary btn-sm"
+                      <Button
                         onClick={() => approve(ack)}
-                        disabled={reviewingId === ack.id}
-                      >
+                        variant='text'
+                        size='small'
+                        disabled={reviewingId === ack.id}>
                         Approve
-                      </button>
+                      </Button>
                     )}
                     {ack.status !== 'rejected' && rejectingId !== ack.id && (
                       <button

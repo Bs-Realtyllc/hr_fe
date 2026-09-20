@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { getUser } from '@/lib/auth';
+import Button from '@/components/Button/Button';
 
 interface CalEvent {
   date: string;
@@ -44,8 +45,8 @@ function getFirstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).getDay();
 }
 
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const DAYS_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const DAYS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function addMonths(year: number, month: number, delta: number) {
   const d = new Date(year, month + delta, 1);
@@ -91,7 +92,7 @@ function ScheduleModal({ defaultDate, onClose, onCreated }: ScheduleModalProps) 
     startTime: '10:00', endTime: '10:30', attendees: '',
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
+  const [error, setError] = useState('');
 
   const set = (k: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -109,7 +110,7 @@ function ScheduleModal({ defaultDate, onClose, onCreated }: ScheduleModalProps) 
         title: form.title,
         description: form.description,
         start_datetime: `${form.date}T${form.startTime}:00`,
-        end_datetime:   `${form.date}T${form.endTime}:00`,
+        end_datetime: `${form.date}T${form.endTime}:00`,
         attendees: form.attendees
           ? form.attendees.split(',').map(s => s.trim()).filter(Boolean)
           : [],
@@ -129,7 +130,8 @@ function ScheduleModal({ defaultDate, onClose, onCreated }: ScheduleModalProps) 
           <h2 style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)' }}>
             <MeetingIcon size={18} color="var(--color-primary)" /> Schedule Meeting
           </h2>
-          <button className="modal-close" onClick={onClose}>×</button>
+
+          <Button variant='text' size='small' onClick={onClose}>X</Button>
         </div>
         <form onSubmit={submit}>
           <div className="form-group">
@@ -162,10 +164,10 @@ function ScheduleModal({ defaultDate, onClose, onCreated }: ScheduleModalProps) 
           </div>
           {error && <p className="form-error-text" style={{ marginBottom: 'var(--space-12)' }}>{error}</p>}
           <div className="flex gap-3 justify-end">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Scheduling…' : 'Schedule'}
-            </button>
+
+            <Button type='button' variant='text' size='small' onClick={onClose}>Cancel</Button>
+            <Button type='submit' variant='primary' size='small' disabled={loading}>{loading ? 'Scheduling…' : 'Schedule'}</Button>
+
           </div>
         </form>
       </div>
@@ -182,14 +184,14 @@ interface HolidayListModalProps {
 }
 
 function HolidayListModal({ holidays, isAdmin, onClose, onChanged }: HolidayListModalProps) {
-  const [form, setForm]     = useState({ name: '', holiday_date: '', message: '' });
+  const [form, setForm] = useState({ name: '', holiday_date: '', message: '' });
   const [saving, setSaving] = useState(false);
-  const [error, setError]   = useState('');
+  const [error, setError] = useState('');
 
   const todayStart = new Date(new Date().toDateString());
   const sorted = [...holidays].sort((a, b) => a.holiday_date.localeCompare(b.holiday_date));
   const upcoming = sorted.filter(h => new Date(h.holiday_date) >= todayStart);
-  const past     = sorted.filter(h => new Date(h.holiday_date) < todayStart);
+  const past = sorted.filter(h => new Date(h.holiday_date) < todayStart);
 
   const addHoliday = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -259,7 +261,10 @@ function HolidayListModal({ holidays, isAdmin, onClose, onChanged }: HolidayList
             </h2>
             <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>{holidays.length} fixed paid holidays this year</div>
           </div>
-          <button className="modal-close" onClick={onClose}>×</button>
+
+          <Button
+            variant='text'
+            size='small' onClick={onClose}>X</Button>
         </div>
 
         <div style={{ padding: 18, overflowY: 'auto' }}>
@@ -284,12 +289,26 @@ function HolidayListModal({ holidays, isAdmin, onClose, onChanged }: HolidayList
               </div>
               {error && <p className="form-error-text">{error}</p>}
               <div className="flex justify-end" style={{ marginTop: 10 }}>
-                <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
-                  <span className="icon-mask" style={{
-                    WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)',
-                  }} />
+
+                <Button
+                  variant='primary'
+                  size='small'
+                  type='submit'
+                  disabled={saving}
+                  leftIcon={
+                    <span
+                      className="icon-mask"
+                      style={{
+                        width: 16,
+                        height: 16,
+                        WebkitMaskImage: `url(/icons/plus.svg)`,
+                        maskImage: `url(/icons/plus.svg)`,
+                      }}
+                    />
+                  }
+                >
                   {saving ? 'Adding…' : 'Add'}
-                </button>
+                </Button>
               </div>
             </form>
           )}
@@ -417,22 +436,22 @@ function DayEventsDrawer({ dateStr, dayEvents, onClose, onAddMeeting }: DayEvent
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function CalendarPage() {
-  const today   = new Date();
-  const user    = getUser();
+  const today = new Date();
+  const user = getUser();
   const isAdmin = user?.role === 'admin';
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-  const [year, setYear]     = useState(today.getFullYear());
-  const [month, setMonth]   = useState(today.getMonth());
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth());
   const [events, setEvents] = useState<CalEvent[]>([]);
-  const [selected, setSelected]   = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [dayDrawerDate, setDayDrawerDate] = useState<string | null>(null);
   const [showHolidays, setShowHolidays] = useState(false);
-  const [holidays, setHolidays]   = useState<Holiday[]>([]);
-  const [syncing, setSyncing]     = useState(false);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [syncing, setSyncing] = useState(false);
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus | null>(null);
-  const [hoverIdx, setHoverIdx]   = useState<number | null>(null);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   useEffect(() => {
     api.get<GoogleStatus>('/google/status').then(setGoogleStatus).catch(() => null);
@@ -445,7 +464,7 @@ export default function CalendarPage() {
       api.get<GoogleStatus>('/google/status').then(setGoogleStatus).catch(() => null);
       handleSync();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadEvents = useCallback(() => {
@@ -496,12 +515,12 @@ export default function CalendarPage() {
     setGoogleStatus({ connected: false, webhookActive: false });
   }
 
-  const prevMonth = () => month === 0  ? (setYear(y => y-1), setMonth(11))  : setMonth(m => m-1);
-  const nextMonth = () => month === 11 ? (setYear(y => y+1), setMonth(0))   : setMonth(m => m+1);
-  const goToday   = () => { setYear(today.getFullYear()); setMonth(today.getMonth()); setSelected(todayStr); };
+  const prevMonth = () => month === 0 ? (setYear(y => y - 1), setMonth(11)) : setMonth(m => m - 1);
+  const nextMonth = () => month === 11 ? (setYear(y => y + 1), setMonth(0)) : setMonth(m => m + 1);
+  const goToday = () => { setYear(today.getFullYear()); setMonth(today.getMonth()); setSelected(todayStr); };
 
   const daysInMonth = getDaysInMonth(year, month);
-  const firstDay    = getFirstDayOfMonth(year, month);
+  const firstDay = getFirstDayOfMonth(year, month);
 
   const { y: prevY, m: prevM } = addMonths(year, month, -1);
   const { y: nextY, m: nextM } = addMonths(year, month, 1);
@@ -521,10 +540,10 @@ export default function CalendarPage() {
   }));
   const cells: CalCell[] = [...leading, ...current, ...trailing];
 
-  const dateStrOf = (c: CalCell) => `${c.y}-${String(c.m+1).padStart(2,'0')}-${String(c.day).padStart(2,'0')}`;
+  const dateStrOf = (c: CalCell) => `${c.y}-${String(c.m + 1).padStart(2, '0')}-${String(c.day).padStart(2, '0')}`;
 
   const eventsForDay = (day: number) => {
-    const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const ds = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     return events.filter(e => e.date === ds);
   };
 
@@ -662,14 +681,14 @@ export default function CalendarPage() {
         {/* Day cells */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
           {cells.map((c, i) => {
-            const dateStr    = dateStrOf(c);
-            const dayEvents  = c.inMonth ? eventsForDay(c.day) : [];
-            const isToday    = c.inMonth && dateStr === todayStr;
-            const isSel      = c.inMonth && dateStr === selected;
-            const visible    = dayEvents.slice(0, 2);
-            const overflow   = dayEvents.length - visible.length;
-            const isHover    = hoverIdx === i;
-            const isLastCol  = i % 7 === 6;
+            const dateStr = dateStrOf(c);
+            const dayEvents = c.inMonth ? eventsForDay(c.day) : [];
+            const isToday = c.inMonth && dateStr === todayStr;
+            const isSel = c.inMonth && dateStr === selected;
+            const visible = dayEvents.slice(0, 2);
+            const overflow = dayEvents.length - visible.length;
+            const isHover = hoverIdx === i;
+            const isLastCol = i % 7 === 6;
 
             const handleCellClick = () => {
               if (!c.inMonth) return;
@@ -863,9 +882,10 @@ export default function CalendarPage() {
           <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>
             {holidays.length} fixed paid holidays this year
           </p>
-          <button className="btn btn-primary" onClick={() => setShowHolidays(true)}>
-            View full list of holidays
-          </button>
+
+          <Button
+            variant='primary'
+            size='large' onClick={() => setShowHolidays(true)}> View full list of holidays</Button>
         </div>
       </div>
     </div>

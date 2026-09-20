@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import Button from '@/components/Button/Button';
 
 interface Project {
   id: number;
@@ -279,7 +280,23 @@ function ProjectCard({ project, isAdmin }: { project: Project; isAdmin: boolean 
                 Tasks
               </span>
               {isAdmin && !addingTodo && (
-                <button className="btn btn-secondary btn-xs" onClick={() => setAddingTodo(true)}>+ Add task</button>
+
+                <Button
+                  variant='text'
+                  size='small'
+                  onClick={() => setAddingTodo(true)}
+                  leftIcon={
+                    <span
+                      className="icon-mask"
+                      style={{
+                        width: 16,
+                        height: 16,
+                        WebkitMaskImage: `url(/icons/plus.svg)`,
+                        maskImage: `url(/icons/plus.svg)`,
+                      }}
+                    />
+                  }
+                >Add Task</Button>
               )}
             </div>
 
@@ -323,12 +340,23 @@ function ProjectCard({ project, isAdmin }: { project: Project; isAdmin: boolean 
                   onChange={e => setNewDeadline(e.target.value)}
                 />
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn btn-primary btn-xs" onClick={addTodo} disabled={saving || !newTitle.trim()}>
+
+                  <Button
+                    variant='primary'
+                    size='xs'
+                    onClick={addTodo}
+                    disabled={saving || !newTitle.trim()}
+                  >
                     {saving ? 'Adding…' : 'Add task'}
-                  </button>
-                  <button className="btn btn-secondary btn-xs" onClick={() => { setAddingTodo(false); setNewTitle(''); setNewDesc(''); setNewDeadline(''); }}>
+                  </Button>
+                  <Button
+                    variant='text'
+                    size='xs'
+                    onClick={() => { setAddingTodo(false); setNewTitle(''); setNewDesc(''); setNewDeadline(''); }}
+                  >
                     Cancel
-                  </button>
+                  </Button>
+
                 </div>
               </div>
             )}
@@ -348,7 +376,7 @@ export default function ProjectsTab() {
   useEffect(() => {
     api.get<Project[]>('/projects')
       .then(setProjects)
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, []);
 

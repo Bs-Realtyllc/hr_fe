@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
+import Button from '@/components/Button/Button';
 
 const BACKEND = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api').replace('/api', '');
 
@@ -37,10 +38,10 @@ function initials(name: string) {
 }
 
 export default function ProfilePage() {
-  const [tab, setTab]         = useState<Tab>('personal');
+  const [tab, setTab] = useState<Tab>('personal');
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [saving, setSaving]   = useState(false);
-  const [msg, setMsg]         = useState('');
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
   const [msgType, setMsgType] = useState<'ok' | 'err'>('ok');
 
   // personal info form state
@@ -48,7 +49,7 @@ export default function ProfilePage() {
 
   // security
   const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm: '' });
-  const [pwMsg, setPwMsg]   = useState('');
+  const [pwMsg, setPwMsg] = useState('');
   const [pwType, setPwType] = useState<'ok' | 'err'>('ok');
   const [pwSaving, setPwSaving] = useState(false);
   const [showCurrentPw, setShowCurrentPw] = useState(false);
@@ -57,9 +58,9 @@ export default function ProfilePage() {
 
   // file upload ref (photo only — citizenship refs live inside DocUploadCard)
   const photoRef = useRef<HTMLInputElement>(null);
-  const [photoPreview, setPhotoPreview]   = useState<string | null>(null);
-  const [frontPreview, setFrontPreview]   = useState<string | null>(null);
-  const [backPreview, setBackPreview]     = useState<string | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [frontPreview, setFrontPreview] = useState<string | null>(null);
+  const [backPreview, setBackPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
 
   const load = async () => {
@@ -67,7 +68,7 @@ export default function ProfilePage() {
       const p = await api.get<Profile>('/profile');
       setProfile(p);
       setForm({
-        dob:     p.dob ? p.dob.split('T')[0] : '',
+        dob: p.dob ? p.dob.split('T')[0] : '',
         address: p.address || '',
       });
       setPhotoPreview(avatarUrl(p.profile_picture));
@@ -129,9 +130,9 @@ export default function ProfilePage() {
       const file = e.target.files?.[0];
       if (!file) return;
       const preview = URL.createObjectURL(file);
-      if (field === 'photo')  setPhotoPreview(preview);
-      if (field === 'front')  setFrontPreview(preview);
-      if (field === 'back')   setBackPreview(preview);
+      if (field === 'photo') setPhotoPreview(preview);
+      if (field === 'front') setFrontPreview(preview);
+      if (field === 'back') setBackPreview(preview);
       uploadFile(field, file);
     };
   }
@@ -148,7 +149,7 @@ export default function ProfilePage() {
     try {
       await api.put('/auth/password', {
         current_password: pwForm.current_password,
-        new_password:     pwForm.new_password,
+        new_password: pwForm.new_password,
       });
       setPwMsg('Password changed successfully.'); setPwType('ok');
       setPwForm({ current_password: '', new_password: '', confirm: '' });
@@ -197,8 +198,10 @@ export default function ProfilePage() {
               <img
                 src={photoPreview}
                 alt={profile.name}
-                style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover',
-                         border: '3px solid var(--color-border)' }}
+                style={{
+                  width: 80, height: 80, borderRadius: '50%', objectFit: 'cover',
+                  border: '3px solid var(--color-border)'
+                }}
               />
             ) : (
               <div style={{
@@ -264,9 +267,9 @@ export default function ProfilePage() {
       {/* ── Tabs ────────────────────────────────────────────────────────────── */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)' }}>
-          <button style={tabStyle('personal')}  onClick={() => setTab('personal')}>Personal Info</button>
+          <button style={tabStyle('personal')} onClick={() => setTab('personal')}>Personal Info</button>
           <button style={tabStyle('documents')} onClick={() => setTab('documents')}>Documents</button>
-          <button style={tabStyle('security')}  onClick={() => setTab('security')}>Security</button>
+          <button style={tabStyle('security')} onClick={() => setTab('security')}>Security</button>
         </div>
 
         {/* Form fields stay a comfortable reading width even though the page
@@ -308,9 +311,9 @@ export default function ProfilePage() {
               </div>
 
               <div className="flex justify-end">
-                <button type="submit" className="btn btn-primary" disabled={saving}>
+                <Button variant='primary' size='small' type="submit" disabled={saving}>
                   {saving ? 'Saving…' : 'Save Changes'}
-                </button>
+                </Button>
               </div>
             </form>
           )}
@@ -380,9 +383,9 @@ export default function ProfilePage() {
                     aria-label={showCurrentPw ? 'Hide password' : 'Show password'}
                     style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', color: 'var(--color-text-muted, #888)' }}>
                     {showCurrentPw ? (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
                     ) : (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
                     )}
                   </button>
                 </div>
@@ -399,9 +402,9 @@ export default function ProfilePage() {
                     aria-label={showNewPw ? 'Hide password' : 'Show password'}
                     style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', color: 'var(--color-text-muted, #888)' }}>
                     {showNewPw ? (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
                     ) : (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
                     )}
                   </button>
                 </div>
@@ -418,17 +421,17 @@ export default function ProfilePage() {
                     aria-label={showConfirmPw ? 'Hide password' : 'Show password'}
                     style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', color: 'var(--color-text-muted, #888)' }}>
                     {showConfirmPw ? (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
                     ) : (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
                     )}
                   </button>
                 </div>
               </div>
 
-              <button type="submit" className="btn btn-primary" disabled={pwSaving}>
+              <Button variant='primary' size='small' type="submit" disabled={pwSaving}>
                 {pwSaving ? 'Updating…' : 'Change Password'}
-              </button>
+              </Button>
             </form>
           )}
 
@@ -469,15 +472,15 @@ function DocUploadCard({ label, preview, loading, onChange }: DocUploadCardProps
       )}
       <div style={{ padding: '12px 16px', background: '#fff', borderTop: '1px solid var(--color-border)' }}>
         <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>{label}</div>
-        <button
+        <Button className="outline" variant='text' size='xs'
           type="button"
-          className="btn btn-ghost btn-sm"
+
           onClick={() => inputRef.current?.click()}
           disabled={loading}
           style={{ width: '100%' }}
         >
           {loading ? 'Uploading…' : preview ? 'Replace' : 'Upload'}
-        </button>
+        </Button>
         <input ref={node => { inputRef.current = node; }} type="file" accept="image/*" style={{ display: 'none' }} onChange={onChange} />
       </div>
     </div>
