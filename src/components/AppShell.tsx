@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import Sidebar from '@/components/Sidebar';
 import { useAppDispatch } from '@/store/hook';
-import { setSidebarOpen } from '@/store/sidebarSlice';
+import { setSidebarOpen } from '@/store/slices/sidebarSlice';
 import { RxHamburgerMenu } from 'react-icons/rx';
 
 

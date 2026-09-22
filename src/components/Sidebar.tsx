@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 //redux
 import { useAppSelector, useAppDispatch } from '@/store/hook';
-import { setSidebarOpen } from '@/store/sidebarSlice'
+import { setSidebarOpen } from '@/store/slices/sidebarSlice'
 
 type Role = 'admin' | 'lead' | 'employee';
 
