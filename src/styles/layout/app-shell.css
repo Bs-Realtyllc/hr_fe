@@ -1,7 +1,7 @@
 :root {
   /* Layout constant — not a design token (no Figma-ramp/scale backing it),
      so it stays local here rather than living in tokens/. */
-  --sidebar-width: 240px;
+  --sidebar-width: 264px;
 }
 
 /* ── Layout ── */
@@ -39,19 +39,19 @@
 
 .sidebar-logo {
   padding: 20px 20px 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .sidebar-logo h1 {
   font-size: 16px;
   font-weight: 700;
-  color: var(--sidebar-text);
+  color: var(--neutral-normal);
   letter-spacing: -0.3px;
 }
 
 .sidebar-logo span {
   font-size: 11px;
-  color: var(--color-accent);
+  color: var(--neutral-normal);
   font-weight: 500;
   display: block;
   margin-top: 2px;
@@ -63,36 +63,42 @@
 }
 
 .sidebar-section-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.4);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  color: var(--gray-normal);
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  padding: 12px 20px 6px;
+  padding: 20px 6px 20px 24px;
 }
 
 .sidebar-link {
+  margin-top: 4px;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 20px;
-  color: rgba(255,255,255,0.8);
-  font-size: 13.5px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 36px;
+  padding: 8px 6px 8px 36px;
+  color: var(--neutral-normal);
+  font-size: 16px;
   font-weight: 500;
-  transition: background 0.15s, color 0.15s;
+  line-height: 24px;
+  transition:
+    background 0.15s,
+    color 0.15s;
   border-radius: 0;
 }
 
 .sidebar-link:hover {
   background: var(--sidebar-hover);
-  color: var(--sidebar-text);
+  border-radius: 8px;
 }
 
 .sidebar-link.active {
   background: var(--sidebar-hover);
-  color: var(--sidebar-text);
-  border-left: 3px solid var(--sidebar-active);
-  padding-left: 17px;
+  border-radius: 8px;
 }
 
 .sidebar-link .icon {
@@ -109,7 +115,9 @@
   mask-size: contain;
 }
 
-.sidebar-link.active .icon { opacity: 1; }
+/* .sidebar-link.active .icon {
+  opacity: 1;
+} */
 
 .sidebar-link-external {
   margin-left: auto;
@@ -123,11 +131,11 @@
   align-items: center;
   gap: 10px;
   padding: 14px 16px;
-  border-top: 1px solid rgba(255,255,255,0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
 }
 
-.sidebar-profile-avatar {
+/* .sidebar-profile-avatar {
   width: 34px;
   height: 34px;
   border-radius: 50%;
@@ -140,7 +148,7 @@
   justify-content: center;
   flex-shrink: 0;
   letter-spacing: 0.5px;
-}
+} */
 
 .sidebar-profile-info {
   flex: 1;
@@ -148,25 +156,28 @@
 }
 
 .sidebar-profile-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  color: var(--neutral-normal);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.sidebar-profile-role {
-  font-size: 11px;
-  color: rgba(255,255,255,0.45);
-  text-transform: capitalize;
+.sidebar-profile-email {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--gray-normal);
+  text-transform: lowercase;
   margin-top: 1px;
 }
 
 .sidebar-logout-btn {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
-  color: rgba(255,255,255,0.7);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--neutral-normal);
   font-size: 15px;
   width: 30px;
   height: 30px;
@@ -175,11 +186,14 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .sidebar-logout-btn:hover {
-  background: rgba(229,83,61,0.2);
+  background: rgba(229, 83, 61, 0.2);
   border-color: var(--color-error);
   color: var(--color-error);
 }
@@ -204,7 +218,6 @@
   gap: 4px;
 }
 
-
 .page-header-divider {
   margin: 20px -24px 28px;
   border: none;
@@ -214,7 +227,6 @@
 .page-header > .flex.justify-between {
   width: 100%;
 }
-
 
 .page-header > .flex.justify-between > *:first-child {
   min-width: 0;
@@ -241,7 +253,6 @@
 }
 
 @media (max-width: 1120px) {
- 
   .page-header .flex.justify-between {
     flex-wrap: wrap;
     row-gap: 12px;
@@ -249,7 +260,6 @@
 }
 
 @media (max-width: 480px) {
-  
   .page-header .flex.justify-between > .btn,
   .page-header .flex.justify-between > button {
     width: 100%;
@@ -263,7 +273,11 @@
 }
 
 @media (max-width: 1120px) {
-  .main-content { margin-left: 0; padding: 16px; padding-top: 76px; }
+  .main-content {
+    margin-left: 0;
+    padding: 16px;
+    padding-top: 76px;
+  }
 
   .mobile-topbar {
     display: flex;
@@ -285,7 +299,7 @@
     justify-content: center;
     width: 32px;
     height: 32px;
-    color: var(--sidebar-text);
+    color: var(--neutral-normal);
     font-size: 20px;
     flex-shrink: 0;
   }
@@ -293,7 +307,7 @@
   .mobile-topbar-title {
     font-size: 15px;
     font-weight: 700;
-    color: var(--sidebar-text);
+    color: var(--neutral-normal);
     letter-spacing: -0.3px;
   }
 
