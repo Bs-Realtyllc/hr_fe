@@ -29,6 +29,7 @@ const allNav: { section: string; items: NavItem[] }[] = [
     section: 'People',
     items: [
       { href: '/employees', label: 'Team Directory', icon: 'users.svg', roles: ['admin', 'lead'] as Role[] },
+      { href: '/active', label: 'Active Employees', icon: 'shield.svg', roles: ['admin', 'employee', 'intern'] as Role[] },
       { href: '/onboarding', label: 'Onboarding', icon: 'add_people.svg', roles: ['admin', 'lead'] as Role[] },
       { href: '/onboard-form-layout', label: 'Change Form Layout', icon: 'edit.svg', roles: ['admin', 'lead'] as Role[] },
       { href: '/leaves', label: 'Leave Requests', icon: 'calendar.svg', roles: ['admin', 'lead', 'employee'] as Role[] },

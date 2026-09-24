@@ -58,11 +58,12 @@ export default function StandupsPage() {
   useEffect(() => {
     if (isPrivileged) {
       api
-        .get<Employee[]>("/employees")
+        .get<Employee[]>("/employees/names")
         .then(setEmployees)
         .catch(() => {showToast('error', 'Failed to load employee data')});
     }
   }, [isPrivileged]);
+  console.log(employees)
 
   const load = () => {
     const params = new URLSearchParams();
