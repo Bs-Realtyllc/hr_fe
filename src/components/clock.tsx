@@ -5,15 +5,21 @@ import { api } from "@/lib/api";
 import Popup from "reactjs-popup";
 import { showToast } from "@/lib/toast";
 
-interface ClockRecord {
+interface PauseType {
   id: number;
-  employeeId: number;
-  clockIn: string;
-  clockOut: string | null;
-  duration: string | null;
-  pause: string | null;
+  pause: string;
   resume: string | null;
-  clockDate: string;
+  reason: string;
+  pauseDuration: number | null;
+}
+
+interface ClockRecord {
+  employeeId: number;
+  clockIn: string | null;
+  clockOut: string | null;
+  totalPauseDuration: number | null;
+  status: "idle" | "paused" | "running" | "done";
+  pauses: PauseType[];
 }
 
 interface ClockResponse {
@@ -28,6 +34,11 @@ function formatHM(totalSeconds: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+function diffSeconds(from: string, to: string | number): number {
+  const toMs = typeof to === "number" ? to : new Date(to).getTime();
+  return Math.max(0, Math.floor((toMs - new Date(from).getTime()) / 1000));
+}
+
 const STATUS_STYLES: Record<ClockStatus, string> = {
   idle: "bg-slate-200 text-slate-700",
   running: "bg-indigo-100 text-indigo-700",
@@ -37,8 +48,8 @@ const STATUS_STYLES: Record<ClockStatus, string> = {
 
 export default function TimeElapsed() {
   const [status, setStatus] = useState<ClockStatus>("idle");
-  const [baseSeconds, setBaseSeconds] = useState(0); // elapsed accumulated before current running segment
-  const [segmentStart, setSegmentStart] = useState<number | null>(null); // when the current running segment began
+  const [baseSeconds, setBaseSeconds] = useState(0);
+  const [segmentStart, setSegmentStart] = useState<number | null>(null);
   const [displaySeconds, setDisplaySeconds] = useState(0);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -51,32 +62,7 @@ export default function TimeElapsed() {
     async function getClock() {
       try {
         const { result } = await api.get<ClockResponse>("/clock");
-
-        if (result.clockOut) {
-          setStatus("done");
-          setBaseSeconds(durationToSeconds(result.duration));
-          return;
-        }
-
-        if (result.pause && !result.resume) {
-          // currently on break — frozen at the pause moment
-          setStatus("paused");
-          setBaseSeconds(diffSeconds(result.clockIn, result.pause));
-          return;
-        }
-
-        if (result.pause && result.resume) {
-          // came back from break, still running — base excludes the break
-          setStatus("running");
-          setBaseSeconds(diffSeconds(result.clockIn, result.pause));
-          setSegmentStart(new Date(result.resume).getTime());
-          return;
-        }
-
-        // never paused, still running
-        setStatus("running");
-        setBaseSeconds(0);
-        setSegmentStart(new Date(result.clockIn).getTime());
+        applyRecord(result);
       } catch {
         setStatus("idle");
       } finally {
@@ -85,6 +71,38 @@ export default function TimeElapsed() {
     }
     getClock();
   }, []);
+
+  function applyRecord(result: ClockRecord) {
+    setStatus(result.status);
+    const totalPause = result.totalPauseDuration ?? 0;
+
+    if (result.status === "done" && result.clockIn && result.clockOut) {
+      setBaseSeconds(diffSeconds(result.clockIn, result.clockOut) - totalPause);
+      setSegmentStart(null);
+      return;
+    }
+
+    if (result.status === "paused" && result.clockIn) {
+      const openPause = result.pauses.find((p) => !p.resume);
+      const freezePoint = openPause
+        ? openPause.pause
+        : new Date().toISOString();
+      setBaseSeconds(diffSeconds(result.clockIn, freezePoint) - totalPause);
+      setSegmentStart(null);
+      return;
+    }
+
+    if (result.status === "running" && result.clockIn) {
+      const now = Date.now();
+      setBaseSeconds(diffSeconds(result.clockIn, now) - totalPause);
+      setSegmentStart(now);
+      return;
+    }
+
+    // idle
+    setBaseSeconds(0);
+    setSegmentStart(null);
+  }
 
   // ── Tick while running ──
   useEffect(() => {
@@ -103,7 +121,7 @@ export default function TimeElapsed() {
 
   // Freeze display at baseSeconds whenever not running
   useEffect(() => {
-    if (status === "paused" || status === "done") {
+    if (status === "paused" || status === "done" || status === "idle") {
       setDisplaySeconds(baseSeconds);
     }
   }, [status, baseSeconds]);
@@ -120,28 +138,32 @@ export default function TimeElapsed() {
   }, []);
 
   const handlePauseResume = async () => {
-    setActionLoading(true);
-    if (!pauseReason.trim() && status === "running") {
+    if (status === "running" && !pauseReason.trim()) {
       setReasonError("*please specify the reason for the pause.");
-      setActionLoading(false)
       return;
     }
+    setReasonError("");
+    setActionLoading(true);
     try {
       if (status === "running") {
-        await api.post("/clock/pause", {reason: pauseReason});
-        setBaseSeconds((prev) =>
-          segmentStart
-            ? prev + Math.floor((Date.now() - segmentStart) / 1000)
-            : prev,
-        );
-        setStatus("paused");
+        await api
+          .post<ClockResponse>("/clock/pause", {
+            reason: pauseReason,
+          })
+          .catch(() => {
+            showToast("error", "Failed to pause clock.");
+          });
         setClockOutPopup(false);
+        setPauseReason("");
+        setStatus("paused");
         showToast("success", "Break started");
       } else if (status === "paused") {
-        await api.post("/clock/resume", {});
+        await api.post<ClockResponse>("/clock/resume", {}).catch(() => {
+          showToast("error", "Failed to resume clock.");
+        });
         setSegmentStart(Date.now());
-        setStatus("running");
         setClockOutPopup(false);
+        setStatus("running");
         showToast("success", "Welcome back");
       }
     } catch (err) {
@@ -158,8 +180,7 @@ export default function TimeElapsed() {
     setActionLoading(true);
     try {
       const { result } = await api.post<ClockResponse>("/clock/out", {});
-      setStatus("done");
-      setBaseSeconds(durationToSeconds(result.duration));
+      applyRecord(result);
       setClockOutPopup(false);
       showToast("success", "Clocked out!");
     } catch (err) {
@@ -210,18 +231,22 @@ export default function TimeElapsed() {
               ? "You're on a break"
               : "Do you want to clock out?"}
           </h2>
-          <div className="m-2">
-            <label className="form-label">Reason for pausing clock?</label>
-            <input
-              className="form-input"
-              type="email"
-              value={pauseReason}
-              onChange={(e) => setPauseReason(e.target.value)}
-              placeholder="E.g: Personal emergency"
-              required
-            />
-          </div>
-          <div className="px-4 text-red-700 text-sm">{reasonError}</div>
+
+          {status === "running" && (
+            <div className="m-2">
+              <label className="form-label">Reason for pausing clock?</label>
+              <input
+                className="form-input"
+                type="text"
+                value={pauseReason}
+                onChange={(e) => setPauseReason(e.target.value)}
+                placeholder="E.g: Personal emergency"
+              />
+            </div>
+          )}
+          {reasonError && (
+            <div className="px-4 text-red-700 text-sm">{reasonError}</div>
+          )}
 
           <div className="flex gap-3 justify-end mt-2">
             <button
@@ -267,7 +292,6 @@ function StatusIcon({ status }: { status: ClockStatus }) {
       </svg>
     );
   }
-  // idle + running share the clock icon; color differs via STATUS_STYLES
   return (
     <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 shrink-0">
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
@@ -280,17 +304,4 @@ function StatusIcon({ status }: { status: ClockStatus }) {
       />
     </svg>
   );
-}
-
-function diffSeconds(from: string, to: string): number {
-  return Math.max(
-    0,
-    Math.floor((new Date(to).getTime() - new Date(from).getTime()) / 1000),
-  );
-}
-
-function durationToSeconds(duration: string | null): number {
-  if (!duration) return 0;
-  const [h, m, s] = duration.split(":").map(Number);
-  return h * 3600 + m * 60 + s;
 }
