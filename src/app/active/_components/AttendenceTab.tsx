@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, Fragment } from "react";
-import { api } from "@/lib/api"; // adjust to your actual api client import
+import {api} from "@/lib/api"; // adjust to your actual api client import
 
 interface Employee {
   id: number;
@@ -69,14 +69,13 @@ export default function AttendancePage() {
   const [expandedClockId, setExpandedClockId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const fetchEmployees = async () => {
-    await api
-      .get(`/employees/names`)
-      .then((res: any) => setEmployees(res));
-  };
+  const fetchEmployee = async()=>{
+    api.get(`/employees/names`).then((res: any) => setEmployees(res));
+  }
   useEffect(() => {
-    fetchEmployees();
+    fetchEmployee();
   }, []);
+
   const fetchAttendance = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
@@ -87,9 +86,9 @@ export default function AttendancePage() {
     params.set("limit", String(PAGE_SIZE));
 
     try {
-      const res: any = await api.get(`/clock/attendance?${params}`);
-      setRecords(res);
-      setPagination(res.data.pagination);
+      const res:any = await api.get(`/clock/attendance?${params}`);
+      setRecords(res.data);
+      setPagination(res.pagination);
     } finally {
       setLoading(false);
     }
@@ -219,7 +218,9 @@ export default function AttendancePage() {
                           className="text-blue-600 underline"
                           onClick={() =>
                             setExpandedClockId(
-                              expandedClockId === r.clockId ? null : r.clockId,
+                              expandedClockId === r.clockId
+                                ? null
+                                : r.clockId,
                             )
                           }
                         >
@@ -249,7 +250,9 @@ export default function AttendancePage() {
                             {r.pauses.map((p, i) => (
                               <tr key={i}>
                                 <td className="py-1">{formatTime(p.pause)}</td>
-                                <td className="py-1">{formatTime(p.resume)}</td>
+                                <td className="py-1">
+                                  {formatTime(p.resume)}
+                                </td>
                                 <td className="py-1">{p.reason ?? "—"}</td>
                                 <td className="py-1">
                                   {p.pauseDuration != null
@@ -271,8 +274,8 @@ export default function AttendancePage() {
 
       <div className="flex items-center justify-between text-sm">
         <span>
-          Page {pagination.page} of {pagination.totalPages} ({pagination.total}{" "}
-          records)
+          Page {pagination.page} of {pagination.totalPages} (
+          {pagination.total} records)
         </span>
         <div className="flex gap-2">
           <button

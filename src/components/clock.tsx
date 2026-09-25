@@ -180,7 +180,7 @@ export default function TimeElapsed() {
     setActionLoading(true);
     try {
       const { result } = await api.post<ClockResponse>("/clock/out", {});
-      applyRecord(result);
+      setStatus('done')
       setClockOutPopup(false);
       showToast("success", "Clocked out!");
     } catch (err) {

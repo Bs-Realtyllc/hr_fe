@@ -7,6 +7,26 @@ interface clockInResponse {
   message: string;
   clockInTime: string;
 }
+interface PauseType {
+  id: number;
+  pause: string;
+  resume: string | null;
+  reason: string;
+  pauseDuration: number | null;
+}
+
+interface ClockRecord {
+  employeeId: number;
+  clockIn: string | null;
+  clockOut: string | null;
+  totalPauseDuration: number | null;
+  status: "idle" | "paused" | "running" | "done";
+  pauses: PauseType[];
+}
+
+interface ClockResponse {
+  result: ClockRecord;
+}
 
 function todayKey() {
   return `daily_clock_${new Date().toISOString().split("T")[0]}`;
@@ -29,10 +49,19 @@ export default function ClockInPopup() {
   const [showPopup, setShowPopup] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(false);
   const [forcePopup, setForcePopup] = useState<boolean>(false);
+  const [status, setStatus] =useState<'idle'| 'running' | 'paused' | 'done'>('idle')
+
+  const fetchClock = async()=>{
+    const { result } = await api.get<ClockResponse>("/clock");
+    setStatus(result.status)
+    if(result.status !== 'idle') setKey('0');
+  }
   useEffect(() => {
     if (localStorage.getItem(todayKey()) === null) {
       localStorage.setItem(todayKey(), "1");
+      
     }
+    fetchClock();
   }, []);
   useEffect(() => {
     const handler = () => {
@@ -64,7 +93,7 @@ export default function ClockInPopup() {
 
   if (!showPopup) return null;
 
-  if ((isWithinClockInWindow() && getKey()) || forcePopup) {
+  if ((isWithinClockInWindow()&&status==='idle' && getKey()) || forcePopup) {
     return (
       <div className="modal-overlay flex items-center justify-center p-4">
         <div className="modal max-w-sm w-full p-6">
