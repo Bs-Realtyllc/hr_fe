@@ -86,20 +86,33 @@ def doc_path_for(key: str) -> str:
 
 
 def bucket_context(files: list[str]) -> str:
+    """Give every file in the bucket a fair, proportional slice of the
+    character budget instead of filling it greedily — a bucket of e.g. 40
+    files used to get full content for the first handful and nothing but
+    a "(truncated)" placeholder for the rest, which a small model tends to
+    respond to by echoing/continuing the raw text it *did* see rather than
+    synthesizing a doc. Every file contributing something, even if short,
+    reads more clearly as "many files to summarize" than "one long file"."""
+    budget_per_file = max(MAX_BUCKET_CHARS // max(len(files), 1), 500)
     parts = []
-    total = 0
     for f in files:
         try:
             text = (REPO_ROOT / f).read_text(errors="ignore")
         except OSError:
             continue
-        chunk = f"--- {f} ---\n{text}\n"
-        if total + len(chunk) > MAX_BUCKET_CHARS:
-            parts.append(f"--- {f} --- (truncated, file too large for this pass)")
-            continue
-        parts.append(chunk)
-        total += len(chunk)
+        if len(text) > budget_per_file:
+            text = text[:budget_per_file] + f"\n... (truncated, {len(text) - budget_per_file} more chars)"
+        parts.append(f"--- {f} ---\n{text}\n")
     return "\n".join(parts)
+
+
+def looks_like_valid_doc(content: str) -> bool:
+    """Cheap structural check that the model actually followed the Feature
+    doc format instead of echoing/continuing raw source it was shown —
+    observed failure mode on large multi-file buckets with a small model:
+    it reproduces the input verbatim rather than summarizing it."""
+    lines = content.strip().splitlines()
+    return bool(lines) and lines[0].lstrip().startswith("#") and "**Status:**" in content
 
 
 def build_prompt(claude_md: str, doc_path: str, context: str, today: str, short_sha: str) -> str:
@@ -156,6 +169,20 @@ def main() -> None:
             context = bucket_context(files)
             prompt = build_prompt(claude_md, doc_path, context, today, short_sha)
             content = llm_client.complete(client, prompt, max_tokens=6000)
+            if not looks_like_valid_doc(content):
+                # One retry with a sharper, more explicit correction before
+                # giving up — worth trying since this is a formatting
+                # failure, not a capability ceiling.
+                content = llm_client.complete(
+                    client,
+                    prompt + f"\n\nYour previous response did not follow the required format "
+                    f"(a '# Title' heading and a '**Status:**' line) — it looks like you "
+                    f"copied the source text instead of summarizing it. Write an actual "
+                    f"Feature doc for `{doc_path}` following the format above, in your own words.",
+                    max_tokens=6000,
+                )
+                if not looks_like_valid_doc(content):
+                    raise RuntimeError("model echoed source instead of writing a feature doc, twice")
         except RuntimeError as e:
             print(f"  ! giving up on {doc_path}: {e}", file=sys.stderr)
             failed.append(doc_path)

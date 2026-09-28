@@ -84,6 +84,13 @@ def new_feature_folders(unmatched: list[str]) -> dict[str, list[str]]:
     return groups
 
 
+def looks_like_valid_doc(content: str) -> bool:
+    """Cheap structural check that the model actually followed the Feature
+    doc format instead of echoing/continuing raw source it was shown."""
+    lines = content.strip().splitlines()
+    return bool(lines) and lines[0].lstrip().startswith("#") and "**Status:**" in content
+
+
 def build_prompt(claude_md: str, doc_path: str, diff: str, existing_doc: str, is_new: bool, today: str, short_sha: str) -> str:
     return f"""{claude_md}
 
@@ -150,6 +157,17 @@ def main() -> None:
         try:
             prompt = build_prompt(claude_md, doc_path, diff, existing_doc, is_new, today, short_sha)
             content = llm_client.complete(client, prompt, max_tokens=6000)
+            if not looks_like_valid_doc(content):
+                content = llm_client.complete(
+                    client,
+                    prompt + f"\n\nYour previous response did not follow the required format "
+                    f"(a '# Title' heading and a '**Status:**' line) — it looks like you "
+                    f"copied the source text instead of summarizing it. Write an actual "
+                    f"Feature doc for `{doc_path}` following the format above, in your own words.",
+                    max_tokens=6000,
+                )
+                if not looks_like_valid_doc(content):
+                    raise RuntimeError("model echoed source instead of writing a feature doc, twice")
         except RuntimeError as e:
             print(f"  ! giving up on {doc_path}: {e}", file=sys.stderr)
             failed.append(doc_path)

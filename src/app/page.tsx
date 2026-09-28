@@ -10,14 +10,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import KpiCard from '@/components/KpiCard';
+import ClockInPopup from '@/components/ClockInPopup'; 
 //redux
 import { useAppDispatch, useAppSelector } from '@/store/hook';
 
 //icon
-import { RxHamburgerMenu } from "react-icons/rx";
-import { toggleSidebar } from '@/store/sidebarSlice';
-import { toast } from 'react-toastify';
+// import { RxHamburgerMenu } from "react-icons/rx";
+// import { toggleSidebar } from '@/store/sidebarSlice';
+// import { toast } from 'react-toastify';
 import { showToast } from '@/lib/toast';
+import Clock from '@/components/clock';
 
 /* ─────────────────────────────── helpers ──────────────────────────────── */
 
@@ -239,6 +241,7 @@ function TeamSummary({ stats }: { stats: DashboardStats | null }) {
   );
 }
 
+
 /* ─────────────────────────────── interfaces ────────────────────────────── */
 
 interface DashboardStats {
@@ -342,227 +345,373 @@ useEffect(() => {
   };
 
   return (
-    <div>
-      <div className="page-header flex justify-between items-center" style={{ marginBottom: 0 }}>
-        <h1>Dashboard</h1>
-        <div className="flex items-center gap-2">
-          <button className="topbar-icon-btn" title="Notifications">
-            <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/bell.svg)', maskImage: 'url(/icons/bell.svg)' }} />
-            <span className="topbar-icon-btn-dot" />
-          </button>
-          <button className="topbar-icon-btn" title="Toggle theme">
-            <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/moon.svg)', maskImage: 'url(/icons/moon.svg)' }} />
-          </button>
-          {user && <div className="avatar" title={user.name}>{initials(user.name)}</div>}
-        </div>
-      </div>
-      <hr className="page-header-divider" />
+    <>
+      <ClockInPopup />
 
-      {/* Weekly form popup */}
-      {showWeeklyPopup && (
-        <div className="modal-overlay" onClick={dismissWeeklyPopup}>
-          <div className="modal" style={{ maxWidth: 440, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-            <button className="modal-close" onClick={dismissWeeklyPopup} style={{ position: 'absolute', top: 12, right: 16 }}>×</button>
-            <span
-              className="icon-mask modal-icon"
-              style={{ WebkitMaskImage: 'url(/icons/clipboard.svg)', maskImage: 'url(/icons/clipboard.svg)' }}
-            />
-            <h2 style={{ marginBottom: 8 }}>Weekly Update Due</h2>
-            <p className="text-muted" style={{ fontSize: 14, marginBottom: 24 }}>
-              It's the end of the week! Please take a moment to fill in your weekly update form so the team stays aligned.
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button className="btn btn-ghost" onClick={dismissWeeklyPopup}>Remind me later</button>
-              <a href={WEEKLY_FORM_URL} target="_blank" rel="noopener noreferrer"
-                className="btn btn-primary" onClick={dismissWeeklyPopup}>
-                Fill Form Now
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Work updates ppt popup */}
-      {showPptPopup && (
-        <div className="modal-overlay" onClick={dismissPptPopup}>
-          <div className="modal" style={{ maxWidth: 440, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-            <button className="modal-close" onClick={dismissPptPopup} style={{ position: 'absolute', top: 12, right: 16 }}>×</button>
-            <span
-              className="icon-mask modal-icon"
-              style={{ WebkitMaskImage: 'url(/icons/bar-chart-2.svg)', maskImage: 'url(/icons/bar-chart-2.svg)' }}
-            />
-            <h2 style={{ marginBottom: 8 }}>Work updates ppt</h2>
-            <p className="text-muted" style={{ fontSize: 14, marginBottom: 24 }}>
-              It's Sunday — please submit this week's work update (PPT or PDF) so the team stays aligned.
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button className="btn btn-ghost" onClick={dismissPptPopup}>Remind me later</button>
-              <button
-                className="btn btn-primary"
-                onClick={() => { dismissPptPopup(); router.push('/weekly-reports'); }}
-              >
-                Submit Now
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Headcount stats */}
-      <div className="kpi-grid">
-        <KpiCard label="Total Employees" value={stats?.total_active ?? '—'} />
-        <KpiCard label="Present Today" value={stats?.present_today ?? '—'} />
-        <KpiCard label="On Leave Today" value={stats?.on_leave_today ?? '—'} />
-        <KpiCard label="Pending Leaves" value={stats?.pending_leaves ?? '—'} />
-        {/* TeamSummary temporarily disabled — revisit gauge/breakdown styling */}
-        {/* <TeamSummary stats={stats} /> */}
-      </div>
-
-      {/* Activity trend charts */}
-      <div className="grid-2" style={{ marginBottom: 16 }}>
-        <TrendChart
-          data={standupTrend}
-          color="var(--color-primary)"
-          title="Standup Consistency"
-          subtitle="Daily standups submitted · last 30 days"
-          emptyLabel="No standups posted in the last 30 days"
-        />
-        <TrendChart
-          data={leaveTrend}
-          color="var(--color-warning)"
-          title="Leave Requests"
-          subtitle="Leave requests submitted · last 30 days"
-          emptyLabel="No leave requests in the last 30 days"
-        />
-      </div>
-
-      <div className="grid-2">
-        {/* Absent today */}
-        <div className="card">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="card-title" style={{ marginBottom: 0 }}>Absent Today</h2>
-            <Link href="/leaves" className="card-link">See all</Link>
-          </div>
-          {outToday.length === 0 ? (
-            <div className="empty-state">
+      <div>
+        <div
+          className="page-header flex justify-between items-center"
+          style={{ marginBottom: 0 }}
+        >
+          <h1>Dashboard</h1>
+          <div className="flex items-center gap-2">
+            <Clock />
+            <button className="topbar-icon-btn" title="Notifications">
               <span
-                className="icon-mask empty-state-icon empty-state-icon-success"
-                style={{ WebkitMaskImage: 'url(/icons/check-circle.svg)', maskImage: 'url(/icons/check-circle.svg)' }}
+                className="icon-mask"
+                style={{
+                  WebkitMaskImage: "url(/icons/bell.svg)",
+                  maskImage: "url(/icons/bell.svg)",
+                }}
               />
-              <p>Everyone is in today</p>
-            </div>
-          ) : (
-            outToday.map((e, i) => (
-              <div key={i} className="flex items-center gap-3 mb-3">
-                <div className="avatar avatar-sm">{initials(e.name)}</div>
-                <div style={{ flex: 1 }}>
-                  <div className="font-semibold text-sm">{e.name} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>is absent today</span></div>
-                  <div className="text-muted">{e.designation}</div>
-                </div>
-                <span className={`status-dot ${leaveTypeDot(e.leave_type)}`}>{e.leave_type}</span>
+              <span className="topbar-icon-btn-dot" />
+            </button>
+            <button className="topbar-icon-btn" title="Toggle theme">
+              <span
+                className="icon-mask"
+                style={{
+                  WebkitMaskImage: "url(/icons/moon.svg)",
+                  maskImage: "url(/icons/moon.svg)",
+                }}
+              />
+            </button>
+            {user && (
+              <div className="avatar" title={user.name}>
+                {initials(user.name)}
               </div>
-            ))
-          )}
+            )}
+          </div>
+        </div>
+        <hr className="page-header-divider" />
+
+        {/* Weekly form popup */}
+        {showWeeklyPopup && (
+          <div className="modal-overlay" onClick={dismissWeeklyPopup}>
+            <div
+              className="modal"
+              style={{ maxWidth: 440, textAlign: "center" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                className="modal-close"
+                onClick={dismissWeeklyPopup}
+                style={{ position: "absolute", top: 12, right: 16 }}
+              >
+                ×
+              </button>
+              <span
+                className="icon-mask modal-icon"
+                style={{
+                  WebkitMaskImage: "url(/icons/clipboard.svg)",
+                  maskImage: "url(/icons/clipboard.svg)",
+                }}
+              />
+              <h2 style={{ marginBottom: 8 }}>Weekly Update Due</h2>
+              <p
+                className="text-muted"
+                style={{ fontSize: 14, marginBottom: 24 }}
+              >
+                It's the end of the week! Please take a moment to fill in your
+                weekly update form so the team stays aligned.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button className="btn btn-ghost" onClick={dismissWeeklyPopup}>
+                  Remind me later
+                </button>
+                <a
+                  href={WEEKLY_FORM_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-primary"
+                  onClick={dismissWeeklyPopup}
+                >
+                  Fill Form Now
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Work updates ppt popup */}
+        {showPptPopup && (
+          <div className="modal-overlay" onClick={dismissPptPopup}>
+            <div
+              className="modal"
+              style={{ maxWidth: 440, textAlign: "center" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                className="modal-close"
+                onClick={dismissPptPopup}
+                style={{ position: "absolute", top: 12, right: 16 }}
+              >
+                ×
+              </button>
+              <span
+                className="icon-mask modal-icon"
+                style={{
+                  WebkitMaskImage: "url(/icons/bar-chart-2.svg)",
+                  maskImage: "url(/icons/bar-chart-2.svg)",
+                }}
+              />
+              <h2 style={{ marginBottom: 8 }}>Work updates ppt</h2>
+              <p
+                className="text-muted"
+                style={{ fontSize: 14, marginBottom: 24 }}
+              >
+                It's Sunday — please submit this week's work update (PPT or PDF)
+                so the team stays aligned.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button className="btn btn-ghost" onClick={dismissPptPopup}>
+                  Remind me later
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    dismissPptPopup();
+                    router.push("/weekly-reports");
+                  }}
+                >
+                  Submit Now
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Headcount stats */}
+        <div className="kpi-grid">
+          <KpiCard label="Total Employees" value={stats?.total_active ?? "—"} />
+          <KpiCard label="Present Today" value={stats?.present_today ?? "—"} />
+          <KpiCard
+            label="On Leave Today"
+            value={stats?.on_leave_today ?? "—"}
+          />
+          <KpiCard
+            label="Pending Leaves"
+            value={stats?.pending_leaves ?? "—"}
+          />
+          {/* TeamSummary temporarily disabled — revisit gauge/breakdown styling */}
+          {/* <TeamSummary stats={stats} /> */}
         </div>
 
-        {/* Today's standups */}
-        <div className="card">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="card-title" style={{ marginBottom: 0 }}>Today's Standups</h2>
-            <Link href="/standups" className="card-link">See all</Link>
+        {/* Activity trend charts */}
+        <div className="grid-2" style={{ marginBottom: 16 }}>
+          <TrendChart
+            data={standupTrend}
+            color="var(--color-primary)"
+            title="Standup Consistency"
+            subtitle="Daily standups submitted · last 30 days"
+            emptyLabel="No standups posted in the last 30 days"
+          />
+          <TrendChart
+            data={leaveTrend}
+            color="var(--color-warning)"
+            title="Leave Requests"
+            subtitle="Leave requests submitted · last 30 days"
+            emptyLabel="No leave requests in the last 30 days"
+          />
+        </div>
+
+        <div className="grid-2">
+          {/* Absent today */}
+          <div className="card">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="card-title" style={{ marginBottom: 0 }}>
+                Absent Today
+              </h2>
+              <Link href="/leaves" className="card-link">
+                See all
+              </Link>
+            </div>
+            {outToday.length === 0 ? (
+              <div className="empty-state">
+                <span
+                  className="icon-mask empty-state-icon empty-state-icon-success"
+                  style={{
+                    WebkitMaskImage: "url(/icons/check-circle.svg)",
+                    maskImage: "url(/icons/check-circle.svg)",
+                  }}
+                />
+                <p>Everyone is in today</p>
+              </div>
+            ) : (
+              outToday.map((e, i) => (
+                <div key={i} className="flex items-center gap-3 mb-3">
+                  <div className="avatar avatar-sm">{initials(e.name)}</div>
+                  <div style={{ flex: 1 }}>
+                    <div className="font-semibold text-sm">
+                      {e.name}{" "}
+                      <span
+                        style={{
+                          fontWeight: 400,
+                          color: "var(--color-text-muted)",
+                        }}
+                      >
+                        is absent today
+                      </span>
+                    </div>
+                    <div className="text-muted">{e.designation}</div>
+                  </div>
+                  <span className={`status-dot ${leaveTypeDot(e.leave_type)}`}>
+                    {e.leave_type}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
-          {standups.length === 0 ? (
-            <div className="empty-state">
+
+          {/* Today's standups */}
+          <div className="card">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="card-title" style={{ marginBottom: 0 }}>
+                Today's Standups
+              </h2>
+              <Link href="/standups" className="card-link">
+                See all
+              </Link>
+            </div>
+            {standups.length === 0 ? (
+              <div className="empty-state">
+                <span
+                  className="icon-mask empty-state-icon"
+                  style={{
+                    WebkitMaskImage: "url(/icons/edit-3.svg)",
+                    maskImage: "url(/icons/edit-3.svg)",
+                  }}
+                />
+                <p>No standups submitted yet today</p>
+              </div>
+            ) : (
+              standups.slice(0, 4).map((s) => (
+                <div
+                  key={s.id}
+                  className="mb-4"
+                  style={{
+                    borderLeft: "3px solid var(--color-primary-light)",
+                    paddingLeft: 12,
+                  }}
+                >
+                  <div className="font-semibold text-sm">{s.employee_name}</div>
+                  <div className="text-muted" style={{ marginTop: 2 }}>
+                    {s.today}
+                  </div>
+                  {s.blockers && (
+                    <div
+                      style={{
+                        marginTop: 4,
+                        fontSize: 12,
+                        color: "var(--color-error)",
+                      }}
+                    >
+                      ⚠ {s.blockers}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Recently joined — compact table, full width */}
+        <div
+          className="card"
+          style={{ marginTop: 16, padding: 0, overflow: "hidden" }}
+        >
+          <div
+            className="flex justify-between items-center"
+            style={{ padding: "20px 24px 0" }}
+          >
+            <h2 className="card-title" style={{ marginBottom: 0 }}>
+              Team Directory
+            </h2>
+            <Link href="/employees" className="card-link">
+              See all
+            </Link>
+          </div>
+
+          {recentEmployees.length === 0 ? (
+            <div className="empty-state" style={{ padding: "24px 24px 32px" }}>
               <span
                 className="icon-mask empty-state-icon"
-                style={{ WebkitMaskImage: 'url(/icons/edit-3.svg)', maskImage: 'url(/icons/edit-3.svg)' }}
+                style={{
+                  WebkitMaskImage: "url(/icons/user-plus.svg)",
+                  maskImage: "url(/icons/user-plus.svg)",
+                }}
               />
-              <p>No standups submitted yet today</p>
+              <p>No recent hires to show</p>
             </div>
           ) : (
-            standups.slice(0, 4).map(s => (
-              <div key={s.id} className="mb-4" style={{ borderLeft: '3px solid var(--color-primary-light)', paddingLeft: 12 }}>
-                <div className="font-semibold text-sm">{s.employee_name}</div>
-                <div className="text-muted" style={{ marginTop: 2 }}>{s.today}</div>
-                {s.blockers && (
-                  <div style={{ marginTop: 4, fontSize: 12, color: 'var(--color-error)' }}>⚠ {s.blockers}</div>
-                )}
+            <>
+              <div className="table-wrap" style={{ padding: "16px 24px 24px" }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Designation</th>
+                      <th>Department</th>
+                      <th>Joined</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentEmployees.map((e) => (
+                      <tr key={e.id}>
+                        <td>
+                          <div className="flex items-center gap-3">
+                            <div className="avatar avatar-sm">
+                              {initials(e.name)}
+                            </div>
+                            <div>
+                              <div className="cell-title">{e.name}</div>
+                              <div className="cell-subtitle">{e.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>{e.designation}</td>
+                        <td>{e.department}</td>
+                        <td>
+                          {new Date(e.start_date).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ))
-          )}
-        </div>
 
-      </div>
-
-      {/* Recently joined — compact table, full width */}
-      <div className="card" style={{ marginTop: 16, padding: 0, overflow: 'hidden' }}>
-        <div className="flex justify-between items-center" style={{ padding: '20px 24px 0' }}>
-          <h2 className="card-title" style={{ marginBottom: 0 }}>Team Directory</h2>
-          <Link href="/employees" className="card-link">See all</Link>
-        </div>
-
-        {recentEmployees.length === 0 ? (
-          <div className="empty-state" style={{ padding: '24px 24px 32px' }}>
-            <span
-              className="icon-mask empty-state-icon"
-              style={{ WebkitMaskImage: 'url(/icons/user-plus.svg)', maskImage: 'url(/icons/user-plus.svg)' }}
-            />
-            <p>No recent hires to show</p>
-          </div>
-        ) : (
-          <>
-            <div className="table-wrap" style={{ padding: '16px 24px 24px' }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Designation</th>
-                    <th>Department</th>
-                    <th>Joined</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentEmployees.map(e => (
-                    <tr key={e.id}>
-                      <td>
-                        <div className="flex items-center gap-3">
-                          <div className="avatar avatar-sm">{initials(e.name)}</div>
-                          <div>
-                            <div className="cell-title">{e.name}</div>
-                            <div className="cell-subtitle">{e.email}</div>
+              <div className="row-cards" style={{ padding: "16px 24px 24px" }}>
+                {recentEmployees.map((e) => (
+                  <div key={e.id} className="row-card">
+                    <div className="row-card-top">
+                      <div className="flex items-center gap-3">
+                        <div className="avatar avatar-sm">
+                          {initials(e.name)}
+                        </div>
+                        <div>
+                          <div className="cell-title">{e.name}</div>
+                          <div className="cell-subtitle">
+                            {e.designation} · {e.department}
                           </div>
                         </div>
-                      </td>
-                      <td>{e.designation}</td>
-                      <td>{e.department}</td>
-                      <td>{new Date(e.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="row-cards" style={{ padding: '16px 24px 24px' }}>
-              {recentEmployees.map(e => (
-                <div key={e.id} className="row-card">
-                  <div className="row-card-top">
-                    <div className="flex items-center gap-3">
-                      <div className="avatar avatar-sm">{initials(e.name)}</div>
-                      <div>
-                        <div className="cell-title">{e.name}</div>
-                        <div className="cell-subtitle">{e.designation} · {e.department}</div>
                       </div>
+                      <span className="row-card-meta">
+                        {new Date(e.start_date).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </span>
                     </div>
-                    <span className="row-card-meta">
-                      {new Date(e.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </span>
                   </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
