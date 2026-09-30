@@ -131,51 +131,55 @@ export default function Sidebar() {
         aria-hidden="true"
       />
       <aside className={`sidebar ${isOpen ? 'sidebar-open' : ''}`}>
-        <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-          <img src="../icon.svg" alt="Icon" width={30} height={30} style={{ flexShrink: 0 }} />
-          <div>
-            <h1>HR Platform</h1>
-            <span>Internal Tools</span>
+        <div className='sidebar-wrapper'>
+          <div className="sidebar-contant">
+            <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+              <img src="../icon.svg" alt="Icon" width={30} height={30} style={{ flexShrink: 0 }} />
+              <div>
+                <h1>HR Platform</h1>
+                <span>Internal Tools</span>
+              </div>
+            </div>
+
+            <nav className="sidebar-nav overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {nav.map(group => (
+                <div className='sidebar-section' key={group.section}>
+                  <div className="sidebar-section-label">{group.section}</div>
+                  {group.items.map(item => {
+                    const iconStyle = {
+                      WebkitMaskImage: `url(/icons/${item.icon})`,
+                      maskImage: `url(/icons/${item.icon})`,
+                    };
+                    return item.external ? (
+                      <a
+                        key={item.href}
+                        href={item.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="sidebar-link"
+                        onClick={closeMobileSidebar}
+                      >
+                        <span className="icon" style={iconStyle} />
+                        {item.label}
+                        <span className="sidebar-link-external">↗</span>
+                      </a>
+                    ) : (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`sidebar-link ${pathname === item.href ? 'active' : ''}`}
+                        onClick={closeMobileSidebar}
+                      >
+                        <span className="icon" style={iconStyle} />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ))}
+            </nav>
           </div>
         </div>
-
-        <nav className="sidebar-nav overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {nav.map(group => (
-            <div key={group.section}>
-              <div className="sidebar-section-label">{group.section}</div>
-              {group.items.map(item => {
-                const iconStyle = {
-                  WebkitMaskImage: `url(/icons/${item.icon})`,
-                  maskImage: `url(/icons/${item.icon})`,
-                };
-                return item.external ? (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="sidebar-link"
-                    onClick={closeMobileSidebar}
-                  >
-                    <span className="icon" style={iconStyle} />
-                    {item.label}
-                    <span className="sidebar-link-external">↗</span>
-                  </a>
-                ) : (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`sidebar-link ${pathname === item.href ? 'active' : ''}`}
-                    onClick={closeMobileSidebar}
-                  >
-                    <span className="icon" style={iconStyle} />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
 
         <div className="sidebar-profile">
           {/* <div className="sidebar-profile-avatar">
@@ -183,15 +187,17 @@ export default function Sidebar() {
           </div> */}
           <BSRealtyAvatar size='md' name={user ? initials(user.name) : '?'} />
           <div className="sidebar-profile-info">
-            <div className="sidebar-profile-name">{user?.name ?? ''}</div>
+            <div className="sidebar-profile-name flex justify-between items-center"><span>{user?.name ?? ''}</span>
+              <button className="sidebar-logout-btn " onClick={handleLogout} title="Sign out">
+                <span
+                  className="icon"
+                  style={{ WebkitMaskImage: 'url(/icons/cheveron-right.svg)', maskImage: 'url(/icons/chevron-right.svg)' }}
+                />
+              </button>
+            </div>
             <div className="sidebar-profile-email">{user?.email ?? ''}</div>
           </div>
-          <button className="sidebar-logout-btn" onClick={handleLogout} title="Sign out">
-            <span
-              className="icon"
-              style={{ WebkitMaskImage: 'url(/icons/log-out.svg)', maskImage: 'url(/icons/log-out.svg)' }}
-            />
-          </button>
+
         </div>
       </aside>
     </>

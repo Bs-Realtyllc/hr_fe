@@ -327,9 +327,12 @@ export default function DashboardPage() {
   };
 
   return (
-    <div>
-      <div className="page-header flex justify-between items-center" style={{ marginBottom: 0 }}>
-        <h1>Dashboard</h1>
+    <div className=''>
+      <div className="page-header flex justify-between items-center bg-[#FEFEFE]   py-[20px] px-[24px]" style={{ marginBottom: 0 }}>
+        <div className=''>
+          <h1 className='text-[20px] font-semibold'>Dashboard</h1>
+          <p className='text-[14px] '>View and manage your enrolled courses, track your progress, and continue learning where you left off.</p>
+        </div>
         <div className="flex items-center gap-2">
           <button className="topbar-icon-btn" title="Notifications">
             <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/bell.svg)', maskImage: 'url(/icons/bell.svg)' }} />
@@ -344,54 +347,58 @@ export default function DashboardPage() {
       <hr className="page-header-divider" />
 
       {/* Weekly form popup */}
-      {showWeeklyPopup && (
-        <div className="modal-overlay" onClick={dismissWeeklyPopup}>
-          <div className="modal" style={{ maxWidth: 440, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-            <button className="modal-close" onClick={dismissWeeklyPopup} style={{ position: 'absolute', top: 12, right: 16 }}>×</button>
-            <span
-              className="icon-mask modal-icon"
-              style={{ WebkitMaskImage: 'url(/icons/clipboard.svg)', maskImage: 'url(/icons/clipboard.svg)' }}
-            />
-            <h2 style={{ marginBottom: 8 }}>Weekly Update Due</h2>
-            <p className="text-muted" style={{ fontSize: 14, marginBottom: 24 }}>
-              It's the end of the week! Please take a moment to fill in your weekly update form so the team stays aligned.
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button className="btn btn-ghost" onClick={dismissWeeklyPopup}>Remind me later</button>
-              <a href={WEEKLY_FORM_URL} target="_blank" rel="noopener noreferrer"
-                className="btn btn-primary" onClick={dismissWeeklyPopup}>
-                Fill Form Now
-              </a>
+      {
+        showWeeklyPopup && (
+          <div className="modal-overlay" onClick={dismissWeeklyPopup}>
+            <div className="modal" style={{ maxWidth: 440, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+              <button className="modal-close" onClick={dismissWeeklyPopup} style={{ position: 'absolute', top: 12, right: 16 }}>×</button>
+              <span
+                className="icon-mask modal-icon"
+                style={{ WebkitMaskImage: 'url(/icons/clipboard.svg)', maskImage: 'url(/icons/clipboard.svg)' }}
+              />
+              <h2 style={{ marginBottom: 8 }}>Weekly Update Due</h2>
+              <p className="text-muted" style={{ fontSize: 14, marginBottom: 24 }}>
+                It's the end of the week! Please take a moment to fill in your weekly update form so the team stays aligned.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button className="btn btn-ghost" onClick={dismissWeeklyPopup}>Remind me later</button>
+                <a href={WEEKLY_FORM_URL} target="_blank" rel="noopener noreferrer"
+                  className="btn btn-primary" onClick={dismissWeeklyPopup}>
+                  Fill Form Now
+                </a>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Work updates ppt popup */}
-      {showPptPopup && (
-        <div className="modal-overlay" onClick={dismissPptPopup}>
-          <div className="modal" style={{ maxWidth: 440, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-            <button className="modal-close" onClick={dismissPptPopup} style={{ position: 'absolute', top: 12, right: 16 }}>×</button>
-            <span
-              className="icon-mask modal-icon"
-              style={{ WebkitMaskImage: 'url(/icons/bar-chart-2.svg)', maskImage: 'url(/icons/bar-chart-2.svg)' }}
-            />
-            <h2 style={{ marginBottom: 8 }}>Work updates ppt</h2>
-            <p className="text-muted" style={{ fontSize: 14, marginBottom: 24 }}>
-              It's Sunday — please submit this week's work update (PPT or PDF) so the team stays aligned.
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button className="btn btn-ghost" onClick={dismissPptPopup}>Remind me later</button>
-              <button
-                className="btn btn-primary"
-                onClick={() => { dismissPptPopup(); router.push('/weekly-reports'); }}
-              >
-                Submit Now
-              </button>
+      {
+        showPptPopup && (
+          <div className="modal-overlay" onClick={dismissPptPopup}>
+            <div className="modal" style={{ maxWidth: 440, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+              <button className="modal-close" onClick={dismissPptPopup} style={{ position: 'absolute', top: 12, right: 16 }}>×</button>
+              <span
+                className="icon-mask modal-icon"
+                style={{ WebkitMaskImage: 'url(/icons/bar-chart-2.svg)', maskImage: 'url(/icons/bar-chart-2.svg)' }}
+              />
+              <h2 style={{ marginBottom: 8 }}>Work updates ppt</h2>
+              <p className="text-muted" style={{ fontSize: 14, marginBottom: 24 }}>
+                It's Sunday — please submit this week's work update (PPT or PDF) so the team stays aligned.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button className="btn btn-ghost" onClick={dismissPptPopup}>Remind me later</button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => { dismissPptPopup(); router.push('/weekly-reports'); }}
+                >
+                  Submit Now
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Headcount stats */}
       <div className="kpi-grid">
@@ -548,6 +555,6 @@ export default function DashboardPage() {
           </>
         )}
       </div>
-    </div>
+    </div >
   );
 }
