@@ -435,7 +435,7 @@ export default function InternForm(type: InternFormProps) {
       }
       console.log('body', body)
 
-      // window.location.href = "/login";
+      window.location.href = "/login";
     } catch (err) {
       console.error("ERROR", err);
       window.alert(err);
