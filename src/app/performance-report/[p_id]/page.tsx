@@ -5,7 +5,7 @@ export async function generateStaticParams() {
   const workspaceSlug = process.env.PLANE_WORKSPACE_SLUG;
   const apiKey = process.env.PLANE_API_KEY;
 
-  if (!planeBaseUrl || !workspaceSlug || !apiKey) return [];
+  if (!planeBaseUrl || !workspaceSlug || !apiKey) return [{ p_id: '0' }];
 
   try {
     const res = await fetch(`${planeBaseUrl}/workspaces/${workspaceSlug}/projects`, {

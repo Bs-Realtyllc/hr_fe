@@ -42,7 +42,7 @@ function setKey(value: "1" | "0") {
 function isWithinClockInWindow(): boolean {
   const now = new Date();
   const hours = now.getHours();
-  return hours >= 8 && hours < 12;
+  return hours >= 8 && hours < 24;
 }
 
 export default function ClockInPopup() {
