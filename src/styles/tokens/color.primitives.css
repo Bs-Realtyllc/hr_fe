@@ -91,6 +91,7 @@
   --gray-light: #f0f1f3;
   --gray-light-hover: #e8eaee;
   --gray-light-active: #cfd4db;
+  --gray-light-muted: #444d59;
 
   --gray-normal: #64748b;
   --gray-normal-hover: #5a687d;
@@ -262,4 +263,8 @@
   --blue-salt-dark-hover: #2c4363;
   --blue-salt-dark-active: #21324a;
   --blue-salt-darker: #1a273a;
+}
+
+:root {
+  --charcoal-normal: #111827;
 }

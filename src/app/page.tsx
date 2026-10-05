@@ -16,6 +16,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hook';
 //icon
 import { RxHamburgerMenu } from "react-icons/rx";
 import { toggleSidebar } from '@/store/sidebarSlice';
+import PageHeader from '@/components/PageHeader';
 
 /* ─────────────────────────────── helpers ──────────────────────────────── */
 
@@ -328,23 +329,8 @@ export default function DashboardPage() {
 
   return (
     <div className=''>
-      <div className="page-header flex justify-between items-center bg-[#FEFEFE]   py-[20px] px-[24px]" style={{ marginBottom: 0 }}>
-        <div className=''>
-          <h1 className='text-[20px] font-semibold'>Dashboard</h1>
-          <p className='text-[14px] '>View and manage your enrolled courses, track your progress, and continue learning where you left off.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="topbar-icon-btn" title="Notifications">
-            <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/bell.svg)', maskImage: 'url(/icons/bell.svg)' }} />
-            <span className="topbar-icon-btn-dot" />
-          </button>
-          <button className="topbar-icon-btn" title="Toggle theme">
-            <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/moon.svg)', maskImage: 'url(/icons/moon.svg)' }} />
-          </button>
-          {user && <div className="avatar" title={user.name}>{initials(user.name)}</div>}
-        </div>
-      </div>
-      <hr className="page-header-divider" />
+      {/* page header */}
+      <PageHeader title={'Dashboard'} discription={'View and manage your enrolled courses, track your progress, and continue learning where you left off.'} />
 
       {/* Weekly form popup */}
       {

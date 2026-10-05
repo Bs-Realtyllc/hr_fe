@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Button from '@/components/Button/Button';
+import PageHeader from '@/components/PageHeader';
 
 interface Goal {
   id: number;
@@ -203,7 +204,7 @@ export default function GoalsPage() {
 
   return (
     <div>
-      <div className="page-header">
+      {/* <div className="page-header">
         <div className="flex justify-between items-center" style={{ flexWrap: 'wrap', gap: 12 }}>
           <div>
             <h1>Goals &amp; KPIs</h1>
@@ -223,7 +224,9 @@ export default function GoalsPage() {
               }}
             />}>Add Goal</Button>
         </div>
-      </div>
+      </div> */}
+      {/* page header */}
+      <PageHeader title={'Goals & KPIs'} discription={isPrivileged ? 'Track individual, team, and company goals across the org' : 'Track your goals and key performance indicators'} />
 
       <div className="flex items-center justify-between" style={{ marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div className="pill-group">
