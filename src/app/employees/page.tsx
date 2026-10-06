@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import * as XLSX from "xlsx";
 
-import { BSRealtyButton } from "@bsrealtyllc/design-system";
+import Button from "@/components/Button/Button";
 import { showToast } from "@/lib/toast";
 
 interface Employee {
@@ -255,25 +255,23 @@ export default function EmployeesPage() {
           </div>
           <div className="flex gap-4">
             {isAdmin && (
-              <BSRealtyButton
-                label="Add Bulk Employee"
+              <Button
                 variant="primary"
                 size="small"
-                showLeftIcon={false}
-                showRightIcon={false}
                 onClick={() => setShowBulkModal(true)}
-              />
+              >
+                Add Bulk Employee
+              </Button>
             )}
 
             {isAdmin && (
-              <BSRealtyButton
-                label="Add Employee"
+              <Button
                 variant="primary"
                 size="small"
-                showLeftIcon={false}
-                showRightIcon={false}
                 onClick={() => setShowModal(true)}
-              />
+              >
+                Add Employee
+              </Button>
             )}
           </div>
         </div>
@@ -295,21 +293,26 @@ export default function EmployeesPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <button
-          className={`btn btn-sm ${myTeamOnly ? "btn-primary" : "btn-secondary"}`}
-          style={{ flexShrink: 0 }}
+        <Button
           onClick={() => setMyTeamOnly((v) => !v)}
           title="Show only yourself and your direct reports"
+          variant={myTeamOnly ? "primary" : "secondary"}
+          size="small"
+          style={{ flexShrink: 0 }}
+          leftIcon={
+            <span
+              className="icon-mask"
+              style={{
+                height: 16,
+                width: 16,
+                WebkitMaskImage: `url(/icons/${myTeamOnly ? "check.svg" : "users.svg"})`,
+                maskImage: `url(/icons/${myTeamOnly ? "check.svg" : "users.svg"})`,
+              }}
+            />
+          }
         >
-          <span
-            className="icon-mask"
-            style={{
-              WebkitMaskImage: `url(/icons/${myTeamOnly ? "check.svg" : "users.svg"})`,
-              maskImage: `url(/icons/${myTeamOnly ? "check.svg" : "users.svg"})`,
-            }}
-          />
           My Team
-        </button>
+        </Button>
       </div>
 
       {sections.map(([department, members]) => (
@@ -442,12 +445,13 @@ export default function EmployeesPage() {
           >
             <div className="modal-header">
               <h2>Add Employee</h2>
-              <button
-                className="modal-close"
+              <Button
                 onClick={() => setShowModal(false)}
+                variant="text"
+                size="small"
               >
-                ×
-              </button>
+                X
+              </Button>
             </div>
             <form onSubmit={submit}>
               <div className="grid-2">
@@ -550,16 +554,17 @@ export default function EmployeesPage() {
                 </div>
               </div>
               <div className="flex gap-3 justify-end mt-4">
-                <button
+                <Button
                   type="button"
-                  className="btn btn-secondary"
                   onClick={() => setShowModal(false)}
+                  variant="secondary"
+                  size="small"
                 >
                   Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
+                </Button>
+                <Button type="submit" variant="primary" size="small">
                   Add Employee
-                </button>
+                </Button>
               </div>
             </form>
           </div>

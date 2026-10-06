@@ -1,0 +1,181 @@
+/* Style for Button  */
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
+
+.button {
+  border: none;
+  cursor: pointer;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+/* =========================
+   VARIANTS
+========================= */
+
+.button--primary {
+  background-color: var(--blue-dark-normal);
+  color: var(--soft-white-light);
+}
+
+.button--secondary {
+  background-color: var(--blue-salt);
+  color: var(--white-light-hover);
+}
+
+.button--text {
+  background-color: transparent;
+  color: var(--blue-dark-darker);
+}
+
+/* =========================
+   SIZES
+========================= */
+
+.button--xs {
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.button--xs-medium {
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  gap: 4px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.button--small {
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  gap: 4px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.button--medium {
+  padding: 12px 20px;
+  border-radius: var(--radius-lg);
+  gap: 8px;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.button--large {
+  padding: 12px 20px;
+  border-radius: var(--radius-lg);
+  gap: 8px;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.button--xl {
+  padding: 12px 20px;
+  border-radius: var(--radius-lg);
+  gap: 8px;
+  font-size: 22px;
+  line-height: 28px;
+}
+
+.button--2xl {
+  padding: 16px 24px;
+  border-radius: var(--radius-lg);
+  gap: 8px;
+  font-size: 22px;
+  line-height: 28px;
+}
+
+/* =========================
+   DISABLED
+========================= */
+
+.button:disabled {
+  cursor: not-allowed;
+}
+/* Primary disabled */
+.button--primary:disabled {
+  background-color: var(--blue-dark-light-active);
+  color: var(--soft-white-light);
+}
+
+/* Secondary disabled */
+.button--secondary:disabled {
+  background-color: var(--blue-salt-light-hover);
+  color: var(--blue-salt);
+}
+
+/* Text disabled */
+.button--text:disabled {
+  background-color: transparent;
+  color: var(--soft-white-dark);
+}
+
+/*====================
+Hover
+*/
+.button--primary:not(:disabled):hover {
+  background-color: var(--blue-dark-normal-hover);
+}
+
+.button--secondary:not(:disabled):hover {
+  background-color: var(--blue-salt-active);
+}
+
+.button--text:not(:disabled):hover {
+  background-color: var(--soft-white-normal-hover);
+  color: var(--blue-sky);
+}
+/* =========================
+   FOCUS
+========================= */
+
+.button--primary:focus-visible {
+  outline-color: var(--blue-sky);
+}
+
+.button--secondary:focus-visible {
+  outline-color: var(--blue-sky-active);
+}
+
+.button--text:focus-visible {
+  outline-color: var(--blue-sky-hover);
+  color: var(--blue-sky-hover);
+}
+
+/* Focus border by button size */
+.button--xs:focus-visible {
+  outline-width: 1.5px;
+}
+.button--small:focus-visible {
+  outline-width: 2px;
+}
+.button--medium:focus-visible {
+  outline-width: 2px;
+}
+.button--large:focus-visible {
+  outline-width: 2.5px;
+}
+.button--xl:focus-visible {
+  outline-width: 2.5px;
+}
+.button--2xl:focus-visible {
+  outline-width: 3px;
+}
+/* Common focus style */
+
+.button:focus-visible {
+  outline-style: solid;
+}
+
+/* Icon */
+.button__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

@@ -22,12 +22,12 @@
   --color-primary-hover: var(--teal-normal-active);
   --color-primary-focus-border: var(--teal-darker);
   --color-primary-disabled: var(--teal-light-active);
-  --color-primary-light: #E6F2F4; /* no exact match in the teal ramp */
+  --color-primary-light: #e6f2f4; /* no exact match in the teal ramp */
 
   /* Accent */
-  --color-accent: #2EC4B6;
-  --color-accent-hover: #22B0A3;
-  --color-highlight: #4EA8DE;
+  --color-accent: #2ec4b6;
+  --color-accent-hover: #22b0a3;
+  --color-highlight: #4ea8de;
 
   /* Status */
   --color-success: var(--success-normal);
@@ -36,20 +36,20 @@
   --color-info: var(--info-normal);
 
   /* Neutrals */
-  --color-bg: #F7F8F9; /* soft white, no exact match in either ramp — deliberately a shade off --color-surface (#FEFEFE) so cards/table-row-hover keep contrast against the page */
+  --color-bg: #f7f8f9; /* soft white, no exact match in either ramp — deliberately a shade off --color-surface (#FEFEFE) so cards/table-row-hover keep contrast against the page */
   --color-surface: var(--soft-white-light);
   --color-border: var(--gray-light-hover);
   --color-text-muted: var(--gray-normal);
 
   /* Text */
-  --color-text-h1: #0F172A;
-  --color-text-h2: #0F172A;
-  --color-text-h3: #1F2937;
+  --color-text-h1: #0f172a;
+  --color-text-h2: #0f172a;
+  --color-text-h3: #1f2937;
   --color-text-body: #374151;
 
   /* Sidebar (colors only — sizing lives in layout, not tokens) */
-  --sidebar-bg: var(--color-primary);
-  --sidebar-active: #2EC4B6;
-  --sidebar-text: #FFFFFF;
-  --sidebar-hover: rgba(255, 255, 255, 0.08);
+  --sidebar-bg: var(--soft-white-light);
+  /* --sidebar-active: #2ec4b6;
+  --sidebar-text: #ffffff; */
+  --sidebar-hover: var(--blue-sky-light); /*hover and active sidebar*/
 }

@@ -20,6 +20,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hook';
 // import { toast } from 'react-toastify';
 import { showToast } from '@/lib/toast';
 import Clock from '@/components/clock';
+import PageHeader from '@/components/PageHeader';
 
 /* ─────────────────────────────── helpers ──────────────────────────────── */
 
@@ -349,40 +350,10 @@ useEffect(() => {
       <ClockInPopup />
 
       <div>
-        <div
-          className="page-header flex justify-between items-center"
-          style={{ marginBottom: 0 }}
-        >
-          <h1>Dashboard</h1>
-          <div className="flex items-center gap-2">
-            <Clock />
-            <button className="topbar-icon-btn" title="Notifications">
-              <span
-                className="icon-mask"
-                style={{
-                  WebkitMaskImage: "url(/icons/bell.svg)",
-                  maskImage: "url(/icons/bell.svg)",
-                }}
-              />
-              <span className="topbar-icon-btn-dot" />
-            </button>
-            <button className="topbar-icon-btn" title="Toggle theme">
-              <span
-                className="icon-mask"
-                style={{
-                  WebkitMaskImage: "url(/icons/moon.svg)",
-                  maskImage: "url(/icons/moon.svg)",
-                }}
-              />
-            </button>
-            {user && (
-              <div className="avatar" title={user.name}>
-                {initials(user.name)}
-              </div>
-            )}
-          </div>
-        </div>
-        <hr className="page-header-divider" />
+        {/* page header */}
+        <PageHeader title={'Dashboard'} discription={'View and manage your enrolled courses, track your progress, and continue learning where you left off.'}>
+          <Clock />
+        </PageHeader>
 
         {/* Weekly form popup */}
         {showWeeklyPopup && (
