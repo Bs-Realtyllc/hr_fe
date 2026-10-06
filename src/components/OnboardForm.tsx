@@ -33,6 +33,7 @@ interface InternFormData {
 interface InternFormProps {
   type: "intern" | "employee";
 }
+
 type DocKey =
   | "citizenshipFront"
   | "citizenshipBack"
@@ -376,11 +377,27 @@ export default function InternForm(type: InternFormProps) {
     // setLoading(true);
 
     // Only send fields that were actually rendered on the form, plus role.
-    const payload = Object.fromEntries(
-      Object.entries({ ...form, role: type.type }).filter(
-        ([key]) => key in allFieldsByKey || key === "role",
-      ),
-    );
+    // const payload = Object.fromEntries(
+    //   Object.entries({ ...form, role: type.type }).filter(
+    //     ([key]) => key in allFieldsByKey || key === "role",
+    //   ),
+    // );
+  const payload = Object.fromEntries(
+    Object.entries({ ...form, role: type.type })
+      .map(([key, value]): [string, unknown] => {
+        if (key === "tech_stack" && typeof value === "string") {
+          return [
+            key,
+            value
+              .split(",")
+              .map((v) => v.trim())
+              .filter(Boolean),
+          ];
+        }
+        return [key, value];
+      })
+      .filter(([key]) => key in allFieldsByKey || key === "role"),
+  );
 
     const body = new FormData();
     body.append("payload", JSON.stringify(payload));
@@ -416,6 +433,7 @@ export default function InternForm(type: InternFormProps) {
         }
         throw new Error(message);
       }
+      console.log('body', body)
 
       window.location.href = "/login";
     } catch (err) {

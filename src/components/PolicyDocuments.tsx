@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import PdfThumbnail from './PdfThumbnail';
 import Button from './Button/Button';
 
-const BACKEND = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api').replace('/api', '');
+const BACKEND = process.env.NEXT_PUBLIC_API_URL!.replace('/api', '');
 
 interface Policy {
   id: number;

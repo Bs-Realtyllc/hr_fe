@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import Button from '@/components/Button/Button';
+import { showToast } from '@/lib/toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CultureEvent {
   id: number;
@@ -169,8 +171,11 @@ export default function CulturePage() {
   const [showModal, setShowModal] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [form, setForm] = useState({ title: '', event_type: 'team_event', event_date: '', description: '', employee_id: '' });
+  const { user } = useAuth();
+  const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
 
-  const load = () => api.get<CultureEvent[]>('/events').then(setEvents).catch(() => { });
+
+  const load = () => api.get<CultureEvent[]>('/events').then(setEvents).catch((err:any) => {showToast('error', 'Failed to load Events')});
 
   useEffect(() => {
     load();
@@ -204,6 +209,8 @@ export default function CulturePage() {
             <h1>Culture & Events</h1>
             <p>Birthdays, anniversaries, and team milestones</p>
           </div>
+          {
+          isPrivileged &&
           <Button variant='primary' size='small' onClick={() => setShowModal(true)} leftIcon={<span
             className="icon-mask"
             style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
@@ -211,6 +218,7 @@ export default function CulturePage() {
 
             Add Event
           </Button>
+          }
         </div>
       </div>
 

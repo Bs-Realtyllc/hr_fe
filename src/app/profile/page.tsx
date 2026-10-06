@@ -6,7 +6,7 @@ import Button from '@/components/Button/Button';
 import PageHeader from '@/components/PageHeader';
 import { BSRealtyAvatar, BSRealtyCheckbox, BSRealtyDropdown, BSRealtyTabs, BSRealtyTextField, BSRealtyToggle } from '@bsrealtyllc/design-system';
 
-const BACKEND = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api').replace('/api', '');
+const BACKEND = process.env.NEXT_PUBLIC_API_URL!.replace('/api', '');
 
 interface Profile {
   id: number;

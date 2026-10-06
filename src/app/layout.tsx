@@ -4,6 +4,8 @@ import '../styles/global.css';
 import '@bsrealtyllc/design-system/style.css';
 import AppShell from '@/components/AppShell';
 import StoreProvider from '@/store/storeProvider';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -26,6 +28,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${plusJakartaSans.variable} ${ibmPlexSans.variable}`}>
       <body>
+        <ToastContainer
+          position="bottom-right"
+          autoClose={5000}
+          limit={6}
+          hideProgressBar
+          newestOnTop
+          stacked
+          closeOnClick={false}
+          rtl={false}
+          pauseOnFocusLoss ={false}
+          draggable
+          theme="light"
+        />
         <StoreProvider>
         <AppShell>{children}</AppShell>
         </StoreProvider>

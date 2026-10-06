@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import PillTabs from '@/components/PillTabs';
 import Button from '@/components/Button/Button';
+import { showToast } from '@/lib/toast';
 
 interface FeedbackNote {
   id: number;
@@ -77,8 +78,8 @@ export default function FeedbackPage() {
   });
 
   useEffect(() => {
-    api.get<Employee[]>('/employees').then(setEmployees).catch(() => { });
-    if (isPrivileged) api.get<FeedbackSummaryRow[]>('/feedback/summary').then(setSummary).catch(() => { });
+    api.get<Employee[]>('/employees').then(setEmployees).catch(() => {showToast('error', 'Failed to load employees')});
+    if (isPrivileged) api.get<FeedbackSummaryRow[]>('/feedback/summary').then(setSummary).catch(() => {showToast('error', 'Failed to load feedbacks')});
   }, [isPrivileged]);
 
   const load = () => {
@@ -103,8 +104,10 @@ export default function FeedbackPage() {
       setShowCreate(false);
       load();
       if (isPrivileged) api.get<FeedbackSummaryRow[]>('/feedback/summary').then(setSummary).catch(() => { });
+      showToast('success', 'Feedback send sucessfully')
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to send feedback');
+      showToast('error', "Failed to send feedback");
+      // alert(err instanceof Error ? err.message : 'Failed to send feedback');
     }
   }
 

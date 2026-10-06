@@ -2,14 +2,18 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { BSRealtyAvatar, BSRealtyNotification } from "@bsrealtyllc/design-system";
+import type { ReactNode } from "react";
 
 interface PageHeaderProps {
-    title: string, discription: string
+    title: string, discription: string,
+    /** Extra items rendered at the start of the header's right-hand actions */
+    children?: ReactNode
 }
 
 export default function PageHeader({
     title,
-    discription
+    discription,
+    children
 }: PageHeaderProps) {
     const { user } = useAuth();
 
@@ -23,7 +27,7 @@ export default function PageHeader({
                 <p>{discription}</p>
             </div>
             <div className="flex items-center gap-3">
-
+                {children}
                 <button className="topbar-icon-btn" title="Toggle theme">
                     <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/moon.svg)', maskImage: 'url(/icons/moon.svg)' }} />
                 </button>

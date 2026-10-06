@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import PillTabs from '@/components/PillTabs';
 import Button from '@/components/Button/Button';
+import { showToast } from '@/lib/toast';
 
 interface Leave {
   id: number;
@@ -93,7 +94,7 @@ export default function LeavesPage() {
   });
 
   const load = () =>
-    api.get<Leave[]>(`/leaves${filter !== 'all' ? `?status=${filter}` : ''}`).then(setLeaves).catch(() => { });
+    api.get<Leave[]>(`/leaves${filter !== 'all' ? `?status=${filter}` : ''}`).then(setLeaves).catch(() => {showToast('error', "Failed to load leaves")});
 
   useEffect(() => { load(); }, [filter]);
 
@@ -117,6 +118,7 @@ export default function LeavesPage() {
 
   const submitLeave = async (e: React.FormEvent) => {
     e.preventDefault();
+    try{
     const { to, cc, bcc, ...leaveFields } = form;
     await api.post<{ id: number }>('/leaves', {
       ...leaveFields,
@@ -126,9 +128,13 @@ export default function LeavesPage() {
         cc: cc.trim() || undefined,
         bcc: bcc.trim() || undefined,
       }),
-    });
+      })
     setShowLeaveModal(false);
     load();
+      showToast('success', "Leave request added sucessfully")
+    }catch(err){
+      showToast('error', "Failed to add leave request")
+    }
   };
 
   const openEditModal = (l: Leave) => {

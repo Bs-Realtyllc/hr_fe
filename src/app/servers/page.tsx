@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import ProjectsTab from './ProjectsTab';
 import Button from '@/components/Button/Button';
+import { showToast } from '@/lib/toast';
 
 interface Credential {
   service_name: string;
@@ -102,7 +103,7 @@ function ServicesTab() {
       username: form.username,
       password: form.password,
       notes: form.notes,
-    }).catch(() => { });
+    }).catch(() => {showToast('error', 'Failed to save credentials')});
     setSaving(false);
     setSaved(true);
     await loadCredentials();

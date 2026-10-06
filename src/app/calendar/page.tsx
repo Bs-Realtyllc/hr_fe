@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import Button from '@/components/Button/Button';
+import { showToast } from '@/lib/toast';
 
 interface CalEvent {
   date: string;
@@ -505,8 +506,13 @@ export default function CalendarPage() {
   }
 
   async function connectGoogle() {
-    const data = await api.get<{ url: string }>('/google/auth-url');
-    window.location.href = data.url;
+    try {
+      const response = await api.get<{ url: string }>('/google/auth-url');
+      window.location.href = response.url;
+    } catch (err: any) {
+      // console.log("err",err.response.data.error)
+      showToast('error', 'Error connecting to Google calender');
+    }
   }
 
   async function disconnectGoogle() {

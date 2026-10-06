@@ -7,6 +7,7 @@ import {
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Button from '@/components/Button/Button';
+import { showToast } from '@/lib/toast';
 
 interface Review {
   id: number;
@@ -97,7 +98,7 @@ export default function PerformancePage() {
   const [ackComments, setAckComments] = useState('');
 
   useEffect(() => {
-    if (isPrivileged) api.get<Employee[]>('/employees').then(setEmployees).catch(() => { });
+    if (isPrivileged) api.get<Employee[]>('/employees').then(setEmployees).catch(() => {showToast('error', 'Failed to load employee data')});
   }, [isPrivileged]);
 
   const load = () => {
@@ -153,14 +154,19 @@ export default function PerformancePage() {
       setShowCreate(false);
       load();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to create review');
+      showToast('error', 'Failed to create review');
     }
   }
 
   async function submitReview(id: number) {
     if (!confirm('Submit this review to the employee? It will no longer be editable.')) return;
+    try{
     await api.put(`/performance/${id}/submit`, {});
     load();
+      showToast('success', "Review submitted sucessfully")
+    }catch(err){
+      showToast('error', "Failed to submit review")
+    }
   }
 
   async function deleteReview(id: number) {

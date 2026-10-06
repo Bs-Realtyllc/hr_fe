@@ -1,6 +1,17 @@
 import { clearAuth, getToken } from '@/lib/auth';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL;
+// export class ApiError extends Error {
+//   response: {
+//     status: number;
+//     data: any;
+//   };
+
+//   constructor(status: number, data: any) {
+//     super(data?.message ?? data?.error ?? `API error ${status}`);
+//     this.response = { status, data };
+//   }
+// }
 
 async function req<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getToken();
@@ -18,7 +29,16 @@ async function req<T>(path: string, options?: RequestInit): Promise<T> {
     return Promise.reject(new Error('Session expired'));
   }
 
-  if (!res.ok) throw new Error(`API error ${res.status}`);
+  if (!res.ok){
+    throw new Error(`API error ${res.status}`);
+  //   let data: any = null;
+  //   try {
+  //     data = await res.json();
+  //   } catch {
+  //     data = { message: res.statusText || `API error ${res.status}` };
+  //   }
+  //   throw new ApiError(res.status, data);
+  }
   return res.json();
 }
 

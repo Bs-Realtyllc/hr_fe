@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Button from '@/components/Button/Button';
 import PageHeader from '@/components/PageHeader';
+import { showToast } from '@/lib/toast';
 
 interface Goal {
   id: number;
@@ -105,7 +106,7 @@ export default function GoalsPage() {
   });
 
   useEffect(() => {
-    if (isPrivileged) api.get<Employee[]>('/employees').then(setEmployees).catch(() => { });
+    if (isPrivileged) api.get<Employee[]>('/employees').then(setEmployees).catch(() => {showToast('error', "Failed to load employee data")});
   }, [isPrivileged]);
 
   const load = () => {
@@ -150,7 +151,7 @@ export default function GoalsPage() {
       employee_id: createForm.employee_id ? parseInt(createForm.employee_id) : undefined,
       target_value: parseFloat(createForm.target_value) || 100,
       weight: parseInt(createForm.weight) || 3,
-    });
+    }).catch(()=>{showToast("error","Failed to add goals")});
     setShowCreate(false);
     load();
   }
@@ -166,7 +167,7 @@ export default function GoalsPage() {
     await api.put(`/goals/${progressGoal.id}/progress`, {
       current_value: parseFloat(progressValue) || 0,
       status: progressStatus,
-    });
+    }).catch(()=>{showToast("error", "Failed to update goal")});
     setProgressGoal(null);
     load();
   }

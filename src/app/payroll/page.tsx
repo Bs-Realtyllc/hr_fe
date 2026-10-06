@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import PillTabs from '@/components/PillTabs';
+import { showToast } from '@/lib/toast';
 
 interface PayrollRow {
   id: number;
@@ -97,7 +98,7 @@ export default function PayrollPage() {
   useEffect(() => {
     api.get<PayrollRow[]>('/payroll')
       .then(setRows)
-      .catch(() => {})
+      .catch(() => {showToast('error', "Failed to load payroll information")})
       .finally(() => setLoading(false));
   }, []);
 
@@ -105,7 +106,7 @@ export default function PayrollPage() {
     setTaxLoading(true);
     api.get<TaxRow[]>(`/payroll/taxes?month=${taxMonth}&year=${taxYear}`)
       .then(setTaxRows)
-      .catch(() => {})
+      .catch(() => {showToast('error', "Failed to load tax information")})
       .finally(() => setTaxLoading(false));
   };
 
@@ -117,7 +118,7 @@ export default function PayrollPage() {
     setSummaryLoading(true);
     api.get<SummaryRow[]>('/payroll/summary')
       .then(setSummaryRows)
-      .catch(() => {})
+      .catch(() => {showToast('error', "Failed to load summary information")})
       .finally(() => { setSummaryLoading(false); setSummaryLoaded(true); });
   };
 
@@ -155,11 +156,16 @@ export default function PayrollPage() {
   }, 0);
 
   async function saveSalary(id: number) {
-    await api.put(`/payroll/${id}/salary`, { salary: parseFloat(editSalary) || null, pay_frequency: editFreq });
-    setRows(prev => prev.map(r => r.id === id
-      ? { ...r, salary: parseFloat(editSalary) || null, pay_frequency: editFreq as PayrollRow['pay_frequency'] }
-      : r));
-    setEditId(null);
+    try{
+      await api.put(`/payroll/${id}/salary`, { salary: parseFloat(editSalary) || null, pay_frequency: editFreq });
+      setRows(prev => prev.map(r => r.id === id
+        ? { ...r, salary: parseFloat(editSalary) || null, pay_frequency: editFreq as PayrollRow['pay_frequency'] }
+        : r));
+      setEditId(null);
+      showToast('success',"sucessfully updated salary")
+    }catch(err){
+      showToast('error','Failed to update salary')
+    }
   }
 
   async function doResetPassword(id: number) {
@@ -194,7 +200,11 @@ export default function PayrollPage() {
       });
       setTaxEdit(null);
       loadTaxes();
-    } finally {
+      showToast('success', "Tax profile updated sucessfully")
+    }catch(err:any){
+      //does not show error from backend -- "This employee has no panNo on file — set one before recording a tax profile"
+      showToast('error', "Failed to update tax profile")
+    }finally {
       setTaxSaving(false);
     }
   }
@@ -269,8 +279,8 @@ export default function PayrollPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map(r => (
-                    <tr key={r.id}>
+                  {rows.map((r,index) => (
+                    <tr key={index}>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div className="avatar avatar-sm">{initials(r.name)}</div>
@@ -337,8 +347,8 @@ export default function PayrollPage() {
 
             {/* Mobile replacement for the table above — same data, card-per-row */}
             <div className="row-cards">
-              {rows.map(r => (
-                <div key={r.id} className="row-card">
+              {rows.map((r,index) => (
+                <div key={index} className="row-card">
                   <div className="row-card-top">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div className="avatar avatar-sm">{initials(r.name)}</div>
@@ -466,8 +476,8 @@ export default function PayrollPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {taxRows.map(r => (
-                          <tr key={r.id}>
+                        {taxRows.map((r, index) => (
+                          <tr key={index}>
                             <td>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <div className="avatar avatar-sm">{initials(r.name)}</div>
@@ -503,8 +513,8 @@ export default function PayrollPage() {
 
                   {/* Mobile replacement for the table above — same data, card-per-row */}
                   <div className="row-cards">
-                    {taxRows.map(r => (
-                      <div key={r.id} className="row-card">
+                    {taxRows.map((r, index) => (
+                      <div key={index} className="row-card">
                         <div className="row-card-top">
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <div className="avatar avatar-sm">{initials(r.name)}</div>
@@ -678,8 +688,8 @@ export default function PayrollPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {summaryRows.map(r => (
-                        <tr key={r.id}>
+                      {summaryRows.map((r, index) => (
+                        <tr key={index}>
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                               <div className="avatar avatar-sm">{initials(r.name)}</div>
@@ -720,8 +730,8 @@ export default function PayrollPage() {
 
                 {/* Mobile replacement for the table above — same data, card-per-row */}
                 <div className="row-cards">
-                  {summaryRows.map(r => (
-                    <div key={r.id} className="row-card">
+                  {summaryRows.map((r, index) => (
+                    <div key={index} className="row-card">
                       <div className="row-card-top">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div className="avatar avatar-sm">{initials(r.name)}</div>
