@@ -4,7 +4,7 @@ import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 import Button from '@/components/Button/Button';
 import PageHeader from '@/components/PageHeader';
-import { BSRealtyAvatar, BSRealtyDropdown, BSRealtyTabs, BSRealtyTextField } from '@bsrealtyllc/design-system';
+import { BSRealtyAvatar, BSRealtyCheckbox, BSRealtyDropdown, BSRealtyTabs, BSRealtyTextField, BSRealtyToggle } from '@bsrealtyllc/design-system';
 
 const BACKEND = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api').replace('/api', '');
 
@@ -221,7 +221,8 @@ export default function ProfilePage() {
 
   const handleSaveChanges = () => {
     if (tab === 'personal') {
-      document.getElementById('personal-form')?.requestSubmit();
+      const form = document.getElementById('personal-form') as HTMLFormElement;
+      form?.requestSubmit();
     }
 
     if (tab === 'organization') {
@@ -229,15 +230,14 @@ export default function ProfilePage() {
     }
 
     if (tab === 'security') {
-      document.getElementById('security-form')?.requestSubmit();
+      const form = document.getElementById('security-form') as HTMLFormElement;
+      form?.requestSubmit();
     }
 
     if (tab === 'notification') {
       // TODO: save notification settings
     }
   };
-
-
 
   return (
     <div>
@@ -247,7 +247,7 @@ export default function ProfilePage() {
 
       {/* ── Profile Header Card ───────────────────────────────────────────── */}
       <div className="mx-6 mb-9 flex items-center justify-between rounded-lg border border-(--soft-white-normal-hover) bg-(--soft-white-light) p-6">
-        <div className=" flex-col items-center justify-center gap-1" >
+        <div className="flex flex-col items-center justify-center gap-1" >
           <div className="flex items-center gap-[10px]" style={{ flexWrap: 'wrap' }}>
             {/* Avatar */}
             <div className=' '>
@@ -296,7 +296,7 @@ export default function ProfilePage() {
               <div className='text-[16px] text-(--neutral-normal) font-medium leading-6' >
                 {profile.name}
               </div>
-              <div className="text-[14px] text-( --gray-normal-hover) leading-5 font-medium" >
+              <div className="text-[14px] text-(--gray-normal-hover) leading-5 font-medium" >
                 {profile.email}
               </div>
             </div>
@@ -314,8 +314,8 @@ export default function ProfilePage() {
           {/* Join date */}
           {profile.start_date && (
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <div className="text-( --gray-normal-hover) text-[14px]" >Member since</div>
-              <div style={{ fontWeight: 500, fontSize: 16, color: '#17212B' }}>
+              <div className="text-(--gray-normal-hover) text-[14px]" >Member since</div>
+              <div style={{ fontWeight: 500, fontSize: 16, color: 'var(--neutral-normal)' }}>
                 {new Date(profile.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
               </div>
 
@@ -326,7 +326,7 @@ export default function ProfilePage() {
 
       {/* ── Tabs ────────────────────────────────────────────────────────────── */}
 
-      <div className="ml-6 mr-5 bg-[#FEFEFE] border border-[#F1F5F9] rounded-lg " style={{ padding: 24, overflow: 'hidden' }}>
+      <div className="ml-6 mr-5 bg-(--soft-white-light) border border-(--soft-white-normal) rounded-lg " style={{ padding: 24, overflow: 'hidden' }}>
 
         <div className='flex justify-between py-6' >
           <BSRealtyTabs
@@ -366,17 +366,17 @@ export default function ProfilePage() {
 
         {/* ── PERSONAL INFO ─────────────────────────────────────────────── */}
         {tab === 'personal' && (
-          <form id="personal-form" onSubmit={savePersonal} className=" w-[967px] flex-col gap-10">
-            <div className="w-[909px]  flex-col gap-7">
+          <form id="personal-form" onSubmit={savePersonal} className=" flex flex-col gap-10" style={{ width: '100%' }}>
+            <div className=" w-[909px] flex  flex-col gap-7">
               <div>
-                <h1 className='text-[16px] text-[#17212B] font-semibold'>Profile Information</h1>
-                <p className='text-[14px] font-medium text-[#6C6E70]'>Manage your personal details and account information</p>
+                <h1 className='text-[16px] text-(--neutral-normal) font-semibold'>Profile Information</h1>
+                <p className='text-[14px] font-medium text-(--soft-white-dark-active)'>Manage your personal details and account information</p>
               </div>
 
               {/* profile  */}
-              <div className='flex-col gap-7'>
-                <div className=' flex justify-between items-center max-w-[495px]'>
-                  <label className='text-[14px] font-medium text-[#232931]'>Profile Picture</label>
+              <div className='flex  flex-col gap-7'>
+                <div className=' flex max-w-[495px] justify-between items-center '>
+                  <label className='text-[14px] font-medium text-(--gray-darker)'>Profile Picture</label>
                   <div className='flex gap-6 w-[212px] '>
                     <BSRealtyAvatar
                       size="xl"
@@ -389,13 +389,13 @@ export default function ProfilePage() {
                       <button
                         type="button"
                         onClick={() => photoRef.current?.click()}
-                        className='p-2 text-[14px] font-medium text-[#339CD4]'
+                        className='p-2 text-[14px] font-medium text-(--blue-sky)'
                       >
                         Update
                       </button>
                       <button
                         type='button' onClick={() => setPhotoPreview(null)}
-                        className='p-2 text-[14px] font-medium text-[#4B5768]'
+                        className='p-2 text-[14px] font-medium text-(--gray-dark)'
                       >
                         Delete
                       </button>
@@ -404,18 +404,18 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Personal fields form group */}
-                <div className=' flex gap-[179px]'>
-                  <div className=' my-[14px] flex-col gap-11 justify-center  '>
-                    <label className='text-[14px] font-medium text-[#232931] ' htmlFor="name">Full Name</label>
-                    <label className='text-[14px] font-medium text-[#232931] ' htmlFor="email"> Email</label>
-                    <label className='text-[14px] font-medium text-[#232931] ' htmlFor="phone">Phone No.</label>
-                    <label className='text-[14px] font-medium text-[#232931] ' htmlFor="role">Role</label>
+                <div className=' flex justify-between w-[909px]'>
+                  <div className=' my-[14px] flex flex-col gap-11 justify-center  '>
+                    <label className='text-[14px] font-medium text-(--gray-darker) ' htmlFor="name">Full Name</label>
+                    <label className='text-[14px] font-medium text-(--gray-darker) ' htmlFor="email"> Email</label>
+                    <label className='text-[14px] font-medium text-(--gray-darker) ' htmlFor="phone">Phone No.</label>
+                    <label className='text-[14px] font-medium text-(--gray-darker) ' htmlFor="role">Role</label>
                   </div>
-                  <div className='flex-col gap-[16px]'>
-                    <div className='flex gap-6'>
+                  <div className='flex flex-col gap-4'>
+                    <div className=' flex gap-6'>
                       <BSRealtyTextField
                         id='name'
-                        style={{ width: '532px', height: '48px' }}
+                        className='profile-text-field'
                         type='text'
                         placeholder='Enter your Full name'
                         value={form.name}
@@ -428,11 +428,14 @@ export default function ProfilePage() {
                       />
                       <Button type='button' variant='primary' size='medium'  >Edit</Button>
                     </div>
-                    <div className='flex justify-between'>
+
+                    <div className=' flex gap-6'>
+
+
                       <BSRealtyTextField
                         id='email'
                         value={form.email}
-                        style={{ width: '532px', height: '48px' }}
+                        className='profile-text-field'
                         type='email'
                         placeholder='Enter your email'
                         onChange={(e) =>
@@ -444,11 +447,11 @@ export default function ProfilePage() {
                       />
                       <Button type='button' variant='primary' size='medium'  >Edit</Button>
                     </div>
-                    <div className='flex justify-between'>
+                    <div className='flex gap-6 '>
                       <BSRealtyTextField
                         id='phone'
                         value={form.phone}
-                        style={{ width: '532px', height: '48px' }}
+                        className='profile-text-field'
                         type='text'
                         placeholder='Enter your Phone number'
                         onChange={(e) =>
@@ -460,7 +463,7 @@ export default function ProfilePage() {
                       />
                       <Button type='button' variant='primary' size='medium'  >Edit</Button>
                     </div>
-                    <div className=' '>
+                    <div className='w-[532px] flex gap-6'>
                       <BSRealtyDropdown
                         value={form.role}
                         onChange={(value) =>
@@ -516,22 +519,22 @@ export default function ProfilePage() {
             </div>
 
             {/* divider */}
-            <div className="border border-[#DCDEDF]"></div>
+            <div className="border border-(--neutral-light-hover)"></div>
 
             {/*Login & Access */}
-            <div className=" w-full max-w-[812px] flex-col gap-7">
+            <div className="flex flex-col gap-7 w-[785px] " >
               <div>
-                <h1 className='text-[16px] text-[#17212B] font-semibold leading-6 '>Login & Access</h1>
-                <p className='text-[14px] font-medium text-[#6C6E70] '>Manage your account acess and login preference.</p>
+                <h1 className='text-[16px] text-(--neutral-normal) font-semibold leading-6 '>Login & Access</h1>
+                <p className='text-[14px] font-medium text-(--soft-white-dark-active) '>Manage your account acess and login preference.</p>
               </div>
 
-              <div className='flex-col gap-3'>
+              <div className='flex flex-col gap-3'>
 
                 <div className='flex justify-between  '>
-                  <label className='text-[#232931] text-[14px] font-medium' htmlFor="old_password">Old Password</label>
+                  <label className='text-(--gray-darker) text-[14px] font-medium' htmlFor="old_password">Old Password</label>
                   <BSRealtyTextField id='old_password' type="password"
                     placeholder="Old Password"
-                    className="w-[532px]"
+                    className="profile-text-field"
                     value={pwForm.current_password}
                     onChange={(e) =>
                       setPwForm(prev => ({
@@ -541,10 +544,10 @@ export default function ProfilePage() {
                     } />
                 </div>
                 <div className='flex justify-between  '>
-                  <label className='text-[#232931] text-[14px] font-medium' htmlFor="new_password">New Password</label>
+                  <label className='text-(--gray-darker) text-[14px] font-medium' htmlFor="new_password">New Password</label>
                   <BSRealtyTextField id='new_password' type="password"
                     placeholder="New Password"
-                    className="w-[532px]"
+                    className="profile-text-field"
                     value={pwForm.new_password}
                     onChange={(e) =>
                       setPwForm(prev => ({
@@ -554,10 +557,10 @@ export default function ProfilePage() {
                     } />
                 </div>
                 <div className='flex justify-between '>
-                  <label className='text-[#232931] text-[14px] font-medium' htmlFor="conform_password">Conform Password</label>
-                  <BSRealtyTextField id='conform_password' type="password"
+                  <label className='text-(--gray-darker) text-[14px] font-medium' htmlFor="confirm_password">Confirm Password</label>
+                  <BSRealtyTextField id='confirm_password' type="password"
                     placeholder="Confirm Password"
-                    className="w-[532px]"
+                    className="profile-text-field"
                     value={pwForm.confirm}
                     onChange={(e) =>
                       setPwForm(prev => ({
@@ -575,59 +578,212 @@ export default function ProfilePage() {
 
         {/* ── Organization ─────────────────────────────────────────────────── */}
         {tab === 'organization' && (
-          // <div>
-          //   {msg && (
-          //     <div style={{
-          //       marginBottom: 16, padding: '10px 14px', borderRadius: 8, fontSize: 13,
-          //       background: msgType === 'ok' ? '#f0fdf4' : '#fef2f2',
-          //       color: msgType === 'ok' ? '#16a34a' : 'var(--color-error)',
-          //       border: `1px solid ${msgType === 'ok' ? '#bbf7d0' : '#fecaca'}`,
-          //     }}>
-          //       {msg}
-          //     </div>
-          //   )}
 
-          //   <p className="text-muted" style={{ fontSize: 13, marginBottom: 24 }}>
-          //     Upload your identification documents. Accepted formats: JPG, PNG, WEBP — max 5 MB each.
-          //   </p>
-
-          //   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-          //     <DocUploadCard
-          //       label="Citizenship / ID (Front)"
-          //       preview={frontPreview}
-          //       loading={uploading.front}
-          //       onChange={handleFileChange('front')}
-          //     />
-          //     <DocUploadCard
-          //       label="Citizenship / ID (Back)"
-          //       preview={backPreview}
-          //       loading={uploading.back}
-          //       onChange={handleFileChange('back')}
-          //     />
-          //   </div>
-          // </div>
-          <div className='flex-col max-w-[929px] gap-11'>
-            <div className='flex-col gap-7'>
+          <div className='flex flex-col w-[929px] gap-11'>
+            <div className='flex flex-col gap-7 w-full '>
               <div>
-                <h1 className='text-[#17212B] text-[16px] font-semibold'>Company Information</h1>
-                <p className='text-[#6C6E70] text-[14px] font-medium'>Manage your company details and hiring identity.</p>
+                <h1 className='text-(--neutral-normal) text-[16px] font-semibold'>Company Information</h1>
+                <p className='text-(--soft-white-dark-active) text-[14px] font-medium'>
+                  Manage your company details and hiring identity.
+                </p>
               </div>
-              <div>
+              <div className='flex flex-col justify-between gap-4'>
+                <div className='flex gap-44'>
+                  <div className='flex flex-col justify-between '>
+                    <label htmlFor="company_name" className='text-[14px] font-medium'>Company Name</label>
+                    <label htmlFor="company_email" className='text-[14px] font-medium'>Company Email</label>
+                    <label htmlFor="company_website" className='text-[14px] font-medium'>Company Website</label>
+                  </div>
+                  <div className='flex flex-col gap-4'>
+                    <div className='flex gap-6 items-center'>
+                      <BSRealtyTextField
+                        type='text'
+                        placeholder='Enter your company name'
+                        className='profile-text-field'
+                      />
+                      <Button type='button' variant='primary' size='medium'  >Edit</Button>
+                    </div>
+                    <div className='flex gap-6 items-center'>
+                      <BSRealtyTextField
+                        type='text'
+                        placeholder='Enter your company name'
+                        className='profile-text-field'
+                      />
+                      <Button type='button' variant='primary' size='medium'  >Edit</Button>
+                    </div>
+                    <div className='flex gap-6 items-center'>
+                      <BSRealtyTextField
+                        type='text'
+                        placeholder='Enter your company name'
+                        className='profile-text-field'
+                      />
+                      <Button type='button' variant='primary' size='medium'  >Edit</Button>
+                    </div>
+                  </div>
+                </div>
 
               </div>
+
             </div>
 
             {/* divider */}
-            <div className='border'></div>
+            <div className='border border-(--neutral-light-hover)'></div>
 
-            <div></div>
+            {/* Team Access */}
+            <div className=' flex flex-col gap-7'>
+              <div>
+                <h1 className='text-(--neutral-normal) text-[14px] font-medium'>Team  Access</h1>
+                <p className='text-(--soft-white-dark-active) text-[14px] font-medium'>
+                  Control who can access the hiring platform.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2">
+                <h3 className='text-(--neutral-normal) text-[14px] font-semibold'>Member-2</h3>
+                <div className="flex justify-between items-center py-4">
+                  <div className='flex  items-start gap-3'>
+                    <BSRealtyCheckbox size='16px' />
+                    <div className='flex-col justify-between'>
+                      <span className='text-[14px] font-medium text-(--gray-darker)'>Alex Johnson</span>
+                      <span className='text-[14px] font-medium text-(--soft-white-darker-hover)'>alexjhonson@gmail.com</span>
+                    </div>
+                  </div>
+                  <div>
+                    <span className='text-[14px] font-medium text-(--gray-darker)'>
+                      Software Developer
+                    </span>
+                  </div>
+                  <div>
+                    <span className='text-[14px] font-medium text-(--gray-darker)'>
+                      September 30,2026
+                    </span>
+                  </div>
+                  <img src='/icons/dots.svg' alt="" />
+
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
         {/* ── SECURITY ──────────────────────────────────────────────────── */}
         {tab === 'security' && (
-          <></>
+          <div className='max-w-[929px] flex flex-col gap-11'>
+            <div className='flex flex-col gap-7'>
+              <div>
+                <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Login & Authentication</h1>
+                <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Protect your account from unauthorized acess</p>
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <div className='flex justify-between mr-10'>
+                  <h1 className='text-[16px] font-semibold text-(--gray-darker)'>Two-Factor Authentication</h1>
+                  <BSRealtyToggle checked={true} />
+                </div>
+                <div className='flex justify-between'>
+                  <p className='text-[16px] font-semibold text-(--gray-darker)'>Login Sessions</p>
+                  <Button variant='primary' size='medium' type='button'>Manage</Button>
+                </div>
+
+              </div>
+            </div>
+
+            {/* divider */}
+            <div className='border border-(--neutral-light-hover)'></div>
+
+            {/* Security notification */}
+            <div className='flex flex-col gap-7'>
+              <div className='flex flex-col gap-7'>
+                <div>
+                  <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Security Notifications</h1>
+                  <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Receive alerts about important account activity.</p>
+                </div>
+
+                <div className="flex flex-col gap-4">
+                  <div className='flex justify-between mr-10'>
+                    <p className='text-[16px] font-semibold text-(--gray-darker)'>New Login Detected</p>
+                    <BSRealtyToggle checked={true} />
+                  </div>
+                  <div className='flex justify-between mr-10'>
+                    <p className='text-[16px] font-semibold text-(--gray-darker)'>Password Changed</p>
+                    <BSRealtyToggle checked={true} />
+                  </div>
+
+                  <div className='flex justify-between mr-10'>
+                    <p className='text-[16px] font-semibold text-(--gray-darker)'>Accounts & Role Changed</p>
+                    <BSRealtyToggle checked={true} />
+                  </div>
+                </div >
+              </div>
+            </div>
+          </div>
         )}
+        {/* ── Notification ──────────────────────────────────────────────────── */}
+        {tab === 'notification' && (
+          <div className='max-w-[532px] flex flex-col gap-11'>
+            <div className='flex flex-col gap-7'>
+              <div>
+                <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Email Notifications</h1>
+                <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Manage when you receive updates via email.</p>
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <div className='flex justify-between '>
+                  <p className='text-[16px] font-semibold text-(--gray-darker)'>Leave Request</p>
+                  <BSRealtyToggle checked={true} />
+                </div>
+                <div className='flex justify-between '>
+                  <p className='text-[16px] font-semibold text-(--gray-darker)'>Overtime Request</p>
+                  <BSRealtyToggle />
+                </div>
+                <div className='flex justify-between '>
+                  <p className='text-[16px] font-semibold text-(--gray-darker)'>Attendance Alerts</p>
+                  <BSRealtyToggle checked={true} />
+                </div>
+
+                <div className='flex justify-between '>
+                  <p className='text-[16px] font-semibold text-(--gray-darker)'>Documents & Signature Request </p>
+                  <BSRealtyToggle checked={true} />
+                </div>
+
+                <div className='flex justify-between '>
+                  <p className='text-[16px] font-semibold text-(--gray-darker)'>Employee Updates</p>
+                  <BSRealtyToggle />
+                </div>
+
+                <div className='flex justify-between'>
+                  <p className='text-[16px] font-semibold text-(--gray-darker)'>Onboarding Updated</p>
+                  <BSRealtyToggle checked={true} />
+                </div>
+
+              </div>
+            </div>
+
+            {/* divider */}
+            <div className='border border-(--neutral-light-hover)'></div>
+
+            {/* system notification */}
+            <div className='flex flex-col gap-7'>
+              <div className='flex flex-col gap-7'>
+                <div>
+                  <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>System Notifications</h1>
+                  <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Control in-app notifications</p>
+                </div>
+
+                <div className="flex flex-col gap-4">
+                  <div className='flex justify-between '>
+                    <p className='text-[16px] font-semibold text-(--gray-darker)'>Enable Notifications</p>
+                    <BSRealtyToggle checked={true} />
+                  </div>
+                  <div className='flex justify-between '>
+                    <p className='text-[16px] font-semibold text-(--gray-darker)'>Sound ALerts</p>
+                    <BSRealtyToggle checked={true} />
+                  </div>
+                </div >
+              </div>
+            </div>
+          </div>
+        )}
+
 
 
       </div>
