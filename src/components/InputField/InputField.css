@@ -1,0 +1,224 @@
+/* =========================================================
+   InputField Based on HR InputField design
+   ========================================================= */
+
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
+
+/* ── Input Field ─────────────────────────────────────────── */
+
+.input-field {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  /* max-width: 400px; */
+}
+
+/* ── Input Container ────────────────────────────────────── */
+
+.input-field__container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  background-color: var(--soft-white-light-active);
+  border: 1px solid var(--soft-white-dark-hover);
+  border-radius: var(--radius-sm);
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+/* ── Input ───────────────────────────────────────────────── */
+.input-field__input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 16px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: "Lato", sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+/* ── Placeholder ─────────────────────────────────────────── */
+
+.input-field__input::placeholder {
+  color: #acadb0;
+}
+
+/* ── Hover ───────────────────────────────────────────────── */
+
+.input-field__container:hover:not(.input-field__container--disabled) {
+  background-color: var(--white-light);
+  border-color: var(--blue-dark-normal);
+}
+
+/* ── Focus ───────────────────────────────────────────────── */
+
+.input-field__container:focus-within:not(.input-field__container--disabled) {
+  background-color: var(--soft-white-light-active);
+  border-color: var(--blue-dark-normal);
+}
+
+/* ── Filled ──────────────────────────────────────────────── */
+
+.input-field__container--filled {
+  background-color: var(--white-light);
+}
+
+.input-field__container--filled .input-field__input {
+  color: #1f2933;
+}
+
+/* ── Error ───────────────────────────────────────────────── */
+
+.input-field__container--error {
+  background-color: var(--white-light);
+  border-color: var(--error-normal);
+  box-shadow: var(--shadow-input-field);
+}
+
+.input-field__container--error:hover:not(.input-field__container--disabled) {
+  border-color: var(--error-normal);
+}
+
+.input-field__container--error:focus-within:not(
+    .input-field__container--disabled
+  ) {
+  background-color: var(--soft-white-light-active);
+  border-color: var(--blue-dark-normal);
+}
+
+/* ── Success ──────────────────────────────────────────────── */
+
+.input-field__container--success {
+  background-color: var(--white-light);
+  border-color: var(--success-normal);
+  box-shadow: var(--shadow-input-field);
+}
+
+.input-field__container--success:hover:not(.input-field__container--disabled) {
+  border-color: var(--success-normal);
+}
+.input-field__container--success:focus-within:not(
+    .input-field__container--disabled
+  ) {
+  background-color: #fbfcfd;
+  border-color: var(--blue-dark-normal);
+}
+
+/* ── Status Icon ──────────────────────────────────────────── */
+
+.input-field__status-icon {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.input-field__container--error .input-field__status-icon {
+  color: var(--error-normal);
+}
+
+.input-field__container--success .input-field__status-icon {
+  color: var(--success-normal);
+}
+
+/* ── Password Button ─────────────────────────────────────── */
+
+.input-field__password-button {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  transform: translateY(-50%);
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--gray-normal);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.input-field__password-button:hover {
+  color: var(--gray-dark-hover);
+}
+
+.input-field__password-button:focus {
+  outline: none;
+}
+
+/* ── Disabled ─────────────────────────────────────────────── */
+
+.input-field__container--disabled {
+  background-color: var(--white-light-hover);
+  border-color: var(--white-dark-hover);
+  cursor: not-allowed;
+}
+
+.input-field__container--error.input-field__container--disabled {
+  border-color: var(--error-normal);
+}
+
+.input-field__container--success.input-field__container--disabled {
+  border-color: var(--success-normal);
+}
+
+.input-field__container--disabled .input-field__input {
+  cursor: not-allowed;
+}
+
+.input-field__password-button:disabled {
+  color: var(--soft-white-dark);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Autofill ─────────────────────────────────────────────── */
+
+.input-field__input:-webkit-autofill,
+.input-field__input:-webkit-autofill:hover,
+.input-field__input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #1f2933;
+  -webkit-box-shadow: 0 0 0 1000px var(--white-light) inset;
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .input-field__input {
+    font-size: var(--bsr-font-size-body-large);
+  }
+}
+
+/* ── High Contrast ───────────────────────────────────────── */
+
+@media (prefers-contrast: high) {
+  .input-field__container {
+    border-width: 2px;
+  }
+
+  .input-field__container:focus-within {
+    border-width: 3px;
+  }
+}
+
+/* Hide browser's default password reveal icon */
+.input-field__input::-ms-reveal,
+.input-field__input::-ms-clear {
+  display: none;
+}

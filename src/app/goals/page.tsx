@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Button from '@/components/Button/Button';
 import PageHeader from '@/components/PageHeader';
 import { showToast } from '@/lib/toast';
+import { BSRealtyTabs } from '@bsrealtyllc/design-system';
 
 interface Goal {
   id: number;
@@ -106,7 +107,7 @@ export default function GoalsPage() {
   });
 
   useEffect(() => {
-    if (isPrivileged) api.get<Employee[]>('/employees').then(setEmployees).catch(() => {showToast('error', "Failed to load employee data")});
+    if (isPrivileged) api.get<Employee[]>('/employees').then(setEmployees).catch(() => { showToast('error', "Failed to load employee data") });
   }, [isPrivileged]);
 
   const load = () => {
@@ -151,7 +152,7 @@ export default function GoalsPage() {
       employee_id: createForm.employee_id ? parseInt(createForm.employee_id) : undefined,
       target_value: parseFloat(createForm.target_value) || 100,
       weight: parseInt(createForm.weight) || 3,
-    }).catch(()=>{showToast("error","Failed to add goals")});
+    }).catch(() => { showToast("error", "Failed to add goals") });
     setShowCreate(false);
     load();
   }
@@ -167,7 +168,7 @@ export default function GoalsPage() {
     await api.put(`/goals/${progressGoal.id}/progress`, {
       current_value: parseFloat(progressValue) || 0,
       status: progressStatus,
-    }).catch(()=>{showToast("error", "Failed to update goal")});
+    }).catch(() => { showToast("error", "Failed to update goal") });
     setProgressGoal(null);
     load();
   }
@@ -204,33 +205,15 @@ export default function GoalsPage() {
   if (loading) return <div className="page-header"><div><h1>Goals &amp; KPIs</h1><p>Loading…</p></div></div>;
 
   return (
-    <div>
-      {/* <div className="page-header">
-        <div className="flex justify-between items-center" style={{ flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <h1>Goals &amp; KPIs</h1>
-            <p>{isPrivileged ? 'Track individual, team, and company goals across the org' : 'Track your goals and key performance indicators'}</p>
-          </div>
+    <div className='m-0 '>
 
-          <Button
-            size='small'
-            variant='primary'
-            onClick={openCreate}
-            leftIcon={<span
-              className="icon-mask"
-              style={{
-                height: 16,
-                width: 16,
-                WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)'
-              }}
-            />}>Add Goal</Button>
-        </div>
-      </div> */}
-      {/* page header */}
-      <PageHeader title={'Goals & KPIs'} discription={isPrivileged ? 'Track individual, team, and company goals across the org' : 'Track your goals and key performance indicators'} />
+      <div className='fixed left-(--sidebar-width) right-0 top-0 m-0 '>
+        <PageHeader title={'Goals & KPIs'} discription={isPrivileged ? 'Track individual, team, and company goals across the org' : 'Track your goals and key performance indicators'} />
+      </div>
 
-      <div className="flex items-center justify-between" style={{ marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-        <div className="pill-group">
+      <div className='mx-6 mb-6 mt-22'>
+        <div className=" flex items-center justify-between pt-7 pb-6" style={{ marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+          {/* <div className="pill-group">
           <button type="button" className={`pill ${statusFilter === '' ? 'pill-active' : ''}`} onClick={() => setStatusFilter('')}>
             All ({totals.total})
           </button>
@@ -244,309 +227,345 @@ export default function GoalsPage() {
               {col.label} ({columns[col.key].length})
             </button>
           ))}
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-muted text-sm" style={{ whiteSpace: 'nowrap' }}>
-            Avg. progress: <strong style={{ color: 'var(--color-text-h3)' }}>{totals.avgProgress}%</strong>
-          </span>
-          {isPrivileged && (
-            <div className="select-compact-wrap">
-              <select className="select-compact" value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)}>
-                <option value="">All employees</option>
-                {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-              </select>
-              <span
-                className="icon-mask"
-                style={{ WebkitMaskImage: 'url(/icons/chevron-down.svg)', maskImage: 'url(/icons/chevron-down.svg)' }}
-              />
-            </div>
-          )}
-          {employeeFilter && (
-            <button className="btn btn-text btn-xs" onClick={() => setEmployeeFilter('')}>Clear</button>
-          )}
-        </div>
-      </div>
+        </div> */}
+          <div className="pill-group">
+            <BSRealtyTabs className='text-[14px]!'
+              value={statusFilter}
+              onChange={setStatusFilter}
+              tabs={[
+                {
+                  label: `All (${totals.total})`,
+                  value: '',
+                },
+                ...STATUS_COLUMNS.map(col => ({
+                  label: `${col.label} (${columns[col.key].length})`,
+                  value: col.key,
+                })),
+              ]}
+            />
+          </div>
 
-      {goals.length === 0 ? (
-        <div className="empty-state card">
-          <span
-            className="icon-mask empty-state-icon"
-            style={{ WebkitMaskImage: 'url(/icons/target.svg)', maskImage: 'url(/icons/target.svg)' }}
-          />
-          <p>No goals yet. Set one to start tracking progress.</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 8 }}>
-          {STATUS_COLUMNS.filter(col => !statusFilter || col.key === statusFilter).map(col => (
-            <div key={col.key} style={{ flex: '0 0 280px', width: 280 }}>
-              <div className="flex items-center gap-2" style={{ marginBottom: 12 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: col.color, flexShrink: 0 }} />
-                <span style={{ fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.4px', color: 'var(--color-text-h3)' }}>
-                  {col.label}
-                </span>
-                <span className="badge badge-neutral">{columns[col.key].length}</span>
+          <div className=" flex items-center gap-3">
+            <span className="text-muted text-sm" style={{ whiteSpace: 'nowrap' }}>
+              Avg. progress: <strong style={{ color: 'var(--color-text-h3)' }}>{totals.avgProgress}%</strong>
+            </span>
+            {isPrivileged && (
+              <div className="select-compact-wrap">
+                <select className="select-compact" value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)}>
+                  <option value="">All employees</option>
+                  {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                </select>
+                <span
+                  className="icon-mask"
+                  style={{ WebkitMaskImage: 'url(/icons/chevron-down.svg)', maskImage: 'url(/icons/chevron-down.svg)' }}
+                />
               </div>
+            )}
+            {employeeFilter && (
+              <button className="btn btn-text btn-xs" onClick={() => setEmployeeFilter('')}>Clear</button>
+            )}
+          </div>
+        </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {columns[col.key].map(g => {
-                  const pct = progressPct(g);
-                  const overdue = isOverdue(g);
-                  return (
-                    <div key={g.id} className="card" style={{ padding: 16, borderLeft: `3px solid ${col.color}` }}>
-                      <div className="flex justify-between items-start" style={{ marginBottom: 8 }}>
-                        <span className={`badge ${CATEGORY_BADGE[g.category]}`}>{g.category}</span>
-                        <div className="text-muted" style={{ fontSize: 11 }} title="Priority weight">
-                          {'★'.repeat(g.weight)}{'☆'.repeat(Math.max(5 - g.weight, 0))}
+        {goals.length === 0 ? (
+          // <div className="empty-state card">
+          //   <span
+          //     className="icon-mask empty-state-icon"
+          //     style={{ WebkitMaskImage: 'url(/icons/target.svg)', maskImage: 'url(/icons/target.svg)' }}
+          //   />
+          //   <p>No goals yet. Set one to start tracking progress.</p>
+          // </div>
+
+          <div className=" h-screen flex flex-col items-center justify-center bg-(--soft-white-light) rounded-lg px-2 gap-2.5">
+
+
+            <img className='' height={'141px'} width={'215px'} src="/icons/goal-1.svg" alt="goal" />
+
+            <div className='flex flex-col items-center'>
+              <div className='flex flex-col items-center py-4 px-2'>
+                <h1 className='text-[16px] font-semibold text-(--neutral-dark)'>No Goals yet</h1>
+                <p className='text-[14px] font-medium text-(--gray-normal-active) '>No goals yet. Set one to start tracking </p>
+              </div>
+              <Button
+                size='medium'
+                variant='primary'
+                onClick={openCreate}
+              >Add Goal</Button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 8 }}>
+            {STATUS_COLUMNS.filter(col => !statusFilter || col.key === statusFilter).map(col => (
+              <div key={col.key} style={{ flex: '0 0 280px', width: 280 }}>
+                <div className="flex items-center gap-2" style={{ marginBottom: 12 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: col.color, flexShrink: 0 }} />
+                  <span style={{ fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.4px', color: 'var(--color-text-h3)' }}>
+                    {col.label}
+                  </span>
+                  <span className="badge badge-neutral">{columns[col.key].length}</span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {columns[col.key].map(g => {
+                    const pct = progressPct(g);
+                    const overdue = isOverdue(g);
+                    return (
+                      <div key={g.id} className="card" style={{ padding: 16, borderLeft: `3px solid ${col.color}` }}>
+                        <div className="flex justify-between items-start" style={{ marginBottom: 8 }}>
+                          <span className={`badge ${CATEGORY_BADGE[g.category]}`}>{g.category}</span>
+                          <div className="text-muted" style={{ fontSize: 11 }} title="Priority weight">
+                            {'★'.repeat(g.weight)}{'☆'.repeat(Math.max(5 - g.weight, 0))}
+                          </div>
                         </div>
-                      </div>
 
-                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{g.title}</div>
-                      {g.description && <div className="text-muted text-sm" style={{ marginBottom: 8 }}>{g.description}</div>}
+                        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{g.title}</div>
+                        {g.description && <div className="text-muted text-sm" style={{ marginBottom: 8 }}>{g.description}</div>}
 
-                      {isPrivileged && (
-                        <div className="flex items-center gap-2" style={{ marginBottom: 10 }}>
-                          <div className="avatar avatar-sm" style={{ width: 22, height: 22, fontSize: 9 }}>{initials(g.employee_name)}</div>
-                          <span className="text-muted text-sm">{g.employee_name}</span>
-                        </div>
-                      )}
-
-                      <div className="flex justify-between items-center" style={{ marginBottom: 4, fontSize: 12 }}>
-                        <span className="text-muted">Progress</span>
-                        <span style={{ fontWeight: 600 }}>{num(g.current_value)} / {num(g.target_value)} {g.metric_unit}</span>
-                      </div>
-                      <div className="progress-bar" style={{ marginBottom: 10 }}>
-                        <div className="progress-fill" style={{ width: `${pct}%`, background: col.color }} />
-                      </div>
-
-                      <div className="flex justify-between items-center">
-                        {g.due_date ? (
-                          <span className="text-muted" style={{ fontSize: 11, color: overdue ? 'var(--color-error)' : undefined, fontWeight: overdue ? 600 : undefined }}>
-                            {overdue ? '⚠ Overdue ' : 'Due '}{fmtDate(g.due_date)}
-                          </span>
-                        ) : <span />}
-                        {canManage(g) && (
-                          <div className="flex gap-2">
-                            <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px' }} onClick={() => openProgress(g)}>Update</button>
-                            <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px' }} onClick={() => openEdit(g)}>Edit</button>
-                            <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px', color: 'var(--color-error)' }} onClick={() => removeGoal(g.id)}>✕</button>
+                        {isPrivileged && (
+                          <div className="flex items-center gap-2" style={{ marginBottom: 10 }}>
+                            <div className="avatar avatar-sm" style={{ width: 22, height: 22, fontSize: 9 }}>{initials(g.employee_name)}</div>
+                            <span className="text-muted text-sm">{g.employee_name}</span>
                           </div>
                         )}
+
+                        <div className="flex justify-between items-center" style={{ marginBottom: 4, fontSize: 12 }}>
+                          <span className="text-muted">Progress</span>
+                          <span style={{ fontWeight: 600 }}>{num(g.current_value)} / {num(g.target_value)} {g.metric_unit}</span>
+                        </div>
+                        <div className="progress-bar" style={{ marginBottom: 10 }}>
+                          <div className="progress-fill" style={{ width: `${pct}%`, background: col.color }} />
+                        </div>
+
+                        <div className="flex justify-between items-center">
+                          {g.due_date ? (
+                            <span className="text-muted" style={{ fontSize: 11, color: overdue ? 'var(--color-error)' : undefined, fontWeight: overdue ? 600 : undefined }}>
+                              {overdue ? '⚠ Overdue ' : 'Due '}{fmtDate(g.due_date)}
+                            </span>
+                          ) : <span />}
+                          {canManage(g) && (
+                            <div className="flex gap-2">
+                              <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px' }} onClick={() => openProgress(g)}>Update</button>
+                              <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px' }} onClick={() => openEdit(g)}>Edit</button>
+                              <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px', color: 'var(--color-error)' }} onClick={() => removeGoal(g.id)}>✕</button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-                {columns[col.key].length === 0 && (
-                  <div className="text-muted text-sm" style={{ textAlign: 'center', padding: '20px 0' }}>—</div>
-                )}
+                    );
+                  })}
+                  {columns[col.key].length === 0 && (
+                    <div className="text-muted text-sm" style={{ textAlign: 'center', padding: '20px 0' }}>—</div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
-      {/* Create modal */}
-      {showCreate && (
-        <div className="modal-overlay" onClick={() => setShowCreate(false)}>
-          <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Add Goal</h2>
-
-              <Button
-                size='small'
-                variant='text'
-                onClick={() => setShowCreate(false)}
-              >X</Button>
-            </div>
-            <form onSubmit={submitCreate}>
-              {isPrivileged && (
-                <div className="form-group">
-                  <label className="form-label">Employee</label>
-                  <select className="form-select" value={createForm.employee_id}
-                    onChange={e => setCreateForm({ ...createForm, employee_id: e.target.value })} required>
-                    <option value="">Select employee…</option>
-                    {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                  </select>
-                </div>
-              )}
-              <div className="form-group">
-                <label className="form-label">Title *</label>
-                <input className="form-input" value={createForm.title}
-                  onChange={e => setCreateForm({ ...createForm, title: e.target.value })}
-                  placeholder="e.g. Improve API response time" required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Description</label>
-                <textarea className="form-textarea" rows={2} value={createForm.description}
-                  onChange={e => setCreateForm({ ...createForm, description: e.target.value })} />
-              </div>
-              <div className="grid-3">
-                <div className="form-group">
-                  <label className="form-label">Category</label>
-                  <select className="form-select" value={createForm.category}
-                    onChange={e => setCreateForm({ ...createForm, category: e.target.value })}>
-                    <option value="individual">Individual</option>
-                    <option value="team">Team</option>
-                    <option value="company">Company</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Metric Unit</label>
-                  <input className="form-input" value={createForm.metric_unit}
-                    onChange={e => setCreateForm({ ...createForm, metric_unit: e.target.value })} placeholder="%, $, count…" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Target Value</label>
-                  <input className="form-input" type="number" value={createForm.target_value}
-                    onChange={e => setCreateForm({ ...createForm, target_value: e.target.value })} />
-                </div>
-              </div>
-              <div className="grid-3">
-                <div className="form-group">
-                  <label className="form-label">Priority (1-5)</label>
-                  <input className="form-input" type="number" min={1} max={5} value={createForm.weight}
-                    onChange={e => setCreateForm({ ...createForm, weight: e.target.value })} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Start Date</label>
-                  <input className="form-input" type="date" value={createForm.start_date}
-                    onChange={e => setCreateForm({ ...createForm, start_date: e.target.value })} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Due Date</label>
-                  <input className="form-input" type="date" value={createForm.due_date}
-                    onChange={e => setCreateForm({ ...createForm, due_date: e.target.value })} />
-                </div>
-              </div>
-              <div className="flex gap-3 justify-between mt-4">
-                <Button variant='text' size='small' type="button" onClick={() => setShowCreate(false)}>Cancel</Button>
+        {/* Create modal */}
+        {showCreate && (
+          <div className="modal-overlay" onClick={() => setShowCreate(false)}>
+            <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Add Goal</h2>
 
                 <Button
                   size='small'
-                  variant='primary'
-                  type='submit'
-                >Add Goal</Button>
+                  variant='text'
+                  onClick={() => setShowCreate(false)}
+                >X</Button>
               </div>
-            </form>
+              <form onSubmit={submitCreate}>
+                {isPrivileged && (
+                  <div className="form-group">
+                    <label className="form-label">Employee</label>
+                    <select className="form-select" value={createForm.employee_id}
+                      onChange={e => setCreateForm({ ...createForm, employee_id: e.target.value })} required>
+                      <option value="">Select employee…</option>
+                      {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                    </select>
+                  </div>
+                )}
+                <div className="form-group">
+                  <label className="form-label">Title *</label>
+                  <input className="form-input" value={createForm.title}
+                    onChange={e => setCreateForm({ ...createForm, title: e.target.value })}
+                    placeholder="e.g. Improve API response time" required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Description</label>
+                  <textarea className="form-textarea" rows={2} value={createForm.description}
+                    onChange={e => setCreateForm({ ...createForm, description: e.target.value })} />
+                </div>
+                <div className="grid-3">
+                  <div className="form-group">
+                    <label className="form-label">Category</label>
+                    <select className="form-select" value={createForm.category}
+                      onChange={e => setCreateForm({ ...createForm, category: e.target.value })}>
+                      <option value="individual">Individual</option>
+                      <option value="team">Team</option>
+                      <option value="company">Company</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Metric Unit</label>
+                    <input className="form-input" value={createForm.metric_unit}
+                      onChange={e => setCreateForm({ ...createForm, metric_unit: e.target.value })} placeholder="%, $, count…" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Target Value</label>
+                    <input className="form-input" type="number" value={createForm.target_value}
+                      onChange={e => setCreateForm({ ...createForm, target_value: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid-3">
+                  <div className="form-group">
+                    <label className="form-label">Priority (1-5)</label>
+                    <input className="form-input" type="number" min={1} max={5} value={createForm.weight}
+                      onChange={e => setCreateForm({ ...createForm, weight: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Start Date</label>
+                    <input className="form-input" type="date" value={createForm.start_date}
+                      onChange={e => setCreateForm({ ...createForm, start_date: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Due Date</label>
+                    <input className="form-input" type="date" value={createForm.due_date}
+                      onChange={e => setCreateForm({ ...createForm, due_date: e.target.value })} />
+                  </div>
+                </div>
+                <div className="flex gap-3 justify-between mt-4">
+                  <Button variant='text' size='small' type="button" onClick={() => setShowCreate(false)}>Cancel</Button>
+
+                  <Button
+                    size='small'
+                    variant='primary'
+                    type='submit'
+                  >Add Goal</Button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Progress modal */}
-      {progressGoal && (
-        <div className="modal-overlay" onClick={() => setProgressGoal(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Update Progress</h3>
-              <button className="modal-close" onClick={() => setProgressGoal(null)}>×</button>
-            </div>
-            <div className="font-semibold mb-4">{progressGoal.title}</div>
-            <div className="form-group">
-              <label className="form-label">Current Value ({progressGoal.metric_unit}, target {num(progressGoal.target_value)})</label>
-              <input className="form-input" type="number" value={progressValue} onChange={e => setProgressValue(e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Status</label>
-              <select className="form-select" value={progressStatus} onChange={e => setProgressStatus(e.target.value)}>
-                <option value="not_started">Not Started</option>
-                <option value="in_progress">In Progress</option>
-                <option value="at_risk">At Risk</option>
-                <option value="completed">Completed</option>
-                <option value="missed">Missed</option>
-              </select>
-            </div>
-            <div className="flex gap-3 justify-between mt-4">
-
-              <Button
-                size='small'
-                variant='text'
-                onClick={() => setProgressGoal(null)}
-              >Cancel</Button>
-
-              <Button
-                size='small'
-                variant='primary'
-                onClick={submitProgress}
-              >Save Progress</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit modal */}
-      {editGoal && (
-        <div className="modal-overlay" onClick={() => setEditGoal(null)}>
-          <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Edit Goal</h2>
-              <Button variant='text' onClick={() => setEditGoal(null)}>X</Button>
-            </div>
-            <form onSubmit={submitEdit}>
+        {/* Progress modal */}
+        {progressGoal && (
+          <div className="modal-overlay" onClick={() => setProgressGoal(null)}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>Update Progress</h3>
+                <button className="modal-close" onClick={() => setProgressGoal(null)}>×</button>
+              </div>
+              <div className="font-semibold mb-4">{progressGoal.title}</div>
               <div className="form-group">
-                <label className="form-label">Title *</label>
-                <input className="form-input" value={editForm.title}
-                  onChange={e => setEditForm({ ...editForm, title: e.target.value })} required />
+                <label className="form-label">Current Value ({progressGoal.metric_unit}, target {num(progressGoal.target_value)})</label>
+                <input className="form-input" type="number" value={progressValue} onChange={e => setProgressValue(e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">Description</label>
-                <textarea className="form-textarea" rows={2} value={editForm.description}
-                  onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
-              </div>
-              <div className="grid-3">
-                <div className="form-group">
-                  <label className="form-label">Category</label>
-                  <select className="form-select" value={editForm.category}
-                    onChange={e => setEditForm({ ...editForm, category: e.target.value })}>
-                    <option value="individual">Individual</option>
-                    <option value="team">Team</option>
-                    <option value="company">Company</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Metric Unit</label>
-                  <input className="form-input" value={editForm.metric_unit}
-                    onChange={e => setEditForm({ ...editForm, metric_unit: e.target.value })} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Target Value</label>
-                  <input className="form-input" type="number" value={editForm.target_value}
-                    onChange={e => setEditForm({ ...editForm, target_value: e.target.value })} />
-                </div>
-              </div>
-              <div className="grid-3">
-                <div className="form-group">
-                  <label className="form-label">Priority (1-5)</label>
-                  <input className="form-input" type="number" min={1} max={5} value={editForm.weight}
-                    onChange={e => setEditForm({ ...editForm, weight: e.target.value })} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Start Date</label>
-                  <input className="form-input" type="date" value={editForm.start_date}
-                    onChange={e => setEditForm({ ...editForm, start_date: e.target.value })} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Due Date</label>
-                  <input className="form-input" type="date" value={editForm.due_date}
-                    onChange={e => setEditForm({ ...editForm, due_date: e.target.value })} />
-                </div>
+                <label className="form-label">Status</label>
+                <select className="form-select" value={progressStatus} onChange={e => setProgressStatus(e.target.value)}>
+                  <option value="not_started">Not Started</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="at_risk">At Risk</option>
+                  <option value="completed">Completed</option>
+                  <option value="missed">Missed</option>
+                </select>
               </div>
               <div className="flex gap-3 justify-between mt-4">
 
                 <Button
                   size='small'
                   variant='text'
-                  onClick={() => setEditGoal(null)}
+                  onClick={() => setProgressGoal(null)}
                 >Cancel</Button>
 
                 <Button
                   size='small'
                   variant='primary'
-                  type='submit'
-                >Save Changes</Button>
+                  onClick={submitProgress}
+                >Save Progress</Button>
               </div>
-            </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Edit modal */}
+        {editGoal && (
+          <div className="modal-overlay" onClick={() => setEditGoal(null)}>
+            <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Edit Goal</h2>
+                <Button variant='text' onClick={() => setEditGoal(null)}>X</Button>
+              </div>
+              <form onSubmit={submitEdit}>
+                <div className="form-group">
+                  <label className="form-label">Title *</label>
+                  <input className="form-input" value={editForm.title}
+                    onChange={e => setEditForm({ ...editForm, title: e.target.value })} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Description</label>
+                  <textarea className="form-textarea" rows={2} value={editForm.description}
+                    onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
+                </div>
+                <div className="grid-3">
+                  <div className="form-group">
+                    <label className="form-label">Category</label>
+                    <select className="form-select" value={editForm.category}
+                      onChange={e => setEditForm({ ...editForm, category: e.target.value })}>
+                      <option value="individual">Individual</option>
+                      <option value="team">Team</option>
+                      <option value="company">Company</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Metric Unit</label>
+                    <input className="form-input" value={editForm.metric_unit}
+                      onChange={e => setEditForm({ ...editForm, metric_unit: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Target Value</label>
+                    <input className="form-input" type="number" value={editForm.target_value}
+                      onChange={e => setEditForm({ ...editForm, target_value: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid-3">
+                  <div className="form-group">
+                    <label className="form-label">Priority (1-5)</label>
+                    <input className="form-input" type="number" min={1} max={5} value={editForm.weight}
+                      onChange={e => setEditForm({ ...editForm, weight: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Start Date</label>
+                    <input className="form-input" type="date" value={editForm.start_date}
+                      onChange={e => setEditForm({ ...editForm, start_date: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Due Date</label>
+                    <input className="form-input" type="date" value={editForm.due_date}
+                      onChange={e => setEditForm({ ...editForm, due_date: e.target.value })} />
+                  </div>
+                </div>
+                <div className="flex gap-3 justify-between mt-4">
+
+                  <Button
+                    size='small'
+                    variant='text'
+                    onClick={() => setEditGoal(null)}
+                  >Cancel</Button>
+
+                  <Button
+                    size='small'
+                    variant='primary'
+                    type='submit'
+                  >Save Changes</Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
