@@ -337,6 +337,32 @@ export default function InternForm(type: InternFormProps) {
       setForm((prev) => ({ ...prev, [key]: value as string }));
     };
 
+  // If this candidate was hired through the job portal, a draft with their name/links/
+  // experience already exists — fill in whatever the form hasn't already got filled in.
+  const checkForDraft = async (email: string) => {
+    if (!email) return;
+    try {
+      const result = await api.get<{
+        found: boolean;
+        data?: Partial<InternFormData>;
+      }>(`/onboard/draft?email=${encodeURIComponent(email)}`);
+
+      if (!result.found || !result.data) return;
+      const draft = result.data;
+
+      setForm((prev) => {
+        const next = { ...prev };
+        (Object.keys(draft) as FormKey[]).forEach((key) => {
+          const value = draft[key];
+          if (value && !next[key]) next[key] = value as string;
+        });
+        return next;
+      });
+    } catch {
+      // No draft, or the lookup failed — the form just stays blank for those fields.
+    }
+  };
+
   const handleFile = (file: File | null | undefined) => {
     if (!file) return;
     const allowed = [
@@ -498,6 +524,9 @@ export default function InternForm(type: InternFormProps) {
         type={hint.inputType}
         value={form[key] ?? ""}
         onChange={update(key)}
+        onBlur={
+          key === "email" ? (e) => checkForDraft(e.target.value) : undefined
+        }
         className={inputClass}
         placeholder={hint.placeholder}
       />
