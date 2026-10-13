@@ -4,8 +4,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import type { AuthUser } from '@/lib/auth';
 import Button from '@/components/Button/Button'
-import { BSRealtyTextField } from '@bsrealtyllc/design-system';
 import InputField from '@/components/InputField/InputField';
+import { validateEmail } from '@/lib/validation';
+
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,13 +19,33 @@ export default function LoginPage() {
   const [tempToken, setTempToken] = useState('');
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
+
+
   const [errorType, setErrorType] = useState<'default' | 'org'>('default');
   const [loading, setLoading] = useState(false);
+
+  // Validation
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+
+    if (emailTouched) {
+      setEmailError(validateEmail(value));
+    }
+  };
+
+  const passwordError =
+    passwordTouched && !password.trim()
+      ? 'Password is required'
+      : '';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setLoading(true);
+
     try {
       if (requiresOtp) {
         const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/verify-otp`;
@@ -151,6 +172,7 @@ export default function LoginPage() {
   return (
     <>
       {
+        // Login page
         showLoginForm ? (
           <div className=' w-full flex   min-h-screen'>
             <div className='relative w-[812px] shrink-0 h-screen bg-(--soft-white-light) flex justify-center items-center'>
@@ -168,17 +190,36 @@ export default function LoginPage() {
                     <div className="w-full flex flex-col gap-3">
                       <InputField className='w-full' type="email"
                         value={email}
-                        onChange={e => setEmail(e.target.value)}
+                        onChange={e => handleEmailChange(e.target.value)}
+                        onBlur={() => {
+                          setEmailTouched(true);
+                          setEmailError(validateEmail(email));
+                        }}
                         placeholder="you@company.com"
                         autoComplete="email"
-                        required />
+                        variant={
+                          emailTouched
+                            ? emailError
+                              ? 'error'
+                              : 'success'
+                            : 'default'
+                        }
+                        errorMessage={emailError ?? undefined}
+                      // successMessage="Valid email address"
+
+                      />
+
+
                       <InputField className='w-full' showPasswordToggle={true}
                         type={showPassword ? 'text' : 'password'}
                         value={password}
                         onChange={e => setPassword(e.target.value)}
+                        onBlur={() => setPasswordTouched(true)}
                         placeholder="••••••••"
                         autoComplete="current-password"
-                        required />
+                        variant={passwordError ? 'error' : 'default'}
+                        errorMessage={passwordError || undefined}
+                      />
 
                       {error && (
                         <div className={errorType === 'org' ? 'auth-error auth-error-org' : 'auth-error'}>
@@ -216,14 +257,15 @@ export default function LoginPage() {
             </div>
           </div >
         ) : (
+          // Onboarding screen
           <div className=' w-full flex   min-h-screen'>
             <div className='relative w-[812px] shrink-0 h-screen bg-(--soft-white-light) flex justify-center items-center'>
               <div className='absolute top-[30px] left-[80px] '>
                 <img width={'111px'} height={'20px'} src="/logos/gitgi-hr-logo.svg" alt="" /></div >
               <div className='flex flex-col gap-9 justify-center items-center '>
-                <div className="auth-logo">
+                {/* <div className="auth-logo">
                   <img src="/logos/hr-platform.svg" alt="HR Platform" width={28} height={28} />
-                </div>
+                </div> */}
                 <div className='flex flex-col px-6 py-7 gap-6'>
                   <div className='flex flex-col items-center  '>
                     <h1 className='text-[28px] font-semibold text-(--neutral-normal)'>Welcome</h1>

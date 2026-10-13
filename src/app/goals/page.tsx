@@ -207,7 +207,7 @@ export default function GoalsPage() {
   return (
     <div className='m-0 '>
 
-      <div className='fixed left-(--sidebar-width) right-0 top-0 m-0 '>
+      <div className='fixed left-(--sidebar-width) right-0 top-0 m-0 z-10 '>
         <PageHeader title={'Goals & KPIs'} discription={isPrivileged ? 'Track individual, team, and company goals across the org' : 'Track your goals and key performance indicators'} />
       </div>
 

@@ -240,7 +240,7 @@
   --blue-dark-normal-hover: #205585;
   --blue-dark-normal-active: #1c4b76;
   --blue-dark-dark: #1a476f;
-  --blue-dark-dark-hover: #1a476f;
+  --blue-dark-dark-hover: #153859;
   --blue-dark-dark-active: #102a43;
   --blue-dark-darker: #0c2134;
 
@@ -269,4 +269,5 @@
 
 :root {
   --charcoal-normal: #111827;
+  --color-black: #000000;
 }

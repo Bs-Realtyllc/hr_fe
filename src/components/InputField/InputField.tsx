@@ -20,6 +20,8 @@ export interface InputFieldProps
 
     /** Show password visibility toggle */
     showPasswordToggle?: boolean;
+    errorMessage?: string;
+    successMessage?: string;
 }
 
 /* --------------------------------
@@ -101,6 +103,8 @@ const InputField = forwardRef<
             type = 'text',
             variant = 'default',
             showPasswordToggle = false,
+            errorMessage,
+            successMessage,
             disabled = false,
             placeholder = 'Input placeholder',
             className = '',
@@ -243,6 +247,29 @@ const InputField = forwardRef<
                             <SuccessIcon />
                         )}
                 </div>
+
+                {/* Error Message */}
+                {variant === 'error' && errorMessage && (
+                    <div
+                        className="input-field__message input-field__message--error"
+                        role="alert"
+                    >
+                        <ErrorIcon />
+                        <span>{errorMessage}</span>
+                    </div>
+                )}
+
+                {/* Success Message */}
+                {variant === 'success' && successMessage && (
+                    <div
+                        className="input-field__message input-field__message--success"
+                        role="status"
+                    >
+                        <SuccessIcon />
+                        <span>{successMessage}</span>
+                    </div>
+                )}
+
             </div>
         );
     }

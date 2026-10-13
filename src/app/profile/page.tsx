@@ -243,7 +243,7 @@ export default function ProfilePage() {
   return (
     <div>
       {/* Page Hader */}
-      <div className='fixed left-(--sidebar-width) right-0 top-0 m-0 '>
+      <div className='fixed left-(--sidebar-width) right-0 top-0 m-0 z-200'>
         <PageHeader title={'My Profile'} discription={"Manage your personal information, documents, and account security"} />
       </div>
 
@@ -252,10 +252,10 @@ export default function ProfilePage() {
         {/* ── Profile Header Card ───────────────────────────────────────────── */}
         <div className="mb-9 flex items-center justify-between rounded-lg border border-(--soft-white-normal-hover) bg-(--soft-white-light) p-6">
           <div className="flex flex-col items-center justify-center gap-1" >
-            <div className="flex items-center gap-[10px]" style={{ flexWrap: 'wrap' }}>
+            <div className=" flex items-center gap-[10px]" style={{ flexWrap: 'wrap' }}>
               {/* Avatar */}
               <div className=' '>
-                <div style={{ position: 'relative', flexShrink: 0 }}>
+                <div className='' >
                   <BSRealtyAvatar
                     size="xl"
                     name={profile.name}
@@ -783,7 +783,7 @@ export default function ProfilePage() {
                       <BSRealtyToggle checked={true} />
                     </div>
                     <div className='flex justify-between '>
-                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Sound ALerts</p>
+                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Sound Alerts</p>
                       <BSRealtyToggle checked={true} />
                     </div>
                   </div >

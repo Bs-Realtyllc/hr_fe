@@ -3,24 +3,23 @@
 import Button from "@/components/Button/Button";
 import InputField from "@/components/InputField/InputField";
 import { BSRealtyDropdown } from "@bsrealtyllc/design-system";
-import { Weight } from "lucide-react";
 import { useState } from "react";
-import { Label } from "recharts";
 
 export default function RequestAccessPage() {
     const [department, setDepartment] = useState('')
     const [role, setRole] = useState('')
 
     return (
-        <div className='relative w-full flex   min-h-screen bg-[#fefefe] flex justify-center items-center'>
+
+        <div className="relative flex min-h-screen w-full items-center justify-center overflow-y-auto bg-(--soft-white-light) px-4 py-20">
             <div className='absolute top-[30px] left-[80px] '>
                 <img width={'111px'} height={'20px'} src="/logos/gitgi-hr-logo.svg" alt="" />
             </div >
             <div className=' max-w-[581px] flex flex-col gap-6 px-6 py-7  justify-center items-center '>
 
                 <div className=' flex flex-col gap-3 items-center  '>
-                    <h1 className='text-[24px] font-medium text-[#17212B]'>Request Access</h1>
-                    <p className='text-[#2D343F] font-normal text-[16px] text-center'>
+                    <h1 className='text-[24px] font-medium text-(--neutral-normal)'>Request Access</h1>
+                    <p className='text-(--gray-dark-active) font-normal text-[16px] text-center'>
                         This portal is restricted to authorized Company team members only. Submit your request and HR  or Admin will review your access.
                     </p>
                 </div>
@@ -29,7 +28,7 @@ export default function RequestAccessPage() {
                         <InputField placeholder="Name" />
                         <div className="space-y-1">
                             <InputField placeholder="Email" />
-                            <p className="text-[14px] text-[#153859]">Please use your @company.com email.</p>
+                            <p className="text-[14px] text-(--blue-dark-dark-hover)">Please use your @company.com email.</p>
                         </div>
 
                         <BSRealtyDropdown className="w-full!" placeholder="Enter your Department"

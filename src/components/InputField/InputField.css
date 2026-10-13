@@ -113,7 +113,7 @@
 
 /* ── Status Icon ──────────────────────────────────────────── */
 
-.input-field__status-icon {
+.input-field__container .input-field__status-icon {
   position: absolute;
   top: 50%;
   right: 14px;
@@ -221,4 +221,30 @@
 .input-field__input::-ms-reveal,
 .input-field__input::-ms-clear {
   display: none;
+}
+
+/* Error and sucess message */
+
+.input-field__message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.input-field__message--error {
+  color: var(--error-normal);
+}
+
+.input-field__message--success {
+  color: var(--success-normal);
+}
+
+.input-field__message .input-field__status-icon {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
