@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 //redux
 import { useAppSelector, useAppDispatch } from '@/store/hook';
+import { BSRealtyAvatar } from '@bsrealtyllc/design-system';
 import { setSidebarOpen } from '@/store/slices/sidebarSlice'
 
 type Role = 'admin' | 'lead' | 'employee';
@@ -22,65 +23,65 @@ const allNav: { section: string; items: NavItem[] }[] = [
   {
     section: 'Overview',
     items: [
-      { href: '/', label: 'Dashboard', icon: 'grid.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/', label: 'Dashboard', icon: 'dashboard.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
     ],
   },
   {
     section: 'People',
     items: [
-      { href: '/employees', label: 'Team Directory', icon: 'users.svg', roles: ['admin', 'lead','intern'] as Role[] },
+      { href: '/employees', label: 'Team Directory', icon: 'user-02.svg', roles: ['admin', 'lead','intern'] as Role[] },
       { href: '/active', label: 'Active Employees', icon: 'shield.svg', roles: ['admin', 'employee', 'intern'] as Role[] },
-      { href: '/onboarding', label: 'Onboarding', icon: 'add_people.svg', roles: ['admin', 'lead'] as Role[] },
+      { href: '/onboarding', label: 'Onboarding', icon: 'user-plus-02.svg', roles: ['admin', 'lead'] as Role[] },
       { href: '/onboard-form-layout', label: 'Change Form Layout', icon: 'edit.svg', roles: ['admin', 'lead'] as Role[] },
       { href: '/leaves', label: 'Leave Requests', icon: 'calendar.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
-      { href: '/overtime', label: 'Overtime Requests', icon: 'clock.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
-      { href: '/documents', label: 'Documents & Signature', icon: 'file-text.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
+      { href: '/overtime', label: 'Overtime Requests', icon: 'clock-01.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
+      { href: '/documents', label: 'Documents & Signature', icon: 'document.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
       { href: '/resources', label: 'Resources', icon: 'book-open.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
-      { href: '/standups', label: 'Standups', icon: 'message-square.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
+      { href: '/standups', label: 'Standups', icon: 'message-square-01.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
     ],
   },
   {
     section: 'Finance',
     items: [
-      { href: '/payroll', label: 'Payroll & Taxes', icon: 'dollar-sign.svg', roles: ['admin'] as Role[] },
+      { href: '/payroll', label: 'Payroll & Taxes', icon: 'dollar.svg', roles: ['admin'] as Role[] },
     ],
   },
   {
     section: 'Work',
     items: [
-      { href: '/projects', label: 'Projects', icon: 'briefcase.svg', roles: ['admin', 'lead','intern'] as Role[] },
-      { href: '/servers', label: 'Services & Access', icon: 'server.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
+      { href: '/projects', label: 'Projects', icon: 'briefcase-02.svg', roles: ['admin', 'lead','intern'] as Role[] },
+      { href: '/servers', label: 'Services & Access', icon: 'server-01.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
       { href: '/calendar', label: 'Calendar', icon: 'calendar.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
     ],
   },
   {
     section: 'Growth',
     items: [
-      { href: '/goals', label: 'Goals & KPIs', icon: 'target.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
-      { href: '/performance', label: 'Performance', icon: 'trending-up.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
-      { href: '/feedback', label: 'Feedback', icon: 'message-circle.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
+      { href: '/goals', label: 'Goals & KPIs', icon: 'si_target-line.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
+      { href: '/performance', label: 'Performance', icon: 'trend-up.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
+      { href: '/feedback', label: 'Feedback', icon: 'message-circle-02.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
     ],
   },
   {
     section: 'Culture',
     items: [
-      { href: '/culture', label: 'Events & Milestones', icon: 'award.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
+      { href: '/culture', label: 'Events & Milestones', icon: 'award-03.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
     ],
   },
   {
     section: 'Learning',
     items: [
-      { href: LEARNING_URL, label: 'Learning', icon: 'book.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[], external: true },
+      { href: LEARNING_URL, label: 'Learning', icon: 'layout-down.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[], external: true },
     ],
   },
   {
     section: 'Reports',
     items: [
-      { href: '/reports', label: 'Monthly Reports', icon: 'bar-chart.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/weekly-reports', label: 'Weekly Reports', icon: 'bar-chart-2.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/reports', label: 'Monthly Reports', icon: 'bar.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/weekly-reports', label: 'Weekly Reports', icon: 'poll.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
       { href: '/leave-report', label: 'Leave Report', icon: 'clipboard.svg', roles: ['admin'] as Role[] },
-      { href: '/financial-report', label: 'Financial Report', icon: 'pie-chart.svg', roles: ['admin'] as Role[] },
-      { href: '/performance-report', label: 'Performance Reports', icon: 'task.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] }
+      { href: '/financial-report', label: 'Financial Report', icon: 'pie-chart-01.svg', roles: ['admin'] as Role[] },
+      { href: '/performance-report', label: 'Performance Reports', icon: 'list-checks.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] }
     ],
   },
   {
@@ -131,66 +132,73 @@ export default function Sidebar() {
         aria-hidden="true"
       />
       <aside className={`sidebar ${isOpen ? 'sidebar-open' : ''}`}>
-        <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-          <img src="/logos/hr-platform.svg" alt="" width={30} height={30} style={{ flexShrink: 0 }} />
-          <div>
-            <h1>HR Platform</h1>
-            <span>Internal Tools</span>
+        <div className='sidebar-wrapper'>
+          <div className="sidebar-contant">
+            <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+              <img src="../icon.svg" alt="Icon" width={30} height={30} style={{ flexShrink: 0 }} />
+              <div>
+                <h1>HR Platform</h1>
+                <span>Internal Tools</span>
+              </div>
+            </div>
+
+            <nav className="sidebar-nav overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {nav.map(group => (
+                <div className='sidebar-section' key={group.section}>
+                  <div className="sidebar-section-label">{group.section}</div>
+                  {group.items.map(item => {
+                    const iconStyle = {
+                      WebkitMaskImage: `url(/icons/${item.icon})`,
+                      maskImage: `url(/icons/${item.icon})`,
+                    };
+                    return item.external ? (
+                      <a
+                        key={item.href}
+                        href={item.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="sidebar-link"
+                        onClick={closeMobileSidebar}
+                      >
+                        <span className="icon" style={iconStyle} />
+                        {item.label}
+                        <span className="sidebar-link-external">↗</span>
+                      </a>
+                    ) : (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`sidebar-link ${pathname === item.href ? 'active' : ''}`}
+                        onClick={closeMobileSidebar}
+                      >
+                        <span className="icon" style={iconStyle} />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ))}
+            </nav>
           </div>
         </div>
 
-        <nav className="sidebar-nav">
-          {nav.map(group => (
-            <div key={group.section}>
-              <div className="sidebar-section-label">{group.section}</div>
-              {group.items.map(item => {
-                const iconStyle = {
-                  WebkitMaskImage: `url(/icons/${item.icon})`,
-                  maskImage: `url(/icons/${item.icon})`,
-                };
-                return item.external ? (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="sidebar-link"
-                    onClick={closeMobileSidebar}
-                  >
-                    <span className="icon" style={iconStyle} />
-                    {item.label}
-                    <span className="sidebar-link-external">↗</span>
-                  </a>
-                ) : (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`sidebar-link ${pathname === item.href ? 'active' : ''}`}
-                    onClick={closeMobileSidebar}
-                  >
-                    <span className="icon" style={iconStyle} />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
-
         <div className="sidebar-profile">
-          <div className="sidebar-profile-avatar">
+          {/* <div className="sidebar-profile-avatar">
             {user ? initials(user.name) : '?'}
-          </div>
+          </div> */}
+          <BSRealtyAvatar size='md' name={user ? initials(user.name) : '?'} />
           <div className="sidebar-profile-info">
-            <div className="sidebar-profile-name">{user?.name ?? ''}</div>
-            <div className="sidebar-profile-role">{user?.role ?? ''}</div>
+            <div className="sidebar-profile-name flex justify-between items-center"><span>{user?.name ?? ''}</span>
+              <button className="sidebar-logout-btn " onClick={handleLogout} title="Sign out">
+                <span
+                  className="icon"
+                  style={{ WebkitMaskImage: 'url(/icons/cheveron-right.svg)', maskImage: 'url(/icons/chevron-right.svg)' }}
+                />
+              </button>
+            </div>
+            <div className="sidebar-profile-email">{user?.email ?? ''}</div>
           </div>
-          <button className="sidebar-logout-btn" onClick={handleLogout} title="Sign out">
-            <span
-              className="icon"
-              style={{ WebkitMaskImage: 'url(/icons/log-out.svg)', maskImage: 'url(/icons/log-out.svg)' }}
-            />
-          </button>
+
         </div>
       </aside>
     </>

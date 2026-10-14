@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import * as XLSX from "xlsx";
+import Button from "@/components/Button/Button";
 import { showToast } from "@/lib/toast";
 
 interface Standup {
@@ -92,10 +93,10 @@ export default function StandupsPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     try{
-      await api.post("/standups", { ...form, employee_id: user?.id });
-      setShowModal(false);
+    await api.post("/standups", { ...form, employee_id: user?.id });
+    setShowModal(false);
       setForm({ workedOn: "", completed: "", inProgress: "", nextUp:'', blockers:'', links:'' });
-      load();
+    load();
       showToast('success','Standup posted sucessfully')
     }catch(err){
       showToast('error', 'Failed to post standup')
@@ -143,33 +144,33 @@ export default function StandupsPage() {
             <p>Team daily updates — what we did, what's next, any blockers</p>
           </div>
           <div className="flex gap-2">
-            <button
-              className="btn btn-secondary btn-sm"
+
+            <Button variant="secondary"
+              size="small"
               onClick={exportExcel}
               disabled={standups.length === 0}
-            >
-              <span
+              leftIcon={<span
                 className="icon-mask"
                 style={{
+                  height: 16, width: 16,
                   WebkitMaskImage: "url(/icons/download.svg)",
                   maskImage: "url(/icons/download.svg)",
                 }}
-              />
-              Export Excel
-            </button>
-            <button
-              className="btn btn-primary btn-sm"
+              />}
+            >Export Excel</Button>
+
+            <Button variant="primary"
+              size="small"
               onClick={() => setShowModal(true)}
-            >
-              <span
+              leftIcon={<span
                 className="icon-mask"
                 style={{
+                  height: 16, width: 16,
                   WebkitMaskImage: "url(/icons/plus.svg)",
                   maskImage: "url(/icons/plus.svg)",
                 }}
-              />
-              Post Standup
-            </button>
+              />}
+            >Post Standup</Button>
           </div>
         </div>
       </div>
@@ -398,7 +399,7 @@ export default function StandupsPage() {
         </div>
       )}
 
-{showModal && (
+      {showModal && (
   <div
     className="modal-overlay flex items-center justify-center p-4"
     onClick={() => setShowModal(false)}
@@ -408,42 +409,42 @@ export default function StandupsPage() {
       onClick={(e) => e.stopPropagation()}
     >
       <div className="modal-header shrink-0">
-        <h2>Post Daily Standup</h2>
-        <button
-          className="modal-close"
-          onClick={() => setShowModal(false)}
-        >
-          ×
-        </button>
-      </div>
+              <h2>Post Daily Standup</h2>
+
+              <Button variant="text"
+                size="small"
+                onClick={() => setShowModal(false)}
+
+              >X</Button>
+            </div>
 
       <form
         onSubmit={submit}
         className="flex-1 overflow-y-auto scrollbar-none"
       >
-        <div className="form-group">
+              <div className="form-group">
           <label className="form-label">What did you work on yesterday? (specific project, module, page, feature, or task)</label>
-          <textarea
+                <textarea
             className="form-textarea !min-h-[48px]"
             rows={2}
             value={form.workedOn}
             onChange={(e) => setForm({ ...form, workedOn: e.target.value })}
-            required
-          />
-        </div>
-        <div className="form-group">
+                  required
+                />
+              </div>
+              <div className="form-group">
           <label className="form-label"> What did you complete yesterday? (describe the actual work and changes made)</label>
-          <textarea
+                <textarea
             className="form-textarea !min-h-[48px]"
             rows={2}
             value={form.completed}
             onChange={(e) => setForm({ ...form, completed: e.target.value })}
-            required
-          />
-        </div>
-        <div className="form-group">
+                  required
+                />
+              </div>
+              <div className="form-group">
           <label className="form-label">What is still in progress? (unfinished work — reply "none" if nothing)</label>
-          <textarea
+                <textarea
             className="form-textarea !min-h-[48px]"
             rows={2}
             value={form.inProgress}
@@ -466,11 +467,11 @@ export default function StandupsPage() {
           <textarea
             className="form-textarea !min-h-[40px]"
             rows={1}
-            placeholder="Leave empty if none"
-            value={form.blockers}
+                  placeholder="Leave empty if none"
+                  value={form.blockers}
             onChange={(e) => setForm({ ...form, blockers: e.target.value })}
-          />
-        </div>
+                />
+              </div>
         <div className="form-group">
           <label className="form-label"> Any relevant links, PRs, commits, or screenshots? (paste a link and/or attach an image, or reply "none")</label>
           <textarea
@@ -481,22 +482,24 @@ export default function StandupsPage() {
             onChange={(e) => setForm({ ...form, links: e.target.value })}
           />
         </div>
-        <div className="flex gap-3 justify-between sticky bottom-0 bg-[var(--color-surface)] pt-4">
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() => setShowModal(false)}
-          >
-            Cancel
-          </button>
-          <button type="submit" className="btn btn-primary">
-            Post
-          </button>
+              <div className="flex gap-3 justify-between sticky bottom-0 bg-[var(--color-surface)] pt-4">
+
+                <Button variant="text"
+                  type="button"
+                  size="small"
+                  onClick={() => setShowModal(false)}
+
+                >Cancel</Button>
+
+                <Button variant="primary"
+                  type="submit"
+                  size="small"
+                >Post</Button>
+              </div>
+            </form>
+          </div>
         </div>
-      </form>
-    </div>
-  </div>
-)}
+      )}
     </div>
   );
 }

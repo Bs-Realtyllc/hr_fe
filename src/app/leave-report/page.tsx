@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import * as XLSX from 'xlsx';
+import Button from '@/components/Button/Button';
 import { showToast } from '@/lib/toast';
 
 interface LeaveReportRow {
@@ -28,9 +29,9 @@ export default function LeaveReportPage() {
   const router = useRouter();
   const isAdmin = user?.role === 'admin';
 
-  const [rows, setRows]       = useState<LeaveReportRow[]>([]);
+  const [rows, setRows] = useState<LeaveReportRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch]   = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     if (!authLoading && user && !isAdmin) {
@@ -53,10 +54,10 @@ export default function LeaveReportPage() {
   }, [rows, search]);
 
   const totals = useMemo(() => ({
-    allotted:    rows.reduce((s, r) => s + r.total_leaves, 0),
-    prevMonth:   rows.reduce((s, r) => s + r.taken_previous_month, 0),
-    thisMonth:   rows.reduce((s, r) => s + r.taken_this_month, 0),
-    lowBalance:  rows.filter(r => r.remaining_leaves <= 2).length,
+    allotted: rows.reduce((s, r) => s + r.total_leaves, 0),
+    prevMonth: rows.reduce((s, r) => s + r.taken_previous_month, 0),
+    thisMonth: rows.reduce((s, r) => s + r.taken_this_month, 0),
+    lowBalance: rows.filter(r => r.remaining_leaves <= 2).length,
   }), [rows]);
 
   function remainingBadgeClass(remaining: number) {
@@ -67,11 +68,11 @@ export default function LeaveReportPage() {
 
   function exportExcel() {
     const data = filtered.map(r => ({
-      Employee:                     r.employee_name,
-      'Total Leaves':               r.total_leaves,
+      Employee: r.employee_name,
+      'Total Leaves': r.total_leaves,
       [`Taken (${PREV_MONTH_LABEL})`]: r.taken_previous_month,
       [`Taken (${THIS_MONTH_LABEL})`]: r.taken_this_month,
-      'Remaining Leaves':           r.remaining_leaves,
+      'Remaining Leaves': r.remaining_leaves,
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
@@ -99,13 +100,13 @@ export default function LeaveReportPage() {
           <h1>Leave Report</h1>
           <p>Leave balances and monthly usage across all employees</p>
         </div>
-        <button className="btn btn-ghost" onClick={exportExcel} disabled={!filtered.length}>
-          <span
-            className="icon-mask"
-            style={{ WebkitMaskImage: 'url(/icons/download.svg)', maskImage: 'url(/icons/download.svg)' }}
-          />
+
+        <Button className='outline' variant='text' size='small' onClick={exportExcel} disabled={!filtered.length} leftIcon={<span
+          className="icon-mask"
+          style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/download.svg)', maskImage: 'url(/icons/download.svg)' }}
+        />}>
           Export Excel
-        </button>
+        </Button>
       </div>
 
       <div className="stat-grid">

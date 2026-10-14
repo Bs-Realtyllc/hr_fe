@@ -302,6 +302,13 @@ export default function InternForm(type: InternFormProps) {
     passportPhoto: null,
   });
 
+  // Set when a job-portal draft exists for the entered email but was set up for the
+  // other role (e.g. drafted as "employee" while this is the intern page) — a warning,
+  // not a block, since that draft role is only ever a guess, not a human decision.
+  const [draftRoleMismatch, setDraftRoleMismatch] = useState<
+    "intern" | "employee" | null
+  >(null);
+
   // console.log(type.type)
   useEffect(() => {
     const getForm = async () => {
@@ -336,6 +343,44 @@ export default function InternForm(type: InternFormProps) {
 
       setForm((prev) => ({ ...prev, [key]: value as string }));
     };
+
+  // If this candidate was hired through the job portal, a draft with their name/links/
+  // experience already exists — fill in whatever the form hasn't already got filled in.
+  const checkForDraft = async (email: string) => {
+    if (!email) {
+      setDraftRoleMismatch(null);
+      return;
+    }
+    try {
+      const result = await api.get<{
+        found: boolean;
+        data?: Partial<InternFormData> & { role?: "intern" | "employee" };
+      }>(`/onboard/draft?email=${encodeURIComponent(email)}`);
+
+      if (!result.found || !result.data) {
+        setDraftRoleMismatch(null);
+        return;
+      }
+      const draft = result.data;
+
+      setDraftRoleMismatch(
+        draft.role && draft.role !== type.type ? draft.role : null,
+      );
+
+      setForm((prev) => {
+        const next = { ...prev };
+        (Object.keys(draft) as FormKey[]).forEach((key) => {
+          if (key === "role") return; // role is decided by which form the candidate submits, not the draft
+          const value = draft[key];
+          if (value && !next[key]) next[key] = value as string;
+        });
+        return next;
+      });
+    } catch {
+      // No draft, or the lookup failed — the form just stays blank for those fields.
+      setDraftRoleMismatch(null);
+    }
+  };
 
   const handleFile = (file: File | null | undefined) => {
     if (!file) return;
@@ -498,6 +543,9 @@ export default function InternForm(type: InternFormProps) {
         type={hint.inputType}
         value={form[key] ?? ""}
         onChange={update(key)}
+        onBlur={
+          key === "email" ? (e) => checkForDraft(e.target.value) : undefined
+        }
         className={inputClass}
         placeholder={hint.placeholder}
       />
@@ -606,6 +654,21 @@ export default function InternForm(type: InternFormProps) {
           </div>
         </div>
       </div>
+
+      {draftRoleMismatch && (
+        <div className="mb-8 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          This application was set up for <strong>{draftRoleMismatch}</strong>{" "}
+          onboarding, but you&apos;re on the {type.type} form. If that&apos;s
+          intentional, continue below — otherwise switch to{" "}
+          <a
+            href={`/onboard/${draftRoleMismatch}`}
+            className="font-medium underline"
+          >
+            the {draftRoleMismatch} onboarding form
+          </a>
+          .
+        </div>
+      )}
 
       {layoutLoading ? (
         <p className="text-sm text-slate-500">Loading form…</p>

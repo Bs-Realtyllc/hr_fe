@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import PillTabs from '@/components/PillTabs';
+import Button from '@/components/Button/Button';
 import { showToast } from '@/lib/toast';
 
 interface OvertimeRequest {
@@ -29,7 +30,7 @@ interface ProjectOption {
 }
 
 const STATUS_META: Record<OvertimeRequest['status'], { label: string; color: string; bg: string; dot: string }> = {
-  pending:  { label: 'Pending',  color: '#b45309', bg: '#fef3c7', dot: '#f59e0b' },
+  pending: { label: 'Pending', color: '#b45309', bg: '#fef3c7', dot: '#f59e0b' },
   approved: { label: 'Approved', color: '#15803d', bg: '#f0fdf4', dot: '#22c55e' },
   rejected: { label: 'Rejected', color: '#b91c1c', bg: '#fef2f2', dot: '#ef4444' },
 };
@@ -44,29 +45,29 @@ const BLANK_FORM = {
 
 export default function OvertimePage() {
   const { user } = useAuth();
-  const isAdmin      = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin';
   const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
 
-  const [requests, setRequests]       = useState<OvertimeRequest[]>([]);
+  const [requests, setRequests] = useState<OvertimeRequest[]>([]);
   const [allRequests, setAllRequests] = useState<OvertimeRequest[]>([]);
-  const [projects, setProjects]       = useState<ProjectOption[]>([]);
-  const [filter, setFilter]           = useState('all');
-  const [showModal, setShowModal]     = useState(false);
-  const [form, setForm]               = useState(BLANK_FORM);
-  const [error, setError]             = useState('');
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [filter, setFilter] = useState('all');
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState(BLANK_FORM);
+  const [error, setError] = useState('');
 
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editForm, setEditForm]   = useState(BLANK_FORM);
+  const [editForm, setEditForm] = useState(BLANK_FORM);
 
   const loadAll = () => api.get<OvertimeRequest[]>('/overtime').then(setAllRequests).catch(() => {showToast('error','Failed to load overtime')});
 
   const load = () => {
-    api.get<OvertimeRequest[]>(`/overtime${filter !== 'all' ? `?status=${filter}` : ''}`).then(setRequests).catch(() => {});
+    api.get<OvertimeRequest[]>(`/overtime${filter !== 'all' ? `?status=${filter}` : ''}`).then(setRequests).catch(() => { });
     loadAll();
   };
 
   useEffect(() => { load(); }, [filter]);
-  useEffect(() => { api.get<ProjectOption[]>('/projects').then(setProjects).catch(() => {}); }, []);
+  useEffect(() => { api.get<ProjectOption[]>('/projects').then(setProjects).catch(() => { }); }, []);
 
   const openModal = () => {
     setForm(BLANK_FORM);
@@ -150,7 +151,7 @@ export default function OvertimePage() {
     }
   };
 
-  const pendingCount  = allRequests.filter(r => r.status === 'pending').length;
+  const pendingCount = allRequests.filter(r => r.status === 'pending').length;
   const approvedCount = allRequests.filter(r => r.status === 'approved').length;
   const rejectedCount = allRequests.filter(r => r.status === 'rejected').length;
   const approvedThisMonth = allRequests.filter(r => {
@@ -160,7 +161,7 @@ export default function OvertimePage() {
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
   const totalHoursThisMonth = approvedThisMonth.reduce((s, r) => s + Number(r.hours), 0);
-  const totalPayThisMonth   = approvedThisMonth.reduce((s, r) => s + Number(r.amount ?? 0), 0);
+  const totalPayThisMonth = approvedThisMonth.reduce((s, r) => s + Number(r.amount ?? 0), 0);
 
   return (
     <div>
@@ -175,13 +176,11 @@ export default function OvertimePage() {
               <strong style={{ color: 'var(--color-text-body)' }}>Rs. {Math.round(totalPayThisMonth).toLocaleString()}</strong> paid
             </p>
           </div>
-          <button className="btn btn-primary btn-sm" onClick={openModal}>
-            <span
-              className="icon-mask"
-              style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
-            />
-            New Overtime Request
-          </button>
+
+          <Button variant='primary' size='small' onClick={openModal} leftIcon={<span
+            className="icon-mask"
+            style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
+          />}> New Overtime Request</Button>
         </div>
       </div>
 
@@ -191,8 +190,8 @@ export default function OvertimePage() {
           value={filter}
           onChange={setFilter}
           options={[
-            { value: 'all',      label: `All (${allRequests.length})` },
-            { value: 'pending',  label: `Pending (${pendingCount})` },
+            { value: 'all', label: `All (${allRequests.length})` },
+            { value: 'pending', label: `Pending (${pendingCount})` },
             { value: 'approved', label: `Approved (${approvedCount})` },
             { value: 'rejected', label: `Rejected (${rejectedCount})` },
           ]}
@@ -208,79 +207,79 @@ export default function OvertimePage() {
           <p>No overtime requests found</p>
         </div>
       ) : (
-      <div className="card">
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Employee</th><th>Project</th><th>Date</th><th>Hours</th>
-                <th>Reason</th><th>Approved By</th><th>Status</th><th>Pay (150%)</th><th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {requests.map(o => {
-                const isOwn = o.employee_id === user?.id;
-                const meta  = STATUS_META[o.status];
-                const canApproveReject = o.status === 'pending' && (isAdmin || (user?.role === 'lead' && !isOwn));
-                const canEditCancel    = o.status === 'pending' && isOwn;
+        <div className="card">
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th><th>Project</th><th>Date</th><th>Hours</th>
+                  <th>Reason</th><th>Approved By</th><th>Status</th><th>Pay (150%)</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {requests.map(o => {
+                  const isOwn = o.employee_id === user?.id;
+                  const meta = STATUS_META[o.status];
+                  const canApproveReject = o.status === 'pending' && (isAdmin || (user?.role === 'lead' && !isOwn));
+                  const canEditCancel = o.status === 'pending' && isOwn;
 
-                return (
-                  <tr key={o.id}>
-                    <td>
-                      <div className="cell-title">{o.employee_name}</div>
-                      <div className="cell-subtitle">{o.designation}</div>
-                    </td>
-                    <td className="text-sm">{o.project_name || <span className="text-muted">General duties</span>}</td>
-                    <td className="text-sm">{new Date(o.work_date).toLocaleDateString()}</td>
-                    <td style={{ fontWeight: 600 }}>{o.hours}h</td>
-                    <td style={{ maxWidth: 200 }}><div className="truncate text-sm">{o.reason}</div></td>
-                    <td className="text-sm">{o.approved_by_name}</td>
-                    <td>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-                        background: meta.bg, color: meta.color,
-                      }}>
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: meta.dot, flexShrink: 0 }} />
-                        {meta.label}
-                      </span>
-                      {o.status !== 'pending' && o.reviewer_name && (
-                        <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>by {o.reviewer_name}</div>
-                      )}
-                    </td>
-                    <td>
-                      {o.status === 'approved' && o.amount != null ? (
-                        <div>
-                          <div style={{ fontWeight: 700, color: 'var(--color-success)' }}>+ Rs. {Number(o.amount).toLocaleString()}</div>
-                          <div className="text-muted" style={{ fontSize: 11 }}>Rs. {o.overtime_rate}/hr</div>
+                  return (
+                    <tr key={o.id}>
+                      <td>
+                        <div className="cell-title">{o.employee_name}</div>
+                        <div className="cell-subtitle">{o.designation}</div>
+                      </td>
+                      <td className="text-sm">{o.project_name || <span className="text-muted">General duties</span>}</td>
+                      <td className="text-sm">{new Date(o.work_date).toLocaleDateString()}</td>
+                      <td style={{ fontWeight: 600 }}>{o.hours}h</td>
+                      <td style={{ maxWidth: 200 }}><div className="truncate text-sm">{o.reason}</div></td>
+                      <td className="text-sm">{o.approved_by_name}</td>
+                      <td>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
+                          padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                          background: meta.bg, color: meta.color,
+                        }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: meta.dot, flexShrink: 0 }} />
+                          {meta.label}
+                        </span>
+                        {o.status !== 'pending' && o.reviewer_name && (
+                          <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>by {o.reviewer_name}</div>
+                        )}
+                      </td>
+                      <td>
+                        {o.status === 'approved' && o.amount != null ? (
+                          <div>
+                            <div style={{ fontWeight: 700, color: 'var(--color-success)' }}>+ Rs. {Number(o.amount).toLocaleString()}</div>
+                            <div className="text-muted" style={{ fontSize: 11 }}>Rs. {o.overtime_rate}/hr</div>
+                          </div>
+                        ) : (
+                          <span className="text-muted" style={{ fontSize: 13 }}>—</span>
+                        )}
+                      </td>
+                      <td>
+                        <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                          {canApproveReject && (
+                            <>
+                              <button className="btn btn-sm btn-accent" onClick={() => approve(o.id)}>Approve</button>
+                              <button className="btn btn-sm btn-danger" onClick={() => reject(o.id)}>Reject</button>
+                            </>
+                          )}
+                          {canEditCancel && (
+                            <>
+                              <button className="btn btn-sm btn-secondary" onClick={() => openEditModal(o)}>Edit</button>
+                              <button className="btn btn-sm btn-danger" onClick={() => cancelRequest(o.id)}>Cancel</button>
+                            </>
+                          )}
                         </div>
-                      ) : (
-                        <span className="text-muted" style={{ fontSize: 13 }}>—</span>
-                      )}
-                    </td>
-                    <td>
-                      <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
-                        {canApproveReject && (
-                          <>
-                            <button className="btn btn-sm btn-accent" onClick={() => approve(o.id)}>Approve</button>
-                            <button className="btn btn-sm btn-danger" onClick={() => reject(o.id)}>Reject</button>
-                          </>
-                        )}
-                        {canEditCancel && (
-                          <>
-                            <button className="btn btn-sm btn-secondary" onClick={() => openEditModal(o)}>Edit</button>
-                            <button className="btn btn-sm btn-danger" onClick={() => cancelRequest(o.id)}>Cancel</button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
       )}
 
       {/* ── New Overtime Request Modal ───────────────────────────────────── */}
@@ -289,7 +288,9 @@ export default function OvertimePage() {
           <div className="modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2>New Overtime Request</h2>
-              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
+
+              <Button variant='text' size='small' onClick={() => setShowModal(false)}
+              > X</Button>
             </div>
             <form onSubmit={submit}>
               <div className="form-group">
@@ -330,8 +331,12 @@ export default function OvertimePage() {
               {error && <p style={{ color: 'var(--color-error)', fontSize: 13, marginBottom: 12 }}>{error}</p>}
 
               <div className="flex gap-3 justify-between" style={{ marginTop: 16 }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Submit Request</button>
+
+                <Button variant='text' size='small' onClick={() => setShowModal(false)}
+                > Cancel</Button>
+                <Button variant='primary' type='submit' size='small'
+                > Submit Request</Button>
+
               </div>
             </form>
           </div>
