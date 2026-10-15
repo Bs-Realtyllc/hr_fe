@@ -4,7 +4,7 @@ import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 import Button from '@/components/Button/Button';
 import PageHeader from '@/components/PageHeader';
-import { BSRealtyAvatar, BSRealtyCheckbox, BSRealtyDropdown, BSRealtyTabs, BSRealtyTextField, BSRealtyToggle } from '@bsrealtyllc/design-system';
+import { BSRealtyAvatar, BSRealtyCheckbox, BSRealtyDropdown, BSRealtyTabs, BSRealtyToggle } from '@bsrealtyllc/design-system';
 import InputField from '@/components/InputField/InputField';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL!.replace('/api', '');
@@ -25,6 +25,19 @@ interface Profile {
   start_date: string;
 }
 
+interface TwoFactorSetupData {
+  secret: string;
+  otpauthUrl: string;
+  qrDataUrl: string;
+}
+
+// Steps of the 2FA modal:
+//  intro   -> "Set up two-factor authentication" screen (TwoFactorSetup)
+//  scan    -> QR code + 6-digit code to confirm
+//  backup  -> one-time backup codes returned by /auth/2fa/enable
+//  disable -> confirm turning 2FA off with a current authenticator code
+type TwoFactorStep = 'intro' | 'scan' | 'backup' | 'disable';
+
 type Tab = 'personal' | 'organization' | 'security' | 'notification';
 
 function avatarUrl(filename: string | null) {
@@ -37,9 +50,44 @@ function docUrl(filename: string | null) {
   return `${BACKEND}/uploads/docs/${filename}`;
 }
 
-// function initials(name: string) {
-//   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-// }
+// The backend may answer in camelCase or snake_case; accept both.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function normalizeSetup(data: any): TwoFactorSetupData {
+  return {
+    secret: data?.secret ?? data?.base32 ?? '',
+    otpauthUrl: data?.otpauthUrl ?? data?.otpauth_url ?? '',
+    qrDataUrl: data?.qrDataUrl ?? data?.qr_data_url ?? data?.qrCode ?? data?.qr_code ?? '',
+  };
+}
+
+function extractEnabled(data: any): boolean {
+  return Boolean(data?.enabled ?? data?.twoFactorEnabled ?? data?.two_factor_enabled ?? data?.is_enabled ?? false);
+}
+
+function extractBackupCodes(data: any): string[] {
+  const codes = data?.backupCodes ?? data?.backup_codes ?? data?.codes;
+  return Array.isArray(codes) ? codes.map(String) : [];
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+// DELETE with a JSON body (the shared api helper may not send a body on DELETE).
+async function apiDelete(path: string, body?: unknown) {
+  const token = getToken();
+  const res = await fetch(`${BACKEND}/api${path}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    // Surface the backend's own message (e.g. "Invalid code", "password is required").
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.message || data?.error || `Request failed (${res.status})`);
+  }
+  return res.status === 204 ? null : res.json().catch(() => null);
+}
 
 export default function ProfilePage() {
   const [tab, setTab] = useState<Tab>('personal');
@@ -47,6 +95,18 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [msgType, setMsgType] = useState<'ok' | 'err'>('ok');
+
+  // Two-factor authentication state
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [twoFactorStatusLoaded, setTwoFactorStatusLoaded] = useState(false);
+  const [showTwoFactorSetup, setShowTwoFactorSetup] = useState(false);
+  const [twoFactorStep, setTwoFactorStep] = useState<TwoFactorStep>('intro');
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
+  const [twoFactorError, setTwoFactorError] = useState('');
+  const [setupData, setSetupData] = useState<TwoFactorSetupData | null>(null);
+  const [otp, setOtp] = useState('');
+  const [disablePassword, setDisablePassword] = useState('');
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
 
   // personal info form state
   const [form, setForm] = useState({
@@ -58,12 +118,6 @@ export default function ProfilePage() {
 
   // security
   const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm: '' });
-  // const [pwMsg, setPwMsg] = useState('');
-  // const [pwType, setPwType] = useState<'ok' | 'err'>('ok');
-  // const [pwSaving, setPwSaving] = useState(false);
-  // const [showCurrentPw, setShowCurrentPw] = useState(false);
-  // const [showNewPw, setShowNewPw] = useState(false);
-  // const [showConfirmPw, setShowConfirmPw] = useState(false);
 
   // file upload ref (photo only — citizenship refs live inside DocUploadCard)
   const photoRef = useRef<HTMLInputElement>(null);
@@ -82,8 +136,6 @@ export default function ProfilePage() {
         email: p.email || '',
         phone: p.phone || '',
         role: p.role || '',
-        // dob: p.dob ? p.dob.split('T')[0] : '',
-        // address: p.address || '',
       });
       setPhotoPreview(avatarUrl(p.profile_picture));
       setFrontPreview(docUrl(p.citizenship_front));
@@ -91,11 +143,155 @@ export default function ProfilePage() {
     } catch { /* handled by api.ts 401 logic */ }
   };
 
-  useEffect(() => { load(); }, []);
+  const loadTwoFactorStatus = async () => {
+    try {
+      const status = await api.get<unknown>('/auth/2fa/status');
+      setTwoFactorEnabled(extractEnabled(status));
+    } catch {
+      /* keep the toggle off if status can't be read */
+    } finally {
+      setTwoFactorStatusLoaded(true);
+    }
+  };
+
+  useEffect(() => {
+    load();
+    loadTwoFactorStatus();
+  }, []);
+
+  // Close the 2FA modal with Escape (except mid-request or while showing backup codes).
+  useEffect(() => {
+    if (!showTwoFactorSetup) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && twoFactorStep !== 'backup') closeTwoFactorModal();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
 
   function flash(text: string, type: 'ok' | 'err' = 'ok') {
     setMsg(text); setMsgType(type);
     setTimeout(() => setMsg(''), 3500);
+  }
+
+  // ── Two-factor authentication ──────────────────────────────────────────────
+
+  // Toggle click: OFF -> ON opens the setup intro, ON -> OFF opens the disable confirm.
+  function handleTwoFactorToggle() {
+    if (twoFactorLoading) return;
+    setOtp('');
+    setDisablePassword('');
+    setTwoFactorError('');
+    setSetupData(null);
+    setBackupCodes([]);
+    setTwoFactorStep(twoFactorEnabled ? 'disable' : 'intro');
+    setShowTwoFactorSetup(true);
+  }
+
+  // Intro "Setup 2FA" button: ask the backend for a TOTP secret + QR code.
+  async function startTwoFactorSetup() {
+    if (twoFactorEnabled || twoFactorLoading) return;
+
+    setTwoFactorLoading(true);
+    setTwoFactorError('');
+    setOtp('');
+
+    try {
+      const data = await api.post<unknown>('/auth/2fa/setup', {});
+      const normalized = normalizeSetup(data);
+      if (!normalized.qrDataUrl && !normalized.secret) throw new Error('Empty setup response');
+      setSetupData(normalized);
+      setTwoFactorStep('scan');
+    } catch {
+      setTwoFactorError('Unable to start 2FA setup. Please try again.');
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  }
+
+  // Verify the authenticator code and enable 2FA.
+  async function confirmTwoFactorSetup() {
+    if (!/^\d{6}$/.test(otp)) {
+      setTwoFactorError('Enter a valid 6-digit authentication code.');
+      return;
+    }
+
+    if (!setupData || twoFactorLoading) return;
+
+    setTwoFactorLoading(true);
+    setTwoFactorError('');
+
+    try {
+      const res = await api.post<unknown>('/auth/2fa/enable', {
+        code: otp,
+        secret: setupData.secret,
+      });
+
+      // Change the toggle only after the backend confirms success.
+      setTwoFactorEnabled(true);
+      setSetupData(null);
+      setOtp('');
+
+      const codes = extractBackupCodes(res);
+      if (codes.length) {
+        setBackupCodes(codes);
+        setTwoFactorStep('backup');
+      } else {
+        setShowTwoFactorSetup(false);
+        flash('Two-factor authentication enabled successfully.');
+      }
+
+      // Re-sync the persisted status.
+      await loadTwoFactorStatus();
+    } catch {
+      setTwoFactorError('Invalid code or unable to enable 2FA.');
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  }
+
+  // Turn 2FA off: the backend requires the account password AND a current authenticator code.
+  async function confirmDisableTwoFactor() {
+    if (!disablePassword) {
+      setTwoFactorError('Enter your account password.');
+      return;
+    }
+    if (!/^\d{6}$/.test(otp)) {
+      setTwoFactorError('Enter the 6-digit code from your authenticator app.');
+      return;
+    }
+    if (twoFactorLoading) return;
+
+    setTwoFactorLoading(true);
+    setTwoFactorError('');
+
+    try {
+      await apiDelete('/auth/2fa/disable', { password: disablePassword, code: otp });
+      setTwoFactorEnabled(false);
+      setShowTwoFactorSetup(false);
+      setOtp('');
+      setDisablePassword('');
+      flash('Two-factor authentication disabled.');
+      await loadTwoFactorStatus();
+    } catch (err) {
+      console.error('2FA disable failed:', err);
+      setTwoFactorError(err instanceof Error && err.message ? err.message : 'Unable to disable 2FA.');
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  }
+
+  function closeTwoFactorModal() {
+    if (twoFactorLoading) return;
+
+    const finishedWithBackupCodes = twoFactorStep === 'backup';
+    setShowTwoFactorSetup(false);
+    setSetupData(null);
+    setOtp('');
+    setDisablePassword('');
+    setTwoFactorError('');
+    setBackupCodes([]);
+    if (finishedWithBackupCodes) flash('Two-factor authentication enabled successfully.');
   }
 
   async function savePersonal(e: React.FormEvent) {
@@ -148,8 +344,6 @@ export default function ProfilePage() {
     }
   }
 
-
-
   async function uploadFile(field: 'photo' | 'front' | 'back', file: File) {
     const token = getToken();
     const fd = new FormData();
@@ -189,29 +383,6 @@ export default function ProfilePage() {
     };
   }
 
-  // async function changePassword(e: React.FormEvent) {
-  //   e.preventDefault();
-  //   if (pwForm.new_password !== pwForm.confirm) {
-  //     setPwMsg('Passwords do not match.'); setPwType('err'); return;
-  //   }
-  //   if (pwForm.new_password.length < 6) {
-  //     setPwMsg('Password must be at least 6 characters.'); setPwType('err'); return;
-  //   }
-  //   setPwSaving(true); setPwMsg('');
-  //   try {
-  //     await api.put('/auth/password', {
-  //       current_password: pwForm.current_password,
-  //       new_password: pwForm.new_password,
-  //     });
-  //     setPwMsg('Password changed successfully.'); setPwType('ok');
-  //     setPwForm({ current_password: '', new_password: '', confirm: '' });
-  //   } catch {
-  //     setPwMsg('Failed. Check your current password.'); setPwType('err');
-  //   } finally {
-  //     setPwSaving(false);
-  //   }
-  // }
-
   if (!profile) {
     return (
       <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>
@@ -246,6 +417,19 @@ export default function ProfilePage() {
       <div className='fixed left-(--sidebar-width) right-0 top-0 m-0 z-200'>
         <PageHeader title={'My Profile'} discription={"Manage your personal information, documents, and account security"} />
       </div>
+
+      {/* Flash message */}
+      {msg && (
+        <div
+          role="status"
+          className="fixed right-6 top-24 z-300 rounded-lg px-4 py-3 text-[14px] font-medium shadow-md"
+          style={msgType === 'ok'
+            ? { background: '#DCF1E4', color: '#16A34A' }
+            : { background: '#FDE8E8', color: '#DC2626' }}
+        >
+          {msg}
+        </div>
+      )}
 
       {/* Profile container */}
       <div className='mt-28 mx-6 mb-6'>
@@ -304,9 +488,6 @@ export default function ProfilePage() {
                   {profile.email}
                 </div>
               </div>
-
-
-
             </div>
 
             <span className="py-1 px-3 rounded-lg" style={{ background: '#DCF1E4', color: '#16A34A', fontWeight: 500, fontSize: '12px', textTransform: 'capitalize' }}>
@@ -431,12 +612,10 @@ export default function ProfilePage() {
                             }))
                           }
                         />
-                        <Button type='button' variant='primary' size='medium'  >Edit</Button>
+                        <Button type='button' variant='primary' size='medium'>Edit</Button>
                       </div>
 
                       <div className=' flex gap-6'>
-
-
                         <InputField
                           id='email'
                           value={form.email}
@@ -450,7 +629,7 @@ export default function ProfilePage() {
                             }))
                           }
                         />
-                        <Button type='button' variant='primary' size='medium'  >Edit</Button>
+                        <Button type='button' variant='primary' size='medium'>Edit</Button>
                       </div>
                       <div className='flex gap-6 '>
                         <InputField
@@ -466,7 +645,7 @@ export default function ProfilePage() {
                             }))
                           }
                         />
-                        <Button type='button' variant='primary' size='medium'  >Edit</Button>
+                        <Button type='button' variant='primary' size='medium'>Edit</Button>
                       </div>
 
                       <div className='w-[532px]'>
@@ -480,42 +659,15 @@ export default function ProfilePage() {
                             }))
                           }
                           options={[
-                            {
-                              label: 'Admin',
-                              value: 'admin'
-                            },
-                            {
-                              label: 'Backend Developer',
-                              value: 'backend_dev'
-                            },
-                            {
-                              label: 'Frontend Developer',
-                              value: 'frontend_dev'
-                            },
-                            {
-                              label: 'Fullstack Developer',
-                              value: 'fullstack_dev'
-                            },
-                            {
-                              label: 'HR',
-                              value: 'hr'
-                            },
-                            {
-                              label: 'Product Designer',
-                              value: 'product_designer'
-                            },
-                            {
-                              label: 'UI/UX Designer',
-                              value: 'ui_ux_designer'
-                            },
-                            {
-                              label: 'Quality Assurance',
-                              value: 'quality_assurance'
-                            },
-                            {
-                              label: 'Team Lead',
-                              value: 'team_lead'
-                            },
+                            { label: 'Admin', value: 'admin' },
+                            { label: 'Backend Developer', value: 'backend_dev' },
+                            { label: 'Frontend Developer', value: 'frontend_dev' },
+                            { label: 'Fullstack Developer', value: 'fullstack_dev' },
+                            { label: 'HR', value: 'hr' },
+                            { label: 'Product Designer', value: 'product_designer' },
+                            { label: 'UI/UX Designer', value: 'ui_ux_designer' },
+                            { label: 'Quality Assurance', value: 'quality_assurance' },
+                            { label: 'Team Lead', value: 'lead' },
                           ]}
                           placeholder="Employee Role"
                         />
@@ -532,7 +684,7 @@ export default function ProfilePage() {
               {/*Login & Access */}
               <div className="flex flex-col gap-7 w-[812px] " >
                 <div>
-                  <h1 className='text-[16px] text-(--neutral-normal) font-semibold leading-6 '>Login & Access</h1>
+                  <h1 className='text-[16px] text-(--neutral-normal) font-semibold leading-6 '>Login &amp; Access</h1>
                   <p className='text-[14px] font-medium text-(--soft-white-dark-active) '>Manage your account acess and login preference.</p>
                 </div>
 
@@ -605,27 +757,30 @@ export default function ProfilePage() {
                     <div className='flex flex-col gap-4'>
                       <div className='flex gap-6 items-center'>
                         <InputField
+                          id='company_name'
                           type='text'
                           placeholder='Enter your company name'
                           className='profile-text-field'
                         />
-                        <Button type='button' variant='primary' size='medium'  >Edit</Button>
+                        <Button type='button' variant='primary' size='medium'>Edit</Button>
                       </div>
                       <div className='flex gap-6 items-center'>
                         <InputField
-                          type='text'
-                          placeholder='Enter your company name'
+                          id='company_email'
+                          type='email'
+                          placeholder='Enter your company email'
                           className='profile-text-field'
                         />
-                        <Button type='button' variant='primary' size='medium'  >Edit</Button>
+                        <Button type='button' variant='primary' size='medium'>Edit</Button>
                       </div>
                       <div className='flex gap-6 items-center'>
                         <InputField
+                          id='company_website'
                           type='text'
-                          placeholder='Enter your company name'
+                          placeholder='Enter your company website'
                           className='profile-text-field'
                         />
-                        <Button type='button' variant='primary' size='medium'  >Edit</Button>
+                        <Button type='button' variant='primary' size='medium'>Edit</Button>
                       </div>
                     </div>
                   </div>
@@ -678,14 +833,25 @@ export default function ProfilePage() {
             <div className='max-w-[929px] flex flex-col gap-11'>
               <div className='flex flex-col gap-7'>
                 <div>
-                  <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Login & Authentication</h1>
+                  <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Login &amp; Authentication</h1>
                   <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Protect your account from unauthorized acess</p>
                 </div>
 
                 <div className="flex flex-col gap-4">
-                  <div className='flex justify-between mr-10'>
-                    <h1 className='text-[16px] font-semibold text-(--gray-darker)'>Two-Factor Authentication</h1>
-                    <BSRealtyToggle checked={true} />
+                  <div className='flex justify-between items-center mr-10'>
+                    <div>
+                      <h1 className='text-[16px] font-semibold text-(--gray-darker)'>Two-Factor Authentication</h1>
+                      <p className='text-[14px] font-medium text-(--soft-white-dark-active)'>
+                        {twoFactorEnabled
+                          ? 'Enabled. You will be asked for a code from your authenticator app when you log in.'
+                          : 'Add an extra layer of security with an authenticator app.'}
+                      </p>
+                    </div>
+                    <BSRealtyToggle
+                      checked={twoFactorEnabled}
+                      onChange={() => handleTwoFactorToggle()}
+                      disabled={!twoFactorStatusLoaded || twoFactorLoading}
+                    />
                   </div>
                   <div className='flex justify-between'>
                     <p className='text-[16px] font-semibold text-(--gray-darker)'>Login Sessions</p>
@@ -717,10 +883,10 @@ export default function ProfilePage() {
                     </div>
 
                     <div className='flex justify-between mr-10'>
-                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Accounts & Role Changed</p>
+                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Accounts &amp; Role Changed</p>
                       <BSRealtyToggle checked={true} />
                     </div>
-                  </div >
+                  </div>
                 </div>
               </div>
             </div>
@@ -749,7 +915,7 @@ export default function ProfilePage() {
                   </div>
 
                   <div className='flex justify-between '>
-                    <p className='text-[16px] font-semibold text-(--gray-darker)'>Documents & Signature Request </p>
+                    <p className='text-[16px] font-semibold text-(--gray-darker)'>Documents &amp; Signature Request </p>
                     <BSRealtyToggle checked={true} />
                   </div>
 
@@ -786,16 +952,57 @@ export default function ProfilePage() {
                       <p className='text-[16px] font-semibold text-(--gray-darker)'>Sound Alerts</p>
                       <BSRealtyToggle checked={true} />
                     </div>
-                  </div >
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-
-
         </div>
-      </div >
+      </div>
+
+      {/* ── 2FA modal ─────────────────────────────────────────────────────── */}
+      {showTwoFactorSetup && (
+        <TwoFactorModal onClose={closeTwoFactorModal} dismissible={twoFactorStep !== 'backup'}>
+          {twoFactorStep === 'intro' && (
+            <TwoFactorSetup
+              loading={twoFactorLoading}
+              error={twoFactorError}
+              onSetup={startTwoFactorSetup}
+              onLater={closeTwoFactorModal}
+            />
+          )}
+
+          {twoFactorStep === 'scan' && setupData && (
+            <TwoFactorVerify
+              setupData={setupData}
+              otp={otp}
+              onOtpChange={(v) => { setOtp(v); setTwoFactorError(''); }}
+              loading={twoFactorLoading}
+              error={twoFactorError}
+              onConfirm={confirmTwoFactorSetup}
+              onCancel={closeTwoFactorModal}
+            />
+          )}
+
+          {twoFactorStep === 'backup' && (
+            <TwoFactorBackupCodes codes={backupCodes} onDone={closeTwoFactorModal} />
+          )}
+
+          {twoFactorStep === 'disable' && (
+            <TwoFactorDisable
+              password={disablePassword}
+              onPasswordChange={(v) => { setDisablePassword(v); setTwoFactorError(''); }}
+              otp={otp}
+              onOtpChange={(v) => { setOtp(v); setTwoFactorError(''); }}
+              loading={twoFactorLoading}
+              error={twoFactorError}
+              onConfirm={confirmDisableTwoFactor}
+              onCancel={closeTwoFactorModal}
+            />
+          )}
+        </TwoFactorModal>
+      )}
     </div>
   );
 }
@@ -809,6 +1016,7 @@ interface DocUploadCardProps {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function DocUploadCard({ label, preview, loading, onChange }: DocUploadCardProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   return (
@@ -833,7 +1041,6 @@ function DocUploadCard({ label, preview, loading, onChange }: DocUploadCardProps
         <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>{label}</div>
         <Button className="outline" variant='text' size='xs'
           type="button"
-
           onClick={() => inputRef.current?.click()}
           disabled={loading}
           style={{ width: '100%' }}
@@ -843,5 +1050,278 @@ function DocUploadCard({ label, preview, loading, onChange }: DocUploadCardProps
         <input ref={node => { inputRef.current = node; }} type="file" accept="image/*" style={{ display: 'none' }} onChange={onChange} />
       </div>
     </div>
+  );
+}
+
+// ── 2FA components ────────────────────────────────────────────────────────────
+
+function TwoFactorModal({ children, onClose, dismissible }: {
+  children: React.ReactNode;
+  onClose: () => void;
+  dismissible: boolean;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4"
+      onClick={() => dismissible && onClose()}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="relative w-full max-w-[560px] rounded-lg bg-(--soft-white-light) shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {dismissible && (
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            className="absolute right-4 top-4 text-[20px] leading-none text-(--gray-dark)"
+          >
+            ×
+          </button>
+        )}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function TwoFactorError({ error }: { error: string }) {
+  if (!error) return null;
+  return <p role="alert" className="text-[14px] font-medium text-[#DC2626]">{error}</p>;
+}
+
+// Step 1: intro screen (the component that was commented out).
+function TwoFactorSetup({ loading, error, onSetup, onLater }: {
+  loading: boolean;
+  error: string;
+  onSetup: () => void;
+  onLater: () => void;
+}) {
+  return (
+    <div className='flex flex-col gap-6 items-center p-6 text-center'>
+      <div className='space-y-3'>
+        <h1 className='text-[28px] font-semibold text-(--neutral-normal) leading-9'>Set up two-factor authentication (2FA) for your account</h1>
+        <p className='text-[18px] font-medium text-(--gray-dark-active) leading-7'>
+          Protect sensitive information and secure your account by using an authenticator app to log in to your account.
+        </p>
+      </div>
+      <TwoFactorError error={error} />
+      <div className='flex flex-col w-[252px] gap-y-5'>
+        <Button
+          type="button"
+          variant='primary'
+          className="w-full"
+          onClick={onSetup}
+          disabled={loading}
+        >
+          {loading ? 'Setting up...' : 'Setup 2FA'}
+        </Button>
+        <button type="button" onClick={onLater} disabled={loading}>
+          <span className="w-full text-[18px] font-medium leading-7 text-[#235E94]">Setup later, go to my account</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Step 2: scan the QR code and confirm with a 6-digit code.
+function TwoFactorVerify({ setupData, otp, onOtpChange, loading, error, onConfirm, onCancel }: {
+  setupData: TwoFactorSetupData;
+  otp: string;
+  onOtpChange: (v: string) => void;
+  loading: boolean;
+  error: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  async function copySecret() {
+    try {
+      await navigator.clipboard.writeText(setupData.secret);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard blocked */ }
+  }
+
+  return (
+    <form
+      className='flex flex-col gap-6 items-center p-6 text-center'
+      onSubmit={(e) => { e.preventDefault(); onConfirm(); }}
+    >
+      <div className='space-y-2'>
+        <h1 className='text-[24px] font-semibold text-(--neutral-normal) leading-8'>Scan the QR code</h1>
+        <p className='text-[16px] font-medium text-(--gray-dark-active) leading-6'>
+          Open Google Authenticator, Microsoft Authenticator or Authy and scan this code,
+          then enter the 6-digit code it shows.
+        </p>
+      </div>
+
+      {setupData.qrDataUrl && (
+        <img
+          src={setupData.qrDataUrl}
+          alt="2FA QR code"
+          width={200}
+          height={200}
+          className="rounded-lg border border-(--soft-white-normal) bg-white p-2"
+        />
+      )}
+
+      {setupData.secret && (
+        <div className="flex flex-col items-center gap-1">
+          <span className="text-[14px] font-medium text-(--soft-white-dark-active)">Can&apos;t scan? Enter this key manually</span>
+          <div className="flex items-center gap-2">
+            <code className="rounded bg-(--soft-white-normal) px-2 py-1 text-[14px] tracking-wider break-all">{setupData.secret}</code>
+            <button type="button" onClick={copySecret} className="text-[14px] font-medium text-(--blue-sky)">
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col  gap-2 w-[252px] ">
+        <InputField
+          autoFocus
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
+          placeholder="000000"
+          aria-label="6-digit authentication code"
+          value={otp}
+          onChange={(e) => onOtpChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          className="w-full tracking-[0.8em]  "
+        />
+        <TwoFactorError error={error} />
+      </div>
+
+      <div className='flex flex-col w-[252px] gap-y-3'>
+        <Button type="submit" variant='primary' className="w-full" disabled={loading || otp.length !== 6}>
+          {loading ? 'Verifying...' : 'Verify & Enable'}
+        </Button>
+        <button type="button" onClick={onCancel} disabled={loading}
+          className="text-[16px] font-medium leading-6 text-(--gray-dark)">
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// Step 3: show one-time backup codes (only if the API returns them).
+function TwoFactorBackupCodes({ codes, onDone }: { codes: string[]; onDone: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const text = codes.join('\n');
+
+  async function copyAll() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard blocked */ }
+  }
+
+  function download() {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'backup-codes.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div className='flex flex-col gap-6 items-center p-6 text-center'>
+      <div className='space-y-2'>
+        <h1 className='text-[24px] font-semibold text-(--neutral-normal) leading-8'>Save your backup codes</h1>
+        <p className='text-[16px] font-medium text-(--gray-dark-active) leading-6'>
+          2FA is now on. Each code works once if you lose access to your authenticator app.
+          Store them somewhere safe; you won&apos;t see them again.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-8 gap-y-2 rounded-lg border border-(--soft-white-normal) bg-(--soft-white-normal) px-6 py-4">
+        {codes.map((c) => (
+          <code key={c} className="text-[16px] tracking-wider text-(--neutral-normal)">{c}</code>
+        ))}
+      </div>
+
+      <div className="flex gap-4">
+        <button type="button" onClick={copyAll} className="text-[14px] font-medium text-(--blue-sky)">
+          {copied ? 'Copied' : 'Copy codes'}
+        </button>
+        <button type="button" onClick={download} className="text-[14px] font-medium text-(--blue-sky)">
+          Download .txt
+        </button>
+      </div>
+
+      <div className='w-[252px]'>
+        <Button type="button" variant='primary' className="w-full" onClick={onDone}>
+          I&apos;ve saved them
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Turning 2FA off: confirm with a current authenticator code.
+function TwoFactorDisable({ password, onPasswordChange, otp, onOtpChange, loading, error, onConfirm, onCancel }: {
+  password: string;
+  onPasswordChange: (v: string) => void;
+  otp: string;
+  onOtpChange: (v: string) => void;
+  loading: boolean;
+  error: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <form
+      className='flex flex-col gap-6 items-center p-6 text-center'
+      onSubmit={(e) => { e.preventDefault(); onConfirm(); }}
+    >
+      <div className='space-y-2'>
+        <h1 className='text-[24px] font-semibold text-(--neutral-normal) leading-8'>Turn off two-factor authentication?</h1>
+        <p className='text-[16px] font-medium text-(--gray-dark-active) leading-6'>
+          Your account will be less secure. Enter your password and the 6-digit code from your authenticator app to confirm.
+        </p>
+      </div>
+
+      <div className="flex flex-col items-center gap-3 w-[252px]">
+        <InputField
+          autoFocus
+          type="password"
+          autoComplete="current-password"
+          placeholder="Password"
+          aria-label="Account password"
+          value={password}
+          showPasswordToggle={true}
+          onChange={(e) => onPasswordChange(e.target.value)}
+          className="w-full  "
+        />
+        <InputField
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
+          placeholder="000000"
+          aria-label="6-digit authentication code"
+          value={otp}
+          onChange={(e) => onOtpChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          className="w-full text-2xl! tracking-[0.7em]!  "
+        />
+        <TwoFactorError error={error} />
+      </div>
+
+      <div className='flex flex-col w-[252px] gap-y-3'>
+        <Button type="submit" variant='primary' className="w-full" disabled={loading || !password || otp.length !== 6}>
+          {loading ? 'Disabling...' : 'Turn off 2FA'}
+        </Button>
+        <button type="button" onClick={onCancel} disabled={loading}
+          className="text-[16px] font-medium leading-6 text-(--gray-dark)">
+          Keep 2FA on
+        </button>
+      </div>
+    </form>
   );
 }

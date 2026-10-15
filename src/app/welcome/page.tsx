@@ -64,7 +64,7 @@ function PersonalInfoProgress({
                     />
                 </div>
 
-                <span className="text-[12px] font-medium leading-4 text-var(--color-black)">
+                <span className="text-[12px] font-medium leading-4 text-(--neutral-normal">
                     {text}
                 </span>
             </div>
@@ -275,21 +275,21 @@ export default function WelcomePage() {
                                 />
 
                                 <PersonalInfoProgress
-                                    text="Personal Information"
+                                    text="Documents"
                                     icon="/icons/document.svg"
                                     completed={true}
                                     iconBgColor="var(--blue-sky)"
                                     iconColor="var(--white-light)"
                                 />
                                 <PersonalInfoProgress
-                                    text="Organization"
+                                    text="Company Policies"
                                     icon="/icons/book-open.svg"
                                     completed={false}
                                     iconBgColor="var(--blue-dark-normal)"
                                     iconColor="var(--white-light)"
                                 />
                                 <PersonalInfoProgress
-                                    text="Personal Information"
+                                    text="Onboarding"
                                     icon="/icons/square-check.svg"
                                     completed={false}
                                     iconBgColor="var(--warning-normal)"

@@ -6,7 +6,22 @@ import type { AuthUser } from '@/lib/auth';
 import Button from '@/components/Button/Button'
 import InputField from '@/components/InputField/InputField';
 import { validateEmail } from '@/lib/validation';
+import { saveTwoFactorChallenge } from '@/lib/twoFactor';
 
+// get /auth/2fa/status
+async function isTwoFactorEnabled(token: string | undefined): Promise<boolean> {
+  if (!token) return false;
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/2fa/status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return false;
+    const status = await res.json();
+    return Boolean(status?.enabled ?? status?.twoFactorEnabled ?? status?.two_factor_enabled ?? status?.is_enabled);
+  } catch {
+    return false;
+  }
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -78,6 +93,19 @@ export default function LoginPage() {
           setError(data.error ?? 'Login failed');
           return;
         }
+        const needsTwoFactor =
+          data.requiresOtp || data.requires2FA || data.requiresTwoFactor || data.twoFactorRequired;
+        if (needsTwoFactor && data.tempToken) {
+          saveTwoFactorChallenge({ tempToken: data.tempToken, email });
+          router.push('/twoFactorAuth');
+          return;
+        }
+        if (await isTwoFactorEnabled(data.token)) {
+          saveTwoFactorChallenge({ tempToken: data.tempToken ?? data.token, email });
+          router.push('/two-factor-auth');
+          return;
+        }
+
         if (data.requiresOtp) {
           setRequiresOtp(true);
           setTempToken(data.tempToken);
