@@ -29,15 +29,15 @@ const allNav: { section: string; items: NavItem[] }[] = [
   {
     section: 'People',
     items: [
-      { href: '/employees', label: 'Team Directory', icon: 'user-02.svg', roles: ['admin', 'lead','intern'] as Role[] },
+      { href: '/employees', label: 'Team Directory', icon: 'user-02.svg', roles: ['admin', 'lead', 'intern'] as Role[] },
       { href: '/active', label: 'Active Employees', icon: 'shield.svg', roles: ['admin', 'employee', 'intern'] as Role[] },
       { href: '/onboarding', label: 'Onboarding', icon: 'user-plus-02.svg', roles: ['admin', 'lead'] as Role[] },
       { href: '/onboard-form-layout', label: 'Change Form Layout', icon: 'edit.svg', roles: ['admin', 'lead'] as Role[] },
-      { href: '/leaves', label: 'Leave Requests', icon: 'calendar.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
-      { href: '/overtime', label: 'Overtime Requests', icon: 'clock-01.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
-      { href: '/documents', label: 'Documents & Signature', icon: 'document.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
+      { href: '/leaves', label: 'Leave Requests', icon: 'calendar.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
+      { href: '/overtime', label: 'Overtime Requests', icon: 'clock-01.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
+      { href: '/documents', label: 'Documents & Signature', icon: 'document.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
       { href: '/resources', label: 'Resources', icon: 'book-open.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
-      { href: '/standups', label: 'Standups', icon: 'message-square-01.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
+      { href: '/standups', label: 'Standups', icon: 'message-square-01.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
     ],
   },
   {
@@ -49,29 +49,29 @@ const allNav: { section: string; items: NavItem[] }[] = [
   {
     section: 'Work',
     items: [
-      { href: '/projects', label: 'Projects', icon: 'briefcase-02.svg', roles: ['admin', 'lead','intern'] as Role[] },
-      { href: '/servers', label: 'Services & Access', icon: 'server-01.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
-      { href: '/calendar', label: 'Calendar', icon: 'calendar.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
+      { href: '/projects', label: 'Projects', icon: 'briefcase-02.svg', roles: ['admin', 'lead', 'intern'] as Role[] },
+      { href: '/servers', label: 'Services & Access', icon: 'server-01.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
+      { href: '/calendar', label: 'Calendar', icon: 'calendar.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
     ],
   },
   {
     section: 'Growth',
     items: [
-      { href: '/goals', label: 'Goals & KPIs', icon: 'si_target-line.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
-      { href: '/performance', label: 'Performance', icon: 'trend-up.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
-      { href: '/feedback', label: 'Feedback', icon: 'message-circle-02.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
+      { href: '/goals', label: 'Goals & KPIs', icon: 'si_target-line.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
+      { href: '/performance', label: 'Performance', icon: 'trend-up.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
+      { href: '/feedback', label: 'Feedback', icon: 'message-circle-02.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
     ],
   },
   {
     section: 'Culture',
     items: [
-      { href: '/culture', label: 'Events & Milestones', icon: 'award-03.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
+      { href: '/culture', label: 'Events & Milestones', icon: 'award-03.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
     ],
   },
   {
     section: 'Learning',
     items: [
-      { href: LEARNING_URL, label: 'Learning', icon: 'layout-down.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[], external: true },
+      { href: LEARNING_URL, label: 'Learning', icon: 'layout-down.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[], external: true },
     ],
   },
   {
@@ -81,13 +81,13 @@ const allNav: { section: string; items: NavItem[] }[] = [
       { href: '/weekly-reports', label: 'Weekly Reports', icon: 'poll.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
       { href: '/leave-report', label: 'Leave Report', icon: 'clipboard.svg', roles: ['admin'] as Role[] },
       { href: '/financial-report', label: 'Financial Report', icon: 'pie-chart-01.svg', roles: ['admin'] as Role[] },
-      { href: '/performance-report', label: 'Performance Reports', icon: 'list-checks.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] }
+      { href: '/performance-report', label: 'Performance Reports', icon: 'list-checks.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] }
     ],
   },
   {
     section: 'Account',
     items: [
-      { href: '/profile', label: 'My Profile', icon: 'user.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[] },
+      { href: '/profile', label: 'My Profile', icon: 'user.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
     ],
   },
 ];
@@ -134,15 +134,18 @@ export default function Sidebar() {
       <aside className={`sidebar ${isOpen ? 'sidebar-open' : ''}`}>
         <div className='sidebar-wrapper'>
           <div className="sidebar-contant">
-            <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+            {/* <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
               <img src="../icon.svg" alt="Icon" width={30} height={30} style={{ flexShrink: 0 }} />
               <div>
                 <h1>HR Platform</h1>
                 <span>Internal Tools</span>
               </div>
+            </div> */}
+            <div className='py-5 '>
+              <img height={'20px'} width={'111px'} src="/logos/gitgi-hr-logo.svg" alt="" />
             </div>
 
-            <nav className="sidebar-nav overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <nav className=" sidebar-nav overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {nav.map(group => (
                 <div className='sidebar-section' key={group.section}>
                   <div className="sidebar-section-label">{group.section}</div>
