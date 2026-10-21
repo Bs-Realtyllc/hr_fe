@@ -1,0 +1,17 @@
+{
+  "src/contexts/": [
+    "docs/features/contexts.md"
+  ],
+  "src/lib/": [
+    "docs/features/lib.md"
+  ],
+  "src/store/": [
+    "docs/features/store.md"
+  ],
+  "src/template/": [
+    "docs/features/template.md"
+  ],
+  "src/types/": [
+    "docs/features/types.md"
+  ]
+}
