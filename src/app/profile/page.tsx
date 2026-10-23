@@ -72,7 +72,7 @@ export default function ProfilePage() {
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
 
   const load = async () => {
-    try {
+    try { 
       const p = await api.get<Profile>('/profile');
 
       setProfile(p);
@@ -81,10 +81,15 @@ export default function ProfilePage() {
         email: p.email || '',
         phone: p.phone || '',
         role: p.role || '',
+        // profile_picture: p.profile_picture || ''
         // dob: p.dob ? p.dob.split('T')[0] : '',
         // address: p.address || '',
       });
-      setPhotoPreview(avatarUrl(p.profile_picture));
+      // setPhotoPreview(avatarUrl(p.profile_picture));
+      const getPhotoUrl = (filename?: string | null): string | null =>
+       filename ? `${BACKEND}/uploads/profile/photo/${encodeURIComponent(filename)}` : null;
+      setPhotoPreview(getPhotoUrl(p?.profile_picture));
+
       setFrontPreview(docUrl(p.citizenship_front));
       setBackPreview(docUrl(p.citizenship_back));
     } catch { /* handled by api.ts 401 logic */ }
@@ -104,7 +109,7 @@ export default function ProfilePage() {
     try {
 
       // Save personal information
-      await api.put('/profile', {
+      await api.put('/profile/', {
         name: form.name,
         email: form.email,
         phone: form.phone,
@@ -252,13 +257,21 @@ export default function ProfilePage() {
             {/* Avatar */}
             <div className=' '>
               <div style={{ position: 'relative', flexShrink: 0 }}>
+                {
+                  photoPreview ? <img
+                    src={photoPreview}
+                    alt={profile.name}
+                    className="h-24 w-24 rounded-full object-cover"
+                    onError={() => setPhotoPreview(null)}
+                    /> :
                 <BSRealtyAvatar
-                  size="xl"
-                  name={profile.name}
-                  src={
+                size="xl"
+                name={profile.name}
+                src={
                     photoPreview || undefined
                   }
-                />
+                  />
+                }
                 <button
                   onClick={() => photoRef.current?.click()}
                   title="Change photo"

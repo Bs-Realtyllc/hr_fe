@@ -225,9 +225,16 @@ export default function LoginPage() {
           </Button>
 
           <div style={{ textAlign: 'right', marginTop: 12 }}>
+            <div>
             <a href="/forgot-password" style={{ fontSize: 13, color: 'var(--color-primary)', textDecoration: 'none' }}>
               Forgot password?
             </a>
+            </div>
+            <div>
+            <a href="/request-access" style={{ fontSize: 13, color: 'var(--color-primary)', textDecoration: 'none' }}>
+              Request access?
+            </a>
+            </div>
           </div>
         </form>
       </div>
