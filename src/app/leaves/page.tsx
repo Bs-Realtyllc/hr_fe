@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import PillTabs from '@/components/PillTabs';
 import Button from '@/components/Button/Button';
+import MultiSelect from '@/components/MultiSelect';
 import { showToast } from '@/lib/toast';
 
 interface Leave {
@@ -43,17 +44,38 @@ interface EmailSettings {
   smtp_host: string;
   smtp_port: number;
   smtp_user: string;
-  smtp_pass: string;      // write-only — never returned by API
+  smtp_pass: string; // write-only — never returned by API
   smtp_from: string;
   default_to: string;
   default_cc: string;
   default_bcc: string;
 }
 
+interface EmployeeData {
+  id: number;
+  name: string;
+  role: 'intern' | 'employee' | 'admin' | 'lead';
+}
+
+interface LeaveForm {
+  leave_type: string;
+  start_date: string;
+  end_date: string;
+  reason: string;
+  to: string; // employee id as string from <select>; '' = no notification
+  cc: number[];
+  bcc: number[];
+}
+
 const BLANK_SETTINGS: EmailSettings = {
   smtp_host: 'smtp.gmail.com', smtp_port: 587,
   smtp_user: '', smtp_pass: '', smtp_from: '',
   default_to: '', default_cc: '', default_bcc: '',
+};
+
+const BLANK_FORM: LeaveForm = {
+  leave_type: 'sick', start_date: '', end_date: '', reason: '',
+  to: 'admin@gitgi.com', cc: [], bcc: [],
 };
 
 const LEAVE_COLORS: Record<string, string> = {
@@ -75,26 +97,31 @@ export default function LeavesPage() {
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [filter, setFilter] = useState('all');
   const [showLeaveModal, setShowLeaveModal] = useState(false);
-  const [showEmailSetup, setShowEmailSetup] = useState(false);
   const [emailConfigured, setEmailConfigured] = useState(false);
-  const [settingsLoading, setSettingsLoading] = useState(false);
-  const [saveStatus, setSaveStatus] = useState('');
+  const [employeeNames, setEmployeeNames] = useState<EmployeeData[]>([]);
 
   // Edit-leave state
   const [editingLeave, setEditingLeave] = useState<Leave | null>(null);
   const [editForm, setEditForm] = useState({ leave_type: 'sick', start_date: '', end_date: '', reason: '' });
 
   // Email settings form
-  const [emailForm, setEmailForm] = useState<EmailSettings>(BLANK_SETTINGS);
+  const [, setEmailForm] = useState<EmailSettings>(BLANK_SETTINGS);
 
   // New-leave + recipient form
-  const [form, setForm] = useState({
-    leave_type: 'sick', start_date: '', end_date: '', reason: '',
-    to: '', cc: '', bcc: '',
-  });
+  const [form, setForm] = useState<LeaveForm>(BLANK_FORM);
+
+  useEffect(() => {
+    api.get<EmployeeData[]>('/employees/names')
+      .then(setEmployeeNames)
+      .catch(() => { showToast('error', 'Failed to load employee names'); });
+  }, []);
+
+  // const adminEmployee = employeeNames.filter((emp) => emp.role === 'admin');
 
   const load = () =>
-    api.get<Leave[]>(`/leaves${filter !== 'all' ? `?status=${filter}` : ''}`).then(setLeaves).catch(() => {showToast('error', "Failed to load leaves")});
+    api.get<Leave[]>(`/leaves${filter !== 'all' ? `?status=${filter}` : ''}`)
+      .then(setLeaves)
+      .catch(() => { showToast('error', 'Failed to load leaves'); });
 
   useEffect(() => { load(); }, [filter]);
 
@@ -105,35 +132,32 @@ export default function LeavesPage() {
         if (cfg) {
           setEmailConfigured(true);
           setEmailForm(f => ({ ...f, ...cfg, smtp_pass: '' }));
-          setForm(f => ({ ...f, to: cfg.default_to || '', cc: cfg.default_cc || '', bcc: cfg.default_bcc || '' }));
         }
       })
       .catch(() => { });
   }, [user?.id]);
 
   const openLeaveModal = () => {
-    setForm(f => ({ ...f, leave_type: 'sick', start_date: '', end_date: '', reason: '' }));
+    setForm(BLANK_FORM);
     setShowLeaveModal(true);
   };
 
   const submitLeave = async (e: React.FormEvent) => {
     e.preventDefault();
-    try{
-    const { to, cc, bcc, ...leaveFields } = form;
-    await api.post<{ id: number }>('/leaves', {
-      ...leaveFields,
-      employee_id: user?.id,
-      ...(emailConfigured && to.trim() && {
-        to: to.trim(),
-        cc: cc.trim() || undefined,
-        bcc: bcc.trim() || undefined,
-      }),
+    console.log(form)
+    try {
+      const { to, cc, bcc, ...leaveFields } = form;
+      console.log({
+        ...leaveFields, to: to,cc: cc.length ? cc : undefined,bcc: bcc.length ? bcc : undefined,
       })
-    setShowLeaveModal(false);
-    load();
-      showToast('success', "Leave request added sucessfully")
-    }catch(err){
-      showToast('error', "Failed to add leave request")
+      await api.post<{ id: number }>('/leaves', {
+        ...leaveFields, to: to, employee_id:user?.id ,cc: cc.length ? cc : undefined,bcc: bcc.length ? bcc : undefined,
+      });
+      setShowLeaveModal(false);
+      load();
+      showToast('success', 'Leave request added sucessfully');
+    } catch (err) {
+      showToast('error', 'Failed to add leave request');
     }
   };
 
@@ -161,24 +185,6 @@ export default function LeavesPage() {
     load();
   };
 
-  const saveEmailSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user?.id) return;
-    setSettingsLoading(true);
-    setSaveStatus('');
-    try {
-      await api.put(`/email-settings/${user.id}`, emailForm);
-      setEmailConfigured(true);
-      setForm(f => ({ ...f, to: emailForm.default_to, cc: emailForm.default_cc, bcc: emailForm.default_bcc }));
-      setShowEmailSetup(false);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Save failed';
-      setSaveStatus(`Error: ${msg}`);
-    } finally {
-      setSettingsLoading(false);
-    }
-  };
-
   const approve = async (id: number) => { await api.put(`/leaves/${id}/approve`, {}); load(); };
   const reject = async (id: number) => { await api.put(`/leaves/${id}/reject`, {}); load(); };
 
@@ -191,26 +197,9 @@ export default function LeavesPage() {
             <p>{isPrivileged ? 'Manage employee leave applications and balances' : 'Your leave applications'}</p>
           </div>
           <div className="flex gap-2">
-
             <Button
-              variant='text'
-              size='small'
-              onClick={() => { setSaveStatus(''); setShowEmailSetup(true); }} leftIcon={<span
-                className="icon-mask"
-                style={{
-                  height: 16,
-                  width: 16,
-                  WebkitMaskImage: `url(/icons/${emailConfigured ? 'check-circle.svg' : 'mail.svg'})`,
-                  maskImage: `url(/icons/${emailConfigured ? 'check-circle.svg' : 'mail.svg'})`,
-                }}
-              />}
-            >
-              {emailConfigured ? 'Email Settings' : 'Setup Email'}
-            </Button>
-
-            <Button
-              variant='primary'
-              size='small'
+              variant="primary"
+              size="small"
               onClick={openLeaveModal}
               leftIcon={
                 <span
@@ -387,242 +376,146 @@ export default function LeavesPage() {
       </div>
 
       {/* ── New Leave Request Modal ──────────────────────────────────────── */}
-      {
-        showLeaveModal && (
-          <div className="modal-overlay" onClick={() => setShowLeaveModal(false)}>
-            <div className="modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
-              <div className="modal-header">
-                <h2>New Leave Request</h2>
-                <button className="modal-close" onClick={() => setShowLeaveModal(false)}>×</button>
+      {showLeaveModal && (
+        <div className="modal-overlay" onClick={() => setShowLeaveModal(false)}>
+          <div className="modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>New Leave Request</h2>
+              <button className="modal-close" onClick={() => setShowLeaveModal(false)}>×</button>
+            </div>
+            <form onSubmit={submitLeave}>
+              <div className="form-group">
+                <label className="form-label">Leave Type</label>
+                <select className="form-select" value={form.leave_type} onChange={e => setForm({ ...form, leave_type: e.target.value })}>
+                  <option value="sick">Sick</option>
+                  <option value="bereavement">Bereavement</option>
+                  <option value="maternity">Maternity</option>
+                  <option value="paternity">Paternity</option>
+                </select>
               </div>
-              <form onSubmit={submitLeave}>
+              <div className="grid-2">
                 <div className="form-group">
-                  <label className="form-label">Leave Type</label>
-                  <select className="form-select" value={form.leave_type} onChange={e => setForm({ ...form, leave_type: e.target.value })}>
-                    <option value="sick">Sick</option>
-                    <option value="bereavement">Bereavement</option>
-                    <option value="maternity">Maternity</option>
-                    <option value="paternity">Paternity</option>
+                  <label className="form-label">Start Date</label>
+                  <input className="form-input" type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">End Date</label>
+                  <input className="form-input" type="date" value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })} required />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Reason</label>
+                <textarea className="form-textarea" value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} />
+              </div>
+
+              {/* Email notification */}
+              <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 14, marginTop: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-text-muted)' }}>
+                    Send Email Notification
+                  </span>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">To</label>
+                  <select
+                    className="form-input"
+                    value={form.to}
+                    onChange={(e) => {
+                      const id = Number(e.target.value);
+                      // the "To" person can't also be in CC/BCC
+                      setForm((f) => ({
+                        ...f,
+                        to: e.target.value,
+                        cc: f.cc.filter((x) => x !== id),
+                        bcc: f.bcc.filter((x) => x !== id),
+                      }));
+                    }}
+                    defaultChecked
+                  >
+                    <option value="admin@gitgi.com">admin@gitgi.com</option>
                   </select>
                 </div>
+
                 <div className="grid-2">
                   <div className="form-group">
-                    <label className="form-label">Start Date</label>
-                    <input className="form-input" type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} required />
+                    <label className="form-label">CC</label>
+                    <MultiSelect
+                      options={employeeNames}
+                      value={form.cc}
+                      onChange={(cc) => setForm({ ...form, cc })}
+                      excludeIds={[...(form.to ? [Number(form.to)] : []), ...form.bcc]}
+                    />
                   </div>
+
                   <div className="form-group">
-                    <label className="form-label">End Date</label>
-                    <input className="form-input" type="date" value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })} required />
+                    <label className="form-label">BCC</label>
+                    <MultiSelect
+                      options={employeeNames}
+                      value={form.bcc}
+                      onChange={(bcc) => setForm({ ...form, bcc })}
+                      excludeIds={[...(form.to ? [Number(form.to)] : []), ...form.cc]}
+                    />
                   </div>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Reason</label>
-                  <textarea className="form-textarea" value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} />
-                </div>
+              </div>
 
-                {/* Email notification */}
-                <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 14, marginTop: 4 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-text-muted)' }}>
-                      Email Notification
-                    </span>
-                    {!emailConfigured && (
-                      <Button
-                        variant='text'
-                        size='small'
-                        onClick={() => { setShowLeaveModal(false); setSaveStatus(''); setShowEmailSetup(true); }}
-                        rightIcon={true}
-                      >
-                        Setup email first
-                      </Button>
-                    )}
-                  </div>
-                  {emailConfigured ? (
-                    <>
-                      <div className="form-group">
-                        <label className="form-label">To</label>
-                        <input className="form-input" type="text" placeholder="manager@company.com"
-                          value={form.to} onChange={e => setForm({ ...form, to: e.target.value })} />
-                      </div>
-                      <div className="grid-2">
-                        <div className="form-group">
-                          <label className="form-label">CC</label>
-                          <input className="form-input" type="text" placeholder="hr@company.com"
-                            value={form.cc} onChange={e => setForm({ ...form, cc: e.target.value })} />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">BCC</label>
-                          <input className="form-input" type="text" placeholder="archive@company.com"
-                            value={form.bcc} onChange={e => setForm({ ...form, bcc: e.target.value })} />
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <p className="text-muted" style={{ fontSize: 13 }}>Configure your email settings once to enable notifications.</p>
-                  )}
-                </div>
+              <div className="flex gap-3 justify-between" style={{ marginTop: 16 }}>
+                <Button variant="text" size="small" onClick={() => setShowLeaveModal(false)}>
+                  Cancel
+                </Button>
 
-                <div className="flex gap-3 justify-between" style={{ marginTop: 16 }}>
-
-                  <Button
-                    variant='text'
-                    size='small'
-                    onClick={() => setShowLeaveModal(false)}
-                  >
-                    Cancel
-                  </Button>
-
-                  <Button
-                    variant='primary'
-                    size='small'
-                    type='submit'
-                  >
-                    {emailConfigured && form.to.trim() ? 'Submit & Notify' : 'Submit Request'}
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )
-      }
-
-      {/* ── Edit Leave Modal ─────────────────────────────────────────────── */}
-      {
-        editingLeave && (
-          <div className="modal-overlay" onClick={() => setEditingLeave(null)}>
-            <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
-              <div className="modal-header">
-                <h2>Edit Leave Request</h2>
-                {/* <button className="modal-close" onClick={() => setEditingLeave(null)}>×</button> */}
-                <Button
-                  variant='text'
-                  size='small'
-                  onClick={() => setEditingLeave(null)}
-                >
-                  X
+                <Button variant="primary" size="small" type="submit">
+                  {emailConfigured && form.to ? 'Submit & Notify' : 'Submit Request'}
                 </Button>
               </div>
-              <form onSubmit={submitEdit}>
-                <div className="form-group">
-                  <label className="form-label">Leave Type</label>
-                  <select className="form-select" value={editForm.leave_type} onChange={e => setEditForm({ ...editForm, leave_type: e.target.value })}>
-                    <option value="sick">Sick</option>
-                    <option value="bereavement">Bereavement</option>
-                    <option value="maternity">Maternity</option>
-                    <option value="paternity">Paternity</option>
-                  </select>
-                </div>
-                <div className="grid-2">
-                  <div className="form-group">
-                    <label className="form-label">Start Date</label>
-                    <input className="form-input" type="date" value={editForm.start_date} onChange={e => setEditForm({ ...editForm, start_date: e.target.value })} required />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">End Date</label>
-                    <input className="form-input" type="date" value={editForm.end_date} onChange={e => setEditForm({ ...editForm, end_date: e.target.value })} required />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Reason</label>
-                  <textarea className="form-textarea" value={editForm.reason} onChange={e => setEditForm({ ...editForm, reason: e.target.value })} />
-                </div>
-                <div className="flex gap-3 justify-between" style={{ marginTop: 16 }}>
-
-                  <Button variant='text' size='small' onClick={() => setEditingLeave(null)}>Cancel</Button>
-
-                  <Button variant='primary' type='submit' size='small'>Save Change</Button>
-                </div>
-              </form>
-            </div>
+            </form>
           </div>
-        )
-      }
+        </div>
+      )}
 
-      {/* ── Email Setup Modal ────────────────────────────────────────────── */}
-      {
-        showEmailSetup && (
-          <div className="modal-overlay" onClick={() => setShowEmailSetup(false)}>
-            <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
-              <div className="modal-header">
-                <h2>Email Settings</h2>
-                <button className="modal-close" onClick={() => setShowEmailSetup(false)}>×</button>
+      {/* ── Edit Leave Modal ─────────────────────────────────────────────── */}
+      {editingLeave && (
+        <div className="modal-overlay" onClick={() => setEditingLeave(null)}>
+          <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Edit Leave Request</h2>
+              <Button variant="text" size="small" onClick={() => setEditingLeave(null)}>
+                X
+              </Button>
+            </div>
+            <form onSubmit={submitEdit}>
+              <div className="form-group">
+                <label className="form-label">Leave Type</label>
+                <select className="form-select" value={editForm.leave_type} onChange={e => setEditForm({ ...editForm, leave_type: e.target.value })}>
+                  <option value="sick">Sick</option>
+                  <option value="bereavement">Bereavement</option>
+                  <option value="maternity">Maternity</option>
+                  <option value="paternity">Paternity</option>
+                </select>
               </div>
-              <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>
-                Set up once. Your credentials are saved securely in the database and used each time you send a leave notification.
-              </p>
-              <form onSubmit={saveEmailSettings}>
-                <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-text-muted)', marginBottom: 10 }}>
-                  SMTP Configuration
-                </div>
-                <div className="grid-2">
-                  <div className="form-group">
-                    <label className="form-label">SMTP Host</label>
-                    <input className="form-input" type="text" placeholder="smtp.gmail.com"
-                      value={emailForm.smtp_host} onChange={e => setEmailForm({ ...emailForm, smtp_host: e.target.value })} required />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Port</label>
-                    <input className="form-input" type="number" placeholder="587"
-                      value={emailForm.smtp_port} onChange={e => setEmailForm({ ...emailForm, smtp_port: +e.target.value })} required />
-                  </div>
+              <div className="grid-2">
+                <div className="form-group">
+                  <label className="form-label">Start Date</label>
+                  <input className="form-input" type="date" value={editForm.start_date} onChange={e => setEditForm({ ...editForm, start_date: e.target.value })} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Email / Username</label>
-                  <input className="form-input" type="email" placeholder="you@gmail.com"
-                    value={emailForm.smtp_user} onChange={e => setEmailForm({ ...emailForm, smtp_user: e.target.value })} required />
+                  <label className="form-label">End Date</label>
+                  <input className="form-input" type="date" value={editForm.end_date} onChange={e => setEditForm({ ...editForm, end_date: e.target.value })} required />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">
-                    Password {emailConfigured && <span className="text-muted" style={{ fontWeight: 400 }}>(leave blank to keep existing)</span>}
-                  </label>
-                  <input className="form-input" type="password" placeholder={emailConfigured ? '••••••••' : 'App password'}
-                    value={emailForm.smtp_pass}
-                    onChange={e => setEmailForm({ ...emailForm, smtp_pass: e.target.value })}
-                    required={!emailConfigured} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Display Name (From)</label>
-                  <input className="form-input" type="text" placeholder="Your Name (optional)"
-                    value={emailForm.smtp_from} onChange={e => setEmailForm({ ...emailForm, smtp_from: e.target.value })} />
-                </div>
-
-                <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-text-muted)', margin: '16px 0 10px' }}>
-                  Default Recipients
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Default To</label>
-                  <input className="form-input" type="text" placeholder="manager@company.com"
-                    value={emailForm.default_to} onChange={e => setEmailForm({ ...emailForm, default_to: e.target.value })} />
-                </div>
-                <div className="grid-2">
-                  <div className="form-group">
-                    <label className="form-label">Default CC</label>
-                    <input className="form-input" type="text" placeholder="hr@company.com"
-                      value={emailForm.default_cc} onChange={e => setEmailForm({ ...emailForm, default_cc: e.target.value })} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Default BCC</label>
-                    <input className="form-input" type="text" placeholder="archive@company.com"
-                      value={emailForm.default_bcc} onChange={e => setEmailForm({ ...emailForm, default_bcc: e.target.value })} />
-                  </div>
-                </div>
-
-                {saveStatus && (
-                  <div style={{ fontSize: 13, marginBottom: 12, color: saveStatus.startsWith('Error') ? 'var(--color-error)' : 'var(--color-success)' }}>
-                    {saveStatus}
-                  </div>
-                )}
-                <div className="flex gap-3 justify-between">
-
-                  <Button variant='text' size='small' onClick={() => setShowEmailSetup(false)}> Cancel</Button>
-
-                  <Button variant='primary' type='submit' size='small' disabled={settingsLoading}> {settingsLoading ? 'Saving…' : 'Save Settings'}</Button>
-                </div>
-              </form>
-            </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Reason</label>
+                <textarea className="form-textarea" value={editForm.reason} onChange={e => setEditForm({ ...editForm, reason: e.target.value })} />
+              </div>
+              <div className="flex gap-3 justify-between" style={{ marginTop: 16 }}>
+                <Button variant="text" size="small" onClick={() => setEditingLeave(null)}>Cancel</Button>
+                <Button variant="primary" type="submit" size="small">Save Change</Button>
+              </div>
+            </form>
           </div>
-        )
-      }
-    </div >
+        </div>
+      )}
+    </div>
   );
 }
