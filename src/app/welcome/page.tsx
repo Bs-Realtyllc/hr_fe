@@ -64,7 +64,7 @@ function PersonalInfoProgress({
                     />
                 </div>
 
-                <span className="text-[12px] font-medium leading-4 text-(--neutral-normal">
+                <span className="text-[12px] font-medium leading-4 text-(--neutral-normal)">
                     {text}
                 </span>
             </div>
@@ -89,24 +89,49 @@ function PersonalInfoProgress({
 }
 
 
-interface Profile {
-    id: number;
+interface TokenUser {
     name: string;
     email: string;
     role: string;
-    profile_picture: string;
+}
+
+// Reads name, email and role from the JWT payload (no signature check; display only)
+function getUserFromToken(token: string | null | undefined): TokenUser {
+    const empty = { name: '', email: '', role: '' };
+    if (!token) return empty;
+    try {
+        const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const json = decodeURIComponent(
+            atob(base64)
+                .split('')
+                .map((c) => '%' + c.charCodeAt(0).toString(16).padStart(2, '0'))
+                .join('')
+        );
+        const payload = JSON.parse(json);
+        const user = payload.user ?? payload;
+        return {
+            name: String(user.name ?? user.full_name ?? user.username ?? ''),
+            email: String(user.email ?? ''),
+            role: String(user.role ?? (Array.isArray(user.roles) ? user.roles[0] : '') ?? ''),
+        };
+    } catch {
+        return empty;
+    }
+}
+
+interface Profile {
+    profile_picture?: string | null;
 }
 
 const BACKEND = (
     process.env.NEXT_PUBLIC_API_URL || 'http://localhost:6002/api'
 ).replace(/\/api\/?$/, '');
 
+
 export default function WelcomePage() {
     const router = useRouter();
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
-
-
 
     useEffect(() => {
         if (!getToken()) {
@@ -116,14 +141,17 @@ export default function WelcomePage() {
 
         async function loadProfile() {
             try {
+                // Only used for the profile picture
                 const data = await api.get<Profile>('/profile');
-                setProfile(data);
+                setProfile(data ?? null);
             } catch (error) {
+                // Page still renders without the picture
                 console.error('Failed to load profile:', error);
             } finally {
                 setLoading(false);
             }
         }
+
 
         loadProfile();
     }, [router]);
@@ -131,7 +159,6 @@ export default function WelcomePage() {
     if (!getToken()) {
         return null;
     }
-
     if (loading) {
         return (
             <div className="flex min-h-screen items-center justify-center">
@@ -140,20 +167,14 @@ export default function WelcomePage() {
         );
     }
 
-    if (!profile) {
-        return (
-            <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-                <p>Unable to load your profile.</p>
-                <Button onClick={() => router.replace('/login')}>
-                    Back to Login
-                </Button>
-            </div>
-        );
-    }
+    // Name, email and role come from the token
+    const user = getUserFromToken(getToken());
+    const name = user.name.trim() || 'User';
+    const email = user.email.trim();
+    const role = user.role ? user.role.replace(/_/g, ' ') : '';
+    const profileImage = profile?.profile_picture
+        ? `${BACKEND}/uploads/profile/photo/${profile.profile_picture}` : undefined;
 
-    const profileImage = profile.profile_picture
-        ? `${BACKEND}/uploads/profile/${profile.profile_picture} `
-        : undefined;
     return (
         <div className="relative min-h-screen w-full overflow-hidden">
 
@@ -203,7 +224,7 @@ export default function WelcomePage() {
                             <div className="flex min-w-0 items-center gap-4">
                                 <div className="relative flex justify-end items-end ">
                                     <BSRealtyAvatar
-                                        name={profile.name}
+                                        name={name}
                                         size="xl"
                                         src={profileImage}
                                     />
@@ -212,43 +233,42 @@ export default function WelcomePage() {
 
                                 <div className="min-w-0">
                                     <h3 className="break-words text-[18px] font-medium leading-7 text-(--neutral-normal)">
-                                        {profile.name}
+                                        {name}
                                     </h3>
 
-                                    <p className="break-all text-[14px] leading-6 text-(--neutral-light-dark-active">
-                                        {profile.email}
-                                    </p>
+                                    {email && (
+                                        <p className="break-all text-[14px] leading-6 text-(--neutral-light-dark-active)">
+                                            {email}
+                                        </p>
+                                    )}
 
-                                    <div className="py-1 flex gap-1">
-
-                                        <span
-                                            style={{
-                                                display: 'inline-block',
-                                                width: '16px',
-                                                height: '16px',
-                                                backgroundColor: 'currentColor',
-                                                WebkitMaskImage: `url('/icons/Users.svg')`,
-                                                maskImage: `url('/icons/Users.svg')`,
-                                                WebkitMaskRepeat: 'no-repeat',
-                                                maskRepeat: 'no-repeat',
-                                                WebkitMaskPosition: 'center',
-                                                maskPosition: 'center',
-                                                WebkitMaskSize: 'contain',
-                                                maskSize: 'contain',
-                                            }}
-                                        ></span>
-                                        <span className="text-[14px] font-medium leading-5 capitalize">{profile.role.replace(/_/g, ' ')}</span>
-                                    </div>
-
-
+                                    {role && (
+                                        <div className="py-1 flex gap-1">
+                                            <span
+                                                style={{
+                                                    display: 'inline-block',
+                                                    width: '16px',
+                                                    height: '16px',
+                                                    backgroundColor: 'currentColor',
+                                                    WebkitMaskImage: `url('/icons/Users.svg')`,
+                                                    maskImage: `url('/icons/Users.svg')`,
+                                                    WebkitMaskRepeat: 'no-repeat',
+                                                    maskRepeat: 'no-repeat',
+                                                    WebkitMaskPosition: 'center',
+                                                    maskPosition: 'center',
+                                                    WebkitMaskSize: 'contain',
+                                                    maskSize: 'contain',
+                                                }}
+                                            ></span>
+                                            <span className="text-[14px] font-medium leading-5 capitalize">{role}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="rotate-90">
-                                <img src="icons/dots.svg" alt="" className=" opacity-50" />
+                                <img src="/icons/dots.svg" alt="" className=" opacity-50" />
                             </div>
                         </div>
-
-
 
                         {/* divider */}
                         <div className="border border-(--neutral-light-hover)  "></div>
@@ -305,4 +325,3 @@ export default function WelcomePage() {
         </div>
     )
 }
-

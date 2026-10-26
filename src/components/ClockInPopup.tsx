@@ -42,24 +42,24 @@ function setKey(value: "1" | "0") {
 function isWithinClockInWindow(): boolean {
   const now = new Date();
   const hours = now.getHours();
-  return hours >= 8 && hours < 24;
+  return hours >= 8 && hours < 12;
 }
 
 export default function ClockInPopup() {
   const [showPopup, setShowPopup] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(false);
   const [forcePopup, setForcePopup] = useState<boolean>(false);
-  const [status, setStatus] =useState<'idle'| 'running' | 'paused' | 'done'>('idle')
+  const [status, setStatus] = useState<'idle' | 'running' | 'paused' | 'done'>('idle')
 
-  const fetchClock = async()=>{
+  const fetchClock = async () => {
     const { result } = await api.get<ClockResponse>("/clock");
     setStatus(result.status)
-    if(result.status !== 'idle') setKey('0');
+    if (result.status !== 'idle') setKey('0');
   }
   useEffect(() => {
     if (localStorage.getItem(todayKey()) === null) {
       localStorage.setItem(todayKey(), "1");
-      
+
     }
     fetchClock();
   }, []);
@@ -93,7 +93,7 @@ export default function ClockInPopup() {
 
   if (!showPopup) return null;
 
-  if ((isWithinClockInWindow()&&status==='idle' && getKey()) || forcePopup) {
+  if ((isWithinClockInWindow() && status === 'idle' && getKey()) || forcePopup) {
     return (
       <div className="modal-overlay flex items-center justify-center p-4">
         <div className="modal max-w-sm w-full p-6">
@@ -128,4 +128,4 @@ export default function ClockInPopup() {
       </div>
     );
   }
-}
+} 
