@@ -41,14 +41,20 @@ const VERIFY_PATH: Record<Mode, string> = {
     email: '/auth/2fa/email-otp/verify',
 }
 
-async function postJson(path: string, body: unknown) {
-    const res = await fetch(`${API}${path}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-    })
+async function postJson(path: string, body: unknown, fallbackError = 'Verification failed') {
+    let res: Response
+    try {
+        res = await fetch(`${API}${path}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(body),
+        })
+    } catch {
+        throw new Error('Can’t reach the server. Check your connection and try again.')
+    }
     const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.error ?? data.message ?? 'Verification failed')
+    if (!res.ok) throw new Error(data.error ?? data.message ?? fallbackError)
     return data
 }
 
@@ -59,6 +65,7 @@ const TwoFactorAuthPage = () => {
     const [challenge, setChallenge] = useState<TwoFactorChallenge | null>(null)
     const [mode, setMode] = useState<Mode>('app')
     const [otp, setOtp] = useState('')
+    const [rememberDevice, setRememberDevice] = useState(false)
     const [loading, setLoading] = useState(false)
     const [sendingEmail, setSendingEmail] = useState(false)
     const [resendIn, setResendIn] = useState(0)
@@ -97,7 +104,7 @@ const TwoFactorAuthPage = () => {
         setSendingEmail(true)
         setError('')
         try {
-            await postJson('/auth/2fa/email-otp/request', { tempToken: challenge.tempToken })
+            await postJson('/auth/2fa/email-otp/request', { tempToken: challenge.tempToken }, 'Could not send the email code.')
             setSuccess('We sent a code to your email.')
             setResendIn(60)
         } catch (err) {
@@ -107,12 +114,12 @@ const TwoFactorAuthPage = () => {
         }
     }
 
-    async function handleVerify(e?: React.FormEvent, codeOverride?: string) {
+    // Runs only when the user clicks Verify or presses Enter.
+    async function handleVerify(e?: React.FormEvent) {
         e?.preventDefault()
-        const code = (codeOverride ?? otp).trim()
+        const code = otp.trim()
         if (!challenge || loading) return
-        const valid = mode === 'backup' ? code.length >= 6 : /^\d{6}$/.test(code)
-        if (!valid) {
+        if (!isValid) {
             setError(mode === 'backup' ? 'Enter a valid backup code.' : 'Enter the 6-digit code.')
             return
         }
@@ -125,7 +132,9 @@ const TwoFactorAuthPage = () => {
             const data = await postJson(VERIFY_PATH[mode], {
                 tempToken: challenge.tempToken,
                 code,
+                rememberDevice,
             })
+
             clearTwoFactorChallenge()
             setSuccess('Verified. Signing you in…')
             login(data.token as string, data.user as AuthUser)
@@ -156,7 +165,7 @@ const TwoFactorAuthPage = () => {
         <div className='flex justify-center items-center h-full w-full min-h-screen'>
             <div className='flex flex-col w-[591px] gap-3 items-center'>
                 {/* Logo */}
-                <img width={'111px'} height={'20px'} src="/logos/gitgi-hr-logo.svg" alt="gitgi" />
+                <img width={111} height={20} src="/logos/gitgi-hr-logo.svg" alt="gitgi" />
 
                 <form className='flex flex-col gap-6 items-center p-6 text-center w-full' onSubmit={handleVerify}>
                     <div className='space-y-3'>
@@ -173,6 +182,7 @@ const TwoFactorAuthPage = () => {
                                 autoFocus
                                 maxLength={20}
                                 value={otp}
+                                disabled={loading}
                                 onChange={(event) => {
                                     setOtp(event.target.value.toUpperCase())
                                     setError('')
@@ -189,11 +199,20 @@ const TwoFactorAuthPage = () => {
                                     setOtp(value)
                                     setError('')
                                 }}
-                                // Submit as soon as the 6th digit is entered.
-                                onComplete={(code) => handleVerify(undefined, code)}
                             />
                         )}
                     </div>
+
+                    <label className="flex items-center gap-2 cursor-pointer text-[16px] font-medium text-(--gray-dark-active)">
+                        <input
+                            type="checkbox"
+                            checked={rememberDevice}
+                            disabled={loading}
+                            onChange={(e) => setRememberDevice(e.target.checked)}
+                            className="h-4 w-4 cursor-pointer"
+                        />
+                        Remember this device for 30 days
+                    </label>
 
                     {mode === 'email' && (
                         <button
@@ -225,18 +244,24 @@ const TwoFactorAuthPage = () => {
                             variant="primary"
                             disabled={loading || !isValid}
                         >
-                            {loading ? 'Verifying...' : 'Verify'}
+                            {loading ? 'Verifying…' : 'Verify'}
                         </Button>
 
                         <div className='flex flex-col gap-2 text-[16px] font-medium leading-6 text-(--blue-dark-normal)'>
                             {mode !== 'app' && (
-                                <button type="button" onClick={() => switchMode('app')}>Use authenticator app</button>
+                                <button type="button" onClick={() => switchMode('app')} disabled={loading}>
+                                    Use authenticator app
+                                </button>
                             )}
                             {mode !== 'backup' && (
-                                <button type="button" onClick={() => switchMode('backup')}>Use a backup code</button>
+                                <button type="button" onClick={() => switchMode('backup')} disabled={loading}>
+                                    Use a backup code
+                                </button>
                             )}
                             {mode !== 'email' && (
-                                <button type="button" onClick={() => switchMode('email')}>Email me a code instead</button>
+                                <button type="button" onClick={() => switchMode('email')} disabled={loading}>
+                                    Email me a code instead
+                                </button>
                             )}
                         </div>
 

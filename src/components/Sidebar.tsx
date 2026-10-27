@@ -136,10 +136,10 @@ export default function Sidebar() {
     }))
     .filter(group => group.items.length > 0);
 
-  function handleLogout() {
-    logout();
-    router.replace('/login');
-  }
+  // function handleLogout() {
+  //   logout();
+  //   router.replace('/login');
+  // }
 
   // No-op on desktop (the sidebar isn't off-canvas there); closes the mobile drawer.
   function closeMobileSidebar() {
@@ -201,7 +201,7 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <div className="relative" ref={profileMenuRef}>
+        <div className="relative py-3 px-6 border-t border-(--gray-light-hover)" ref={profileMenuRef}>
           <div
             className={`sidebar-profile cursor-pointer overflow-visible ${showProfileToogle
               ? 'bg-(--blue-sky-light)'
@@ -211,8 +211,8 @@ export default function Sidebar() {
           >
 
             <BSRealtyAvatar size='md' name={user ? initials(user.name) : '?'} />
-            <div className="flex flex-col">
-              <div className='flex items-center justify-between'>
+            <div className="flex flex-col w-full">
+              <div className='flex  items-center justify-between'>
                 <span className="text-[14px] font-medium leading-5 text-(--neutral-normal)">{user?.name ?? ''}</span>
                 <span
                   className="border inline-block h-4 w-4 bg-(--neutral-dark)"
@@ -228,7 +228,7 @@ export default function Sidebar() {
                   }}
                 />
               </div>
-              <span className="sidebar-profile-email">{user?.email ?? ''}</span>
+              <span className="text-[12px] font-normal text-(--gray-normal-active)">{user?.email ?? ''}</span>
             </div>
 
 
@@ -236,7 +236,7 @@ export default function Sidebar() {
           {
             showProfileToogle && (
               <>
-                <div className=" absolute flex flex-col justify-end py-3 px-2 rounded-lg gap-2 left-0 bottom-20  bg-(--soft-white-light) shadow-(--shadow-sm) z-50 overflow-visible " >
+                <div className="absolute flex flex-col justify-end py-3 px-2 rounded-lg gap-2 left-6 bottom-24  bg-(--soft-white-light) shadow-(--shadow-sm) z-50 overflow-visible " >
                   <div className={`flex items-center p-2 gap-2 cursor-pointer rounded-lg  $
                   ? 'bg-(--blue-sky-light)'
                   : 'hover:bg-(--blue-sky-light)'
@@ -339,7 +339,7 @@ export default function Sidebar() {
                     {/* divider */}
                     <div className='border-b w-[90%] mx-auto border-(--soft-white-normal-active)'></div>
 
-                    <div className="flex items-center py-2 px-3 gap-1 rounded-lg hover:bg-(--error-light) cursor-pointer" onClick={handleLogout} title="Sign out">
+                    <div className="flex items-center py-2 px-3 gap-1 rounded-lg hover:bg-(--error-light) cursor-pointer" onClick={() => router.push('/logout')} title="Sign out">
                       <button className="flex items-center gap-1 text-[14px] font-medium text-(--error-normal) " >
                         <span
                           className="inline-block h-[18px] w-[18px] "

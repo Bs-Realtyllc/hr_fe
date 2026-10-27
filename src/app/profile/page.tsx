@@ -151,6 +151,9 @@ export default function ProfilePage() {
     phone: '',
     role: '',
   });
+  const [isNameEdit, setIsNameEdit] = useState(false)
+  const [isEmailEdit, setIsEmailEdit] = useState(false)
+  const [isPhoneEdit, setIsPhoneEdit] = useState(false)
 
   // Security
   const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm: '' });
@@ -163,6 +166,7 @@ export default function ProfilePage() {
   const [, setFrontPreview] = useState<string | null>(null);
   const [, setBackPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
+
 
   // ── Show profile ───────────────────────────────────────────────────────────
   const load = async () => {
@@ -424,6 +428,7 @@ export default function ProfilePage() {
     const res = await fetch(`${BACKEND}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ email: profile?.email, password }),
     });
     if (res.status === 400 || res.status === 401 || res.status === 403) return false;
@@ -594,6 +599,9 @@ export default function ProfilePage() {
     // TODO: connect organization / security / notification settings to their APIs.
     flash('Saving this section is not available yet.', 'err');
   };
+
+
+
 
   return (
     <div>
@@ -783,8 +791,9 @@ export default function ProfilePage() {
                           placeholder='Enter your Full name'
                           value={form.name}
                           onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
+                          disabled={!isNameEdit}
                         />
-                        <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('name')?.focus()}>Edit</Button>
+                        <Button type='button' variant='primary' size='small' onClick={() => setIsNameEdit(prev => !prev)} >Edit</Button>
                       </div>
 
                       <div className='flex gap-6'>
@@ -795,8 +804,9 @@ export default function ProfilePage() {
                           type='email'
                           placeholder='Enter your email'
                           onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
+                          disabled={!isEmailEdit}
                         />
-                        <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('email')?.focus()}>Edit</Button>
+                        <Button type='button' variant='primary' size='small' onClick={() => setIsEmailEdit(prev => !prev)}>Edit</Button>
                       </div>
 
                       <div className='flex gap-6'>
@@ -807,8 +817,11 @@ export default function ProfilePage() {
                           type='text'
                           placeholder='Enter your Phone number'
                           onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
+                          disabled={!isPhoneEdit}
                         />
-                        <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('phone')?.focus()}>Edit</Button>
+
+                        <Button type='button' variant='primary' size='small' onClick={() => setIsPhoneEdit(prev => !prev)}>Edit</Button>
+
                       </div>
 
                       {/* Only admins can change a role; others see it read-only. */}

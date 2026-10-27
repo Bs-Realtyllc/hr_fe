@@ -22,11 +22,11 @@ export default function PageHeader({
 
     const [showProfileToogle, setShowProfileToogle] = useState(false);
 
-    function handleLogout() {
-        setShowProfileToogle(false);
-        logout();
-        router.replace('/login');
-    }
+    // function handleLogout() {
+    //     setShowProfileToogle(false);
+    //     logout();
+    //     router.replace('/login');
+    // }
 
     const profileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -142,7 +142,7 @@ export default function PageHeader({
                                                     />
                                                     <span>Setting</span>
                                                 </div>
-                                                <div className="flex items-center py-2 px-3 gap-1 rounded-lg cursor-pointer hover:bg-(--error-light)" onClick={handleLogout} title="Sign out">
+                                                <div className="flex items-center py-2 px-3 gap-1 rounded-lg cursor-pointer hover:bg-(--error-light)" onClick={() => router.push('/logout')} title="Sign out">
                                                     <button className="flex items-center gap-1 text-[14px] font-medium text-(--error-normal) " >
                                                         <span
                                                             className="inline-block h-[18px] w-[18px] "

@@ -84,6 +84,7 @@ export default function LoginPage() {
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ email, password }),
         });
         const data = await res.json();
@@ -100,11 +101,11 @@ export default function LoginPage() {
           router.push('/twoFactorAuth');
           return;
         }
-        if (await isTwoFactorEnabled(data.token)) {
-          saveTwoFactorChallenge({ tempToken: data.tempToken ?? data.token, email });
-          router.push('/two-factor-auth');
-          return;
-        }
+        // if (await isTwoFactorEnabled(data.token)) {
+        //   saveTwoFactorChallenge({ tempToken: data.tempToken ?? data.token, email });
+        //   router.push('/two-factor-auth');
+        //   return;
+        // }
 
         if (data.requiresOtp) {
           setRequiresOtp(true);

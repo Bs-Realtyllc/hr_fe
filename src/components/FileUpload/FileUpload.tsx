@@ -78,6 +78,10 @@ const DotsIcon = () => (
     </svg>
 )
 
+// Dashed border as an SVG so the dash/gap can be tuned: stroke-dasharray='<dash>, <gap>'
+const dashedBorder = (color: string) =>
+    `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg'%3e%3crect x='1' y='1' width='calc(100%25 - 2px)' height='calc(100%25 - 2px)' fill='none' rx='12' ry='12' stroke='${encodeURIComponent(color)}' stroke-width='1.5' stroke-dasharray='6%2c 14' stroke-linecap='round'/%3e%3c/svg%3e")`
+
 /* ---------------- Component ---------------- */
 
 const FileUpload = ({
@@ -219,9 +223,10 @@ const FileUpload = ({
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    className={`flex flex-col justify-center items-center h-[224px] w-full rounded-xl gap-[10px] border border-dashed transition-colors outline-none focus-visible:ring-2 focus-visible:ring-(--blue-salt-dark-active)/40
-                        ${isDragging ? "border-(--blue-sky-dark-hover) bg-(--blue-sky-light)/60" : shownError ? "border-(--error-normal-active)" : "border-(--blue-sky-light)"}
-                        ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                    className={`flex flex-col justify-center items-center h-[224px] w-full rounded-xl gap-[10px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-(--blue-salt-dark-active)/40
+    ${isDragging ? "bg-(--blue-sky-light)/60" : ""}
+    ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                    style={{ backgroundImage: dashedBorder(shownError ? "#b01e1e" : "#bfbfbf") }}
                 >
                     <div className="w-11 h-11 rounded-full bg-(--blue-sky-light) flex items-center justify-center">
                         <CloudUploadIcon />
@@ -230,7 +235,7 @@ const FileUpload = ({
                         <h3 className="text-[12px] text-(--gray-dark-active) font-medium">
                             {isDragging ? "Drop your file here" : "Select your file or drag and drop"}
                         </h3>
-                        <p className="text-[11px] font-medium text-[#5A687D]">
+                        <p className="text-[11px] font-medium text-(--gray-normal-hover)">
                             PNG, JPG, PDF or DOCX - Max {maxSizeMB}MB
                         </p>
                     </div>
@@ -249,7 +254,7 @@ const FileUpload = ({
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    className={`w-full rounded-xl bg-[#F1F5F9] p-3 pt-2 border transition-colors
+                    className={`w-full rounded-xl bg-(--soft-white-normal) p-3 pt-2 border transition-colors
                         ${isDragging ? "border-dashed border-(--soft-white-normal)" : "border-transparent"}`}
                 >
                     {/* Header: icon + file name + 3-dot menu */}
