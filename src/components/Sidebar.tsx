@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAppSelector, useAppDispatch } from '@/store/hook';
 import { BSRealtyAvatar } from '@bsrealtyllc/design-system';
 import { setSidebarOpen } from '@/store/slices/sidebarSlice'
+import { useEffect, useRef, useState } from 'react';
 
 type Role = 'admin' | 'lead' | 'employee';
 
@@ -103,6 +104,27 @@ export default function Sidebar() {
   const isOpen = useAppSelector((state) => state.sidebar.isOpen);
   const dispatch = useAppDispatch();
 
+  const [showProfileToogle, setShowProfileToogle] = useState(false);
+
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  // For profile menu
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowProfileToogle(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   //Sidebartoogle State:
   const role: Role = user?.role ?? 'employee';
@@ -114,10 +136,10 @@ export default function Sidebar() {
     }))
     .filter(group => group.items.length > 0);
 
-  function handleLogout() {
-    logout();
-    router.replace('/login');
-  }
+  // function handleLogout() {
+  //   logout();
+  //   router.replace('/login');
+  // }
 
   // No-op on desktop (the sidebar isn't off-canvas there); closes the mobile drawer.
   function closeMobileSidebar() {
@@ -134,13 +156,7 @@ export default function Sidebar() {
       <aside className={`sidebar ${isOpen ? 'sidebar-open' : ''}`}>
         <div className='sidebar-wrapper'>
           <div className="sidebar-contant">
-            {/* <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-              <img src="../icon.svg" alt="Icon" width={30} height={30} style={{ flexShrink: 0 }} />
-              <div>
-                <h1>HR Platform</h1>
-                <span>Internal Tools</span>
-              </div>
-            </div> */}
+
             <div className='py-5 '>
               <img height={'20px'} width={'111px'} src="/logos/gitgi-hr-logo.svg" alt="" />
             </div>
@@ -185,24 +201,173 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <div className="sidebar-profile">
-          {/* <div className="sidebar-profile-avatar">
-            {user ? initials(user.name) : '?'}
-          </div> */}
-          <BSRealtyAvatar size='md' name={user ? initials(user.name) : '?'} />
-          <div className="sidebar-profile-info">
-            <div className="sidebar-profile-name flex justify-between items-center"><span>{user?.name ?? ''}</span>
-              <button className="sidebar-logout-btn " onClick={handleLogout} title="Sign out">
-                <span
-                  className="icon"
-                  style={{ WebkitMaskImage: 'url(/icons/cheveron-right.svg)', maskImage: 'url(/icons/chevron-right.svg)' }}
-                />
-              </button>
-            </div>
-            <div className="sidebar-profile-email">{user?.email ?? ''}</div>
-          </div>
+        <div className="relative py-3 px-6 border-t border-(--gray-light-hover)" ref={profileMenuRef}>
+          <div
+            className={`sidebar-profile cursor-pointer overflow-visible ${showProfileToogle
+              ? 'bg-(--blue-sky-light)'
+              : 'hover:bg-(--blue-sky-light)'
+              }`}
+            onClick={() => setShowProfileToogle(prev => !prev)}
+          >
 
+            <BSRealtyAvatar size='md' name={user ? initials(user.name) : '?'} />
+            <div className="flex flex-col w-full">
+              <div className='flex  items-center justify-between'>
+                <span className="text-[14px] font-medium leading-5 text-(--neutral-normal)">{user?.name ?? ''}</span>
+                <span
+                  className="border inline-block h-4 w-4 bg-(--neutral-dark)"
+                  style={{
+                    WebkitMaskImage: 'url(/icons/chevron-right.svg)',
+                    maskImage: 'url(/icons/chevron-right.svg)',
+                    WebkitMaskRepeat: 'no-repeat',
+                    maskRepeat: 'no-repeat',
+                    WebkitMaskPosition: 'center',
+                    maskPosition: 'center',
+                    WebkitMaskSize: 'contain',
+                    maskSize: 'contain',
+                  }}
+                />
+              </div>
+              <span className="text-[12px] font-normal text-(--gray-normal-active)">{user?.email ?? ''}</span>
+            </div>
+
+
+          </div>
+          {
+            showProfileToogle && (
+              <>
+                <div className="absolute flex flex-col justify-end py-3 px-2 rounded-lg gap-2 left-6 bottom-24  bg-(--soft-white-light) shadow-(--shadow-sm) z-50 overflow-visible " >
+                  <div className={`flex items-center p-2 gap-2 cursor-pointer rounded-lg  $
+                  ? 'bg-(--blue-sky-light)'
+                  : 'hover:bg-(--blue-sky-light)'
+                  }`}
+                  >
+                    <BSRealtyAvatar size='md' name={user ? initials(user.name) : '?'} />
+
+                    <div className="flex flex-col">
+                      <span className="text-[14px] font-medium leading-5 text-(--neutral-normal)">{user?.name ?? ''}</span>
+                      <span className="sidebar-profile-email">{user?.email ?? ''}</span>
+                    </div>
+                    <span
+                      className="inline-block h-4 w-4 bg-(--neutral-dark)"
+                      style={{
+                        WebkitMaskImage: 'url(/icons/chevron-right.svg)',
+                        maskImage: 'url(/icons/chevron-right.svg)',
+                        WebkitMaskRepeat: 'no-repeat',
+                        maskRepeat: 'no-repeat',
+                        WebkitMaskPosition: 'center',
+                        maskPosition: 'center',
+                        WebkitMaskSize: 'contain',
+                        maskSize: 'contain',
+                      }}
+                    />
+                  </div>
+                  {/* divider */}
+                  <div className='border-b w-[90%] mx-auto border-(--soft-white-normal-active)'></div>
+
+                  <div className="flex flex-col gap-2">
+                    <div className={`flex items-center py-2 px-3 gap-1 rounded-lg text-[14px] font-medium text-(--neutral-normal) cursor-pointer ${pathname === '/profile'
+                      ? 'bg-(--blue-sky-light)'
+                      : 'hover:bg-(--blue-sky-light)'
+                      }`}
+                      onClick={() => {
+                        setShowProfileToogle(false);
+                        router.push('/profile');
+                      }} title="Profile">
+                      <span
+                        className="inline-block h-[18px] w-[18px] bg-(--neutral-dark)"
+                        style={{
+                          WebkitMaskImage: 'url(/icons/user.svg)',
+                          maskImage: 'url(/icons/user.svg)',
+                          WebkitMaskRepeat: 'no-repeat',
+                          maskRepeat: 'no-repeat',
+                          WebkitMaskPosition: 'center',
+                          maskPosition: 'center',
+                          WebkitMaskSize: 'contain',
+                          maskSize: 'contain',
+                        }}
+                      />
+                      <span>Profile</span>
+                    </div>
+                    <div className={`flex items-center py-2 px-3 gap-1 rounded-lg text-[14px] font-medium text-(--neutral-normal) cursor-pointer ${pathname === '/settings'
+                      ? 'bg-(--blue-sky-light)'
+                      : 'hover:bg-(--blue-sky-light)'
+                      }`}
+                      onClick={() => {
+                        setShowProfileToogle(false);
+                        router.push('/settings');
+                      }} title="Settings">
+                      <span
+                        className="inline-block h-[18px] w-[18px] bg-(--neutral-dark)"
+                        style={{
+                          WebkitMaskImage: 'url(/icons/settings.svg)',
+                          maskImage: 'url(/icons/settings.svg)',
+                          WebkitMaskRepeat: 'no-repeat',
+                          maskRepeat: 'no-repeat',
+                          WebkitMaskPosition: 'center',
+                          maskPosition: 'center',
+                          WebkitMaskSize: 'contain',
+                          maskSize: 'contain',
+                        }}
+                      />
+                      <span>Setting</span>
+                    </div>
+                    <div className={`flex items-center py-2 px-3 gap-1 rounded-lg text-[14px] font-medium text-(--neutral-normal) cursor-pointer ${pathname === '/updates'
+                      ? 'bg-(--blue-sky-light)'
+                      : 'hover:bg-(--blue-sky-light)'
+                      }`}
+                      onClick={() => {
+                        setShowProfileToogle(false);
+                        router.push('/updates');
+                      }} title="Updates">
+                      <span
+                        className="inline-block h-[18px] w-[18px] bg-(--neutral-dark)"
+                        style={{
+                          WebkitMaskImage: 'url(/icons/info-circle.svg)',
+                          maskImage: 'url(/icons/info-circle.svg)',
+                          WebkitMaskRepeat: 'no-repeat',
+                          maskRepeat: 'no-repeat',
+                          WebkitMaskPosition: 'center',
+                          maskPosition: 'center',
+                          WebkitMaskSize: 'contain',
+                          maskSize: 'contain',
+                        }}
+                      />
+                      <span>Updates</span>
+                    </div>
+
+                    {/* divider */}
+                    <div className='border-b w-[90%] mx-auto border-(--soft-white-normal-active)'></div>
+
+                    <div className="flex items-center py-2 px-3 gap-1 rounded-lg hover:bg-(--error-light) cursor-pointer" onClick={() => router.push('/logout')} title="Sign out">
+                      <button className="flex items-center gap-1 text-[14px] font-medium text-(--error-normal) " >
+                        <span
+                          className="inline-block h-[18px] w-[18px] "
+                          style={{
+                            WebkitMaskImage: 'url(/icons/log-out.svg)',
+                            maskImage: 'url(/icons/log-out.svg)',
+                            WebkitMaskRepeat: 'no-repeat',
+                            maskRepeat: 'no-repeat',
+                            WebkitMaskPosition: 'center',
+                            maskPosition: 'center',
+                            WebkitMaskSize: 'contain',
+                            maskSize: 'contain',
+                            background: 'currentColor'
+                          }}
+                        />
+                        <span>Logout</span>
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+
+
+              </>
+            )
+          }
         </div>
+
       </aside>
     </>
   );

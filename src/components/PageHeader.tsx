@@ -2,7 +2,8 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { BSRealtyAvatar, BSRealtyNotification } from "@bsrealtyllc/design-system";
-import type { ReactNode } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 interface PageHeaderProps {
     title: string, discription: string,
@@ -15,7 +16,36 @@ export default function PageHeader({
     discription,
     children
 }: PageHeaderProps) {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
+    const router = useRouter();
+    const pathname = usePathname();
+
+    const [showProfileToogle, setShowProfileToogle] = useState(false);
+
+    // function handleLogout() {
+    //     setShowProfileToogle(false);
+    //     logout();
+    //     router.replace('/login');
+    // }
+
+    const profileMenuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (
+                profileMenuRef.current &&
+                !profileMenuRef.current.contains(event.target as Node)
+            ) {
+                setShowProfileToogle(false);
+            }
+        }
+
+        document.addEventListener("mousedown", handleClickOutside);
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
 
     function initials(name: string) {
         return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -41,9 +71,113 @@ export default function PageHeader({
                 }
                     showIndicator={true} />
                 {user &&
-                    <BSRealtyAvatar size='sm' title={user.name} name={initials(user.name)} style={{ cursor: 'pointer' }} />
+
+                    (
+                        <div className="relative" ref={profileMenuRef}>
+                            <div className=""  >
+                                <button type="button" onClick={() => { setShowProfileToogle(prev => !prev) }}
+                                    aria-label="Open profile menu"
+                                    aria-expanded={showProfileToogle}
+                                    className="rounded-full focus:outline-none"
+                                >
+                                    <BSRealtyAvatar size='sm' title={user.name} name={initials(user.name)} style={{ cursor: 'pointer' }} />
+                                </button>
+
+                            </div>
+
+                            {
+                                showProfileToogle && (
+                                    <>
+                                        <div className="absolute  rounded-lg flex flex-col py-3 px-2 gap-2 right-0 top-[61px] bg-(--soft-white-light) shadow-(--shadow-sm) ">
+                                            <div className={`flex items-center p-2 gap-2 cursor-pointer rounded-lg ${pathname === '/profile'
+                                                ? 'bg-(--blue-sky-light)'
+                                                : 'hover:bg-(--blue-sky-light)'
+                                                }`}
+                                                onClick={() => {
+                                                    setShowProfileToogle(false);
+                                                    router.push('/profile');
+                                                }} title="Profile"
+                                            >
+                                                <BSRealtyAvatar size='md' name={user ? initials(user.name) : '?'} />
+
+                                                <div className="flex flex-col">
+                                                    <span className="text-[14px] font-medium leading-5 text-(--neutral-normal)">{user?.name ?? ''}</span>
+                                                    <span className="text-[132x] leading-4 text-(--gray-normal)">{user?.email ?? ''}</span>
+                                                </div>
+                                                <span
+                                                    className="inline-block h-4 w-4 bg-(--neutral-dark)"
+                                                    style={{
+                                                        WebkitMaskImage: 'url(/icons/chevron-right.svg)',
+                                                        maskImage: 'url(/icons/chevron-right.svg)',
+                                                        WebkitMaskRepeat: 'no-repeat',
+                                                        maskRepeat: 'no-repeat',
+                                                        WebkitMaskPosition: 'center',
+                                                        maskPosition: 'center',
+                                                        WebkitMaskSize: 'contain',
+                                                        maskSize: 'contain',
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <div className={`flex items-center py-2 px-3 gap-1 rounded-lg text-[14px] font-medium text-(--neutral-normal) cursor-pointer ${pathname === '/settings'
+                                                    ? 'bg-(--blue-sky-light)'
+                                                    : 'hover:bg-(--blue-sky-light)'
+                                                    }`}
+                                                    onClick={() => {
+                                                        setShowProfileToogle(false);
+                                                        router.push('/settings');
+                                                    }} title="Settings">
+                                                    <span
+                                                        className="inline-block h-[18px] w-[18px] bg-(--neutral-dark)"
+                                                        style={{
+                                                            WebkitMaskImage: 'url(/icons/settings.svg)',
+                                                            maskImage: 'url(/icons/settings.svg)',
+                                                            WebkitMaskRepeat: 'no-repeat',
+                                                            maskRepeat: 'no-repeat',
+                                                            WebkitMaskPosition: 'center',
+                                                            maskPosition: 'center',
+                                                            WebkitMaskSize: 'contain',
+                                                            maskSize: 'contain',
+                                                        }}
+                                                    />
+                                                    <span>Setting</span>
+                                                </div>
+                                                <div className="flex items-center py-2 px-3 gap-1 rounded-lg cursor-pointer hover:bg-(--error-light)" onClick={() => router.push('/logout')} title="Sign out">
+                                                    <button className="flex items-center gap-1 text-[14px] font-medium text-(--error-normal) " >
+                                                        <span
+                                                            className="inline-block h-[18px] w-[18px] "
+                                                            style={{
+                                                                WebkitMaskImage: 'url(/icons/log-out.svg)',
+                                                                maskImage: 'url(/icons/log-out.svg)',
+                                                                WebkitMaskRepeat: 'no-repeat',
+                                                                maskRepeat: 'no-repeat',
+                                                                WebkitMaskPosition: 'center',
+                                                                maskPosition: 'center',
+                                                                WebkitMaskSize: 'contain',
+                                                                maskSize: 'contain',
+                                                                background: 'currentColor'
+                                                            }}
+                                                        />
+                                                        <span>Logout</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                        </div>
+
+
+                                    </>
+                                )
+                            }
+
+                        </div>
+
+                    )
+
                 }
             </div>
+
         </div>
     )
 }
+
