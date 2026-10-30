@@ -15,6 +15,10 @@ import {
   TwoFactorDisable,
   type TwoFactorSetupData,
 } from '@/components/profile/TwoFactor';
+import EmployeePersonalInformation from '@/components/profile/employee/EmployeePersonalInformation';
+import EmployeeEmployment from '@/components/profile/employee/EmployeeEmployment';
+import EmployeeBank from '@/components/profile/employee/EmployeeBank';
+import EmployeeDocuments from '@/components/profile/employee/EmployeeDocuments';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL!.replace('/api', '');
 
@@ -42,6 +46,8 @@ interface Profile {
 type TwoFactorStep = 'intro' | 'scan' | 'backup' | 'disable';
 
 type Tab = 'personal' | 'organization' | 'security' | 'notification';
+
+type EmployeeTab = 'personal' | 'employment' | 'bank' | 'documents';
 
 const ROLE_OPTIONS = [
   { label: 'Admin', value: 'admin' },
@@ -120,6 +126,7 @@ async function apiDelete(path: string, body?: unknown) {
 
 export default function ProfilePage() {
   const [tab, setTab] = useState<Tab>('personal');
+  const [employeeTab, setEmployeeTab] = useState<EmployeeTab>('personal');
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loadError, setLoadError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -387,7 +394,7 @@ export default function ProfilePage() {
       return;
     }
     // Phone is optional, but if filled it must look like a phone number.
-    if (phone && !/^\+?[0-9\s-]{7,15}$/.test(phone)) {
+    if (phone && !/^\+?[0-9\s-]{7, 15}$/.test(phone)) {
       flash('Enter a valid phone number.', 'err');
       return;
     }
@@ -706,126 +713,137 @@ export default function ProfilePage() {
         </div>
 
         {/* ── Tabs ────────────────────────────────────────────────────────────── */}
-        <div className="bg-(--soft-white-light) border border-(--soft-white-normal) rounded-lg" style={{ padding: 24, overflow: 'hidden' }}>
+        {isAdmin ? (
+          <div className="bg-(--soft-white-light) border border-(--soft-white-normal) rounded-lg" style={{ padding: 24, overflow: 'hidden' }}>
 
-          <div className='flex justify-between py-6'>
-            <BSRealtyTabs
-              className='bsr-tabs'
-              defaultValue='personal'
-              value={tab}
-              onChange={(newTab) => setTab(newTab as Tab)}
-              tabs={[
-                { label: 'Personal Info', value: 'personal' },
-                { label: 'Organization', value: 'organization' },
-                { label: 'Security', value: 'security' },
-                { label: 'Notification', value: 'notification' },
-              ]}
-            />
-            <div className="flex justify-end">
-              <Button
-                variant='primary'
-                size='small'
-                type="button"
-                disabled={saving || (tab === 'personal' && !isDirty)}
-                onClick={handleSaveChanges}
-              >
-                {saving ? 'Saving…' : 'Save Changes'}
-              </Button>
+            <div className='flex justify-between py-6'>
+              <BSRealtyTabs
+                className=''
+                defaultValue='personal'
+                value={tab}
+                onChange={(newTab) => setTab(newTab as Tab)}
+                tabs={[
+                  { label: 'Personal Info', value: 'personal' },
+                  { label: 'Organization', value: 'organization' },
+                  { label: 'Security', value: 'security' },
+                  { label: 'Notification', value: 'notification' },
+                ]}
+              />
+              <div className="flex justify-end">
+                <Button
+                  variant='primary'
+                  size='small'
+                  type="button"
+                  disabled={saving || (tab === 'personal' && !isDirty)}
+                  onClick={handleSaveChanges}
+                >
+                  {saving ? 'Saving…' : 'Save Changes'}
+                </Button>
+              </div>
             </div>
-          </div>
 
-          {/* ── PERSONAL INFO ─────────────────────────────────────────────── */}
-          {tab === 'personal' && (
-            <form id="personal-form" onSubmit={savePersonal} className="flex flex-col gap-10" style={{ width: '100%' }}>
-              <div className="w-[909px] flex flex-col gap-7">
-                <div>
-                  <h1 className='text-[16px] text-(--neutral-normal) font-semibold'>Profile Information</h1>
-                  <p className='text-[14px] font-medium text-(--soft-white-dark-active)'>Manage your personal details and account information</p>
-                </div>
-
-                {/* Profile picture */}
-                <div className='flex flex-col gap-7'>
-                  <div className='flex max-w-[495px] justify-between items-center'>
-                    <label className='text-[14px] font-medium text-(--gray-darker)'>Profile Picture</label>
-                    <div className='flex gap-6 w-[212px]'>
-                      <BSRealtyAvatar
-                        size="xl"
-                        name={profile.name}
-                        src={photoPreview || undefined}
-                      />
-                      <div className='flex gap-1 items-end'>
-                        <button
-                          type="button"
-                          onClick={() => photoRef.current?.click()}
-                          disabled={uploading.photo}
-                          className='p-2 text-[14px] font-medium text-(--blue-sky) disabled:opacity-50'
-                        >
-                          Update
-                        </button>
-                        <button
-                          type='button'
-                          onClick={deletePhoto}
-                          disabled={!profile.profile_picture || uploading.photo}
-                          className='p-2 text-[14px] font-medium text-(--gray-dark) disabled:opacity-50'
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
+            {/* ── PERSONAL INFO ─────────────────────────────────────────────── */}
+            {tab === 'personal' && (
+              <form id="personal-form" onSubmit={savePersonal} className="flex flex-col gap-10" style={{ width: '100%' }}>
+                <div className="w-[909px] flex flex-col gap-7">
+                  <div>
+                    <h1 className='text-[16px] text-(--neutral-normal) font-semibold'>Profile Information</h1>
+                    <p className='text-[14px] font-medium text-(--soft-white-dark-active)'>Manage your personal details and account information</p>
                   </div>
 
-                  {/* Personal fields */}
-                  <div className='flex justify-between w-[909px]'>
-                    <div className='my-[14px] flex flex-col gap-11 justify-center'>
-                      <label className='text-[14px] font-medium text-(--gray-darker)' htmlFor="name">Full Name</label>
-                      <label className='text-[14px] font-medium text-(--gray-darker)' htmlFor="email">Email</label>
-                      <label className='text-[14px] font-medium text-(--gray-darker)' htmlFor="phone">Phone No.</label>
-                      <label className='text-[14px] font-medium text-(--gray-darker)' htmlFor="role">Role</label>
+                  {/* Profile picture */}
+                  <div className='flex flex-col gap-7'>
+                    <div className='flex max-w-[495px] justify-between items-center'>
+                      <label className='text-[14px] font-medium text-(--gray-darker)'>Profile Picture</label>
+                      <div className='flex gap-6 w-[212px]'>
+                        <BSRealtyAvatar
+                          size="xl"
+                          name={profile.name}
+                          src={photoPreview || undefined}
+                        />
+                        <div className='flex gap-1 items-end'>
+                          <button
+                            type="button"
+                            onClick={() => photoRef.current?.click()}
+                            disabled={uploading.photo}
+                            className='p-2 text-[14px] font-medium text-(--blue-sky) disabled:opacity-50'
+                          >
+                            Update
+                          </button>
+                          <button
+                            type='button'
+                            onClick={deletePhoto}
+                            disabled={!profile.profile_picture || uploading.photo}
+                            className='p-2 text-[14px] font-medium text-(--gray-dark) disabled:opacity-50'
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <div className='flex flex-col gap-4'>
-                      <div className='flex gap-6'>
-                        <InputField
-                          id='name'
-                          className='profile-text-field'
-                          type='text'
-                          placeholder='Enter your Full name'
-                          value={form.name}
-                          onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
-                          disabled={!isNameEdit}
-                        />
-                        <Button type='button' variant='primary' size='small' onClick={() => setIsNameEdit(prev => !prev)} >Edit</Button>
+
+                    {/* Personal fields */}
+                    <div className='flex justify-between w-[909px]'>
+                      <div className='my-[14px] flex flex-col gap-11 justify-center'>
+                        <label className='text-[14px] font-medium text-(--gray-darker)' htmlFor="name">Full Name</label>
+                        <label className='text-[14px] font-medium text-(--gray-darker)' htmlFor="email">Email</label>
+                        <label className='text-[14px] font-medium text-(--gray-darker)' htmlFor="phone">Phone No.</label>
+                        <label className='text-[14px] font-medium text-(--gray-darker)' htmlFor="role">Role</label>
                       </div>
+                      <div className='flex flex-col gap-4'>
+                        <div className='flex gap-6'>
+                          <InputField
+                            id='name'
+                            className='profile-text-field'
+                            type='text'
+                            placeholder='Enter your Full name'
+                            value={form.name}
+                            onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
+                            disabled={!isNameEdit}
+                          />
+                          <Button type='button' variant='primary' size='small' onClick={() => setIsNameEdit(prev => !prev)} >Edit</Button>
+                        </div>
 
-                      <div className='flex gap-6'>
-                        <InputField
-                          id='email'
-                          value={form.email}
-                          className='profile-text-field'
-                          type='email'
-                          placeholder='Enter your email'
-                          onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
-                          disabled={!isEmailEdit}
-                        />
-                        <Button type='button' variant='primary' size='small' onClick={() => setIsEmailEdit(prev => !prev)}>Edit</Button>
-                      </div>
+                        <div className='flex gap-6'>
+                          <InputField
+                            id='email'
+                            value={form.email}
+                            className='profile-text-field'
+                            type='email'
+                            placeholder='Enter your email'
+                            onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
+                            disabled={!isEmailEdit}
+                          />
+                          <Button type='button' variant='primary' size='small' onClick={() => setIsEmailEdit(prev => !prev)}>Edit</Button>
+                        </div>
 
-                      <div className='flex gap-6'>
-                        <InputField
-                          id='phone'
-                          value={form.phone}
-                          className='profile-text-field'
-                          type='text'
-                          placeholder='Enter your Phone number'
-                          onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
-                          disabled={!isPhoneEdit}
-                        />
+                        <div className='flex gap-6'>
+                          <InputField
+                            id='phone'
+                            value={form.phone}
+                            className='profile-text-field'
+                            type='text'
+                            placeholder='Enter your Phone number'
+                            onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
+                            disabled={!isPhoneEdit}
+                          />
 
-                        <Button type='button' variant='primary' size='small' onClick={() => setIsPhoneEdit(prev => !prev)}>Edit</Button>
+                          <Button type='button' variant='primary' size='small' onClick={() => setIsPhoneEdit(prev => !prev)}>Edit</Button>
 
-                      </div>
+                        </div>
 
-                      {/* Only admins can change a role; others see it read-only. */}
-                      <div className='w-[532px]'>
+                        <div>
+                          <BSRealtyDropdown
+                            className='profile-text-field'
+                            value={form.role}
+                            onChange={(value) => setForm(prev => ({ ...prev, role: value }))}
+                            options={ROLE_OPTIONS}
+                            placeholder="Employee Role"
+                          />
+                        </div>
+
+                        {/* Only admins can change a role; others see it read-only. */}
+                        {/* <div className='w-[532px]'>
                         {isAdmin ? (
                           <BSRealtyDropdown
                             value={form.role}
@@ -843,283 +861,327 @@ export default function ProfilePage() {
                             readOnly
                           />
                         )}
+                      </div> */}
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* divider */}
-              <div className="border border-(--neutral-light-hover)"></div>
+                {/* divider */}
+                <div className="border border-(--neutral-light-hover)"></div>
 
-              {/* Login & Access */}
-              <div className="flex flex-col gap-7 w-[812px]">
-                <div>
-                  <h1 className='text-[16px] text-(--neutral-normal) font-semibold leading-6'>Login &amp; Access</h1>
-                  <p className='text-[14px] font-medium text-(--soft-white-dark-active)'>Manage your account access and login preference.</p>
-                </div>
-
-                <div className='flex flex-col gap-3'>
-                  <div className='flex justify-between'>
-                    <label className='text-(--gray-darker) text-[14px] font-medium' htmlFor="old_password">Old Password</label>
-                    <InputField id='old_password' type="password"
-                      showPasswordToggle={true}
-                      autoComplete="new-password"
-                      placeholder="Old Password"
-                      className="profile-text-field"
-                      value={pwForm.current_password}
-                      onChange={(e) => updatePw('current_password', e.target.value)} />
-                  </div>
-                  <div className='flex justify-between'>
-                    <label className='text-(--gray-darker) text-[14px] font-medium' htmlFor="new_password">New Password</label>
-                    <InputField id='new_password' type="password"
-                      showPasswordToggle={true}
-                      autoComplete="new-password"
-                      placeholder="New Password"
-                      className="profile-text-field"
-                      value={pwForm.new_password}
-                      onChange={(e) => updatePw('new_password', e.target.value)} />
-                  </div>
-                  <div className='flex justify-between'>
-                    <label className='text-(--gray-darker) text-[14px] font-medium' htmlFor="confirm_password">Confirm Password</label>
-                    <InputField id='confirm_password' type="password"
-                      showPasswordToggle={true}
-                      autoComplete="new-password"
-                      placeholder="Confirm Password"
-                      className="profile-text-field"
-                      value={pwForm.confirm}
-                      onChange={(e) => updatePw('confirm', e.target.value)} />
+                {/* Login & Access */}
+                <div className="bg-none flex flex-col gap-7 w-[812px]">
+                  <div>
+                    <h1 className='text-[16px] text-(--neutral-normal) font-semibold leading-6'>Login &amp; Access</h1>
+                    <p className='text-[14px] font-medium text-(--soft-white-dark-active)'>Manage your account access and login preference.</p>
                   </div>
 
-                  {pwError && (
-                    <p role="alert" className='text-[14px] font-medium text-(--error-normal) text-right'>{pwError}</p>
-                  )}
-
-                  <div className='flex justify-end'>
-                    <Button
-                      type='button'
-                      variant='primary'
-                      size='medium'
-                      onClick={changePassword}
-                      disabled={pwSaving || !pwForm.current_password || !pwForm.new_password || !pwForm.confirm}
-                    >
-                      {pwSaving ? 'Changing…' : 'Change Password'}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </form>
-          )}
-
-          {/* ── Organization ─────────────────────────────────────────────────── */}
-          {tab === 'organization' && (
-            <div className='flex flex-col w-[929px] gap-11'>
-              <div className='flex flex-col gap-7 w-full'>
-                <div>
-                  <h1 className='text-(--neutral-normal) text-[16px] font-semibold'>Company Information</h1>
-                  <p className='text-(--soft-white-dark-active) text-[14px] font-medium'>
-                    Manage your company details and hiring identity.
-                  </p>
-                </div>
-                <div className='flex flex-col justify-between gap-4'>
-                  <div className='flex justify-between'>
-                    <div className='flex flex-col justify-between'>
-                      <label htmlFor="company_name" className='text-[14px] font-medium'>Company Name</label>
-                      <label htmlFor="company_email" className='text-[14px] font-medium'>Company Email</label>
-                      <label htmlFor="company_website" className='text-[14px] font-medium'>Company Website</label>
+                  <div className='flex flex-col gap-3'>
+                    <div className='flex justify-between'>
+                      <label className='text-(--gray-darker) text-[14px] font-medium' htmlFor="old_password">Old Password</label>
+                      <InputField id='old_password' type="password"
+                        showPasswordToggle={true}
+                        autoComplete="new-password"
+                        placeholder="Old Password"
+                        className="profile-text-field"
+                        value={pwForm.current_password}
+                        onChange={(e) => updatePw('current_password', e.target.value)} />
                     </div>
-                    <div className='flex flex-col gap-4'>
-                      <div className='flex gap-6 items-center'>
-                        <InputField
-                          id='company_name'
-                          type='text'
-                          placeholder='Enter your company name'
-                          className='profile-text-field'
-                        />
-                        <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_name')?.focus()}>Edit</Button>
-                      </div>
-                      <div className='flex gap-6 items-center'>
-                        <InputField
-                          id='company_email'
-                          type='email'
-                          placeholder='Enter your company email'
-                          className='profile-text-field'
-                        />
-                        <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_email')?.focus()}>Edit</Button>
-                      </div>
-                      <div className='flex gap-6 items-center'>
-                        <InputField
-                          id='company_website'
-                          type='text'
-                          placeholder='Enter your company website'
-                          className='profile-text-field'
-                        />
-                        <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_website')?.focus()}>Edit</Button>
-                      </div>
+                    <div className='flex justify-between'>
+                      <label className='text-(--gray-darker) text-[14px] font-medium' htmlFor="new_password">New Password</label>
+                      <InputField id='new_password' type="password"
+                        showPasswordToggle={true}
+                        autoComplete="new-password"
+                        placeholder="New Password"
+                        className="profile-text-field"
+                        value={pwForm.new_password}
+                        onChange={(e) => updatePw('new_password', e.target.value)} />
+                    </div>
+                    <div className='flex justify-between'>
+                      <label className='text-(--gray-darker) text-[14px] font-medium' htmlFor="confirm_password">Confirm Password</label>
+                      <InputField id='confirm_password' type="password"
+                        showPasswordToggle={true}
+                        autoComplete="new-password"
+                        placeholder="Confirm Password"
+                        className="profile-text-field"
+                        value={pwForm.confirm}
+                        onChange={(e) => updatePw('confirm', e.target.value)} />
+                    </div>
+
+                    {pwError && (
+                      <p role="alert" className='text-[14px] font-medium text-(--error-normal) text-right'>{pwError}</p>
+                    )}
+
+                    <div className='flex justify-end'>
+                      <Button
+                        type='button'
+                        variant='primary'
+                        size='medium'
+                        onClick={changePassword}
+                        disabled={pwSaving || !pwForm.current_password || !pwForm.new_password || !pwForm.confirm}
+                      >
+                        {pwSaving ? 'Changing…' : 'Change Password'}
+                      </Button>
                     </div>
                   </div>
                 </div>
-              </div>
+              </form>
+            )}
 
-              {/* divider */}
-              <div className='border border-(--neutral-light-hover)'></div>
-
-              {/* Team Access */}
-              <div className='flex flex-col gap-7'>
-                <div>
-                  <h1 className='text-(--neutral-normal) text-[14px] font-medium'>Team Access</h1>
-                  <p className='text-(--soft-white-dark-active) text-[14px] font-medium'>
-                    Control who can access the hiring platform.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <h3 className='text-(--neutral-normal) text-[14px] font-semibold'>Member-2</h3>
-                  <div className="flex justify-between items-center py-4">
-                    <div className='flex items-start gap-3'>
-                      <BSRealtyCheckbox size='16px' />
-                      <div className='flex-col justify-between'>
-                        <span className='text-[14px] font-medium text-(--gray-darker)'>Alex Johnson</span>
-                        <span className='text-[14px] font-medium text-(--soft-white-darker-hover)'>alexjhonson@gmail.com</span>
+            {/* ── Organization ─────────────────────────────────────────────────── */}
+            {tab === 'organization' && (
+              <div className='flex flex-col w-[929px] gap-11'>
+                <div className='flex flex-col gap-7 w-full'>
+                  <div>
+                    <h1 className='text-(--neutral-normal) text-[16px] font-semibold'>Company Information</h1>
+                    <p className='text-(--soft-white-dark-active) text-[14px] font-medium'>
+                      Manage your company details and hiring identity.
+                    </p>
+                  </div>
+                  <div className='flex flex-col justify-between gap-4'>
+                    <div className='flex justify-between'>
+                      <div className='flex flex-col justify-between'>
+                        <label htmlFor="company_name" className='text-[14px] font-medium'>Company Name</label>
+                        <label htmlFor="company_email" className='text-[14px] font-medium'>Company Email</label>
+                        <label htmlFor="company_website" className='text-[14px] font-medium'>Company Website</label>
+                      </div>
+                      <div className='flex flex-col gap-4'>
+                        <div className='flex gap-6 items-center'>
+                          <InputField
+                            id='company_name'
+                            type='text'
+                            placeholder='Enter your company name'
+                            className='profile-text-field'
+                          />
+                          <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_name')?.focus()}>Edit</Button>
+                        </div>
+                        <div className='flex gap-6 items-center'>
+                          <InputField
+                            id='company_email'
+                            type='email'
+                            placeholder='Enter your company email'
+                            className='profile-text-field'
+                          />
+                          <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_email')?.focus()}>Edit</Button>
+                        </div>
+                        <div className='flex gap-6 items-center'>
+                          <InputField
+                            id='company_website'
+                            type='text'
+                            placeholder='Enter your company website'
+                            className='profile-text-field'
+                          />
+                          <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_website')?.focus()}>Edit</Button>
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <span className='text-[14px] font-medium text-(--gray-darker)'>Software Developer</span>
-                    </div>
-                    <div>
-                      <span className='text-[14px] font-medium text-(--gray-darker)'>September 30, 2026</span>
-                    </div>
-                    <img src='/icons/dots.svg' alt="" />
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {/* ── SECURITY ──────────────────────────────────────────────────── */}
-          {tab === 'security' && (
-            <div className='max-w-[929px] flex flex-col gap-11'>
-              <div className='flex flex-col gap-7'>
-                <div>
-                  <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Login &amp; Authentication</h1>
-                  <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Protect your account from unauthorized access</p>
-                </div>
+                {/* divider */}
+                <div className='border border-(--neutral-light-hover)'></div>
 
-                <div className="flex flex-col gap-4">
-                  <div className='flex justify-between items-center mr-10'>
-                    <div>
-                      <h1 className='text-[16px] font-semibold text-(--gray-darker)'>Two-Factor Authentication</h1>
-                      <p className='text-[14px] font-medium text-(--soft-white-dark-active)'>
-                        {twoFactorEnabled
-                          ? 'Enabled. You will be asked for a code from your authenticator app when you log in.'
-                          : 'Add an extra layer of security with an authenticator app.'}
-                      </p>
-                    </div>
-                    <BSRealtyToggle
-                      checked={twoFactorEnabled}
-                      onChange={() => handleTwoFactorToggle()}
-                      disabled={!twoFactorStatusLoaded || twoFactorLoading}
-                    />
-                  </div>
-                  <div className='flex justify-between'>
-                    <p className='text-[16px] font-semibold text-(--gray-darker)'>Login Sessions</p>
-                    <Button variant='primary' size='medium' type='button' onClick={openLoginHistory}>Manage</Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* divider */}
-              <div className='border border-(--neutral-light-hover)'></div>
-
-              {/* Security notifications */}
-              <div className='flex flex-col gap-7'>
+                {/* Team Access */}
                 <div className='flex flex-col gap-7'>
                   <div>
-                    <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Security Notifications</h1>
-                    <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Receive alerts about important account activity.</p>
+                    <h1 className='text-(--neutral-normal) text-[14px] font-medium'>Team Access</h1>
+                    <p className='text-(--soft-white-dark-active) text-[14px] font-medium'>
+                      Control who can access the hiring platform.
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <h3 className='text-(--neutral-normal) text-[14px] font-semibold'>Member-2</h3>
+                    <div className="flex justify-between items-center py-4">
+                      <div className='flex items-start gap-3'>
+                        <BSRealtyCheckbox size='16px' />
+                        <div className='flex-col justify-between'>
+                          <span className='text-[14px] font-medium text-(--gray-darker)'>Alex Johnson</span>
+                          <span className='text-[14px] font-medium text-(--soft-white-darker-hover)'>alexjhonson@gmail.com</span>
+                        </div>
+                      </div>
+                      <div>
+                        <span className='text-[14px] font-medium text-(--gray-darker)'>Software Developer</span>
+                      </div>
+                      <div>
+                        <span className='text-[14px] font-medium text-(--gray-darker)'>September 30, 2026</span>
+                      </div>
+                      <img src='/icons/dots.svg' alt="" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── SECURITY ──────────────────────────────────────────────────── */}
+            {tab === 'security' && (
+              <div className='max-w-[929px] flex flex-col gap-11'>
+                <div className='flex flex-col gap-7'>
+                  <div>
+                    <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Login &amp; Authentication</h1>
+                    <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Protect your account from unauthorized access</p>
                   </div>
 
                   <div className="flex flex-col gap-4">
-                    <div className='flex justify-between mr-10'>
-                      <p className='text-[16px] font-semibold text-(--gray-darker)'>New Login Detected</p>
-                      <BSRealtyToggle checked={true} />
+                    <div className='flex justify-between items-center mr-10'>
+                      <div>
+                        <h1 className='text-[16px] font-semibold text-(--gray-darker)'>Two-Factor Authentication</h1>
+                        <p className='text-[14px] font-medium text-(--soft-white-dark-active)'>
+                          {twoFactorEnabled
+                            ? 'Enabled. You will be asked for a code from your authenticator app when you log in.'
+                            : 'Add an extra layer of security with an authenticator app.'}
+                        </p>
+                      </div>
+                      <BSRealtyToggle
+                        checked={twoFactorEnabled}
+                        onChange={() => handleTwoFactorToggle()}
+                        disabled={!twoFactorStatusLoaded || twoFactorLoading}
+                      />
                     </div>
-                    <div className='flex justify-between mr-10'>
-                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Password Changed</p>
-                      <BSRealtyToggle checked={true} />
+                    <div className='flex justify-between'>
+                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Login Sessions</p>
+                      <Button variant='primary' size='medium' type='button' onClick={openLoginHistory}>Manage</Button>
                     </div>
-                    <div className='flex justify-between mr-10'>
-                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Accounts &amp; Role Changed</p>
-                      <BSRealtyToggle checked={true} />
+                  </div>
+                </div>
+
+                {/* divider */}
+                <div className='border border-(--neutral-light-hover)'></div>
+
+                {/* Security notifications */}
+                <div className='flex flex-col gap-7'>
+                  <div className='flex flex-col gap-7'>
+                    <div>
+                      <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Security Notifications</h1>
+                      <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Receive alerts about important account activity.</p>
+                    </div>
+
+                    <div className="flex flex-col gap-4">
+                      <div className='flex justify-between mr-10'>
+                        <p className='text-[16px] font-semibold text-(--gray-darker)'>New Login Detected</p>
+                        <BSRealtyToggle checked={true} />
+                      </div>
+                      <div className='flex justify-between mr-10'>
+                        <p className='text-[16px] font-semibold text-(--gray-darker)'>Password Changed</p>
+                        <BSRealtyToggle checked={true} />
+                      </div>
+                      <div className='flex justify-between mr-10'>
+                        <p className='text-[16px] font-semibold text-(--gray-darker)'>Accounts &amp; Role Changed</p>
+                        <BSRealtyToggle checked={true} />
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* ── Notification ──────────────────────────────────────────────────── */}
-          {tab === 'notification' && (
-            <div className='max-w-[532px] flex flex-col gap-11'>
-              <div className='flex flex-col gap-7'>
-                <div>
-                  <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Email Notifications</h1>
-                  <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Manage when you receive updates via email.</p>
-                </div>
-
-                <div className="flex flex-col gap-4">
-                  <div className='flex justify-between'>
-                    <p className='text-[16px] font-semibold text-(--gray-darker)'>Leave Request</p>
-                    <BSRealtyToggle checked={true} />
-                  </div>
-                  <div className='flex justify-between'>
-                    <p className='text-[16px] font-semibold text-(--gray-darker)'>Overtime Request</p>
-                    <BSRealtyToggle />
-                  </div>
-                  <div className='flex justify-between'>
-                    <p className='text-[16px] font-semibold text-(--gray-darker)'>Attendance Alerts</p>
-                    <BSRealtyToggle checked={true} />
-                  </div>
-                  <div className='flex justify-between'>
-                    <p className='text-[16px] font-semibold text-(--gray-darker)'>Documents &amp; Signature Request</p>
-                    <BSRealtyToggle checked={true} />
-                  </div>
-                  <div className='flex justify-between'>
-                    <p className='text-[16px] font-semibold text-(--gray-darker)'>Employee Updates</p>
-                    <BSRealtyToggle />
-                  </div>
-                  <div className='flex justify-between'>
-                    <p className='text-[16px] font-semibold text-(--gray-darker)'>Onboarding Updated</p>
-                    <BSRealtyToggle checked={true} />
-                  </div>
-                </div>
-              </div>
-
-              {/* divider */}
-              <div className='border border-(--neutral-light-hover)'></div>
-
-              {/* System notifications */}
-              <div className='flex flex-col gap-7'>
+            {/* ── Notification ──────────────────────────────────────────────────── */}
+            {tab === 'notification' && (
+              <div className='max-w-[532px] flex flex-col gap-11'>
                 <div className='flex flex-col gap-7'>
                   <div>
-                    <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>System Notifications</h1>
-                    <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Control in-app notifications</p>
+                    <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Email Notifications</h1>
+                    <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Manage when you receive updates via email.</p>
                   </div>
 
                   <div className="flex flex-col gap-4">
                     <div className='flex justify-between'>
-                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Enable Notifications</p>
+                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Leave Request</p>
                       <BSRealtyToggle checked={true} />
                     </div>
                     <div className='flex justify-between'>
-                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Sound Alerts</p>
+                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Overtime Request</p>
+                      <BSRealtyToggle />
+                    </div>
+                    <div className='flex justify-between'>
+                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Attendance Alerts</p>
+                      <BSRealtyToggle checked={true} />
+                    </div>
+                    <div className='flex justify-between'>
+                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Documents &amp; Signature Request</p>
+                      <BSRealtyToggle checked={true} />
+                    </div>
+                    <div className='flex justify-between'>
+                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Employee Updates</p>
+                      <BSRealtyToggle />
+                    </div>
+                    <div className='flex justify-between'>
+                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Onboarding Updated</p>
                       <BSRealtyToggle checked={true} />
                     </div>
                   </div>
                 </div>
+
+                {/* divider */}
+                <div className='border border-(--neutral-light-hover)'></div>
+
+                {/* System notifications */}
+                <div className='flex flex-col gap-7'>
+                  <div className='flex flex-col gap-7'>
+                    <div>
+                      <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>System Notifications</h1>
+                      <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Control in-app notifications</p>
+                    </div>
+
+                    <div className="flex flex-col gap-4">
+                      <div className='flex justify-between'>
+                        <p className='text-[16px] font-semibold text-(--gray-darker)'>Enable Notifications</p>
+                        <BSRealtyToggle checked={true} />
+                      </div>
+                      <div className='flex justify-between'>
+                        <p className='text-[16px] font-semibold text-(--gray-darker)'>Sound Alerts</p>
+                        <BSRealtyToggle checked={true} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className='flex w-full gap-5'>
+            <div className="flex-1 bg-(--soft-white-light) border border-(--soft-white-normal) rounded-lg px-6 p-b-6" style={{ overflow: 'hidden' }}>
+
+              <div className='flex justify-between py-6'>
+                <BSRealtyTabs
+                  className=''
+                  defaultValue='personal'
+                  value={employeeTab}
+                  onChange={(newTab) => setEmployeeTab(newTab as EmployeeTab)}
+                  tabs={[
+                    { label: 'Personal Info', value: 'personal' },
+                    { label: 'Employment Details', value: 'employment' },
+                    { label: 'Bank Details', value: 'bank' },
+                    { label: 'Documents', value: 'documents' },
+                  ]}
+                />
+              </div>
+              {employeeTab === 'personal' && <EmployeePersonalInformation />}
+              {employeeTab === 'employment' && <EmployeeEmployment />}
+              {employeeTab === 'bank' && <EmployeeBank />}
+              {employeeTab === 'documents' && <EmployeeDocuments />}
+            </div>
+            <div className='w-[285px] shrink-0 flex flex-col gap-5'>
+              <div className='p-4 flex flex-col gap-3 bg-[#DCF1E4]  rounded-lg'>
+                <h1 className='text-[12px] font-semibold text-[#16A34A]'>PROFILE & SECURITY</h1>
+                <div className='flex flex-col gap-1'>
+                  <h1 className='text-[16px] font-semibold text-[#232931]'>Keep your profile up to date</h1>
+                  <p className='text-[14px] text-[#3C4653] font-medium'>Review your personal details and emergency contact informationto keep your employee record accurate</p>
+                </div>
+              </div>
+
+              <div className='p-4 flex flex-col gap-3 bg-[#DEE8FC] rounded-lg'>
+                <h1 className='text-[12px] font-semibold text-[#2563EB]'>PROFILE & SECURITY</h1>
+                <div className='flex flex-col gap-1'>
+                  <h1 className='text-[16px] font-semibold text-[#232931]'>Keep your profile up to date</h1>
+                  <p className='text-[14px] text-[#3C4653] font-medium'>Review your personal details and emergency contact informationto keep your employee record accurate</p>
+                </div>
+                <Button size='small'>Explore Resources</Button>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
       </div>
 
       {/* ── Login history modal ─────────────────────────────────────────── */}

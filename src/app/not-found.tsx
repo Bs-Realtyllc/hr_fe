@@ -10,7 +10,7 @@ export default function NotFound() {
                 <div className="space-y-4">
                     <div className="text-center">
                         <h1 className="text-[24px] font-medium text-(--neutral-normal)">
-                            Page not found
+                            404 Page not found
                         </h1>
                         <p className="text-[18px] font-normal text-(--gray-dark)">
                             The page you’re looking for doesn’t exist or has been moved.

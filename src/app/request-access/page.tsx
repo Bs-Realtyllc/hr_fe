@@ -1,6 +1,7 @@
 'use client';
 
 import Button from "@/components/Button/Button";
+import ConfettiAnimation from "@/components/ConfettiAnimation";
 import InputField from "@/components/InputField/InputField";
 import { api } from "@/lib/api";
 import { BSRealtyDropdown } from "@bsrealtyllc/design-system";
@@ -104,6 +105,7 @@ export default function RequestAccessPage() {
             {isSubmitted ? (
                 // Success View
                 <div className="flex flex-col w-[501px] items-center justify-center gap-4 text-center px-6 py-7">
+                    <ConfettiAnimation />
                     <img src="/icons/Request-sent.svg" alt="Success" height={'63px'} width={'66px'} />
                     <p className="text-[18px] font-medium leading-7 text-(--neutral-normal)">
                         Your access request has been sent to the HR administrator. You will receive an email once your access is approved.

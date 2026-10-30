@@ -76,53 +76,64 @@ const LogoutPage = () => {
     }
 
     return (
-        <div className="relative flex min-h-screen w-full items-center justify-center overflow-y-auto bg-(--soft-white-light) px-4 py-20">
-            <div className="absolute top-[30px] left-[80px]">
-                <img width={'111px'} height={'20px'} src="/logos/gitgi-hr-logo.svg" alt="" />
-            </div>
+        <div className="flex min-h-dvh w-full flex-col bg-(--soft-white-light) px-4">
+            {/* Logo */}
+            <header className="pt-[30px] sm:pl-16">
+                <img width={111} height={20} src="/logos/gitgi-hr-logo.svg" alt="GITGIHR" />
+            </header>
 
-            <div className="w-[336px]  flex flex-col gap-3">
-                <div className='flex-col gap-4 w-full'>
-                    <h1 className="text-[20px]  font-semibold text-(--neutral-normal) text-center ">Logout of GITGIHR</h1>
+            {/* Centered card */}
+            <main className="flex flex-1 items-center justify-center py-8">
+                <div className="flex w-full max-w-[336px] flex-col gap-3">
+                    <div className="flex w-full flex-col gap-4">
+                        <h1 className="text-center text-[20px] font-semibold text-(--neutral-normal)">
+                            Logout of GITGIHR
+                        </h1>
 
-                    <div className="  flex justify-between items-start  px-2 py-3 bg-(--soft-white-normal) rounded-lg">
-                        <div className=" flex  items-center gap-4">
-
-                            <BSRealtyAvatar
-                                name={name}
-                                size="lg"
-                                src={profileImage}
-                            />
-
-                            <div className="min-w-0">
-                                <h3 className="break-words text-[18px] font-medium leading-7 text-(--neutral-normal)">
-                                    {name}
-                                </h3>
-
-                                {email && (
-                                    <p className="break-all text-[14px] leading-6 text-(--neutral-light-dark-active)">
-                                        {email}
-                                    </p>
-                                )}
-
-
+                        <div className="flex items-start justify-between rounded-lg bg-(--soft-white-normal) px-2 py-3">
+                            <div className="flex min-w-0 items-center gap-4">
+                                <BSRealtyAvatar name={name} size="lg" src={profileImage} />
+                                <div className="min-w-0">
+                                    <h3 className="break-words text-[18px] font-medium leading-7 text-(--neutral-normal)">
+                                        {name}
+                                    </h3>
+                                    {email && (
+                                        <p className="break-all text-[14px] leading-6 text-(--neutral-light-dark-active)">
+                                            {email}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="rotate-90">
+                                <img src="/icons/chevron-up.svg" alt="" className="opacity-50" />
                             </div>
                         </div>
-                        <div className="rotate-90">
-                            <img src="/icons/chevron-up.svg" alt="" className="opacity-50" />
+                    </div>
+
+                    <div className="flex w-full flex-col gap-3">
+                        <p className="text-center text-[14px] text-(--neutral-normal)">
+                            You’ll need to log in again to access this portal
+                        </p>
+                        <div className="flex flex-col gap-2">
+                            <Button onClick={handleLogout}>Logout</Button>
+                            <Button
+                                variant="text"
+                                className="border! border-(--neutral-light-hover)!"
+                                onClick={() => router.push('/')}
+                            >
+                                Cancel
+                            </Button>
                         </div>
                     </div>
                 </div>
+            </main>
 
-                <div className='flex flex-col gap-3 w-full'>
-                    <p className='text-[14px] text-(--neutral-normal) text-center'>You’ll need to log in again to acess this portal</p>
-                    <div className='flex flex-col gap-2'>
-                        <Button onClick={handleLogout}>Logout</Button>
-                        <Button variant='text' className='border! border-(--neutral-light-hover)!'
-                            onClick={() => { router.push('/') }}>Cancel</Button>
-                    </div>
-                </div>
-            </div>
+            {/* Footer links */}
+            <footer className="flex justify-center gap-2 pb-6">
+                <p className="text-[14px] font-medium underline underline-offset-2">Term of Use</p>
+                <span className="border-l border-[#B7BABD]" />
+                <p className="text-[14px] font-medium underline underline-offset-2">Privacy Policy</p>
+            </footer>
         </div>
     )
 }
