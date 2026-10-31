@@ -68,6 +68,12 @@ const allNav: { section: string; items: NavItem[] }[] = [
     ],
   },
   {
+    section: 'Communication',
+    items: [
+      { href: '/inbox', label: 'Inbox', icon: 'inbox.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
+    ],
+  },
+  {
     section: 'Learning',
     items: [
       { href: LEARNING_URL, label: 'Learning', icon: 'book.svg', roles: ['admin', 'lead', 'employee','intern'] as Role[], external: true },
