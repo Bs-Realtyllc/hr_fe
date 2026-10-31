@@ -8,7 +8,6 @@ import {
   ConnectionState,
   type RemoteTrackPublication,
   type RemoteParticipant,
-  type LocalTrackPublication,
 } from 'livekit-client';
 
 /* ── Types ─────────────────────────────────────────────────── */
@@ -47,14 +46,18 @@ export function VoiceRoom({
   onDeafenedChange,
   onParticipantsChange,
 }: VoiceRoomProps) {
-  const roomRef       = useRef<Room | null>(null);
-  const audioRefs     = useRef<Map<string, HTMLAudioElement>>(new Map());
+  const roomRef        = useRef<Room | null>(null);
+  const audioRefs      = useRef<Map<string, HTMLAudioElement>>(new Map());
   const screenVideoRef = useRef<Map<string, HTMLVideoElement>>(new Map());
-  const [participants, setParticipants]     = useState<VoiceParticipant[]>([]);
-  const [connState, setConnState]           = useState<ConnectionState>(ConnectionState.Disconnected);
-  const [error, setError]                   = useState<string | null>(null);
-  const [screenSharing, setScreenSharing]   = useState(false);
+  const permStatusRef  = useRef<PermissionStatus | null>(null);
+
+  const [participants, setParticipants]         = useState<VoiceParticipant[]>([]);
+  const [connState, setConnState]               = useState<ConnectionState>(ConnectionState.Disconnected);
+  const [error, setError]                       = useState<string | null>(null);
+  const [screenSharing, setScreenSharing]       = useState(false);
   const [screenSharerName, setScreenSharerName] = useState<string | null>(null);
+  const [audioBlocked, setAudioBlocked]         = useState(false);
+  const [micDenied, setMicDenied]               = useState(false);
 
   /* ── Sync participants ──────────────────────────────────── */
   const syncParticipants = useCallback((room: Room) => {
@@ -94,6 +97,32 @@ export function VoiceRoom({
     let room: Room;
 
     async function connect() {
+      /* ── Pre-flight: check mic permission ── */
+      if (typeof navigator !== 'undefined' && navigator.permissions) {
+        try {
+          const status = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+          permStatusRef.current = status;
+
+          if (status.state === 'denied') {
+            setMicDenied(true);
+            /* Still connect in listen-only mode — don't return early */
+          }
+
+          /* Monitor for mid-call permission changes (e.g. user revokes in browser) */
+          status.addEventListener('change', () => {
+            if (status.state === 'denied') {
+              setMicDenied(true);
+              onMicMutedChange(true);
+              roomRef.current?.localParticipant.setMicrophoneEnabled(false).catch(() => {});
+            } else {
+              setMicDenied(false);
+            }
+          });
+        } catch {
+          /* Browser doesn't support permissions API — proceed anyway */
+        }
+      }
+
       try {
         room = new Room({ adaptiveStream: true, dynacast: true });
         roomRef.current = room;
@@ -107,12 +136,20 @@ export function VoiceRoom({
         room.on(RoomEvent.ActiveSpeakersChanged,   () => syncParticipants(room));
         room.on(RoomEvent.LocalTrackPublished,     () => syncParticipants(room));
         room.on(RoomEvent.LocalTrackUnpublished,   () => syncParticipants(room));
+        room.on(RoomEvent.TrackMuted,              () => syncParticipants(room));
+        room.on(RoomEvent.TrackUnmuted,            () => syncParticipants(room));
+        room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
+          setAudioBlocked(!room.canPlaybackAudio);
+        });
 
         room.on(RoomEvent.TrackSubscribed, (track, _pub: RemoteTrackPublication, participant: RemoteParticipant) => {
           if (track.kind === Track.Kind.Audio) {
             const audio = new Audio();
             audio.autoplay = true;
+            audio.muted = deafened;
             track.attach(audio);
+            /* Handle browsers that block autoplay before a user gesture */
+            audio.play().catch(() => setAudioBlocked(true));
             audioRefs.current.set(participant.identity, audio);
           } else if (track.kind === Track.Kind.Video && track.source === Track.Source.ScreenShare) {
             const video = document.createElement('video');
@@ -122,7 +159,6 @@ export function VoiceRoom({
             video.style.borderRadius = '8px';
             track.attach(video);
             screenVideoRef.current.set(participant.identity, video);
-            /* Mount into DOM */
             const container = document.getElementById('inbox-screenshare-container');
             if (container) container.appendChild(video);
           }
@@ -141,16 +177,41 @@ export function VoiceRoom({
         });
 
         await room.connect(serverUrl, token, { autoSubscribe: true });
-        await room.localParticipant.setMicrophoneEnabled(!micMuted);
+
+        /* Enable mic only if permission not denied */
+        if (!micMuted && permStatusRef.current?.state !== 'denied') {
+          try {
+            await room.localParticipant.setMicrophoneEnabled(true);
+          } catch (err: any) {
+            const name = err?.name ?? '';
+            if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+              setMicDenied(true);
+              onMicMutedChange(true);
+            } else if (name === 'NotFoundError') {
+              setError('No microphone found. Connect a mic and rejoin.');
+            }
+            /* Proceed connected but mic-less */
+          }
+        }
+
         syncParticipants(room);
+        setAudioBlocked(!room.canPlaybackAudio);
       } catch (err: any) {
-        setError(err?.message ?? 'Failed to connect to voice channel');
+        const name = err?.name ?? '';
+        if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+          setMicDenied(true);
+        } else if (name === 'NotFoundError') {
+          setError('No microphone device found. Connect a mic and try again.');
+        } else {
+          setError(err?.message ?? 'Failed to connect to voice channel');
+        }
       }
     }
 
     connect();
 
     return () => {
+      permStatusRef.current = null;
       audioRefs.current.forEach(audio => { audio.pause(); audio.src = ''; });
       audioRefs.current.clear();
       screenVideoRef.current.forEach(v => v.remove());
@@ -175,8 +236,15 @@ export function VoiceRoom({
 
   /* ── Sync mic state ─────────────────────────────────────── */
   useEffect(() => {
-    roomRef.current?.localParticipant.setMicrophoneEnabled(!micMuted).catch(() => {});
-  }, [micMuted]);
+    if (!roomRef.current) return;
+    roomRef.current.localParticipant.setMicrophoneEnabled(!micMuted).catch((err: any) => {
+      const name = err?.name ?? '';
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        setMicDenied(true);
+        onMicMutedChange(true); /* reflect actual state back to parent */
+      }
+    });
+  }, [micMuted, onMicMutedChange]);
 
   /* ── Sync deafen state (mute all remote audio) ──────────── */
   useEffect(() => {
@@ -224,6 +292,33 @@ export function VoiceRoom({
         </div>
       </div>
 
+      {/* Mic permission denied banner */}
+      {micDenied && (
+        <div className="inbox-audio-blocked" style={{ cursor: 'default' }}>
+          🎙️ Microphone access denied — you are in listen-only mode.{' '}
+          <span style={{ textDecoration: 'underline', cursor: 'pointer' }}
+            onClick={() => window.open('about:blank', '_blank')}
+            title="Open browser settings to allow microphone">
+            Allow mic in browser settings
+          </span>{' '}then rejoin.
+        </div>
+      )}
+
+      {/* Audio playback blocked by browser autoplay policy */}
+      {audioBlocked && (
+        <button
+          className="inbox-audio-blocked"
+          onClick={async () => {
+            await roomRef.current?.startAudio();
+            /* Play all buffered audio elements */
+            audioRefs.current.forEach(a => a.play().catch(() => {}));
+            setAudioBlocked(false);
+          }}
+        >
+          🔇 Audio blocked by browser — click to enable
+        </button>
+      )}
+
       {/* Screen share view */}
       {screenSharerName && (
         <div className="inbox-screenshare-area">
@@ -246,6 +341,11 @@ export function VoiceRoom({
               </div>
               <span className="inbox-voice-participant-name">
                 {p.name}{p.isLocal ? ' (you)' : ''}
+                {p.isSpeaking && !p.isMicMuted && (
+                  <span className="inbox-voice-wave" aria-hidden>
+                    <span /><span /><span />
+                  </span>
+                )}
               </span>
             </div>
           ))}

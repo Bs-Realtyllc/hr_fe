@@ -1084,8 +1084,54 @@
 }
 .inbox-voice-participant-avatar.speaking {
   border-color: #2dce89;
-  box-shadow: 0 0 0 4px rgba(45, 206, 137, 0.2);
+  animation: voice-speaking-ring 1.4s ease-in-out infinite;
 }
+@keyframes voice-speaking-ring {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(45,206,137,0.6), 0 0 0 6px rgba(45,206,137,0.15); }
+  50%       { box-shadow: 0 0 0 4px rgba(45,206,137,0.4), 0 0 0 10px rgba(45,206,137,0.06); }
+}
+
+/* ── Speaking wave bars ─────────────────────────────────────── */
+.inbox-voice-wave {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.inbox-voice-wave span {
+  display: inline-block;
+  width: 3px;
+  background: #2dce89;
+  border-radius: 2px;
+  transform-origin: bottom;
+  animation: voice-wave-bar 0.9s ease-in-out infinite;
+}
+.inbox-voice-wave span:nth-child(1) { height: 40%; animation-delay: 0s; }
+.inbox-voice-wave span:nth-child(2) { height: 100%; animation-delay: 0.18s; }
+.inbox-voice-wave span:nth-child(3) { height: 60%; animation-delay: 0.36s; }
+@keyframes voice-wave-bar {
+  0%, 100% { transform: scaleY(0.35); opacity: 0.6; }
+  50%       { transform: scaleY(1);    opacity: 1; }
+}
+
+/* ── Audio blocked banner ───────────────────────────────────── */
+.inbox-audio-blocked {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(240,178,50,0.14);
+  border: 1px solid rgba(240,178,50,0.35);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.85);
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-bottom: 8px;
+}
+.inbox-audio-blocked:hover { background: rgba(240,178,50,0.22); }
 .inbox-voice-participant-avatar.muted::after {
   content: '🔇';
   position: absolute;

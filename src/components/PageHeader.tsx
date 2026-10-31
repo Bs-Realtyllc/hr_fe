@@ -1,7 +1,7 @@
 'use client'
 
 import { useAuth } from "@/contexts/AuthContext";
-import { BSRealtyAvatar, BSRealtyNotification } from "@bsrealtyllc/design-system";
+import { BSRealtyAvatar } from "@bsrealtyllc/design-system";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -16,7 +16,7 @@ export default function PageHeader({
     discription,
     children
 }: PageHeaderProps) {
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
 
@@ -61,15 +61,10 @@ export default function PageHeader({
                 <button className="topbar-icon-btn" title="Toggle theme">
                     <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/moon.svg)', maskImage: 'url(/icons/moon.svg)' }} />
                 </button>
-                <BSRealtyNotification icon={
-                    <img
-                        src={'/icons/bell.svg'}
-                        alt=""
-                        width={20}
-                        height={20}
-                    />
-                }
-                    showIndicator={true} />
+                <button className="topbar-icon-btn" title="Inbox" onClick={() => router.push('/inbox')}>
+                    <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/inbox.svg)', maskImage: 'url(/icons/inbox.svg)' }} />
+                    <span className="topbar-icon-btn-dot" />
+                </button>
                 {user &&
 
                     (
@@ -80,7 +75,7 @@ export default function PageHeader({
                                     aria-expanded={showProfileToogle}
                                     className="rounded-full focus:outline-none"
                                 >
-                                    <BSRealtyAvatar size='sm' title={user.name} name={initials(user.name)} style={{ cursor: 'pointer' }} />
+                                    <BSRealtyAvatar size='sm' name={initials(user.name)} />
                                 </button>
 
                             </div>
@@ -88,7 +83,7 @@ export default function PageHeader({
                             {
                                 showProfileToogle && (
                                     <>
-                                        <div className="absolute  rounded-lg flex flex-col py-3 px-2 gap-2 right-0 top-[61px] bg-(--soft-white-light) shadow-(--shadow-sm) ">
+                                        <div className="absolute  rounded-lg flex flex-col py-3 px-2 gap-2 right-0 top-15.25 bg-(--soft-white-light) shadow-(--shadow-sm) ">
                                             <div className={`flex items-center p-2 gap-2 cursor-pointer rounded-lg ${pathname === '/profile'
                                                 ? 'bg-(--blue-sky-light)'
                                                 : 'hover:bg-(--blue-sky-light)'
@@ -102,7 +97,7 @@ export default function PageHeader({
 
                                                 <div className="flex flex-col">
                                                     <span className="text-[14px] font-medium leading-5 text-(--neutral-normal)">{user?.name ?? ''}</span>
-                                                    <span className="text-[132x] leading-4 text-(--gray-normal)">{user?.email ?? ''}</span>
+                                                    <span className="text-xs leading-4 text-(--gray-normal)">{user?.email ?? ''}</span>
                                                 </div>
                                                 <span
                                                     className="inline-block h-4 w-4 bg-(--neutral-dark)"
@@ -128,7 +123,7 @@ export default function PageHeader({
                                                         router.push('/settings');
                                                     }} title="Settings">
                                                     <span
-                                                        className="inline-block h-[18px] w-[18px] bg-(--neutral-dark)"
+                                                        className="inline-block h-4.5 w-4.5 bg-(--neutral-dark)"
                                                         style={{
                                                             WebkitMaskImage: 'url(/icons/settings.svg)',
                                                             maskImage: 'url(/icons/settings.svg)',
@@ -145,7 +140,7 @@ export default function PageHeader({
                                                 <div className="flex items-center py-2 px-3 gap-1 rounded-lg cursor-pointer hover:bg-(--error-light)" onClick={() => router.push('/logout')} title="Sign out">
                                                     <button className="flex items-center gap-1 text-[14px] font-medium text-(--error-normal) " >
                                                         <span
-                                                            className="inline-block h-[18px] w-[18px] "
+                                                            className="inline-block h-4.5 w-4.5"
                                                             style={{
                                                                 WebkitMaskImage: 'url(/icons/log-out.svg)',
                                                                 maskImage: 'url(/icons/log-out.svg)',
