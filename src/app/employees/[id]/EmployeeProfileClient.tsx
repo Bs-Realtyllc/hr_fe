@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { showToast } from '@/lib/toast';
+import Button from '@/components/Button/Button';
 
 interface Employee {
   id: number;
@@ -226,13 +227,13 @@ export default function EmployeeProfileClient() {
                       Download
                     </a>
                     {ack.status !== 'approved' && (
-                      <button
-                        className="btn btn-primary btn-sm"
+                      <Button
                         onClick={() => approve(ack)}
-                        disabled={reviewingId === ack.id}
-                      >
+                        variant='text'
+                        size='small'
+                        disabled={reviewingId === ack.id}>
                         Approve
-                      </button>
+                      </Button>
                     )}
                     {ack.status !== 'rejected' && rejectingId !== ack.id && (
                       <button
