@@ -16,6 +16,7 @@ import { PinnedMessagesPanel } from './components/PinnedMessagesPanel';
 import { SavedMessagesPanel } from './components/SavedMessagesPanel';
 import { MentionAutocomplete, getMentionQuery, applyMention } from './components/MentionAutocomplete';
 import { NotificationToastStack, type ToastNotification } from './components/NotificationToast';
+import { AudioRecorder } from './components/AudioRecorder';
 
 /* ─────────────────────────── Types ───────────────────────── */
 
@@ -28,7 +29,7 @@ interface Category    { id: number; name: string; position: number; }
 interface Channel     { id: string; type: ChannelType; name: string; category_id: number | null; description?: string; required_role?: UserRole; is_private?: boolean; member_role?: MemberRole | null; unread?: number; mentioned?: boolean; }
 interface Member      { id: string; name: string; designation: string; status: UserStatus; }
 interface Reaction    { emoji: string; users: string[]; }
-interface ChatMessage { id: string; channelId: string; userId: string; userName: string; userDesignation: string; content: string; timestamp: Date; edited?: boolean; reactions: Reaction[]; isPinned?: boolean; isLocal?: boolean; replyToId?: string; replyToContent?: string; replyToAuthor?: string; }
+interface ChatMessage { id: string; channelId: string; userId: string; userName: string; userDesignation: string; content: string; timestamp: Date; edited?: boolean; reactions: Reaction[]; isPinned?: boolean; isLocal?: boolean; isSending?: boolean; sendFailed?: boolean; replyToId?: string; replyToContent?: string; replyToAuthor?: string; }
 interface DirectMessage { userId: string; userName: string; userDesignation: string; status: UserStatus; unread?: number; }
 interface VoiceToken  { token: string; url: string; room: string; }
 
@@ -66,7 +67,35 @@ function dateDivLabel(d: Date) {
 }
 function grouped(a: ChatMessage, b: ChatMessage) { return a.userId === b.userId && b.timestamp.getTime() - a.timestamp.getTime() < 5 * 60 * 1000; }
 
+const BACKEND_BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api').replace(/\/api$/, '');
+
 function renderContent(content: string, me: string) {
+  /* Audio message */
+  if (content.startsWith('__audio__:')) {
+    const rest     = content.slice('__audio__:'.length);
+    const colonIdx = rest.indexOf(':');
+    const duration = colonIdx !== -1 ? Number(rest.slice(0, colonIdx)) : 0;
+    const rawSrc = colonIdx !== -1 ? rest.slice(colonIdx + 1) : rest;
+    let audioSrc: string;
+    if (rawSrc.startsWith('http')) {
+      audioSrc = rawSrc; // presigned URL hydrated by backend at read time
+    } else if (rawSrc.startsWith('/uploads/')) {
+      audioSrc = `${BACKEND_BASE}${rawSrc}`; // legacy local disk
+    } else {
+      audioSrc = rawSrc; // object key — should be hydrated server-side before reaching here
+    }
+    const mins     = Math.floor(duration / 60);
+    const secs     = String(duration % 60).padStart(2, '0');
+    return (
+      <div className="dm-audio-msg">
+        <span className="dm-audio-msg-icon">🎙️</span>
+        <audio controls src={audioSrc} className="dm-audio-native" preload="metadata" />
+        <span className="dm-audio-msg-dur">{mins}:{secs}</span>
+      </div>
+    );
+  }
+
+  /* Normal text with @mentions */
   const parts: React.ReactNode[] = [];
   const re = /(@\w+)/g; let last = 0; let m: RegExpExecArray | null; let i = 0;
   // eslint-disable-next-line no-cond-assign
@@ -104,6 +133,7 @@ export default function InboxClient() {
   const [socketConnected, setSocketConnected]     = useState(false);
   const [userStatus, setUserStatus]               = useState<UserStatus>('online');
   const [voiceToken, setVoiceToken]               = useState<VoiceToken | null>(null);
+  const [preJoinChannelId, setPreJoinChannelId]   = useState<string | null>(null);
   const [showSearch, setShowSearch]               = useState(false);
   const [searchQuery, setSearchQuery]             = useState('');
 
@@ -117,6 +147,7 @@ export default function InboxClient() {
 
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showNewDm, setShowNewDm]                 = useState(false);
+  const [showAudioRecorder, setShowAudioRecorder] = useState(false);
 
   const [categories, setCategories]         = useState<Category[]>([]);
   const [channels, setChannels]             = useState<Channel[]>([]);
@@ -134,10 +165,12 @@ export default function InboxClient() {
   const selDmIdRef          = useRef(selectedDmId);
   const prevChIdRef         = useRef<string | null>(null);
   const curUserNameRef      = useRef(user?.name ?? 'You');
+  const myIdRef             = useRef(user?.id?.toString() ?? 'me');
 
   useEffect(() => { selChIdRef.current    = selectedChannelId; }, [selectedChannelId]);
   useEffect(() => { selDmIdRef.current    = selectedDmId;      }, [selectedDmId]);
   useEffect(() => { curUserNameRef.current = user?.name ?? 'You'; }, [user?.name]);
+  useEffect(() => { myIdRef.current       = user?.id?.toString() ?? 'me'; }, [user?.id]);
 
   const myId   = user?.id?.toString() ?? 'me';
   const myName = user?.name ?? 'You';
@@ -278,12 +311,28 @@ export default function InboxClient() {
       setMessages(prev => prev.filter(m => m.id !== String(d.id)));
     });
     socket.on('dm:new', (d: { id: number; from: number; from_name: string; to: number; content: string; created_at: string }) => {
-      const dmCh = `dm-${d.from}`;
-      if (selDmIdRef.current === String(d.from)) {
+      const isMine    = String(d.from) === myIdRef.current;
+      // For own messages the partner is d.to; for received messages the partner is d.from
+      const partnerId = isMine ? String(d.to) : String(d.from);
+      const dmCh      = `dm-${partnerId}`;
+
+      if (isMine) {
+        // If this tab has a pending local (optimistic) message, dm:sent will handle it — skip here
+        setMessages(prev => {
+          if (prev.find(m => m.id === String(d.id))) return prev;
+          if (prev.some(m => m.isLocal && m.channelId === dmCh)) return prev;
+          // Another tab of ours sent this — add it if we're viewing the conversation
+          if (selDmIdRef.current !== partnerId) return prev;
+          return [...prev, { id: String(d.id), channelId: dmCh, userId: String(d.from), userName: d.from_name, userDesignation: '', content: d.content, timestamp: new Date(d.created_at ?? Date.now()), edited: false, reactions: [] }];
+        });
+        return;
+      }
+
+      if (selDmIdRef.current === partnerId) {
         setMessages(prev => prev.find(m => m.id === String(d.id)) ? prev : [...prev, { id: String(d.id), channelId: dmCh, userId: String(d.from), userName: d.from_name, userDesignation: '', content: d.content, timestamp: new Date(d.created_at ?? Date.now()), edited: false, reactions: [] }]);
       } else {
-        setToasts(prev => [...prev, { id: `dm-${d.id}`, type: 'dm', title: d.from_name, body: d.content, dmUserId: String(d.from) }]);
-        setDmConversations(prev => { const ex = prev.find(dm => dm.userId === String(d.from)); if (ex) return prev.map(dm => dm.userId === String(d.from) ? { ...dm, unread: (dm.unread ?? 0) + 1 } : dm); return [{ userId: String(d.from), userName: d.from_name, userDesignation: '', status: 'online', unread: 1 }, ...prev]; });
+        setToasts(prev => [...prev, { id: `dm-${d.id}`, type: 'dm', title: d.from_name, body: d.content, dmUserId: partnerId }]);
+        setDmConversations(prev => { const ex = prev.find(dm => dm.userId === partnerId); if (ex) return prev.map(dm => dm.userId === partnerId ? { ...dm, unread: (dm.unread ?? 0) + 1 } : dm); return [{ userId: String(d.from), userName: d.from_name, userDesignation: '', status: 'online' as UserStatus, unread: 1 }, ...prev]; });
       }
     });
 
@@ -350,6 +399,54 @@ export default function InboxClient() {
     if (inputRef.current) inputRef.current.style.height = 'auto';
   }
 
+  async function sendAudioMsg(blob: Blob, duration: number) {
+    if (!selectedDmId) return;
+    setShowAudioRecorder(false);
+
+    const blobUrl  = URL.createObjectURL(blob);
+    const localId  = `local-${Date.now()}`;
+    const dmCh     = `dm-${selectedDmId}`;
+
+    // Show immediately using local blob URL so sender can play it right away
+    setMessages(prev => [...prev, {
+      id: localId, channelId: dmCh, userId: myId,
+      userName: myName, userDesignation: user?.role ?? '',
+      content: `__audio__:${duration}:${blobUrl}`,
+      timestamp: new Date(), edited: false, reactions: [],
+      isLocal: true, isSending: true,
+    }]);
+
+    try {
+      const form = new FormData();
+      form.append('audio', blob, `voice-${Date.now()}.webm`);
+      const token = getToken();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, '') ?? 'http://localhost:6002'}/api/inbox/dms/audio`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const { key, presignedUrl } = await res.json() as { key: string; presignedUrl: string };
+
+      // Swap blob URL → presigned URL and clear sending state
+      setMessages(prev => prev.map(m =>
+        m.id === localId
+          ? { ...m, content: `__audio__:${duration}:${presignedUrl}`, isSending: false }
+          : m,
+      ));
+      URL.revokeObjectURL(blobUrl);
+
+      // Emit to socket only after upload succeeds — recipients see it when it's ready
+      socketRef.current?.emit('dm:send', { toUserId: Number(selectedDmId), content: `__audio__:${duration}:${key}` });
+    } catch {
+      // Mark failed so user knows to retry
+      setMessages(prev => prev.map(m =>
+        m.id === localId ? { ...m, isSending: false, sendFailed: true } : m,
+      ));
+      URL.revokeObjectURL(blobUrl);
+    }
+  }
+
   function handleKD(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
     if (e.key === 'Escape') { setReplyingTo(null); setMentionQuery(null); }
@@ -404,7 +501,7 @@ export default function InboxClient() {
     setEditValue('');
   }
 
-  async function pinMsg(msgId: string, pin: boolean) { try { if (pin) await api.post(`/inbox/messages/${msgId}/pin`, {}); else await api.delete(`/inbox/messages/${msgId}/pin`); setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isPinned: pin } : m)); } catch {} }
+  async function pinMsg(msgId: string, pin: boolean) { try { await api.patch(`/inbox/messages/${msgId}/pin`, {}); setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isPinned: pin } : m)); } catch {} }
   async function saveMsg(msgId: string) { try { await api.post(`/inbox/messages/${msgId}/save`, {}); } catch {} }
   async function fwdMsg(msgId: string, tid: string, ttype: 'channel' | 'dm') { try { await api.post(`/inbox/messages/${msgId}/forward`, { targetId: Number(tid), targetType: ttype }); } catch {} }
 
@@ -428,6 +525,11 @@ export default function InboxClient() {
 
   /* ─ Voice ─ */
   async function joinVoice(chId: string) {
+    setPreJoinChannelId(chId);
+  }
+
+  async function confirmJoinVoice(chId: string) {
+    setPreJoinChannelId(null);
     try { const d = await api.get<VoiceToken>(`/inbox/voice/${chId}/token`); setVoiceToken(d); } catch { setVoiceToken(null); }
     setInVoiceChannel(chId); setVcOccupants(prev => ({ ...prev, [chId]: [...(prev[chId] ?? []), myName] }));
     socketRef.current?.emit('voice:join', Number(chId)); selChannel(chId);
@@ -458,6 +560,13 @@ export default function InboxClient() {
       {showCreateChannel && <CreateChannelModal categories={categories} onClose={() => setShowCreateChannel(false)} onCreate={d => api.post('/inbox/channels', d)} />}
       {showNewDm && <NewDmModal employees={allEmployees.filter((e: any) => String(e.id) !== myId)} onClose={() => setShowNewDm(false)} onSelect={(e: any) => selDm(String(e.id), e.name, e.designation)} />}
       {forwardMsg && <ForwardModal messageContent={forwardMsg.content} channels={channels} dmConversations={dmConversations} onForward={(tid, tt) => fwdMsg(forwardMsg.id, tid, tt)} onClose={() => setForwardMsg(null)} />}
+      {preJoinChannelId && (
+        <PreJoinModal
+          channelName={channels.find(c => c.id === preJoinChannelId)?.name ?? 'Voice'}
+          onJoin={() => confirmJoinVoice(preJoinChannelId)}
+          onCancel={() => setPreJoinChannelId(null)}
+        />
+      )}
 
       {/* ── Sidebar ── */}
       <div className="inbox-channels">
@@ -630,20 +739,31 @@ export default function InboxClient() {
               {selCh?.member_role === 'readonly' && <div className="inbox-readonly-banner">👁 You have read-only access to this channel.</div>}
 
               {(canPost(selCh) || selectedDmId) && (
-                <div className="inbox-input-wrap" style={{ position: 'relative' }}>
-                  {mentionQuery !== null && <MentionAutocomplete query={mentionQuery} employees={allMems} onSelect={name => { if (!inputRef.current) return; setInputValue(applyMention(inputRef.current, name)); setMentionQuery(null); inputRef.current.focus(); }} onClose={() => setMentionQuery(null)} anchorEl={inputRef.current} />}
-                  <button className="inbox-input-attach-btn" title="Attach file"><span className="icon" /></button>
-                  <textarea ref={inputRef} className="inbox-input-field"
-                    placeholder={activeDm ? `Message ${activeDm.userName}` : selCh ? `Message #${selCh.name}` : 'Send a message'}
-                    value={inputValue} onChange={handleIC} onKeyDown={handleKD} rows={1}
-                  />
-                  <div className="inbox-input-right">
-                    <button className="inbox-input-emoji-btn" title="Emoji">😊</button>
-                    <button className="inbox-send-btn" title="Send" disabled={!inputValue.trim()} onClick={sendMsg}><span className="icon" /></button>
-                  </div>
-                </div>
+                showAudioRecorder && selectedDmId
+                  ? <AudioRecorder
+                      onSend={sendAudioMsg}
+                      onCancel={() => setShowAudioRecorder(false)}
+                    />
+                  : <div className="inbox-input-wrap" style={{ position: 'relative' }}>
+                      {mentionQuery !== null && <MentionAutocomplete query={mentionQuery} employees={allMems} onSelect={name => { if (!inputRef.current) return; setInputValue(applyMention(inputRef.current, name)); setMentionQuery(null); inputRef.current.focus(); }} onClose={() => setMentionQuery(null)} anchorEl={inputRef.current} />}
+                      <button className="inbox-input-attach-btn" title="Attach file"><span className="icon" /></button>
+                      <textarea ref={inputRef} className="inbox-input-field"
+                        placeholder={activeDm ? `Message ${activeDm.userName}` : selCh ? `Message #${selCh.name}` : 'Send a message'}
+                        value={inputValue} onChange={handleIC} onKeyDown={handleKD} rows={1}
+                      />
+                      <div className="inbox-input-right">
+                        <button className="inbox-input-emoji-btn" title="Emoji">😊</button>
+                        {selectedDmId && !inputValue.trim() && (
+                          <button className="inbox-input-voice-btn" title="Send voice message"
+                            onClick={() => setShowAudioRecorder(true)}>
+                            <span className="icon" style={{ WebkitMaskImage: 'url(/icons/mic.svg)', maskImage: 'url(/icons/mic.svg)' }} />
+                          </button>
+                        )}
+                        <button className="inbox-send-btn" title="Send" disabled={!inputValue.trim()} onClick={sendMsg}><span className="icon" /></button>
+                      </div>
+                    </div>
               )}
-              {(canPost(selCh) || selectedDmId) && <div className="inbox-input-hint">Enter to send · Shift+Enter for new line · @name to mention</div>}
+              {(canPost(selCh) || selectedDmId) && !showAudioRecorder && <div className="inbox-input-hint">Enter to send · Shift+Enter for new line · @name to mention</div>}
             </div>
           </>
         ) : null}
@@ -711,7 +831,9 @@ function MessageList({ messages, myId, myName, editingId, editValue, onEditChang
                   {msg.userDesignation && <span className="inbox-msg-role-badge">{msg.userDesignation}</span>}
                   <span className="inbox-msg-timestamp">{fmtTs(msg.timestamp)}</span>
                   {msg.isPinned && <span style={{ fontSize: 11, color: 'var(--color-warning)', fontWeight: 600 }}>📌</span>}
-                  {msg.isLocal && <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Sending…</span>}
+                  {msg.isSending && <span className="inbox-msg-sending-badge"><span className="inbox-msg-sending-dot" />Uploading…</span>}
+                  {!msg.isSending && msg.isLocal && !msg.sendFailed && <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Sending…</span>}
+                  {msg.sendFailed && <span style={{ fontSize: 11, color: 'var(--color-error)', fontWeight: 600 }}>⚠ Failed — retry</span>}
                 </div>
               )}
               {msg.replyToId && (
@@ -829,5 +951,180 @@ function MembersPanel({ members, myId, statusColor }: { members: Member[]; myId:
         </>
       )}
     </>
+  );
+}
+
+/* ── PreJoinModal ─────────────────────────────────────────── */
+
+function PreJoinModal({ channelName, onJoin, onCancel }: {
+  channelName: string;
+  onJoin: () => void;
+  onCancel: () => void;
+}) {
+  const [micStatus, setMicStatus]   = useState<'idle' | 'granted' | 'denied' | 'checking'>('idle');
+  const [micLevel, setMicLevel]     = useState(0);
+  const streamRef = useRef<MediaStream | null>(null);
+  const rafRef    = useRef<number>(0);
+
+  async function requestMic() {
+    setMicStatus('checking');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      streamRef.current = stream;
+      setMicStatus('granted');
+
+      // Show live mic level so the user knows it's working
+      const ctx      = new AudioContext();
+      const src      = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 128;
+      analyser.smoothingTimeConstant = 0.7;
+      src.connect(analyser);
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      function tick() {
+        analyser.getByteFrequencyData(buf);
+        let sum = 0;
+        for (let i = 0; i < buf.length; i++) sum += (buf[i] / 255) ** 2;
+        setMicLevel(Math.min(Math.sqrt(sum / buf.length) * 5, 1));
+        rafRef.current = requestAnimationFrame(tick);
+      }
+      tick();
+    } catch (err: any) {
+      setMicStatus('denied');
+    }
+  }
+
+  function cleanup() {
+    cancelAnimationFrame(rafRef.current);
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
+  }
+
+  useEffect(() => () => cleanup(), []);
+
+  function handleJoin() {
+    cleanup(); // VoiceRoom will request its own stream
+    onJoin();
+  }
+
+  const bars = 16;
+
+  return (
+    <div className="inbox-modal-backdrop" onClick={onCancel}>
+      <div className="inbox-modal-box" style={{ maxWidth: 400, gap: 20 }} onClick={e => e.stopPropagation()}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>🔊</div>
+          <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>Join #{channelName}</div>
+          <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
+            Check your microphone before joining
+          </div>
+        </div>
+
+        {/* Mic test section */}
+        <div style={{
+          background: 'var(--color-sidebar)',
+          borderRadius: 12,
+          padding: '16px 20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          border: '1px solid var(--color-border)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: '50%',
+              background: micStatus === 'granted' ? 'rgba(45,206,137,0.15)' : micStatus === 'denied' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.08)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0,
+              border: `1.5px solid ${micStatus === 'granted' ? '#2dce89' : micStatus === 'denied' ? '#ef4444' : 'var(--color-border)'}`,
+            }}>
+              {micStatus === 'denied' ? '🚫' : '🎙️'}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>
+                {micStatus === 'idle'     && 'Microphone not tested'}
+                {micStatus === 'checking' && 'Requesting access…'}
+                {micStatus === 'granted'  && 'Microphone ready'}
+                {micStatus === 'denied'   && 'Microphone blocked'}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                {micStatus === 'idle'    && 'Click "Test mic" to allow access'}
+                {micStatus === 'checking'&& 'Allow microphone in the browser popup'}
+                {micStatus === 'granted' && 'Speak — the bar shows your level'}
+                {micStatus === 'denied'  && 'Click the 🔒 icon in the address bar → Allow'}
+              </div>
+            </div>
+            {micStatus === 'idle' || micStatus === 'denied' ? (
+              <button
+                onClick={requestMic}
+                style={{
+                  padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                  background: micStatus === 'denied' ? '#ef4444' : 'var(--color-primary)',
+                  color: '#fff', fontSize: 12, fontWeight: 600, flexShrink: 0,
+                }}
+              >
+                {micStatus === 'denied' ? 'Retry' : 'Test mic'}
+              </button>
+            ) : null}
+          </div>
+
+          {/* Live mic level visualizer */}
+          {micStatus === 'granted' && (
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 28, padding: '0 2px' }}>
+              {Array.from({ length: bars }, (_, i) => {
+                const thresh = (i + 1) / bars;
+                const active = micLevel >= thresh;
+                return (
+                  <div key={i} style={{
+                    flex: 1,
+                    height: `${20 + (i / bars) * 80}%`,
+                    borderRadius: 2,
+                    background: active
+                      ? (micLevel > 0.8 ? '#f59e0b' : micLevel > 0.5 ? '#2dce89' : '#2dce89')
+                      : 'rgba(255,255,255,0.1)',
+                    transition: 'background 60ms',
+                  }} />
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Permissions note */}
+        {micStatus === 'denied' && (
+          <div style={{
+            fontSize: 12, color: 'rgba(239,68,68,0.9)',
+            background: 'rgba(239,68,68,0.08)',
+            border: '1px solid rgba(239,68,68,0.2)',
+            borderRadius: 8, padding: '10px 14px', lineHeight: 1.5,
+          }}>
+            <strong>To fix:</strong> click the 🔒 lock icon in your browser's address bar,
+            find <em>Microphone</em>, set it to <em>Allow</em>, then reload the page.
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={onCancel}
+            style={{
+              flex: 1, padding: '10px 0', borderRadius: 8,
+              border: '1px solid var(--color-border)', background: 'transparent',
+              color: 'var(--color-text-body)', fontWeight: 600, cursor: 'pointer', fontSize: 14,
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleJoin}
+            style={{
+              flex: 2, padding: '10px 0', borderRadius: 8, border: 'none',
+              background: 'var(--color-primary)', color: '#fff',
+              fontWeight: 700, cursor: 'pointer', fontSize: 14,
+            }}
+          >
+            {micStatus === 'denied' ? 'Join anyway (listen only)' : 'Join Voice Channel'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

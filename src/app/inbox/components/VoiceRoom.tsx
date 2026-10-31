@@ -19,6 +19,7 @@ export interface VoiceParticipant {
   isSpeaking: boolean;
   isLocal: boolean;
   isScreenSharing?: boolean;
+  audioLevel?: number; // 0-1 RMS level
 }
 
 interface VoiceRoomProps {
@@ -31,6 +32,48 @@ interface VoiceRoomProps {
   onMicMutedChange: (muted: boolean) => void;
   onDeafenedChange: (deafened: boolean) => void;
   onParticipantsChange?: (participants: VoiceParticipant[]) => void;
+}
+
+/* ── Web Audio VAD ─────────────────────────────────────────── */
+
+/** Returns a cleanup fn. Calls onLevel(0-1) at ~30fps via AnalyserNode RMS. */
+function startLocalVAD(
+  onLevel: (level: number) => void,
+): () => void {
+  let ctx: AudioContext | null = null;
+  let raf = 0;
+  let stream: MediaStream | null = null;
+
+  navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+    .then(s => {
+      stream = s;
+      ctx = new AudioContext();
+      const source   = ctx.createMediaStreamSource(s);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.6;
+      source.connect(analyser);
+
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+
+      function tick() {
+        analyser.getByteFrequencyData(buf);
+        // RMS over frequency bins → 0-1
+        let sum = 0;
+        for (let i = 0; i < buf.length; i++) sum += (buf[i] / 255) ** 2;
+        const rms = Math.sqrt(sum / buf.length);
+        onLevel(Math.min(rms * 4, 1)); // amplify for visual sensitivity
+        raf = requestAnimationFrame(tick);
+      }
+      tick();
+    })
+    .catch(() => onLevel(0));
+
+  return () => {
+    cancelAnimationFrame(raf);
+    stream?.getTracks().forEach(t => t.stop());
+    ctx?.close().catch(() => {});
+  };
 }
 
 /* ── Component ─────────────────────────────────────────────── */
@@ -50,6 +93,7 @@ export function VoiceRoom({
   const audioRefs      = useRef<Map<string, HTMLAudioElement>>(new Map());
   const screenVideoRef = useRef<Map<string, HTMLVideoElement>>(new Map());
   const permStatusRef  = useRef<PermissionStatus | null>(null);
+  const vadCleanupRef  = useRef<(() => void) | null>(null);
 
   const [participants, setParticipants]         = useState<VoiceParticipant[]>([]);
   const [connState, setConnState]               = useState<ConnectionState>(ConnectionState.Disconnected);
@@ -58,19 +102,23 @@ export function VoiceRoom({
   const [screenSharerName, setScreenSharerName] = useState<string | null>(null);
   const [audioBlocked, setAudioBlocked]         = useState(false);
   const [micDenied, setMicDenied]               = useState(false);
+  const [localLevel, setLocalLevel]             = useState(0);  // 0-1 RMS
 
   /* ── Sync participants ──────────────────────────────────── */
-  const syncParticipants = useCallback((room: Room) => {
+  const syncParticipants = useCallback((room: Room, overrideLocalLevel?: number) => {
     const list: VoiceParticipant[] = [];
+    const level = overrideLocalLevel ?? localLevel;
 
     const local = room.localParticipant;
+    const localSpeaking = local.isSpeaking || (!local.isMicrophoneEnabled ? false : level > 0.08);
     list.push({
       identity: local.identity,
       name: local.name ?? local.identity,
       isMicMuted: !local.isMicrophoneEnabled,
-      isSpeaking: local.isSpeaking,
+      isSpeaking: localSpeaking,
       isLocal: true,
       isScreenSharing: local.isScreenShareEnabled,
+      audioLevel: level,
     });
 
     let sharerName: string | null = null;
@@ -83,6 +131,7 @@ export function VoiceRoom({
         isSpeaking: p.isSpeaking,
         isLocal: false,
         isScreenSharing: p.isScreenShareEnabled,
+        audioLevel: p.isSpeaking ? 0.6 : 0,
       });
     });
     if (local.isScreenShareEnabled) sharerName = local.name ?? local.identity;
@@ -90,7 +139,7 @@ export function VoiceRoom({
 
     setParticipants(list);
     onParticipantsChange?.(list);
-  }, [onParticipantsChange]);
+  }, [onParticipantsChange, localLevel]);
 
   /* ── Connect on mount ───────────────────────────────────── */
   useEffect(() => {
@@ -105,15 +154,15 @@ export function VoiceRoom({
 
           if (status.state === 'denied') {
             setMicDenied(true);
-            /* Still connect in listen-only mode — don't return early */
           }
 
-          /* Monitor for mid-call permission changes (e.g. user revokes in browser) */
           status.addEventListener('change', () => {
             if (status.state === 'denied') {
               setMicDenied(true);
               onMicMutedChange(true);
               roomRef.current?.localParticipant.setMicrophoneEnabled(false).catch(() => {});
+              vadCleanupRef.current?.();
+              vadCleanupRef.current = null;
             } else {
               setMicDenied(false);
             }
@@ -148,7 +197,6 @@ export function VoiceRoom({
             audio.autoplay = true;
             audio.muted = deafened;
             track.attach(audio);
-            /* Handle browsers that block autoplay before a user gesture */
             audio.play().catch(() => setAudioBlocked(true));
             audioRefs.current.set(participant.identity, audio);
           } else if (track.kind === Track.Kind.Video && track.source === Track.Source.ScreenShare) {
@@ -190,12 +238,26 @@ export function VoiceRoom({
             } else if (name === 'NotFoundError') {
               setError('No microphone found. Connect a mic and rejoin.');
             }
-            /* Proceed connected but mic-less */
           }
         }
 
         syncParticipants(room);
         setAudioBlocked(!room.canPlaybackAudio);
+
+        /* ── Start Web Audio API VAD for local participant ── */
+        if (permStatusRef.current?.state !== 'denied') {
+          vadCleanupRef.current = startLocalVAD(level => {
+            setLocalLevel(level);
+            // Also directly update the local participant entry for live ring
+            if (roomRef.current) {
+              setParticipants(prev => prev.map(p =>
+                p.isLocal
+                  ? { ...p, audioLevel: level, isSpeaking: p.isMicMuted ? false : level > 0.08 }
+                  : p,
+              ));
+            }
+          });
+        }
       } catch (err: any) {
         const name = err?.name ?? '';
         if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
@@ -212,6 +274,8 @@ export function VoiceRoom({
 
     return () => {
       permStatusRef.current = null;
+      vadCleanupRef.current?.();
+      vadCleanupRef.current = null;
       audioRefs.current.forEach(audio => { audio.pause(); audio.src = ''; });
       audioRefs.current.clear();
       screenVideoRef.current.forEach(v => v.remove());
@@ -241,12 +305,25 @@ export function VoiceRoom({
       const name = err?.name ?? '';
       if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
         setMicDenied(true);
-        onMicMutedChange(true); /* reflect actual state back to parent */
+        onMicMutedChange(true);
       }
     });
-  }, [micMuted, onMicMutedChange]);
+    /* Start/stop VAD with mic mute */
+    if (micMuted) {
+      vadCleanupRef.current?.();
+      vadCleanupRef.current = null;
+      setLocalLevel(0);
+    } else if (!vadCleanupRef.current && !micDenied) {
+      vadCleanupRef.current = startLocalVAD(level => {
+        setLocalLevel(level);
+        setParticipants(prev => prev.map(p =>
+          p.isLocal ? { ...p, audioLevel: level, isSpeaking: level > 0.08 } : p,
+        ));
+      });
+    }
+  }, [micMuted, onMicMutedChange, micDenied]);
 
-  /* ── Sync deafen state (mute all remote audio) ──────────── */
+  /* ── Sync deafen state ──────────────────────────────────── */
   useEffect(() => {
     audioRefs.current.forEach(audio => { audio.muted = deafened; });
   }, [deafened]);
@@ -264,9 +341,7 @@ export function VoiceRoom({
           <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
           <div style={{ fontWeight: 600, marginBottom: 8 }}>Could not connect to voice</div>
           <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 20 }}>{error}</div>
-          <button className="inbox-voice-ctrl-btn leave" onClick={onLeave} style={{ margin: '0 auto' }}>
-            Leave
-          </button>
+          <button className="inbox-voice-ctrl-btn leave" onClick={onLeave} style={{ margin: '0 auto' }}>Leave</button>
         </div>
       </div>
     );
@@ -288,7 +363,7 @@ export function VoiceRoom({
         <div className="inbox-voice-view-sub">
           {participants.length === 0
             ? 'No one else here yet'
-            : `${participants.length} participant${participants.length > 1 ? 's' : ''}`}
+            : `${participants.length} in channel`}
         </div>
       </div>
 
@@ -296,11 +371,15 @@ export function VoiceRoom({
       {micDenied && (
         <div className="inbox-audio-blocked" style={{ cursor: 'default' }}>
           🎙️ Microphone access denied — you are in listen-only mode.{' '}
-          <span style={{ textDecoration: 'underline', cursor: 'pointer' }}
-            onClick={() => window.open('about:blank', '_blank')}
-            title="Open browser settings to allow microphone">
-            Allow mic in browser settings
-          </span>{' '}then rejoin.
+          <span
+            style={{ textDecoration: 'underline', cursor: 'pointer' }}
+            onClick={() => {
+              // Show browser permission instructions
+              alert('To allow microphone:\n• Chrome: click the 🔒 lock icon in the address bar → Microphone → Allow\n• Firefox: click the camera icon in the address bar → Allow\nThen leave and rejoin the channel.');
+            }}
+          >
+            How to allow mic
+          </span>
         </div>
       )}
 
@@ -310,12 +389,11 @@ export function VoiceRoom({
           className="inbox-audio-blocked"
           onClick={async () => {
             await roomRef.current?.startAudio();
-            /* Play all buffered audio elements */
             audioRefs.current.forEach(a => a.play().catch(() => {}));
             setAudioBlocked(false);
           }}
         >
-          🔇 Audio blocked by browser — click to enable
+          🔇 Audio blocked by browser — click here to enable
         </button>
       )}
 
@@ -327,38 +405,68 @@ export function VoiceRoom({
         </div>
       )}
 
+      {/* Participants grid */}
       {participants.length > 0 && (
         <div className="inbox-voice-participants-grid">
-          {participants.map(p => (
-            <div key={p.identity} className="inbox-voice-participant">
-              <div
-                className={`inbox-voice-participant-avatar${p.isSpeaking && !p.isMicMuted ? ' speaking' : ''}${p.isMicMuted ? ' muted' : ''}`}
-                style={{ background: `hsl(${(p.name.charCodeAt(0) * 37) % 360}, 45%, 35%)` }}
-              >
-                {initials(p.name)}
-                {p.isMicMuted && <span className="inbox-voice-muted-badge" title="Muted" />}
-                {p.isScreenSharing && <span className="inbox-voice-sharing-badge" title="Sharing screen">🖥️</span>}
+          {participants.map(p => {
+            const speaking = p.isSpeaking && !p.isMicMuted;
+            const lvl      = p.audioLevel ?? 0;
+            const scalePct = Math.round(lvl * 100);
+            return (
+              <div key={p.identity} className="inbox-voice-participant">
+                {/* Avatar with speaking ring */}
+                <div
+                  className={`inbox-voice-participant-avatar${speaking ? ' speaking' : ''}${p.isMicMuted ? ' muted' : ''}`}
+                  style={{
+                    background: `hsl(${(p.name.charCodeAt(0) * 37) % 360}, 45%, 35%)`,
+                    /* Live border glow driven by audio level */
+                    ...(speaking && p.isLocal ? {
+                      boxShadow: `0 0 0 ${2 + scalePct / 25}px rgba(45,206,137,${0.4 + lvl * 0.5}), 0 0 0 ${6 + scalePct / 12}px rgba(45,206,137,${0.1 + lvl * 0.15})`,
+                    } : {}),
+                  }}
+                >
+                  {initials(p.name)}
+                  {p.isMicMuted && <span className="inbox-voice-muted-badge" title="Muted" />}
+                  {p.isScreenSharing && <span className="inbox-voice-sharing-badge" title="Sharing screen">🖥️</span>}
+                </div>
+
+                {/* Audio level meter — thin bar below avatar */}
+                <div className="inbox-voice-level-bar-track">
+                  <div
+                    className="inbox-voice-level-bar-fill"
+                    style={{
+                      width: `${Math.round(lvl * 100)}%`,
+                      background: p.isMicMuted ? 'var(--color-border)' : speaking ? '#2dce89' : 'rgba(45,206,137,0.3)',
+                      transition: 'width 60ms linear, background 200ms',
+                    }}
+                  />
+                </div>
+
+                <span className="inbox-voice-participant-name">
+                  {p.name}{p.isLocal ? ' (you)' : ''}
+                  {speaking && (
+                    <span className="inbox-voice-wave" aria-hidden>
+                      <span /><span /><span />
+                    </span>
+                  )}
+                </span>
               </div>
-              <span className="inbox-voice-participant-name">
-                {p.name}{p.isLocal ? ' (you)' : ''}
-                {p.isSpeaking && !p.isMicMuted && (
-                  <span className="inbox-voice-wave" aria-hidden>
-                    <span /><span /><span />
-                  </span>
-                )}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
+      {/* Controls */}
       <div className="inbox-voice-controls-bar">
         <button
-          className={`inbox-voice-ctrl-btn${micMuted ? ' active-mute' : ''}`}
-          title={micMuted ? 'Unmute' : 'Mute'}
-          onClick={() => onMicMutedChange(!micMuted)}
+          className={`inbox-voice-ctrl-btn${micMuted ? ' active-mute' : ''}${micDenied ? ' disabled' : ''}`}
+          title={micDenied ? 'Microphone access denied' : micMuted ? 'Unmute' : 'Mute'}
+          onClick={() => !micDenied && onMicMutedChange(!micMuted)}
         >
-          <span className="icon" style={{ WebkitMaskImage: micMuted ? 'url(/icons/mic-off.svg)' : 'url(/icons/mic.svg)', maskImage: micMuted ? 'url(/icons/mic-off.svg)' : 'url(/icons/mic.svg)' }} />
+          <span className="icon" style={{
+            WebkitMaskImage: micMuted || micDenied ? 'url(/icons/mic-off.svg)' : 'url(/icons/mic.svg)',
+            maskImage: micMuted || micDenied ? 'url(/icons/mic-off.svg)' : 'url(/icons/mic.svg)',
+          }} />
         </button>
         <button
           className={`inbox-voice-ctrl-btn${deafened ? ' active-mute' : ''}`}
@@ -377,6 +485,24 @@ export function VoiceRoom({
         <button className="inbox-voice-ctrl-btn leave" title="Leave voice channel" onClick={onLeave}>
           <span className="icon" style={{ WebkitMaskImage: 'url(/icons/phone-off.svg)', maskImage: 'url(/icons/phone-off.svg)' }} />
         </button>
+
+        {/* Live local mic level indicator in controls bar */}
+        {!micMuted && !micDenied && (
+          <div className="inbox-voice-local-level" title="Your mic level">
+            {[0.15, 0.35, 0.55, 0.75, 0.90].map((thresh, i) => (
+              <span
+                key={i}
+                className="inbox-voice-local-level-bar"
+                style={{
+                  background: localLevel >= thresh
+                    ? localLevel > 0.7 ? '#f59e0b' : '#2dce89'
+                    : 'rgba(255,255,255,0.15)',
+                  transition: 'background 60ms',
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
