@@ -381,7 +381,7 @@ export default function InboxClient() {
   useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [paneMsgs.length]);
 
   /* ─ Navigation ─ */
-  function selChannel(id: string) { setSelectedChannelId(id); setSelectedDmId(null); setChannels(prev => prev.map(c => c.id === id ? { ...c, unread: 0, mentioned: false } : c)); setReplyingTo(null); setVoiceToken(null); setShowPins(false); setShowSaved(false); setShowSearch(false); setSearchQuery(''); }
+  function selChannel(id: string) { setSelectedChannelId(id); setSelectedDmId(null); setChannels(prev => prev.map(c => c.id === id ? { ...c, unread: 0, mentioned: false } : c)); setReplyingTo(null); setShowPins(false); setShowSaved(false); setShowSearch(false); setSearchQuery(''); }
   function selDm(id: string, name?: string, des?: string) { setSelectedDmId(id); setSelectedChannelId(''); setReplyingTo(null); setShowPins(false); setShowSaved(false); setShowSearch(false); setSearchQuery(''); setDmConversations(prev => { const ex = prev.find(d => d.userId === id); if (ex) return prev.map(d => d.userId === id ? { ...d, unread: undefined } : d); return [{ userId: id, userName: name ?? id, userDesignation: des ?? '', status: 'offline', unread: undefined }, ...prev]; }); }
 
   function handleStatus(status: UserStatus) { setUserStatus(status); socketRef.current?.emit('presence:set', status); }
@@ -530,9 +530,16 @@ export default function InboxClient() {
 
   async function confirmJoinVoice(chId: string) {
     setPreJoinChannelId(null);
-    try { const d = await api.get<VoiceToken>(`/inbox/voice/${chId}/token`); setVoiceToken(d); } catch { setVoiceToken(null); }
-    setInVoiceChannel(chId); setVcOccupants(prev => ({ ...prev, [chId]: [...(prev[chId] ?? []), myName] }));
-    socketRef.current?.emit('voice:join', Number(chId)); selChannel(chId);
+    try {
+      const d = await api.get<VoiceToken>(`/inbox/voice/${chId}/token`);
+      setVoiceToken(d);
+      setInVoiceChannel(chId);
+      setVcOccupants(prev => ({ ...prev, [chId]: [...(prev[chId] ?? []), myName] }));
+      socketRef.current?.emit('voice:join', Number(chId));
+      selChannel(chId);
+    } catch {
+      setVoiceToken(null);
+    }
   }
   function leaveVoice() {
     if (!inVoiceChannel) return;
