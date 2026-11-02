@@ -45,6 +45,15 @@ function isWithinClockInWindow(): boolean {
   return hours >= 8 && hours < 12;
 }
 
+function getPosition(): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) =>
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 10_000,
+    }),
+  );
+}
+
 export default function ClockInPopup() {
   const [showPopup, setShowPopup] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(false);
@@ -76,8 +85,13 @@ export default function ClockInPopup() {
 
   const handleClockIn = async () => {
     setLoading(true);
+
     try {
-      const { clockInTime } = await api.post<clockInResponse>("/clock/in", {});
+      const pos = await getPosition();
+      const { clockInTime } = await api.post<clockInResponse>("/clock/in", {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+      });
       setKey("0");
       setShowPopup(false);
       window.dispatchEvent(
