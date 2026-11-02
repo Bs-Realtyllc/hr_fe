@@ -98,25 +98,25 @@ export default function RequestAccessPage() {
 
     return (
         <div className="relative flex min-h-screen w-full items-center justify-center overflow-y-auto bg-(--soft-white-light) px-4 py-20">
-            <div className='absolute top-[30px] left-[80px] '>
-                <img width={'111px'} height={'20px'} src="/logos/gitgi-hr-logo.svg" alt="" />
-            </div>
+            <div className=' absolute top-7.5 left-4 lg:left-20  '>
+                <img className='h-4 w-22 lg:h-5 lg:w-28' src="/logos/gitgi-hr-logo.svg" alt="" />
+            </div >
 
             {isSubmitted ? (
                 // Success View
-                <div className="flex flex-col w-[501px] items-center justify-center gap-4 text-center px-6 py-7">
+                <div className=" flex flex-col w-full md:w-[501px] lg:w-[501px] items-center justify-center gap-3 lg:gap-4 text-center p-5 lg:px-6 lg:py-7">
                     <ConfettiAnimation />
-                    <img src="/icons/Request-sent.svg" alt="Success" height={'63px'} width={'66px'} />
-                    <p className="text-[18px] font-medium leading-7 text-(--neutral-normal)">
+                    <img src="/icons/Request-sent.svg" alt="Success" className="h-16 w-15 lg:h-16 lg:w-16" />
+                    <p className=" text-[16px] lg:text-[18px] font-medium leading-7 text-(--neutral-normal)">
                         Your access request has been sent to the HR administrator. You will receive an email once your access is approved.
                     </p>
                     <Button variant="primary" size="small" onClick={() => { router.push('/') }}>Go Back to Login</Button>
                 </div>
             ) : (
-                <div className='max-w-[581px] flex flex-col gap-6 px-6 py-7 justify-center items-center'>
+                <div className=' w-full lg:w-[581px] flex flex-col gap-4 lg:gap-6 p-5 lg:px-6 lg:py-7 justify-center items-center'>
                     <div className='flex flex-col gap-3 items-center'>
-                        <h1 className='text-[24px] font-medium text-(--neutral-normal)'>Request Access</h1>
-                        <p className='text-(--gray-dark-active) font-normal text-[16px] text-center'>
+                        <h1 className='text-[22px] lg:text-[24px] font-semibold lg:font-medium text-(--neutral-normal)'>Request Access</h1>
+                        <p className='text-(--gray-dark-active) font-medium lg:font-normal text-[14px] lg:text-[16px] text-center'>
                             This portal is restricted to authorized Company team members only. Submit your request and HR or Admin will review your access.
                         </p>
                     </div>

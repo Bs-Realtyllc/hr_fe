@@ -158,7 +158,7 @@ const EmployeeDocuments = () => {
                     {/* Section Header */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#EBF5FB] text-[#4A6FA5]">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-(--blue-sky-light) text-(--blue-salt)">
 
                                 <span
                                     className="inline-block"
@@ -182,7 +182,7 @@ const EmployeeDocuments = () => {
                         </div>
 
                         <Button
-                            className="text-[#235E94]!"
+                            className="text-(--blue-dark-normal)!"
                             variant="text"
                             size="small"
                             leftIcon={
@@ -220,7 +220,7 @@ const EmployeeDocuments = () => {
                                             optional ? (
                                                 <>
                                                     {label}{' '}
-                                                    <span className="text-[#919395]">
+                                                    <span className="text-(--soft-white-dark-hover)">
                                                         (optional)
                                                     </span>
                                                 </>

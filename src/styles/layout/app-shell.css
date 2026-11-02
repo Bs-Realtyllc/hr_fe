@@ -222,6 +222,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px;
+  height: 89px;
   background: var(--soft-white-light);
 }
 

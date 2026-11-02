@@ -613,7 +613,7 @@ export default function ProfilePage() {
   return (
     <div>
       {/* Page Header */}
-      <div className='fixed left-(--sidebar-width) right-0 top-0 m-0 z-200'>
+      <div className=''>
         <PageHeader title={'My Profile'} discription={"Manage your personal information, documents, and account security"} />
       </div>
 
@@ -621,7 +621,7 @@ export default function ProfilePage() {
       {msg && (
         <div
           role="status"
-          className="fixed right-6 top-24 z-300 rounded-lg px-4 py-3 text-[14px] font-medium shadow-md"
+          className="fixed right-6 top-6 z-300 rounded-lg px-4 py-3 text-[14px] font-medium shadow-md"
           style={msgType === 'ok'
             ? { background: '#DCF1E4', color: '#16A34A' }
             : { background: '#FDE8E8', color: '#DC2626' }}
@@ -631,7 +631,7 @@ export default function ProfilePage() {
       )}
 
       {/* Profile container */}
-      <div className='mt-28 mx-6 mb-6'>
+      <div className='mt-6 mx-6 mb-6'>
         {/* ── Profile Header Card ───────────────────────────────────────────── */}
         <div className="mb-9 flex items-center justify-between rounded-lg border border-(--soft-white-normal-hover) bg-(--soft-white-light) p-6">
           <div className="flex flex-col items-center justify-center gap-1">

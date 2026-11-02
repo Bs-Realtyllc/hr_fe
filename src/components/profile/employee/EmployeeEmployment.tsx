@@ -9,7 +9,7 @@ const EmployeeEmployment = () => {
             <div className="flex flex-col gap-4 p-3">
                 <div className="flex justify-between ">
                     <div className="flex gap-2">
-                        <div className="flex justify-center items-center  bg-[#EBF5FB] rounded-full h-7 w-7 text-[#4A6FA5]"><span style={{
+                        <div className="flex justify-center items-center  bg-(--blue-sky-light) rounded-full h-7 w-7 text-(--blue-salt)"><span style={{
                             display: 'inline-block',
                             width: '20px',
                             height: '20px',
@@ -22,10 +22,10 @@ const EmployeeEmployment = () => {
                             WebkitMaskRepeat: 'no-repeat'
                         }}
                         /></div>
-                        <h1 className="text-[16px] font-semibold text-[#232931]">Employment Details</h1>
+                        <h1 className="text-[16px] font-semibold text-(--gray-darker)">Employment Details</h1>
                     </div>
                     <div>
-                        <Button className="text-[#235E94]!" variant="text" size="small" leftIcon={
+                        <Button className="text-(--blue-dark-normal)!" variant="text" size="small" leftIcon={
                             <span style={{
                                 display: 'inline-block',
                                 width: '20px',
@@ -44,39 +44,39 @@ const EmployeeEmployment = () => {
                 </div>
 
                 <form className="">
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="emp-id" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="emp-id" className="text-[14px] font-medium text-(--gray-darker)">
                             Employment ID
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">A21B</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">A21B</p>
                         {/* <InputField className="" /> */}
                     </div>
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="job-title" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="job-title" className="text-[14px] font-medium text-(--gray-darker)">
                             Job Title
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">Design</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">Design</p>
                         {/* <InputField className="" /> */}
                     </div>
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="department" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="department" className="text-[14px] font-medium text-(--gray-darker)">
                             Department
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">IT</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">IT</p>
                         {/* <InputField className="" /> */}
                     </div>
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="start-date" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="start-date" className="text-[14px] font-medium text-(--gray-darker)">
                             Start Date
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">Sep 15, 20026</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">Sep 15, 20026</p>
                         {/* <InputField className="" /> */}
                     </div>
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="emp-type" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="emp-type" className="text-[14px] font-medium text-(--gray-darker)">
                             Employee Type
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">Full-Time</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">Full-Time</p>
                         {/* <InputField className="" /> */}
                     </div>
                 </form>
@@ -86,7 +86,7 @@ const EmployeeEmployment = () => {
             <div className="flex flex-col gap-4 p-3">
                 <div className="flex justify-between ">
                     <div className="flex gap-2">
-                        <div className="flex justify-center items-center  bg-[#EBF5FB] rounded-full h-7 w-7 text-[#4A6FA5]"><span style={{
+                        <div className="flex justify-center items-center  bg-(--blue-sky-light) rounded-full h-7 w-7 text-(--blue-salt)"><span style={{
                             display: 'inline-block',
                             width: '20px',
                             height: '20px',
@@ -99,10 +99,10 @@ const EmployeeEmployment = () => {
                             WebkitMaskRepeat: 'no-repeat'
                         }}
                         /></div>
-                        <h1 className="text-[16px] font-semibold text-[#232931]">Organization & Reporting</h1>
+                        <h1 className="text-[16px] font-semibold text-(--gray-darker)">Organization & Reporting</h1>
                     </div>
                     <div>
-                        <Button className="text-[#235E94]!" variant="text" size="small" leftIcon={
+                        <Button className="text-(--blue-dark-normal)!" variant="text" size="small" leftIcon={
                             <span style={{
                                 display: 'inline-block',
                                 width: '20px',
@@ -121,18 +121,18 @@ const EmployeeEmployment = () => {
                 </div>
 
                 <form className="">
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="reporting-managet" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="reporting-managet" className="text-[14px] font-medium text-(--gray-darker)">
                             Reporting Manager
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">-</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">-</p>
                         {/* <InputField className="" /> */}
                     </div>
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="work-location" className="text-[14px] font-medium text-[#232931]">
-                            Work Location <span className='text-[#64748B]'>(optional)</span>
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="work-location" className="text-[14px] font-medium text-(--gray-darker)">
+                            Work Location <span className='text-(--gray-normal)'>(optional)</span>
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">Remote</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">Remote</p>
                         {/* <InputField className="" /> */}
                     </div>
 

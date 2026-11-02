@@ -11,7 +11,7 @@ const EmployeePersonalInformation = () => {
             <div className="flex flex-col gap-4 p-3">
                 <div className="flex justify-between ">
                     <div className="flex gap-2">
-                        <div className="flex justify-center items-center  bg-[#EBF5FB] rounded-full h-7 w-7 text-[#4A6FA5]"><span style={{
+                        <div className="flex justify-center items-center  bg-(--blue-sky-light) rounded-full h-7 w-7 text-(--blue-salt)"><span style={{
                             display: 'inline-block',
                             width: '20px',
                             height: '20px',
@@ -24,10 +24,10 @@ const EmployeePersonalInformation = () => {
                             WebkitMaskRepeat: 'no-repeat'
                         }}
                         /></div>
-                        <h1 className="text-[16px] font-semibold text-[#232931]">Personal Detail</h1>
+                        <h1 className="text-[16px] font-semibold text-(--gray-darker)">Personal Detail</h1>
                     </div>
                     <div>
-                        <Button className="text-[#235E94]!" variant="text" size="small" leftIcon={
+                        <Button className="text-(--blue-dark-normal)!" variant="text" size="small" leftIcon={
                             <span style={{
                                 display: 'inline-block',
                                 width: '20px',
@@ -46,32 +46,32 @@ const EmployeePersonalInformation = () => {
                 </div>
 
                 <form className="">
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="name" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="name" className="text-[14px] font-medium text-(--gray-darker)">
                             Full Name
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">Olivia Rodriya</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">Olivia Rodriya</p>
                         {/* <InputField className="" /> */}
                     </div>
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="dob" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="dob" className="text-[14px] font-medium text-(--gray-darker)">
                             Date of Birth
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">Sep 15, 2007</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">Sep 15, 2007</p>
                         {/* <InputField className="" /> */}
                     </div>
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="gender" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="gender" className="text-[14px] font-medium text-(--gray-darker)">
                             Gender
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">Female</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">Female</p>
                         {/* <InputField className="" /> */}
                     </div>
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="nationality" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="nationality" className="text-[14px] font-medium text-(--gray-darker)">
                             Nationality
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">Nepali</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">Nepali</p>
                         {/* <InputField className="" /> */}
                     </div>
                 </form>
@@ -81,7 +81,7 @@ const EmployeePersonalInformation = () => {
             <div className="flex flex-col gap-4 p-3">
                 <div className="flex justify-between ">
                     <div className="flex gap-2">
-                        <div className="flex justify-center items-center  bg-[#EBF5FB] rounded-full h-7 w-7 text-[#4A6FA5]"><span style={{
+                        <div className="flex justify-center items-center  bg-(--blue-sky-light) rounded-full h-7 w-7 text-[#4A6FA5]"><span style={{
                             display: 'inline-block',
                             width: '20px',
                             height: '20px',
@@ -94,10 +94,10 @@ const EmployeePersonalInformation = () => {
                             WebkitMaskRepeat: 'no-repeat'
                         }}
                         /></div>
-                        <h1 className="text-[16px] font-semibold text-[#232931]">Contact Information</h1>
+                        <h1 className="text-[16px] font-semibold text-(--gray-darker)">Contact Information</h1>
                     </div>
                     <div>
-                        <Button className="text-[#235E94]!" variant="text" size="small"
+                        <Button className="text-(--blue-dark-normal)!" variant="text" size="small"
                             leftIcon={
                                 <span style={{
                                     display: 'inline-block',
@@ -119,39 +119,39 @@ const EmployeePersonalInformation = () => {
                 </div>
 
                 <form className="">
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="comp-email" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="comp-email" className="text-[14px] font-medium text-(--gray-darker)">
                             Company email
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">olivia@company.com</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">olivia@company.com</p>
                         {/* <InputField className="" /> */}
                     </div>
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="dob" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="dob" className="text-[14px] font-medium text-(--gray-darker)">
                             Personal email
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">Oliviarodriya@gmail.com</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">Oliviarodriya@gmail.com</p>
                         {/* <InputField className="" /> */}
                     </div>
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="phone" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="phone" className="text-[14px] font-medium text-(--gray-darker)">
                             Phone Number
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">+9779812345678</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">+9779812345678</p>
                         {/* <InputField className="" /> */}
                     </div>
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="current-add" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="current-add" className="text-[14px] font-medium text-(--gray-darker)">
                             Current Address
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">Kathmandu</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">Kathmandu</p>
                         {/* <InputField className="" /> */}
                     </div>
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="permanent-add" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="permanent-add" className="text-[14px] font-medium text-(--gray-darker)">
                             Permanent Address
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">Kailali</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">Kailali</p>
                         {/* <InputField className="" /> */}
                     </div>
                 </form>
@@ -161,7 +161,7 @@ const EmployeePersonalInformation = () => {
             <div className="flex flex-col gap-4 p-3">
                 <div className="flex justify-between ">
                     <div className="flex gap-2">
-                        <div className="flex justify-center items-center  bg-[#EBF5FB] rounded-full h-7 w-7 text-[#4A6FA5]"><span style={{
+                        <div className="flex justify-center items-center  bg-(--blue-sky-light) rounded-full h-7 w-7 text-(--blue-salt)"><span style={{
                             display: 'inline-block',
                             width: '20px',
                             height: '20px',
@@ -174,10 +174,10 @@ const EmployeePersonalInformation = () => {
                             WebkitMaskRepeat: 'no-repeat'
                         }}
                         /></div>
-                        <h1 className="text-[16px] font-semibold text-[#232931]">Emergency Contact</h1>
+                        <h1 className="text-[16px] font-semibold text-(--gray-darker)">Emergency Contact</h1>
                     </div>
                     <div>
-                        <Button className="text-[#235E94]!" variant="text" size="small" leftIcon={
+                        <Button className="text-(--blue-dark-normal)!" variant="text" size="small" leftIcon={
                             <span style={{
                                 display: 'inline-block',
                                 width: '20px',
@@ -196,32 +196,32 @@ const EmployeePersonalInformation = () => {
                 </div>
 
                 <form className="">
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="rel-name" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="rel-name" className="text-[14px] font-medium text-(--gray-darker)">
                             Full Name
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">John Smith</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">John Smith</p>
                         {/* <InputField className="" /> */}
                     </div>
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="relationship" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="relationship" className="text-[14px] font-medium text-(--gray-darker)">
                             Relationship
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">Father</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">Father</p>
                         {/* <InputField className="" /> */}
                     </div>
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="rel-email" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="rel-email" className="text-[14px] font-medium text-(--gray-darker)">
                             Email
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">johnsmi@gmail.com</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">johnsmi@gmail.com</p>
                         {/* <InputField className="" /> */}
                     </div>
-                    <div className="flex border-b border-[#E8E9EA] justify-between py-3">
-                        <label htmlFor="rel-phone" className="text-[14px] font-medium text-[#232931]">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
+                        <label htmlFor="rel-phone" className="text-[14px] font-medium text-(--gray-darker)">
                             Phone Number
                         </label>
-                        <p className="text-[14px] font-medium text-[#595959]">+977 98********</p>
+                        <p className="text-[14px] font-medium text-(--white-darker)">+977 98********</p>
                         {/* <InputField className="" /> */}
                     </div>
                 </form>
