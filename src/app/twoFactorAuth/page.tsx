@@ -162,15 +162,15 @@ const TwoFactorAuthPage = () => {
     const copy = COPY[mode]
 
     return (
-        <div className='flex justify-center items-center h-full w-full min-h-screen'>
-            <div className='flex flex-col w-[591px] gap-3 items-center'>
+        <div className='flex  justify-center items-center h-full w-full min-h-screen'>
+            <div className='flex  m-4 p-5 lg:p-6 lg:m-0  flex-col w-[590px] gap-7 lg:gap-11 items-center'>
                 {/* Logo */}
                 <img width={111} height={20} src="/logos/gitgi-hr-logo.svg" alt="gitgi" />
 
-                <form className='flex flex-col gap-6 items-center p-6 text-center w-full' onSubmit={handleVerify}>
-                    <div className='space-y-3'>
-                        <h1 className='text-[28px] font-semibold text-(--neutral-normal) leading-9'>{copy.title}</h1>
-                        <p className='text-[18px] font-medium text-(--gray-dark-active) leading-7'>{copy.subtitle}</p>
+                <form className=' flex flex-col gap-6 items-center p-6 text-center w-full' onSubmit={handleVerify}>
+                    <div className='space-y-3 '>
+                        <h1 className='text-[22px] font-semibold text-(--neutral-normal) leading-9'>{copy.title}</h1>
+                        <p className='text-[14px] lg:text-[16px] font-medium text-(--gray-dark-active) leading-7'>{copy.subtitle}</p>
                     </div>
 
                     <div className="w-full max-w-[384px]">
@@ -266,7 +266,7 @@ const TwoFactorAuthPage = () => {
                         </div>
 
                         <button type="button" onClick={backToSignIn} disabled={loading}>
-                            <span className="w-full text-[18px] font-medium leading-7 text-(--gray-dark-active)">Back to sign in</span>
+                            <span className="w-full text-[18px] font-medium leading-7 text-(--blue-dark-normal)">Back to sign in</span>
                         </button>
                     </div>
                 </form>

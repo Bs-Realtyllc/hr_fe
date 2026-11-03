@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Button from '@/components/Button/Button';
 import InputField from '@/components/InputField/InputField';
 import { useRouter } from 'next/navigation';
+import ConfettiAnimation from '@/components/ConfettiAnimation';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -40,33 +41,18 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className=" h-screen w-screen relative flex flex-col justify-center items-center">
-      <div className="absolute top-[32px] left-[80px]">
-        <img src="/logos/gitgi-hr-logo.svg" alt="Gitgi HR" width={'111px'} height={'20px'} />
-      </div>
+
+      <div className=' absolute top-7.5 left-4 lg:left-20  '>
+        <img className='h-4 w-22 lg:h-5 lg:w-28' src="/logos/gitgi-hr-logo.svg" alt="" /></div >
       {sent ? (
-        <div className=' flex flex-col w-[613px] p-6 gap-6 items-center text-center'>
-          <div className='flex justify-center items-center h-20 w-20 bg-(--blue-sky-light) rounded-lg'>
-            <span
-              className="inline-block text-(--blue-dark-normal) "
-              style={{
-                width: "40px",
-                height: "40px",
-                backgroundColor: 'currentColor',
-                maskImage: "url('/icons/mail.svg')",
-                WebkitMaskImage: "url('/icons/mail.svg')",
-                maskRepeat: "no-repeat",
-                WebkitMaskRepeat: "no-repeat",
-                maskPosition: "center",
-                WebkitMaskPosition: "center",
-                maskSize: "contain",
-                WebkitMaskSize: "contain",
-              }}
-            />
-          </div>
-          <div className='p-6 space-y-6'>
-            <div className='space-y-3'>
-              <h2 className='text-[28px] font-semibold leading-9 text-(--neutral-normal)'>Email on the way!</h2>
-              <p className='text-[18px] font-medium leading-7 text-(--gray-dark-active)'>We sent you password reset instructions. If it doesn’t show up soon, check your spam folder.  We sent it from the email address
+        <div className=' m-4 lg:p-0 flex flex-col lg:w-[613px] p-5 lg:p-6 gap-3 lg:gap-6 items-center text-center'>
+          <ConfettiAnimation />
+
+          <img className='h-[63px] w-[60px] lg:h-[66px] lg:w-[63px]' src="/icons/Request-sent.svg" alt="Requset sent" />
+          <div className='lg:p-6 space-y-4 lg:space-y-6'>
+            <div className='lg:space-y-3'>
+              <h2 className='text-[22px] lg:text-[28px] font-semibold leading-9 text-(--neutral-normal)'>Email on the way!</h2>
+              <p className='text-[14px] lg:text-[18px] font-medium leading-7 text-(--gray-dark-active)'>We sent you password reset instructions. If it doesn’t show up soon, check your spam folder.  We sent it from the email address
                 no-reply@gitgi.com.</p>
 
             </div>
@@ -101,10 +87,10 @@ export default function ForgotPasswordPage() {
 
         </div>
       ) : (
-        <div className=" max-w-[591px] flex flex-col  p-6 gap-6">
+        <div className=" m-4 lg:m-0  lg:w-[591px] flex flex-col p-5 lg:p-6 gap-4 lg:gap-6">
           <div className=" space-y-3 text-center ">
-            <h1 className='text-[28px] font-semibold leading-9 text-(--neutral-normal)  '>Forget Password ?</h1>
-            <p className='text-[18px] font-medium leading-7 text-(--gray-dark-active) '>All good. Enter your account’s email address and we’ll send you a link to reset your password.</p>
+            <h1 className='text-[22px] lg:text-[28px] font-semibold leading-9 text-(--neutral-normal)  '>Forget Password ?</h1>
+            <p className='text-[14px] lg:text-[18px] font-medium leading-7 text-(--gray-dark-active) '>All good. Enter your account’s email address and we’ll send you a link to reset your password.</p>
           </div>
 
           <form onSubmit={handleSubmit}>

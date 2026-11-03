@@ -42,6 +42,12 @@ export default function LoginPage() {
   const [errorType, setErrorType] = useState<'default' | 'org'>('default');
   const [loading, setLoading] = useState(false);
 
+  async function finishLogin(token: string, user: AuthUser) {
+    login(token, user);
+    const twoFactorEnabled = await isTwoFactorEnabled(token);
+    router.replace(twoFactorEnabled ? '/welcome' : '/setup-twoFactorAuth');
+  }
+
   // Validation
   const handleEmailChange = (value: string) => {
     setEmail(value);
@@ -76,8 +82,7 @@ export default function LoginPage() {
           setError(data.error ?? 'Verification failed');
           return;
         }
-        login(data.token as string, data.user as AuthUser);
-        router.replace('/welcome');
+        await finishLogin(data.token as string, data.user as AuthUser);
       } else {
         const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/login`;
         console.log('[AUTH] POST', url, { email });
@@ -113,8 +118,7 @@ export default function LoginPage() {
           setOtp('');
           return;
         }
-        login(data.token as string, data.user as AuthUser);
-        router.replace('/welcome');
+        await finishLogin(data.token as string, data.user as AuthUser);
       }
     } catch (err) {
       console.error('[AUTH] fetch error', err);

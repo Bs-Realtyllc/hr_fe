@@ -34,6 +34,10 @@ interface Policy {
 
   created_at: string;
 
+  date_modified?: string | null;
+
+  file_size?: string | number | null;
+
   is_pinned: boolean | number;
 
 }

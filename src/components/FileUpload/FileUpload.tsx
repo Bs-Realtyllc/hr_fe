@@ -2,7 +2,7 @@
 
 import {
     useEffect, useId, useRef, useState,
-    type ChangeEvent, type DragEvent, type KeyboardEvent,
+    type ChangeEvent, type DragEvent, type KeyboardEvent, type ReactNode,
 } from "react"
 import Button from "../Button/Button"
 import DocumentPreview from "../DocumentPreview"
@@ -18,7 +18,7 @@ const ACCEPTED_EXTENSIONS = [".png", ".jpg", ".jpeg", ".pdf", ".docx"]
 
 type FileUploadProps = {
     /** e.g. "PAN Card - Front" */
-    label?: string
+    label?: ReactNode
     required?: boolean
     name?: string
     /** Controlled value (optional) */
@@ -257,7 +257,7 @@ const FileUpload = ({
                 <div
                     role="button"
                     tabIndex={disabled ? -1 : 0}
-                    aria-label={`Upload ${label ?? "file"}`}
+                    aria-label={`Upload ${typeof label === "string" ? label : "file"}`}
                     onClick={openPicker}
                     onKeyDown={handleKeyDown}
                     onDragOver={handleDragOver}
