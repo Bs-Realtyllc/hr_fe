@@ -351,10 +351,10 @@ export default function DashboardPage() {
 
       <div >
         {/* page header */}
-        <div className='fixed left-(--sidebar-width) right-0 top-0 m-0 z-20'> <PageHeader title={'Dashboard'} discription={'View and manage your enrolled courses, track your progress, and continue learning where you left off.'}>
+        <div className=' '> <PageHeader title={'Dashboard'} discription={'View and manage your enrolled courses, track your progress, and continue learning where you left off.'}>
           <Clock />
         </PageHeader></div>
-        <div className='mt-28 mx-6 mb-6'>
+        <div className='m-6'>
 
           {/* Weekly form popup */}
           {showWeeklyPopup && (

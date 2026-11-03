@@ -178,15 +178,15 @@ export default function WelcomePage() {
     return (
         <div className="relative min-h-screen w-full overflow-hidden">
 
-            <div className="fixed  h-[900px] w-[900px] bg-(--blue-sky-light) right-[-483px] top-[-483px] rounded-full"></div>
-            <div className="fixed  h-[900px] w-[900px] bg-(--blue-sky-light) left-[-483px] bottom-[-483px] rounded-full"></div>
+            <div className="fixed  h-[900px] w-[900px] bg-(--blue-sky-light) right-[-400px] top-[-483px] rounded-full"></div>
+            <div className="fixed  h-[900px] w-[900px] bg-(--blue-sky-light) left-[-450px] bottom-[-625px] rounded-full"></div>
 
             {/* Main content */}
             <div className="relative z-20  w-screen h-screen flex justify-around items-center">
                 <div className=" w-[453px] flex flex-col gap-6 " >
-                    <div className="space-y-11">
+                    <div className="flex flex-col gap-11">
                         <img height={'20px'} width={'111px'} src="/logos/gitgi-hr-logo.svg" alt="" />
-                        <div className="space-y-4">
+                        <div className="flex flex-col gap-4">
                             <h1 className="text-[40px] font-semibold text-(--neutral-normal) leading-12 tracking-normal">Welcome to GITGI HR</h1>
                             <p className="text-[22px] leading-7 text-(--gray-dark-hover)">Your Personal HR workspace to manage your information, track your requests, and stay connected with team.</p>
                         </div>
@@ -221,7 +221,7 @@ export default function WelcomePage() {
                     <div className="border space-y-4 w-[374px] max-h-[448px] bg-(--soft-white-light) border-(--neutral-light-hover) p-6 rounded-lg shadow-[0px_2px_4px_0px_rgba(0,0,0,0.08)]">
                         <div className="flex justify-between items-start">
 
-                            <div className="flex min-w-0 items-center gap-4">
+                            <div className="flex min-w-0 items-start gap-4">
                                 <div className="relative flex justify-end items-end ">
                                     <BSRealtyAvatar
                                         name={name}

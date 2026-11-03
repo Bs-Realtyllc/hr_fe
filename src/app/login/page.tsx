@@ -204,15 +204,15 @@ export default function LoginPage() {
         // Login page
         showLoginForm ? (
           <div className=' w-full flex   min-h-screen'>
-            <div className='relative w-[812px] shrink-0 h-screen bg-(--soft-white-light) flex justify-center items-center'>
-              <div className='absolute top-[30px] left-[80px] '>
-                <img width={'111px'} height={'20px'} src="/logos/gitgi-hr-logo.svg" alt="" /></div >
+            <div className=' relative w-full lg:w-[812px] shrink-0 min-h-screen bg-(--soft-white-light) flex justify-center items-center'>
+              <div className=' absolute top-7.5 left-4 lg:left-20  '>
+                <img className='h-4 w-22 lg:h-5 lg:w-28' src="/logos/gitgi-hr-logo.svg" alt="" /></div >
               <div className='flex flex-col gap-9 justify-center items-center '>
 
-                <div className='flex flex-col px-6 py-7 gap-6'>
+                <div className='flex flex-col m-4 px-6 py-7 gap-6 text-center'>
                   <div className='flex flex-col items-center gap-3 '>
-                    <h1 className='text-[24px] font-medium text-(--neutral-normal) '>Sign In</h1>
-                    <p className='text-(--gray-dark-active) font-normal text-[16px]'>Sign in with your authorized company email to access the hiring portal.</p>
+                    <h1 className='text-[22px] lg:text-[24px] font-semibold lg:font-medium text-(--neutral-normal) '>Sign In</h1>
+                    <p className='text-(--gray-dark-active) font-medium lg:font-normal text-[14px] lg:text-[16px]'>Sign in with your authorized company email to access the hiring portal.</p>
                   </div>
                   <form className=" flex flex-col gap-6 justify-center items-center" onSubmit={handleSubmit}>
 
@@ -258,7 +258,7 @@ export default function LoginPage() {
                       )}
 
                       <div className=' w-full flex justify-end' >
-                        <a className='right-0 text-[16px] font-semibold text-(--gray-dark-active)' href="/forgot-password"
+                        <a className='right-0 text-[14px] lg:text-[16px] font-semibold text-(--gray-dark-active)' href="/forgot-password"
                         >
                           Forgot password?
                         </a>
@@ -276,29 +276,32 @@ export default function LoginPage() {
 
 
                   </form>
-                  <p className='text-[16px] text-(--gray-dark-hover) font-medium text-center'>Don’t have access ? Contact your HR  administrator.</p>
+                  <p className='text-[14px] lg:text-[16px] text-(--gray-dark-hover) font-medium text-center'>Don’t have access ? Contact your HR  administrator.</p>
                 </div>
               </div >
             </div >
 
-            <div className=' flex flex-1 items-center justify-center bg-(--blue-dark-normal)'>
-              <img className='' width={'499px'} height={'599px'} src="/images/onboarding-login-page.png" alt="" />
+            <div className='hidden lg:flex flex-1 min-h-screen items-center justify-center bg-(--blue-dark-normal)'>
+              <img
+                className='w-full max-w-[499px] h-auto object-contain'
+                src="/images/onboarding-login-page.png"
+                alt="Login illustration"
+              />
             </div>
           </div >
         ) : (
           // Onboarding screen
-          <div className=' w-full flex   min-h-screen'>
-            <div className='relative w-[812px] shrink-0 h-screen bg-(--soft-white-light) flex justify-center items-center'>
-              <div className='absolute top-[30px] left-[80px] '>
-                <img width={'111px'} height={'20px'} src="/logos/gitgi-hr-logo.svg" alt="" /></div >
-              <div className='flex flex-col gap-9 justify-center items-center '>
-                {/* <div className="auth-logo">
-                  <img src="/logos/hr-platform.svg" alt="HR Platform" width={28} height={28} />
-                </div> */}
-                <div className='flex flex-col px-6 py-7 gap-6'>
-                  <div className='flex flex-col items-center  '>
-                    <h1 className='text-[28px] font-semibold text-(--neutral-normal)'>Welcome</h1>
-                    <p className='text-(--gray-dark-active) font-normal text-[16px]'>This portal is intended for authorized GITGI members only.</p>
+          <div className='w-full flex   min-h-screen'>
+            <div className='relative w-full lg:w-[812px] lg:shrink-0 min-h-screen bg-(--soft-white-light) flex justify-center items-center'>
+              <div className='absolute  top-7.5 left-4 lg:left-20 '>
+                <img className='h-4 w-22 lg:h-5 lg:w-28' src="/logos/gitgi-hr-logo.svg" alt="" /></div >
+
+              <div className=' mx-4 flex flex-col gap-9 justify-center items-center text-center '>
+
+                <div className=' flex flex-col p-5 lg:px-6 lg:py-7 gap-4 lg:gap-6'>
+                  <div className=' flex flex-col items-center gap-3'>
+                    <h1 className='text-[22px] lg:text-[28px] font-medium lg:font-semibold text-(--neutral-normal)'>Welcome</h1>
+                    <p className='text-(--gray-dark-active) font-medium text-[14px] lg:text-[16px]'>This portal is intended for authorized GITGI members only.</p>
                   </div>
                   <div className='flex flex-col items-center gap-6'>
                     <div className='flex flex-col gap-3 w-[302px]'>
@@ -307,14 +310,18 @@ export default function LoginPage() {
                       <a className='border-2 border-(--blue-dark-normal) text-(--blue-dark-normal) text-[16px] font-medium px-5 py-3 rounded-xl flex justify-center' href='/request-access' >Request Access</a>
 
                     </div>
-                    <p className='text-(--gray-darker) text-[16px] font-medium '>Don’t have access ? Contact your HR administrator.</p>
+                    <p className='text-(--gray-darker) text-[14px] lg:text-[16px] font-medium '>Don’t have access ? Contact your HR administrator.</p>
                   </div>
                 </div>
               </div>
             </div >
 
-            <div className=' flex flex-1 items-center justify-center bg-(--blue-dark-normal)'>
-              <img className='' width={'499px'} height={'599px'} src="/images/onboarding-login-page.png" alt="" />
+            <div className='hidden lg:flex flex-1 min-h-screen items-center justify-center bg-(--blue-dark-normal)'>
+              <img
+                className='w-full max-w-[499px] h-auto object-contain'
+                src="/images/onboarding-login-page.png"
+                alt="Login illustration"
+              />
             </div>
           </div >
         )
