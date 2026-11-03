@@ -178,30 +178,43 @@ export default function WelcomePage() {
     return (
         <div className="relative min-h-screen w-full overflow-hidden">
 
-            <div className="fixed  h-[900px] w-[900px] bg-(--blue-sky-light) right-[-400px] top-[-483px] rounded-full"></div>
-            <div className="fixed  h-[900px] w-[900px] bg-(--blue-sky-light) left-[-450px] bottom-[-625px] rounded-full"></div>
+            <div className="fixed h-112 w-112  lg:h-[900px] lg:w-[900px] bg-(--blue-sky-light) top-[-200px] right-[-200px] lg:right-[-400px] lg:top-[-483px] rounded-full"></div>
+
+            <div className="fixed w-112 h-112  lg:h-[900px] lg:w-[900px] bg-(--blue-sky-light) left-[-200px] bottom-[-200px] lg:left-[-450px] lg:bottom-[-625px] rounded-full"></div>
 
             {/* Main content */}
             <div className="relative z-20  w-screen h-screen flex justify-around items-center">
-                <div className=" w-[453px] flex flex-col gap-6 " >
-                    <div className="flex flex-col gap-11">
-                        <img height={'20px'} width={'111px'} src="/logos/gitgi-hr-logo.svg" alt="" />
-                        <div className="flex flex-col gap-4">
-                            <h1 className="text-[40px] font-semibold text-(--neutral-normal) leading-12 tracking-normal">Welcome to GITGI HR</h1>
-                            <p className="text-[22px] leading-7 text-(--gray-dark-hover)">Your Personal HR workspace to manage your information, track your requests, and stay connected with team.</p>
+                <div className=" m-4 p-5 lg:p-0 w-full lg:w-[453px] flex flex-col gap-4 lg:gap-6 " >
+                    <div className=" flex flex-col gap-7 lg:gap-11">
+                        <img className="w-[89px] h-4" height={'20px'} width={'111px'} src="/logos/gitgi-hr-logo.svg" alt="" />
+                        <div className=" flex flex-col gap-2 lg:gap-4">
+                            <h1 className="text-[24px] lg:text-[40px] font-semibold text-(--neutral-normal) leading-8 lg:leading-12 ">Welcome to GITGI HR</h1>
+                            <p className="text-[16px] lg:text-[22px] leading-6 lg:leading-7 text-(--gray-dark-hover)">Your Personal HR workspace to manage your information, track your requests, and stay connected with team.</p>
                         </div>
                     </div>
                     <div>
-                        <Button
-                            size="medium"
-                            rightIcon={true}
-                            onClick={() => router.replace('/')}
-                        >
-                            Continue
-                        </Button>
+                        <div className="block lg:hidden">
+                            <Button
+                                size="small"
+                                rightIcon={true}
+                                onClick={() => router.replace('/')}
+                            >
+                                Continue
+                            </Button>
+                        </div>
+
+                        <div className="hidden lg:block">
+                            <Button
+                                size="medium"
+                                rightIcon={true}
+                                onClick={() => router.replace('/')}
+                            >
+                                Continue
+                            </Button>
+                        </div>
                     </div>
                 </div>
-                <div className=" flex items-center  gap-8">
+                <div className=" hidden lg:flex items-center  gap-8">
                     <div className="  h-[486px] flex flex-col items-center justify-center py-6 px-2 gap-3 bg-(--blue-dark-dark) rounded-t-full rounded-b-full">
                         <div className=" flex flex-col gap-5">
                             <BSRealtyAvatar name="Ram" size="xl" src="/images/default-avatar-01.jpg" />

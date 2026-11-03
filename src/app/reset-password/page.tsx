@@ -3,6 +3,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Button from '@/components/Button/Button';
 import InputField from '@/components/InputField/InputField';
+import ConfettiAnimation from '@/components/ConfettiAnimation';
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -76,54 +77,42 @@ function ResetPasswordForm() {
 
   return (
     <div className='relative flex justify-center items-center h-full w-full' >
-      <div className="absolute top-[32px] left-[80px]">
-        <img src="/logos/gitgi-hr-logo.svg" alt="Gitgi HR" width={'111px'} height={'20px'} />
-      </div>
+      <div className=' absolute top-7.5 left-4 lg:left-20  '>
+        <img className='h-4 w-22 lg:h-5 lg:w-28' src="/logos/gitgi-hr-logo.svg" alt="" /></div >
 
 
 
       {done ? (
-        <div className=' text-center w-[580px]  space-y-3 '>
-          {/* <p className='text-[24px] font-medium leading-8 text-(--neutral-normal) '>gitgi.<span className='font-normal'>com/jobs</span></p> */}
-          <div className='p-6 flex flex-col gap-6 items-center'>
-            <div className='flex justify-center items-center h-20 w-20 bg-(--blue-sky-light) rounded-lg'>
-              <span
-                className="inline-block text-(--blue-dark-normal) "
-                style={{
-                  width: "24px",
-                  height: "24px",
-                  backgroundColor: 'currentColor',
-                  maskImage: "url('/icons/mynaui_shield-check.svg')",
-                  WebkitMaskImage: "url('/icons/mynaui_shield-check.svg')",
-                  maskRepeat: "no-repeat",
-                  WebkitMaskRepeat: "no-repeat",
-                  maskPosition: "center",
-                  WebkitMaskPosition: "center",
-                  maskSize: "contain",
-                  WebkitMaskSize: "contain",
-                }}
-              />
-            </div>
-            <div className='space-y-3'>
-              <h1 className='text-[28px] font-semibold leading-9 text-(--neutral-normal)'>Success!</h1>
-              <p className='text-[18px] font-medium leading-7 text-[#2D343F]'>Almost done. Enter your new password and you’re good to go.</p>
+        <div className=' m-4 lg:m-0 text-center w-[580px]  space-y-3 '>
+          <ConfettiAnimation />
+          <div className='p-5 lg:p-6  flex flex-col gap-4 lg:gap-6 items-center'>
+
+            <img src="icons/success-tick.svg" className='h-[64px] w-[64px]' alt="" />
+
+            <div className=''>
+              <h1 className='text-[20px] lg:text-[28px] font-semibold leading-7 lg:leading-9 text-(--neutral-normal)'>Success!</h1>
+              <p className='text-[14px] lg:text-[18px] font-medium leading-5 lg:leading-7 text-(--gray-dark)'>Almost done. Enter your new password and you’re good to go.</p>
             </div>
             <div className='w-[269px] '>
-              <Button className='w-full' variant='primary' size='xl' onClick={() => router.push('/login')}>Return to login</Button>
+              <div className='block lg:hidden'>
+                <Button className='w-full' variant='primary' size='small' onClick={() => router.push('/login')}>Return to login</Button>
+              </div>
+              <div className='hidden lg:block'>
+                <Button className='w-full' variant='primary' size='medium' onClick={() => router.push('/login')}>Return to login</Button>
+              </div>
             </div>
           </div>
 
         </div>
       ) : (
         <form onSubmit={handleSubmit}>
-          <div className=' w-[581px] text-center space-y-3 '>
-            {/* <p className='text-[24px] font-medium leading-8 text-(--neutral-normal) '>gitgi.<span className='font-normal'>com/jobs</span></p> */}
-            <div className='flex flex-col  p-6 gap-6'>
+          <div className=' m-4 lg:m-0 p-5 lg:p-6 lg:w-[581px] text-center  '>
+            <div className=' flex flex-col  gap-4'>
 
-              <div className='space-y-6'>
+              <div className=' space-y-4 lg:space-y-6'>
                 <div className='space-y-3'>
-                  <h1 className='text-[28px] font-semibold leading-9 text-(--neutral-normal) '>Reset your Password</h1>
-                  <p className='text-[18px] font-medium leading-7 text-(--gray-dark-active'>Almost done. Enter your new password and you’re good to go.</p>
+                  <h1 className='text-[22px] lg:text-[28px] font-semibold leading-7 lg:leading-9 text-(--neutral-normal) '>Reset your Password</h1>
+                  <p className='text-[14px] lg:text-[18px] lg:font-medium leading-5 lg:leading-7 text-(--gray-dark-active'>Almost done. Enter your new password and you’re good to go.</p>
                 </div>
                 <div className='space-y-3'>
                   <InputField type='password' showPasswordToggle={true} placeholder='New password'
@@ -137,7 +126,7 @@ function ResetPasswordForm() {
                         className="flex items-center gap-2"
                       >
                         <span
-                          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${rule.valid
+                          className={`flex h-[6px] w-[6px] shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${rule.valid
                             ? 'text-green-600'
                             : 'bg-(--neutral-light-active) text-white'
                             }`}
@@ -146,7 +135,7 @@ function ResetPasswordForm() {
                         </span>
 
                         <span
-                          className={`text-sm font-medium text-(--gray-dark-hover)`}
+                          className={`text-[14px] text-(--gray-dark-hover)`}
                         >
                           {rule.label}
                         </span>
@@ -164,10 +153,20 @@ function ResetPasswordForm() {
               </div>
               {error && <div className="auth-error">{error}</div>}
               <div className=' flex justify-center'>
-                <Button className='w-63 ' type="submit"
-                  disabled={loading || !token}
-                >
-                  {loading ? 'Resetting…' : 'Reset Password'}</Button>
+                <div className='block lg:hidden'>
+                  <Button className='w-63 '
+                    size='medium' type="submit"
+                    disabled={loading || !token}
+                  >
+                    {loading ? 'Resetting…' : 'Reset Password'}</Button>
+                </div>
+                <div className='hidden lg:block'>
+                  <Button className='w-63 '
+                    size='large' type="submit"
+                    disabled={loading || !token}
+                  >
+                    {loading ? 'Resetting…' : 'Reset Password'}</Button>
+                </div>
               </div>
             </div>
           </div>
