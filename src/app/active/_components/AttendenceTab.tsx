@@ -26,6 +26,7 @@ interface AttendanceRecord {
   clockDate: string;
   pauses: PauseRecord[];
   totalPauseDuration: number;
+  totalClockInDuration: number;
 }
 
 interface Pagination {
@@ -180,6 +181,7 @@ export default function AttendancePage() {
               <th className="text-left px-3 py-2">Clock in</th>
               <th className="text-left px-3 py-2">Clock out</th>
               <th className="text-left px-3 py-2">Total pause</th>
+              <th className="text-left px-3 py-2">Total Clock Duration</th>
               <th className="text-left px-3 py-2">Pauses</th>
             </tr>
           </thead>
@@ -210,6 +212,9 @@ export default function AttendancePage() {
                     <td className="px-3 py-2">{formatTime(r.clockOut)}</td>
                     <td className="px-3 py-2">
                       {formatDuration(r.totalPauseDuration)}
+                    </td>
+                    <td className="px-3 py-2">
+                      {formatDuration(r.totalClockInDuration)}
                     </td>
                     <td className="px-3 py-2">
                       {r.pauses.length > 0 ? (
