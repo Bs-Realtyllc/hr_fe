@@ -69,6 +69,43 @@ function grouped(a: ChatMessage, b: ChatMessage) { return a.userId === b.userId 
 
 const BACKEND_BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api').replace(/\/api$/, '');
 
+/* The audio URL's signed token expires after an hour. If playback is attempted after that
+   (e.g. a tab left open), fetch a fresh token for the same object key and retry once before
+   giving up — mirrors how Discord/CDN-style signed media URLs self-heal on expiry. */
+function AudioMessage({ src: initialSrc, duration }: { src: string; duration: number }) {
+  const [src, setSrc] = useState(initialSrc);
+  const [failed, setFailed] = useState(false);
+  const retriedRef = useRef(false);
+
+  async function handleError() {
+    if (retriedRef.current || !src.startsWith('http')) { setFailed(true); return; }
+    retriedRef.current = true;
+    try {
+      const key = new URL(src).pathname.split('/').pop();
+      const res = await fetch(`${BACKEND_BASE}/api/inbox/audio/${key}/refresh-url`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (!res.ok) throw new Error('refresh failed');
+      const { url } = await res.json() as { url: string };
+      setSrc(url);
+    } catch {
+      setFailed(true);
+    }
+  }
+
+  const mins = Math.floor(duration / 60);
+  const secs = String(duration % 60).padStart(2, '0');
+  return (
+    <div className="dm-audio-msg">
+      <span className="dm-audio-msg-icon">🎙️</span>
+      {failed
+        ? <span className="dm-audio-msg-error">Audio unavailable</span>
+        : <audio controls src={src} onError={handleError} className="dm-audio-native" preload="metadata" />}
+      <span className="dm-audio-msg-dur">{mins}:{secs}</span>
+    </div>
+  );
+}
+
 function renderContent(content: string, me: string) {
   /* Audio message */
   if (content.startsWith('__audio__:')) {
@@ -78,21 +115,13 @@ function renderContent(content: string, me: string) {
     const rawSrc = colonIdx !== -1 ? rest.slice(colonIdx + 1) : rest;
     let audioSrc: string;
     if (rawSrc.startsWith('http')) {
-      audioSrc = rawSrc; // presigned URL hydrated by backend at read time
+      audioSrc = rawSrc; // backend audio proxy URL, carrying its own short-lived token, hydrated at read time
     } else if (rawSrc.startsWith('/uploads/')) {
       audioSrc = `${BACKEND_BASE}${rawSrc}`; // legacy local disk
     } else {
       audioSrc = rawSrc; // object key — should be hydrated server-side before reaching here
     }
-    const mins     = Math.floor(duration / 60);
-    const secs     = String(duration % 60).padStart(2, '0');
-    return (
-      <div className="dm-audio-msg">
-        <span className="dm-audio-msg-icon">🎙️</span>
-        <audio controls src={audioSrc} className="dm-audio-native" preload="metadata" />
-        <span className="dm-audio-msg-dur">{mins}:{secs}</span>
-      </div>
-    );
+    return <AudioMessage src={audioSrc} duration={duration} />;
   }
 
   /* Normal text with @mentions */
