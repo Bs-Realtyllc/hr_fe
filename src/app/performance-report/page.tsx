@@ -83,11 +83,11 @@ const Projects = () => {
   }, []);
 
   if (loading) {
-    return <p className="text-gray-500 p-6">Loading projects...</p>;
+    return <p className="text-gray-500">Loading projects...</p>;
   }
 
   if (error) {
-    return <p className="text-red-500 p-6">Error: {error}</p>;
+    return <p className="text-red-500">Error: {error}</p>;
   }
 
   return (
