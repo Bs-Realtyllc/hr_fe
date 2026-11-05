@@ -636,7 +636,11 @@ export default function ProfilePage() {
       )}
 
       {/* Profile container */}
+<<<<<<< HEAD
       <div className='mt-6 mb-6'>
+=======
+      <div>
+>>>>>>> 3a6cfaf665e37d418feddb5c38086d8eadb20c56
         {/* ── Profile Header Card ───────────────────────────────────────────── */}
         <div className="mb-9 flex items-center justify-between rounded-lg border border-(--soft-white-normal-hover) bg-(--soft-white-light) p-6">
           <div className="flex flex-col items-center justify-center gap-1">

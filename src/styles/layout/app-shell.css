@@ -13,6 +13,10 @@
 .main-content {
   flex: 1;
   margin-left: var(--sidebar-width);
+<<<<<<< HEAD
+=======
+  padding: 24px;
+>>>>>>> 3a6cfaf665e37d418feddb5c38086d8eadb20c56
   min-height: 100vh;
   --page-container-gutter: 24px;
   padding-inline: var(--page-container-gutter);
@@ -232,6 +236,17 @@
   background: var(--soft-white-light);
 }
 
+/* Inside the app shell the header stays full width: it pulls back out over
+   .main-content's padding. Scoped so public pages (OnboardForm) aren't shifted. */
+.main-content .page-header {
+  margin: -24px -24px 24px;
+}
+
+/* Wrapper for a header pinned with position: fixed, which has no padding to escape. */
+.main-content .page-header-fixed .page-header {
+  margin: 0;
+}
+
 .page-header > .flex.justify-between {
   width: 100%;
 }
@@ -295,6 +310,10 @@
   .page-container {
     --page-container-gutter: 0px;
     margin-inline: var(--page-container-gutter);
+  }
+
+  .main-content .page-header {
+    margin: 0 0 16px;
   }
 
   .mobile-topbar {

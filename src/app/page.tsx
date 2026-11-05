@@ -354,8 +354,12 @@ export default function DashboardPage() {
         <div className=' '> <PageHeader title={'Dashboard'} discription={'View and manage your enrolled courses, track your progress, and continue learning where you left off.'}>
           <Clock />
         </PageHeader></div>
+<<<<<<< HEAD
 
         <div className='my-6'>
+=======
+        <div>
+>>>>>>> 3a6cfaf665e37d418feddb5c38086d8eadb20c56
 
           {/* Weekly form popup */}
           {showWeeklyPopup && (
