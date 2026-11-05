@@ -1,12 +1,14 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 import Button from '@/components/Button/Button';
 import PageHeader from '@/components/PageHeader';
-import { BSRealtyAvatar, BSRealtyCheckbox, BSRealtyDropdown, BSRealtyTabs, BSRealtyToggle } from '@bsrealtyllc/design-system';
+import { BSRealtyAvatar, BSRealtyDropdown, BSRealtyTabs, BSRealtyToggle, BSRealtyTooltip } from '@bsrealtyllc/design-system';
 import InputField from '@/components/InputField/InputField';
 import LoginHistoryModal, { type LoginHistory } from '@/components/profile/LoginHistoryModel';
+import TrustedDevicesModal, { type TrustedDevice } from '@/components/profile/TrustedDevicesModal';
 import {
   TwoFactorModal,
   TwoFactorSetup,
@@ -48,26 +50,61 @@ type TwoFactorStep = 'intro' | 'scan' | 'backup' | 'disable';
 
 type Tab = 'personal' | 'organization' | 'security' | 'notification';
 
-type EmployeeTab = 'personal' | 'employment' | 'bank' | 'documents';
+type EmployeeTab = 'personal' | 'employment' | 'bank' | 'documents' | 'security' | 'notification' | 'organization';
 
-const ROLE_OPTIONS = [
-  { label: 'Admin', value: 'admin' },
-  { label: 'Backend Developer', value: 'backend_dev' },
-  { label: 'Frontend Developer', value: 'frontend_dev' },
-  { label: 'Fullstack Developer', value: 'fullstack_dev' },
-  { label: 'HR', value: 'hr' },
-  { label: 'Product Designer', value: 'product_designer' },
-  { label: 'UI/UX Designer', value: 'ui_ux_designer' },
-  { label: 'Quality Assurance', value: 'quality_assurance' },
-  { label: 'Team Lead', value: 'lead' },
-];
+// Matches the NotificationPreference schema in swagger.ts — the backend
+// already filters this list to the types relevant to the caller's role.
+interface NotificationPreference {
+  type: string;
+  group: 'security' | 'email';
+  label: string;
+  description?: string;
+  enabled: boolean;
+}
+
+// Matches the TeamAccessMember schema in swagger.ts.
+interface TeamAccessMember {
+  id: number;
+  name: string;
+  email: string;
+  designation: string | null;
+  role: string;
+  status: string;
+  start_date: string | null;
+}
+
+// "Member since" date, matching the mock's "September 30, 2026" format.
+function formatJoinDate(value: string | null) {
+  if (!value) return '—';
+  return new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+// Label for employees.role (admin/lead/employee/intern).
+const ACCESS_ROLE_LABELS: Record<string, string> = {
+  admin: 'Admin',
+  lead: 'Team Lead',
+  employee: 'Employee',
+  intern: 'Intern',
+};
+const ACCESS_ROLE_OPTIONS = Object.entries(ACCESS_ROLE_LABELS).map(([value, label]) => ({ value, label }));
+
+// Info icon + tooltip explaining what a notification toggle actually does.
+function NotificationInfo({ text }: { text?: string }) {
+  if (!text) return null;
+  return (
+    <BSRealtyTooltip content={text} position='top'>
+      <span
+        aria-label={text}
+        className='inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-(--soft-white-darker-hover) text-[11px] font-semibold text-(--soft-white-dark-active)'
+      >
+        i
+      </span>
+    </BSRealtyTooltip>
+  );
+}
 
 // Fields edited in the Personal Info form and compared against the saved profile.
-const PERSONAL_FIELDS = ['name', 'email', 'phone', 'role'] as const;
-
-function roleLabel(value: string) {
-  return ROLE_OPTIONS.find(o => o.value === value)?.label ?? value;
-}
+const PERSONAL_FIELDS = ['name', 'email', 'phone'] as const;
 
 function avatarUrl(filename: string | null) {
   if (!filename) return null;
@@ -126,6 +163,7 @@ async function apiDelete(path: string, body?: unknown) {
 }
 
 export default function ProfilePage() {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>('personal');
   const [employeeTab, setEmployeeTab] = useState<EmployeeTab>('personal');
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -151,6 +189,34 @@ export default function ProfilePage() {
   // Login history (Login Sessions -> Manage)
   const [showLoginHistory, setShowLoginHistory] = useState(false);
   const [loginHistory, setLoginHistory] = useState<LoginHistory[]>([]);
+  const [loginHistoryLoading, setLoginHistoryLoading] = useState(false);
+  // Admins can switch between their own sessions and the company-wide list.
+  const [loginHistoryView, setLoginHistoryView] = useState<'own' | 'all'>('own');
+
+  // Trusted devices (2FA -> Trusted Devices -> Manage)
+  const [showTrustedDevices, setShowTrustedDevices] = useState(false);
+  const [trustedDevices, setTrustedDevices] = useState<TrustedDevice[]>([]);
+  const [trustedDevicesLoading, setTrustedDevicesLoading] = useState(false);
+  const [revokingDeviceId, setRevokingDeviceId] = useState<number | null>(null);
+
+  // Notification preferences (Security + Email sections) — the backend
+  // already returns only the types relevant to the caller's role, so the UI
+  // renders whatever comes back instead of a hardcoded per-role list.
+  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreference[]>([]);
+  const [notificationPreferencesLoaded, setNotificationPreferencesLoaded] = useState(false);
+  const [savingNotificationType, setSavingNotificationType] = useState<string | null>(null);
+
+  // Company info (Organization tab) — readable by every role, editable by admin only.
+  const [companyInfo, setCompanyInfo] = useState({ name: '', email: '', website: '' });
+  const [savingCompanyInfo, setSavingCompanyInfo] = useState(false);
+
+  // Team Access (Organization tab, admin only)
+  const [teamAccessMembers, setTeamAccessMembers] = useState<TeamAccessMember[]>([]);
+  const [teamAccessLoaded, setTeamAccessLoaded] = useState(false);
+  const [openMemberMenuId, setOpenMemberMenuId] = useState<number | null>(null);
+  const [roleChangeTarget, setRoleChangeTarget] = useState<TeamAccessMember | null>(null);
+  const [newRoleValue, setNewRoleValue] = useState('');
+  const [savingRole, setSavingRole] = useState(false);
 
   // Personal info form state
   const [form, setForm] = useState({
@@ -209,12 +275,107 @@ export default function ProfilePage() {
     }
   };
 
+  const loadNotificationPreferences = async () => {
+    try {
+      const prefs = await api.get<NotificationPreference[]>('/notifications/preferences');
+      setNotificationPreferences(prefs);
+    } catch {
+      /* leave the list empty if preferences can't be loaded */
+    } finally {
+      setNotificationPreferencesLoaded(true);
+    }
+  };
+
+  async function toggleNotificationPreference(type: string) {
+    const current = notificationPreferences.find((p) => p.type === type);
+    if (!current) return;
+    const next = !current.enabled;
+    setNotificationPreferences((prev) => prev.map((p) => (p.type === type ? { ...p, enabled: next } : p)));
+    setSavingNotificationType(type);
+    try {
+      await api.put('/notifications/preferences', { preferences: [{ type, enabled: next }] });
+    } catch {
+      setNotificationPreferences((prev) => prev.map((p) => (p.type === type ? { ...p, enabled: !next } : p)));
+      flash('Unable to update notification preference.', 'err');
+    } finally {
+      setSavingNotificationType(null);
+    }
+  }
+
+  const loadCompanyInfo = async () => {
+    try {
+      const data = await api.get<{ name: string | null; email: string | null; website: string | null }>('/company');
+      setCompanyInfo({ name: data.name ?? '', email: data.email ?? '', website: data.website ?? '' });
+    } catch {
+      /* leave fields blank if company info can't be loaded */
+    }
+  };
+
+  async function saveCompanyInfo() {
+    setSavingCompanyInfo(true);
+    try {
+      await api.put('/company', companyInfo);
+      flash('Company information saved.');
+    } catch {
+      flash('Unable to save company information.', 'err');
+    } finally {
+      setSavingCompanyInfo(false);
+    }
+  }
+
+  const loadTeamAccess = async () => {
+    try {
+      const rows = await api.get<TeamAccessMember[]>('/company/team-access');
+      setTeamAccessMembers(rows);
+    } catch {
+      /* leave the list empty if it can't load */
+    } finally {
+      setTeamAccessLoaded(true);
+    }
+  };
+
+  function viewMemberProfile(id: number) {
+    setOpenMemberMenuId(null);
+    router.push(`/employees/${id}`);
+  }
+
+  function openEditRole(member: TeamAccessMember) {
+    setOpenMemberMenuId(null);
+    setRoleChangeTarget(member);
+    setNewRoleValue(member.role);
+  }
+
+  async function confirmRoleChange() {
+    if (!roleChangeTarget || !newRoleValue) return;
+    setSavingRole(true);
+    try {
+      await api.put(`/employees/${roleChangeTarget.id}`, { role: newRoleValue });
+      setTeamAccessMembers((prev) =>
+        prev.map((m) => (m.id === roleChangeTarget.id ? { ...m, role: newRoleValue } : m)),
+      );
+      flash(`${roleChangeTarget.name}'s role updated to ${ACCESS_ROLE_LABELS[newRoleValue] ?? newRoleValue}.`);
+      setRoleChangeTarget(null);
+    } catch {
+      flash('Unable to update role.', 'err');
+    } finally {
+      setSavingRole(false);
+    }
+  }
+
   useEffect(() => {
     load();
     loadTwoFactorStatus();
+    loadCompanyInfo();
+    loadNotificationPreferences();
     return () => { if (flashTimer.current) clearTimeout(flashTimer.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Team Access is admin-only server-side — only fetch once we know the role.
+  useEffect(() => {
+    if (profile?.role === 'admin') loadTeamAccess();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.role]);
 
   // Close the 2FA modal with Escape (except mid-request or while showing backup codes).
   useEffect(() => {
@@ -226,13 +387,13 @@ export default function ProfilePage() {
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  async function openLoginHistory() {
-    // Clear rows from the previous open so stale data isn't shown while loading.
+  async function fetchLoginHistory(view: 'own' | 'all') {
+    // Clear rows from the previous load so stale data isn't shown while loading.
     setLoginHistory([]);
-    setShowLoginHistory(true);
+    setLoginHistoryView(view);
+    setLoginHistoryLoading(true);
 
-    // Admins see everyone's login history; other users see only their own.
-    const endpoint = profile?.role === 'admin'
+    const endpoint = view === 'all'
       ? '/auth/admin/login-history'
       : '/auth/login-history';
 
@@ -241,6 +402,58 @@ export default function ProfilePage() {
       setLoginHistory(data.entries ?? []);
     } catch {
       flash('Unable to load login history.', 'err');
+    } finally {
+      setLoginHistoryLoading(false);
+    }
+  }
+
+  function openLoginHistory() {
+    setShowLoginHistory(true);
+    // Always default to the user's own sessions, even for admins.
+    fetchLoginHistory('own');
+  }
+
+  async function fetchTrustedDevices() {
+    setTrustedDevicesLoading(true);
+    try {
+      const data = await api.get<TrustedDevice[]>('/auth/2fa/trusted-devices');
+      setTrustedDevices(data ?? []);
+    } catch {
+      flash('Unable to load trusted devices.', 'err');
+    } finally {
+      setTrustedDevicesLoading(false);
+    }
+  }
+
+  function openTrustedDevices() {
+    setShowTrustedDevices(true);
+    setTrustedDevices([]);
+    fetchTrustedDevices();
+  }
+
+  async function revokeTrustedDevice(deviceId: number) {
+    setRevokingDeviceId(deviceId);
+    try {
+      await apiDelete(`/auth/2fa/trusted-devices/${deviceId}`);
+      setTrustedDevices((prev) => prev.filter((d) => d.id !== deviceId));
+      flash('Device revoked.');
+    } catch {
+      flash('Unable to revoke device.', 'err');
+    } finally {
+      setRevokingDeviceId(null);
+    }
+  }
+
+  async function revokeAllTrustedDevices() {
+    setTrustedDevicesLoading(true);
+    try {
+      await apiDelete('/auth/2fa/trusted-devices');
+      setTrustedDevices([]);
+      flash('All devices revoked.');
+    } catch {
+      flash('Unable to revoke devices.', 'err');
+    } finally {
+      setTrustedDevicesLoading(false);
     }
   }
 
@@ -378,8 +591,6 @@ export default function ProfilePage() {
     const name = form.name.trim();
     const email = form.email.trim();
     const phone = form.phone.trim();
-    const role = form.role.trim();
-    const isAdmin = profile.role === 'admin';
 
     // Validate first, before anything is sent to the backend.
     if (!name) {
@@ -412,9 +623,7 @@ export default function ProfilePage() {
     }
 
     // Phone is sent even when empty so the user can clear it.
-    // Only admins may change a role; everyone else keeps theirs.
     const payload: Record<string, string> = { name, email, phone };
-    if (isAdmin && role) payload.role = role;
 
     setSaving(true);
     setMsg('');
@@ -608,11 +817,276 @@ export default function ProfilePage() {
       return;
     }
 
-    // TODO: connect organization / security / notification settings to their APIs.
+    if (tab === 'organization') {
+      saveCompanyInfo();
+      return;
+    }
+
+    // TODO: connect security / notification settings to their APIs.
     flash('Saving this section is not available yet.', 'err');
   };
 
+  // Shared across roles — everyone can see company info, only admin can edit
+  // it, and Team Access management stays admin-only.
+  const organizationSection = (
+    <div className='flex flex-col w-[929px] gap-11'>
+      <div className='flex flex-col gap-7 w-full'>
+        <div>
+          <h1 className='text-(--neutral-normal) text-[16px] font-semibold'>Company Information</h1>
+          <p className='text-(--soft-white-dark-active) text-[14px] font-medium'>
+            Manage your company details and hiring identity.
+          </p>
+        </div>
+        <div className='flex flex-col justify-between gap-4'>
+          <div className='flex justify-between'>
+            <div className='flex flex-col justify-between'>
+              <label htmlFor="company_name" className='text-[14px] font-medium'>Company Name</label>
+              <label htmlFor="company_email" className='text-[14px] font-medium'>Company Email</label>
+              <label htmlFor="company_website" className='text-[14px] font-medium'>Company Website</label>
+            </div>
+            <div className='flex flex-col gap-4'>
+              <div className='flex gap-6 items-center'>
+                <InputField
+                  id='company_name'
+                  type='text'
+                  placeholder='Enter your company name'
+                  className='profile-text-field'
+                  value={companyInfo.name}
+                  onChange={(e) => setCompanyInfo((prev) => ({ ...prev, name: e.target.value }))}
+                  disabled={!isAdmin}
+                />
+                {isAdmin && (
+                  <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_name')?.focus()}>Edit</Button>
+                )}
+              </div>
+              <div className='flex gap-6 items-center'>
+                <InputField
+                  id='company_email'
+                  type='email'
+                  placeholder='Enter your company email'
+                  className='profile-text-field'
+                  value={companyInfo.email}
+                  onChange={(e) => setCompanyInfo((prev) => ({ ...prev, email: e.target.value }))}
+                  disabled={!isAdmin}
+                />
+                {isAdmin && (
+                  <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_email')?.focus()}>Edit</Button>
+                )}
+              </div>
+              <div className='flex gap-6 items-center'>
+                <InputField
+                  id='company_website'
+                  type='text'
+                  placeholder='Enter your company website'
+                  className='profile-text-field'
+                  value={companyInfo.website}
+                  onChange={(e) => setCompanyInfo((prev) => ({ ...prev, website: e.target.value }))}
+                  disabled={!isAdmin}
+                />
+                {isAdmin && (
+                  <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_website')?.focus()}>Edit</Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
+      {isAdmin && (
+        <>
+          {/* divider */}
+          <div className='border border-(--neutral-light-hover)'></div>
+
+          {/* Team Access */}
+          <div className='flex flex-col gap-7'>
+            <div>
+              <h1 className='text-(--neutral-normal) text-[14px] font-medium'>Team Access</h1>
+              <p className='text-(--soft-white-dark-active) text-[14px] font-medium'>
+                Control who can access the hiring platform.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 overflow-x-auto">
+              <div className="min-w-[640px]">
+                {/* Header row shares the same grid template as data rows so columns line up exactly. */}
+                <div className="grid grid-cols-[minmax(220px,1fr)_100px_160px_150px_32px] gap-4 items-center px-1 pb-2">
+                  <span className='text-[13px] font-semibold text-(--soft-white-dark-active)'>Member</span>
+                  <span className='text-[13px] font-semibold text-(--soft-white-dark-active)'>Role</span>
+                  <span className='text-[13px] font-semibold text-(--soft-white-dark-active)'>Designation</span>
+                  <span className='text-[13px] font-semibold text-(--soft-white-dark-active)'>Member Since</span>
+                  <span />
+                </div>
+
+                {!teamAccessLoaded && (
+                  <p className='text-[14px] text-(--soft-white-dark-active) py-4'>Loading…</p>
+                )}
+                {teamAccessLoaded && teamAccessMembers.length === 0 && (
+                  <p className='text-[14px] text-(--soft-white-dark-active) py-4'>No team members found.</p>
+                )}
+                {teamAccessLoaded && teamAccessMembers.map((member) => (
+                  <div
+                    key={member.id}
+                    className="grid grid-cols-[minmax(220px,1fr)_100px_160px_150px_32px] gap-4 items-center px-1 py-4 border-b border-(--neutral-light-hover) last:border-0"
+                  >
+                    <div className='flex flex-col min-w-0'>
+                      <span className='text-[14px] font-medium text-(--gray-darker) truncate'>{member.name}</span>
+                      <span className='text-[14px] font-medium text-(--soft-white-darker-hover) truncate'>{member.email}</span>
+                    </div>
+                    <span className='text-[14px] font-medium text-(--gray-darker)'>{ACCESS_ROLE_LABELS[member.role] ?? member.role}</span>
+                    <span className='text-[14px] font-medium text-(--gray-darker) truncate'>{member.designation ?? '—'}</span>
+                    <span className='text-[14px] font-medium text-(--gray-darker) whitespace-nowrap'>{formatJoinDate(member.start_date)}</span>
+                    <div className='relative'>
+                      <button
+                        type='button'
+                        aria-label='Member actions'
+                        onClick={() => setOpenMemberMenuId((prev) => (prev === member.id ? null : member.id))}
+                      >
+                        <img src='/icons/dots.svg' alt="" />
+                      </button>
+                      {openMemberMenuId === member.id && (
+                        <>
+                          {/* Click-outside backdrop to close the menu. */}
+                          <div className='fixed inset-0 z-10' onClick={() => setOpenMemberMenuId(null)} />
+                          <div className='absolute right-0 top-full z-20 mt-1 w-40 rounded-lg border border-(--neutral-light-hover) bg-(--soft-white-light) py-1 shadow-lg'>
+                            <button
+                              type='button'
+                              onClick={() => viewMemberProfile(member.id)}
+                              className='block w-full px-3 py-2 text-left text-[14px] text-(--gray-darker) hover:bg-(--soft-white-normal)'
+                            >
+                              View Profile
+                            </button>
+                            <button
+                              type='button'
+                              disabled={member.id === profile?.id}
+                              onClick={() => openEditRole(member)}
+                              title={member.id === profile?.id ? "You can't change your own role here." : undefined}
+                              className='block w-full px-3 py-2 text-left text-[14px] text-(--gray-darker) hover:bg-(--soft-white-normal) disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent'
+                            >
+                              Edit Role
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  // Shared by the admin Security tab and the non-admin Security tab — every
+  // role can manage its own 2FA, login sessions, and trusted devices.
+  const loginSecuritySection = (
+    <div className='flex flex-col gap-7'>
+      <div>
+        <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Login &amp; Authentication</h1>
+        <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Protect your account from unauthorized access</p>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <div className='flex justify-between items-center mr-10'>
+          <div>
+            <h1 className='text-[16px] font-semibold text-(--gray-darker)'>Two-Factor Authentication</h1>
+            <p className='text-[14px] font-medium text-(--soft-white-dark-active)'>
+              {twoFactorEnabled
+                ? 'Enabled. You will be asked for a code from your authenticator app when you log in.'
+                : 'Add an extra layer of security with an authenticator app.'}
+            </p>
+          </div>
+          <BSRealtyToggle
+            checked={twoFactorEnabled}
+            onChange={() => handleTwoFactorToggle()}
+            disabled={!twoFactorStatusLoaded || twoFactorLoading}
+          />
+        </div>
+        <div className='flex justify-between'>
+          <p className='text-[16px] font-semibold text-(--gray-darker)'>Login Sessions</p>
+          <Button variant='primary' size='medium' type='button' onClick={openLoginHistory}>Manage</Button>
+        </div>
+        {twoFactorEnabled && (
+          <div className='flex justify-between'>
+            <div>
+              <p className='text-[16px] font-semibold text-(--gray-darker)'>Trusted Devices</p>
+              <p className='text-[14px] font-medium text-(--soft-white-dark-active)'>Devices that skip the authenticator code for 30 days.</p>
+            </div>
+            <Button variant='primary' size='medium' type='button' onClick={openTrustedDevices}>Manage</Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // Also shared across roles — new_login_detected / password_changed apply to
+  // every role (see notificationTypes.ts), not just admin.
+  const securityNotificationsSection = (
+    <div className='flex flex-col gap-7'>
+      <div className='flex flex-col gap-7'>
+        <div>
+          <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Security Notifications</h1>
+          <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Receive alerts about important account activity.</p>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          {!notificationPreferencesLoaded && (
+            <p className='text-[14px] text-(--soft-white-dark-active)'>Loading…</p>
+          )}
+          {notificationPreferencesLoaded && notificationPreferences
+            .filter((p) => p.group === 'security')
+            .map((pref) => (
+              <div key={pref.type} className='flex justify-between mr-10'>
+                <span className='flex items-center gap-2'>
+                  <p className='text-[16px] font-semibold text-(--gray-darker)'>{pref.label}</p>
+                  <NotificationInfo text={pref.description} />
+                </span>
+                <BSRealtyToggle
+                  checked={pref.enabled}
+                  onChange={() => toggleNotificationPreference(pref.type)}
+                  disabled={savingNotificationType === pref.type}
+                />
+              </div>
+            ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Email Notifications is shared across roles — the backend already returns
+  // only the types relevant to the caller's role (requester types for
+  // employee/intern, the "submitted" approver types for lead, etc.), so the
+  // list renders directly from whatever GET /notifications/preferences sends
+  // back instead of a hardcoded per-role set.
+  const notificationSection = (
+      <div className='flex flex-col gap-7'>
+        <div>
+          <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Email Notifications</h1>
+          <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Manage when you receive updates via email.</p>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          {!notificationPreferencesLoaded && (
+            <p className='text-[14px] text-(--soft-white-dark-active)'>Loading…</p>
+          )}
+          {notificationPreferencesLoaded && notificationPreferences
+            .filter((p) => p.group === 'email')
+            .map((pref) => (
+              <div key={pref.type} className='flex justify-between'>
+                <span className='flex items-center gap-2'>
+                  <p className='text-[16px] font-semibold text-(--gray-darker)'>{pref.label}</p>
+                  <NotificationInfo text={pref.description} />
+                </span>
+                <BSRealtyToggle
+                  checked={pref.enabled}
+                  onChange={() => toggleNotificationPreference(pref.type)}
+                  disabled={savingNotificationType === pref.type}
+                />
+              </div>
+            ))}
+        </div>
+      </div>
+  );
 
 
   return (
@@ -699,7 +1173,7 @@ export default function ProfilePage() {
 
             <div className='w-full pl-18'>
               <span className="py-1 px-3 rounded-lg" style={{ background: '#DCF1E4', color: '#16A34A', fontWeight: 500, fontSize: '12px' }}>
-                {roleLabel(profile.role)}
+                {ACCESS_ROLE_LABELS[profile.role] ?? profile.role}
               </span>
             </div>
           </div>
@@ -722,31 +1196,31 @@ export default function ProfilePage() {
           <div className="bg-(--soft-white-light) border border-(--soft-white-normal) rounded-lg" style={{ padding: 24, overflow: 'hidden' }}>
 
             <div className='flex justify-between py-6'>
-              <BSRealtyTabs
-                className=''
-                defaultValue='personal'
-                value={tab}
-                onChange={(newTab) => setTab(newTab as Tab)}
-                tabs={[
-                  { label: 'Personal Info', value: 'personal' },
-                  { label: 'Organization', value: 'organization' },
-                  { label: 'Security', value: 'security' },
-                  { label: 'Notification', value: 'notification' },
-                ]}
-              />
-              {(tab === 'personal' || tab === 'organization') && (
-                <div className="flex justify-end">
-                  <Button
-                    variant='primary'
-                    size='small'
-                    type="button"
-                    disabled={saving || (tab === 'personal' && !isDirty)}
-                    onClick={handleSaveChanges}
-                  >
-                    {saving ? 'Saving…' : 'Save Changes'}
-                  </Button>
-                </div>
-              )}
+              <div className='min-w-0 max-w-full overflow-x-auto'>
+                <BSRealtyTabs
+                  className='flex-nowrap whitespace-nowrap'
+                  defaultValue='personal'
+                  value={tab}
+                  onChange={(newTab) => setTab(newTab as Tab)}
+                  tabs={[
+                    { label: 'Personal Info', value: 'personal' },
+                    { label: 'Organization', value: 'organization' },
+                    { label: 'Security', value: 'security' },
+                    { label: 'Notification', value: 'notification' },
+                  ]}
+                />
+              </div>
+              <div className="flex justify-end shrink-0">
+                <Button
+                  variant='primary'
+                  size='small'
+                  type="button"
+                  disabled={saving || savingCompanyInfo || (tab === 'personal' && !isDirty)}
+                  onClick={handleSaveChanges}
+                >
+                  {saving || savingCompanyInfo ? 'Saving…' : 'Save Changes'}
+                </Button>
+              </div>
             </div>
 
             {/* ── PERSONAL INFO ─────────────────────────────────────────────── */}
@@ -839,36 +1313,19 @@ export default function ProfilePage() {
 
                         </div>
 
+                        {/* Role is read-only here — it's never actually editable through this
+                            form (the backend's /profile whitelist silently drops it either way),
+                            and changing someone's access role lives in Team Access instead. */}
                         <div>
-                          <BSRealtyDropdown
-                            className='profile-text-field'
-                            value={form.role}
-                            onChange={(value) => setForm(prev => ({ ...prev, role: value }))}
-                            options={ROLE_OPTIONS}
-                            placeholder="Employee Role"
-                          />
-                        </div>
-
-                        {/* Only admins can change a role; others see it read-only. */}
-                        {/* <div className='w-[532px]'>
-                        {isAdmin ? (
-                          <BSRealtyDropdown
-                            value={form.role}
-                            onChange={(value) => setForm(prev => ({ ...prev, role: value }))}
-                            options={ROLE_OPTIONS}
-                            placeholder="Employee Role"
-                          />
-                        ) : (
                           <InputField
                             id='role'
                             className='profile-text-field'
                             type='text'
-                            value={roleLabel(form.role)}
+                            value={ACCESS_ROLE_LABELS[form.role] ?? form.role}
                             disabled
                             readOnly
                           />
-                        )}
-                      </div> */}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -937,236 +1394,75 @@ export default function ProfilePage() {
             )}
 
             {/* ── Organization ─────────────────────────────────────────────────── */}
-            {tab === 'organization' && (
-              <div className='flex flex-col w-[929px] gap-11'>
-                <div className='flex flex-col gap-7 w-full'>
-                  <div>
-                    <h1 className='text-(--neutral-normal) text-[16px] font-semibold'>Company Information</h1>
-                    <p className='text-(--soft-white-dark-active) text-[14px] font-medium'>
-                      Manage your company details and hiring identity.
-                    </p>
-                  </div>
-                  <div className='flex flex-col justify-between gap-4'>
-                    <div className='flex justify-between'>
-                      <div className='flex flex-col justify-between'>
-                        <label htmlFor="company_name" className='text-[14px] font-medium'>Company Name</label>
-                        <label htmlFor="company_email" className='text-[14px] font-medium'>Company Email</label>
-                        <label htmlFor="company_website" className='text-[14px] font-medium'>Company Website</label>
-                      </div>
-                      <div className='flex flex-col gap-4'>
-                        <div className='flex gap-6 items-center'>
-                          <InputField
-                            id='company_name'
-                            type='text'
-                            placeholder='Enter your company name'
-                            className='profile-text-field'
-                          />
-                          <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_name')?.focus()}>Edit</Button>
-                        </div>
-                        <div className='flex gap-6 items-center'>
-                          <InputField
-                            id='company_email'
-                            type='email'
-                            placeholder='Enter your company email'
-                            className='profile-text-field'
-                          />
-                          <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_email')?.focus()}>Edit</Button>
-                        </div>
-                        <div className='flex gap-6 items-center'>
-                          <InputField
-                            id='company_website'
-                            type='text'
-                            placeholder='Enter your company website'
-                            className='profile-text-field'
-                          />
-                          <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_website')?.focus()}>Edit</Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* divider */}
-                <div className='border border-(--neutral-light-hover)'></div>
-
-                {/* Team Access */}
-                <div className='flex flex-col gap-7'>
-                  <div>
-                    <h1 className='text-(--neutral-normal) text-[14px] font-medium'>Team Access</h1>
-                    <p className='text-(--soft-white-dark-active) text-[14px] font-medium'>
-                      Control who can access the hiring platform.
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <h3 className='text-(--neutral-normal) text-[14px] font-semibold'>Member-2</h3>
-                    <div className="flex justify-between items-center py-4">
-                      <div className='flex items-start gap-3'>
-                        <BSRealtyCheckbox size='16px' />
-                        <div className='flex-col justify-between'>
-                          <span className='text-[14px] font-medium text-(--gray-darker)'>Alex Johnson</span>
-                          <span className='text-[14px] font-medium text-(--soft-white-darker-hover)'>alexjhonson@gmail.com</span>
-                        </div>
-                      </div>
-                      <div>
-                        <span className='text-[14px] font-medium text-(--gray-darker)'>Software Developer</span>
-                      </div>
-                      <div>
-                        <span className='text-[14px] font-medium text-(--gray-darker)'>September 30, 2026</span>
-                      </div>
-                      <img src='/icons/dots.svg' alt="" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            {tab === 'organization' && organizationSection}
 
             {/* ── SECURITY ──────────────────────────────────────────────────── */}
             {tab === 'security' && (
               <div className='max-w-[929px] flex flex-col gap-11'>
-                <div className='flex flex-col gap-7'>
-                  <div>
-                    <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Login &amp; Authentication</h1>
-                    <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Protect your account from unauthorized access</p>
-                  </div>
-
-                  <div className="flex flex-col gap-4">
-                    <div className='flex justify-between items-center mr-10'>
-                      <div>
-                        <h1 className='text-[16px] font-semibold text-(--gray-darker)'>Two-Factor Authentication</h1>
-                        <p className='text-[14px] font-medium text-(--soft-white-dark-active)'>
-                          {twoFactorEnabled
-                            ? 'Enabled. You will be asked for a code from your authenticator app when you log in.'
-                            : 'Add an extra layer of security with an authenticator app.'}
-                        </p>
-                      </div>
-                      <BSRealtyToggle
-                        checked={twoFactorEnabled}
-                        onChange={() => handleTwoFactorToggle()}
-                        disabled={!twoFactorStatusLoaded || twoFactorLoading}
-                      />
-                    </div>
-                    <div className='flex justify-between'>
-                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Login Sessions</p>
-                      <Button variant='primary' size='medium' type='button' onClick={openLoginHistory}>Manage</Button>
-                    </div>
-                  </div>
-                </div>
+                {loginSecuritySection}
 
                 {/* divider */}
                 <div className='border border-(--neutral-light-hover)'></div>
 
                 {/* Security notifications */}
-                <div className='flex flex-col gap-7'>
-                  <div className='flex flex-col gap-7'>
-                    <div>
-                      <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Security Notifications</h1>
-                      <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Receive alerts about important account activity.</p>
-                    </div>
-
-                    <div className="flex flex-col gap-4">
-                      <div className='flex justify-between mr-10'>
-                        <p className='text-[16px] font-semibold text-(--gray-darker)'>New Login Detected</p>
-                        <BSRealtyToggle checked={true} />
-                      </div>
-                      <div className='flex justify-between mr-10'>
-                        <p className='text-[16px] font-semibold text-(--gray-darker)'>Password Changed</p>
-                        <BSRealtyToggle checked={true} />
-                      </div>
-                      <div className='flex justify-between mr-10'>
-                        <p className='text-[16px] font-semibold text-(--gray-darker)'>Accounts &amp; Role Changed</p>
-                        <BSRealtyToggle checked={true} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                {securityNotificationsSection}
               </div>
             )}
 
             {/* ── Notification ──────────────────────────────────────────────────── */}
             {tab === 'notification' && (
               <div className='max-w-[532px] flex flex-col gap-11'>
-                <div className='flex flex-col gap-7'>
-                  <div>
-                    <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Email Notifications</h1>
-                    <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Manage when you receive updates via email.</p>
-                  </div>
-
-                  <div className="flex flex-col gap-4">
-                    <div className='flex justify-between'>
-                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Leave Request</p>
-                      <BSRealtyToggle checked={true} />
-                    </div>
-                    <div className='flex justify-between'>
-                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Overtime Request</p>
-                      <BSRealtyToggle />
-                    </div>
-                    <div className='flex justify-between'>
-                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Attendance Alerts</p>
-                      <BSRealtyToggle checked={true} />
-                    </div>
-                    <div className='flex justify-between'>
-                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Documents &amp; Signature Request</p>
-                      <BSRealtyToggle checked={true} />
-                    </div>
-                    <div className='flex justify-between'>
-                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Employee Updates</p>
-                      <BSRealtyToggle />
-                    </div>
-                    <div className='flex justify-between'>
-                      <p className='text-[16px] font-semibold text-(--gray-darker)'>Onboarding Updated</p>
-                      <BSRealtyToggle checked={true} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* divider */}
-                <div className='border border-(--neutral-light-hover)'></div>
-
-                {/* System notifications */}
-                <div className='flex flex-col gap-7'>
-                  <div className='flex flex-col gap-7'>
-                    <div>
-                      <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>System Notifications</h1>
-                      <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Control in-app notifications</p>
-                    </div>
-
-                    <div className="flex flex-col gap-4">
-                      <div className='flex justify-between'>
-                        <p className='text-[16px] font-semibold text-(--gray-darker)'>Enable Notifications</p>
-                        <BSRealtyToggle checked={true} />
-                      </div>
-                      <div className='flex justify-between'>
-                        <p className='text-[16px] font-semibold text-(--gray-darker)'>Sound Alerts</p>
-                        <BSRealtyToggle checked={true} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                {notificationSection}
               </div>
             )}
           </div>
         ) : (
           <div className='flex w-full gap-5'>
-            <div className="flex-1 bg-(--soft-white-light) border border-(--soft-white-normal) rounded-lg px-6 p-b-6" style={{ overflow: 'hidden' }}>
+            <div className="flex-1 min-w-0 bg-(--soft-white-light) border border-(--soft-white-normal) rounded-lg px-6 p-b-6" style={{ overflow: 'hidden' }}>
 
               <div className='flex justify-between py-6'>
-                <BSRealtyTabs
-                  className=''
-                  defaultValue='personal'
-                  value={employeeTab}
-                  onChange={(newTab) => setEmployeeTab(newTab as EmployeeTab)}
-                  tabs={[
-                    { label: 'Personal Info', value: 'personal' },
-                    { label: 'Employment Details', value: 'employment' },
-                    { label: 'Bank Details', value: 'bank' },
-                    { label: 'Documents', value: 'documents' },
-                  ]}
-                />
+                <div className='min-w-0 max-w-full overflow-x-auto'>
+                  <BSRealtyTabs
+                    className='flex-nowrap whitespace-nowrap'
+                    defaultValue='personal'
+                    value={employeeTab}
+                    onChange={(newTab) => setEmployeeTab(newTab as EmployeeTab)}
+                    tabs={[
+                      { label: 'Personal Info', value: 'personal' },
+                      { label: 'Employment Details', value: 'employment' },
+                      { label: 'Bank Details', value: 'bank' },
+                      { label: 'Documents', value: 'documents' },
+                      { label: 'Organization', value: 'organization' },
+                      { label: 'Security', value: 'security' },
+                      { label: 'Notification', value: 'notification' },
+                    ]}
+                  />
+                </div>
               </div>
               {employeeTab === 'personal' && <EmployeePersonalInformation />}
               {employeeTab === 'employment' && <EmployeeEmployment />}
               {employeeTab === 'bank' && <EmployeeBank />}
               {employeeTab === 'documents' && <EmployeeDocuments />}
+              {employeeTab === 'organization' && (
+                <div className='pt-2'>
+                  {organizationSection}
+                </div>
+              )}
+              {employeeTab === 'security' && (
+                <div className='max-w-[929px] flex flex-col gap-11 pt-2'>
+                  {loginSecuritySection}
+
+                  {/* divider */}
+                  <div className='border border-(--neutral-light-hover)'></div>
+
+                  {securityNotificationsSection}
+                </div>
+              )}
+              {employeeTab === 'notification' && (
+                <div className='max-w-[532px] flex flex-col gap-11 pt-2'>
+                  {notificationSection}
+                </div>
+              )}
             </div>
             <div className='w-[285px] shrink-0 flex flex-col gap-5'>
               <div className='p-4 flex flex-col gap-3 bg-(--success-light-hover)  rounded-lg'>
@@ -1195,9 +1491,69 @@ export default function ProfilePage() {
       {showLoginHistory && (
         <LoginHistoryModal
           history={loginHistory}
-          isAdmin={isAdmin}
+          loading={loginHistoryLoading}
+          isAdmin={isAdmin && loginHistoryView === 'all'}
+          canViewAll={isAdmin}
+          view={loginHistoryView}
+          onViewChange={fetchLoginHistory}
           onClose={() => setShowLoginHistory(false)}
         />
+      )}
+
+      {/* ── Trusted devices modal ───────────────────────────────────────── */}
+      {showTrustedDevices && (
+        <TrustedDevicesModal
+          devices={trustedDevices}
+          loading={trustedDevicesLoading}
+          revokingId={revokingDeviceId}
+          onRevoke={revokeTrustedDevice}
+          onRevokeAll={revokeAllTrustedDevices}
+          onClose={() => setShowTrustedDevices(false)}
+        />
+      )}
+
+      {/* ── Edit role modal (Team Access) ───────────────────────────────── */}
+      {roleChangeTarget && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4" onClick={() => setRoleChangeTarget(null)}>
+          <div
+            className="flex w-full max-w-[420px] flex-col gap-4 rounded-2xl bg-(--soft-white-light) p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-[18px] font-semibold text-(--neutral-normal)">Edit Role</h2>
+            <p className="text-[14px] text-(--soft-white-dark-active)">
+              Change the access role for <strong>{roleChangeTarget.name}</strong>.
+            </p>
+            <BSRealtyDropdown
+              options={ACCESS_ROLE_OPTIONS}
+              value={newRoleValue}
+              onChange={setNewRoleValue}
+              aria-label="New role"
+            />
+            {newRoleValue === 'admin' && (
+              <p className="text-[13px] text-(--error-normal)">
+                This grants full admin access to every feature on the platform.
+              </p>
+            )}
+            <div className="mt-2 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setRoleChangeTarget(null)}
+                className="rounded-xl border-2 border-(--neutral-light-hover) px-4 py-2 text-[14px] text-(--gray-darker)"
+              >
+                Cancel
+              </button>
+              <Button
+                type="button"
+                variant="primary"
+                size="medium"
+                disabled={savingRole || newRoleValue === roleChangeTarget.role}
+                onClick={confirmRoleChange}
+              >
+                {savingRole ? 'Saving…' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── 2FA modal ─────────────────────────────────────────────────────── */}
