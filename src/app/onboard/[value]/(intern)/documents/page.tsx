@@ -4,26 +4,20 @@ import { useState, type FormEvent } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Button from '@/components/Button/Button'
 import FileUpload from '@/components/FileUpload/FileUpload'
+import { useOnboarding, type OnboardingDocumentKey } from '../../OnboardingContext'
 
 /* ---------- Document config ---------- */
 
-type DocKey =
-    | 'citizenshipFront'
-    | 'citizenshipBack'
-    | 'panFront'
-    | 'panBack'
-    | 'educational'
-    | 'additional'
-    | 'passwordSizePhoto'
+type DocKey = OnboardingDocumentKey
 
 type DocField = { key: DocKey; label: string; required: boolean }
 type DocSection = { title: string; fields: DocField[] }
 
 const DOCUMENT_SECTIONS: DocSection[] = [
     {
-        title: 'Password Size Photo',
+        title: 'Passport Size Photo',
         fields: [
-            { key: 'passwordSizePhoto', label: 'Password Size Photo', required: true },
+            { key: 'passportSizePhoto', label: 'Passport Size Photo', required: true },
 
         ],
     },
@@ -45,39 +39,26 @@ const DOCUMENT_SECTIONS: DocSection[] = [
     {
         title: 'Other Documents',
         fields: [
-            { key: 'educational', label: 'Educational Documents', required: true },
             { key: 'additional', label: 'Additional Documents', required: true },
         ],
     },
 ]
 
-type DocumentsState = Record<DocKey, File | null>
 type ErrorsState = Partial<Record<DocKey, string>>
-
-const INITIAL_DOCUMENTS: DocumentsState = {
-    passwordSizePhoto: null,
-    citizenshipFront: null,
-    citizenshipBack: null,
-    panFront: null,
-    panBack: null,
-    educational: null,
-    additional: null,
-}
 
 /* ---------- Page ---------- */
 
 const Page = () => {
     const router = useRouter()
     const { value } = useParams<{ value: string }>();
-
-
-    const [documents, setDocuments] = useState<DocumentsState>(INITIAL_DOCUMENTS)
+    const { data, updateSection } = useOnboarding()
+    const documents = data.documents
     const [errors, setErrors] = useState<ErrorsState>({})
     const [submitError, setSubmitError] = useState<string | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     const handleFileChange = (key: DocKey, file: File | null) => {
-        setDocuments((prev) => ({ ...prev, [key]: file }))
+        updateSection("documents", { ...documents, [key]: file })
         // Clear the error as soon as the user uploads a file
         if (file) setErrors((prev) => ({ ...prev, [key]: undefined }))
     }

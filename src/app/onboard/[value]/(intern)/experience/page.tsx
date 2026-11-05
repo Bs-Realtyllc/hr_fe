@@ -1,20 +1,23 @@
 "use client";
 
 import Button from "@/components/Button/Button";
+import FileUpload from "@/components/FileUpload/FileUpload";
 import InputField from "@/components/InputField/InputField";
+import { BSRealtyDropdown } from "@bsrealtyllc/design-system";
 import { useParams, useRouter } from "next/navigation";
 import React, { useState } from "react";
+import { useOnboarding, type ExperienceItem } from "../../OnboardingContext";
 
-type ExperienceItem = {
-    id: string;
-    company: string;
-    role: string;
-    startDate: string;
-    endDate: string;
-    isFullTime: boolean;
-    isRemote: boolean;
-    description: string;
-};
+const EMPLOYMENT_TYPE_OPTIONS = [
+    { label: "Full-time", value: "full_time" },
+    { label: "Part-time", value: "part_time" },
+];
+
+const WORK_TYPE_OPTIONS = [
+    { label: "Onsite", value: "onsite" },
+    { label: "Remote", value: "remote" },
+    { label: "Hybrid", value: "hybrid" },
+];
 
 type Errors = Record<number, Partial<Record<keyof ExperienceItem, string>>>;
 
@@ -24,28 +27,16 @@ const errorClass = "text-[12px] text-(--error-normal)";
 const ExperiencePage = () => {
     const router = useRouter();
     const { value } = useParams<{ value: string }>();
+    const { data, updateSection } = useOnboarding();
+    const experiences = data.experiences;
 
-    const [experiences, setExperiences] = useState<ExperienceItem[]>([
-        {
-            id: crypto.randomUUID(),
-            company: "",
-            role: "",
-            startDate: "",
-            endDate: "",
-            isFullTime: false,
-            isRemote: false,
-            description: "",
-        },
-    ]);
     const [errors, setErrors] = useState<Errors>({});
     const [submitting, setSubmitting] = useState(false);
 
     function updateField<K extends keyof ExperienceItem>(index: number, key: K, value: ExperienceItem[K]) {
-        setExperiences((prev) => {
-            const updated = [...prev];
-            updated[index] = { ...updated[index], [key]: value };
-            return updated;
-        });
+        const updated = [...experiences];
+        updated[index] = { ...updated[index], [key]: value };
+        updateSection("experiences", updated);
 
         if (errors[index]?.[key]) {
             setErrors((prev) => ({
@@ -56,29 +47,37 @@ const ExperiencePage = () => {
     }
 
     function addExperience() {
-        setExperiences((prev) => [
-            ...prev,
+        updateSection("experiences", [
+            ...experiences,
             {
                 id: crypto.randomUUID(),
                 company: "",
                 role: "",
                 startDate: "",
                 endDate: "",
-                isFullTime: false,
-                isRemote: false,
+                currentWorking: false,
+                employeeType: "",
+                workType: "",
                 description: "",
+                document: null,
             },
         ]);
     }
 
     function removeExperience(index: number) {
-        if (experiences.length === 1) return; // Keep at least one form
-        setExperiences((prev) => prev.filter((_, i) => i !== index));
+        if (experiences.length === 1) return;
+        updateSection("experiences", experiences.filter((_, i) => i !== index));
         setErrors((prev) => {
             const newErrors = { ...prev };
             delete newErrors[index];
             return newErrors;
         });
+    }
+
+    function getDropdownValue(selected: string | { value: string } | null): string {
+        if (!selected) return "";
+        if (typeof selected === "string") return selected;
+        return selected.value;
     }
 
     function validate(): boolean {
@@ -113,6 +112,7 @@ const ExperiencePage = () => {
                 company: exp.company.trim(),
                 role: exp.role.trim(),
                 description: exp.description.trim(),
+                endDate: exp.currentWorking ? "" : exp.endDate,
             }));
 
             console.log("Experiences payload:", payload);
@@ -132,7 +132,6 @@ const ExperiencePage = () => {
             </div>
 
             <div className="flex w-full max-w-[800px] flex-col gap-7 mx-auto">
-                {/* Header with Add Button on Top Right */}
                 <div className="flex justify-between items-center w-full">
                     <h2 className="text-[18px] lg:text-[20px] text-(--neutral-normal) font-semibold">
                         Previous Work / Internship Experience
@@ -202,42 +201,58 @@ const ExperiencePage = () => {
 
                                     <div className="flex flex-col gap-2">
                                         <label htmlFor={`end-date-${index}`} className={labelClass}>
-                                            End date <span className="text-(--gray-normal) font-normal">(leave blank if current)</span>
+                                            End date
                                         </label>
                                         <InputField
                                             id={`end-date-${index}`}
                                             type="date"
-                                            value={exp.endDate}
+                                            disabled={exp.currentWorking}
+                                            value={exp.currentWorking ? "" : exp.endDate}
                                             onChange={(e) => updateField(index, "endDate", e.target.value)}
                                         />
+                                        <div className="flex gap-2 items-center mt-1">
+                                            <input
+                                                type="checkbox"
+                                                id={`current-working-${index}`}
+                                                checked={exp.currentWorking}
+                                                onChange={(e) => updateField(index, "currentWorking", e.target.checked)}
+                                                className="cursor-pointer"
+                                            />
+                                            <label htmlFor={`current-working-${index}`} className="text-[13px] text-(--gray-dark-active) cursor-pointer">
+                                                Current working
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Row 3: Checkboxes */}
-                                <div className="flex gap-8 items-center pt-1">
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            id={`full-time-${index}`}
-                                            checked={exp.isFullTime}
-                                            onChange={(e) => updateField(index, "isFullTime", e.target.checked)}
-                                            className="h-4 w-4 rounded border-(--teal-light-active) accent-(--blue-sky-dark-hover) cursor-pointer"
+                                {/* Row 3: Employment Type & Work Type */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+                                    <div className="flex flex-col gap-2">
+                                        <label htmlFor={`employment-type-${index}`} className={labelClass}>Employment Type</label>
+                                        <BSRealtyDropdown
+                                            className="w-full!"
+                                            options={EMPLOYMENT_TYPE_OPTIONS}
+                                            placeholder="Select employment type"
+                                            value={exp.employeeType}
+                                            onChange={(selected: string | { value: string } | null) =>
+                                                updateField(index, "employeeType", getDropdownValue(selected))
+                                            }
                                         />
-                                        <label htmlFor={`full-time-${index}`} className={`${labelClass} cursor-pointer`}>
-                                            Full-time
-                                        </label>
+                                        {itemError.employeeType && <p className={errorClass}>{itemError.employeeType}</p>}
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            id={`remote-${index}`}
-                                            checked={exp.isRemote}
-                                            onChange={(e) => updateField(index, "isRemote", e.target.checked)}
-                                            className="h-4 w-4 rounded border-(--teal-light-active) accent-(--blue-sky-dark-hover) cursor-pointer"
+
+                                    <div className="flex flex-col gap-2">
+                                        <label htmlFor={`work-type-${index}`} className={labelClass}>Work Type</label>
+                                        <BSRealtyDropdown
+                                            className="w-full!"
+                                            options={WORK_TYPE_OPTIONS}
+                                            placeholder="Select work type"
+                                            value={exp.workType}
+                                            onChange={(selected: string | { value: string } | null) =>
+                                                updateField(index, "workType", getDropdownValue(selected))
+                                            }
                                         />
-                                        <label htmlFor={`remote-${index}`} className={`${labelClass} cursor-pointer`}>
-                                            Remote
-                                        </label>
+                                        {itemError.workType && <p className={errorClass}>{itemError.workType}</p>}
                                     </div>
                                 </div>
 
@@ -256,7 +271,21 @@ const ExperiencePage = () => {
                                     />
                                 </div>
 
-                                {/* Remove Experience link (if more than 1 entry) */}
+                                {/* Row 5: Upload Documents (Hidden if Current Working) */}
+                                {!exp.currentWorking && (
+                                    <div>
+                                        <FileUpload
+                                            label="Experience Letter"
+                                            optional={true}
+                                            value={exp.document}
+                                            onChange={(file) =>
+                                                updateField(index, "document", Array.isArray(file) ? file[0] ?? null : file)
+                                            }
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Remove Experience link */}
                                 {experiences.length > 1 && (
                                     <div className="flex justify-end pt-2">
                                         <button

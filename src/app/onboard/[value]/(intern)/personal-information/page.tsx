@@ -5,30 +5,9 @@ import InputField from "@/components/InputField/InputField"
 import { BSRealtyDatePicker, BSRealtyDropdown } from "@bsrealtyllc/design-system"
 import { useParams, useRouter } from "next/navigation"
 import { useState } from "react"
-
-type PersonalInfo = {
-    name: string
-    dob: string // "YYYY-MM-DD"
-    gender: string
-    nationality: string
-    email: string
-    phone: string
-    currentAddress: string
-    permanentAddress: string
-}
+import { useOnboarding, type PersonalInfo } from "../../OnboardingContext"
 
 type Errors = Partial<Record<keyof PersonalInfo, string>>
-
-const INITIAL_STATE: PersonalInfo = {
-    name: '',
-    dob: '',
-    gender: '',
-    nationality: '',
-    email: '',
-    phone: '',
-    currentAddress: '',
-    permanentAddress: '',
-}
 
 const GENDER_OPTIONS = [
     { label: 'Male', value: 'male' },
@@ -38,6 +17,7 @@ const GENDER_OPTIONS = [
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_REGEX = /^\+?[0-9\s-]{7,15}$/
+const URL_REGEX = /^(https?:\/\/)?([\w\-]+\.)+[\w\-]+(\/[\w\-._~:/?#[\]@!$&'()*+,;=]*)?$/
 
 const labelClass = "text-[14px] font-medium text-(--gray-dark-active)"
 const errorClass = "text-[12px] text-(--error-normal)"
@@ -71,6 +51,18 @@ function validate(values: PersonalInfo): Errors {
         errors.phone = 'Enter a valid phone number.'
     }
 
+    if (values.linkedin.trim() && !URL_REGEX.test(values.linkedin.trim())) {
+        errors.linkedin = 'Enter a valid URL.'
+    }
+
+    if (values.github.trim() && !URL_REGEX.test(values.github.trim())) {
+        errors.github = 'Enter a valid URL.'
+    }
+
+    if (values.portfolio.trim() && !URL_REGEX.test(values.portfolio.trim())) {
+        errors.portfolio = 'Enter a valid URL.'
+    }
+
     if (!values.currentAddress.trim()) errors.currentAddress = 'Enter your current address.'
     if (!values.permanentAddress.trim()) errors.permanentAddress = 'Enter your permanent address.'
 
@@ -80,21 +72,19 @@ function validate(values: PersonalInfo): Errors {
 const PersonalInfoPage = () => {
     const router = useRouter()
     const { value } = useParams<{ value: string }>();
+    const { data, updateSection } = useOnboarding()
+    const form = data.personalInfo
 
-    const [form, setForm] = useState<PersonalInfo>(INITIAL_STATE)
     const [errors, setErrors] = useState<Errors>({})
-    const [sameAsCurrent, setSameAsCurrent] = useState(false)
     const [submitting, setSubmitting] = useState(false)
+    const sameAsCurrent = data.sameAsCurrent
 
     function updateField<K extends keyof PersonalInfo>(key: K, value: PersonalInfo[K]) {
-        setForm((prev) => {
-            const next = { ...prev, [key]: value }
-            // Keep permanent address in sync while the checkbox is ticked
-            if (key === 'currentAddress' && sameAsCurrent) {
-                next.permanentAddress = value
-            }
-            return next
-        })
+        const next = { ...form, [key]: value }
+        if (key === 'currentAddress' && sameAsCurrent) {
+            next.permanentAddress = value as string
+        }
+        updateSection("personalInfo", next)
         // Clear the error for this field as the user fixes it
         if (errors[key]) {
             setErrors((prev) => ({ ...prev, [key]: undefined }))
@@ -102,9 +92,9 @@ const PersonalInfoPage = () => {
     }
 
     function handleSameAsCurrent(checked: boolean) {
-        setSameAsCurrent(checked)
+        updateSection("sameAsCurrent", checked)
         if (checked) {
-            setForm((prev) => ({ ...prev, permanentAddress: prev.currentAddress }))
+            updateSection("personalInfo", { ...form, permanentAddress: form.currentAddress })
             setErrors((prev) => ({ ...prev, permanentAddress: undefined }))
         }
     }
@@ -123,6 +113,9 @@ const PersonalInfoPage = () => {
                 name: form.name.trim(),
                 email: form.email.trim().toLowerCase(),
                 phone: form.phone.trim(),
+                linkedin: form.linkedin.trim(),
+                github: form.github.trim(),
+                portfolio: form.portfolio.trim(),
             }
 
             console.log('Personal info:', payload)
@@ -135,17 +128,15 @@ const PersonalInfoPage = () => {
         }
     }
 
-
-
     return (
-        <div className=" flex w-full justify-between items-center px-4 lg:px-15 pt-22 p-5 lg:pb-8">
-            <div className=' absolute top-7.5 left-4 lg:left-15  '>
+        <div className="flex w-full justify-between items-center px-4 lg:px-15 pt-22 p-5 lg:pb-8">
+            <div className='absolute top-7.5 left-4 lg:left-15'>
                 <img className='h-4 w-22 lg:h-5 lg:w-28' src="/logos/gitgi-hr-logo.svg" alt="" />
-            </div >
+            </div>
 
-            <div className="flex  w-full lg:w-[534px] flex-col gap-7 lg:gap-13">
-                <div className="flex  flex-col gap-1 lg:gap-2 mr-12 lg:mr-0">
-                    <h1 className="text-[20px] lg:text-[24px] leading-7 lg:leading-8 text-(--neutral-normal) font-semibold ">Finish setting up your HR profile</h1>
+            <div className="flex w-full lg:w-[534px] flex-col gap-7 lg:gap-13">
+                <div className="flex flex-col gap-1 lg:gap-2 mr-12 lg:mr-0">
+                    <h1 className="text-[20px] lg:text-[24px] leading-7 lg:leading-8 text-(--neutral-normal) font-semibold">Finish setting up your HR profile</h1>
                     <p className="text-[14px] lg:text-[16px] font-normal lg:font-medium text-(--gray-dark)">
                         Provide your personal, employment, and document details to complete your employee record. Fields marked optional can be skipped.
                     </p>
@@ -156,6 +147,7 @@ const PersonalInfoPage = () => {
 
                     <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
                         <div className="flex flex-col gap-5">
+                            {/* 1. Name */}
                             <div className="flex flex-col gap-2">
                                 <label htmlFor="name" className={labelClass}>Legal Name</label>
                                 <InputField
@@ -167,23 +159,22 @@ const PersonalInfoPage = () => {
                                 {errors.name && <p className={errorClass}>{errors.name}</p>}
                             </div>
 
+                            {/* 2. DOB */}
                             <div className="flex flex-col gap-2">
                                 <label htmlFor="dob" className={labelClass}>Date of Birth</label>
-
-                                <BSRealtyDatePicker
-                                    label=""
-                                    dateFormat="MM-DD-YYYY"
+                                <InputField
+                                    type="date"
                                     value={form.dob}
-                                    onChange={(value) => updateField('dob', value)}
+                                    onChange={(e) => updateField('dob', e.target.value)}
                                 />
                                 {errors.dob && <p className={errorClass}>{errors.dob}</p>}
                             </div>
 
+                            {/* 3. Gender */}
                             <div className="flex flex-col gap-2">
                                 <label htmlFor="gender" className={labelClass}>Gender</label>
                                 <BSRealtyDropdown
                                     className="w-full!"
-                                    // id="gender"
                                     options={GENDER_OPTIONS}
                                     placeholder="Select gender"
                                     value={form.gender}
@@ -197,6 +188,7 @@ const PersonalInfoPage = () => {
                                 {errors.gender && <p className={errorClass}>{errors.gender}</p>}
                             </div>
 
+                            {/* 4. Nationality */}
                             <div className="flex flex-col gap-2">
                                 <label htmlFor="nationality" className={labelClass}>Nationality</label>
                                 <InputField
@@ -208,6 +200,7 @@ const PersonalInfoPage = () => {
                                 {errors.nationality && <p className={errorClass}>{errors.nationality}</p>}
                             </div>
 
+                            {/* 5. Email */}
                             <div className="flex flex-col gap-2">
                                 <label htmlFor="email" className={labelClass}>Email</label>
                                 <InputField
@@ -221,6 +214,7 @@ const PersonalInfoPage = () => {
                                 {errors.email && <p className={errorClass}>{errors.email}</p>}
                             </div>
 
+                            {/* 6. Phone Number */}
                             <div className="flex flex-col gap-2">
                                 <label htmlFor="phone" className={labelClass}>Phone Number</label>
                                 <InputField
@@ -234,6 +228,46 @@ const PersonalInfoPage = () => {
                                 {errors.phone && <p className={errorClass}>{errors.phone}</p>}
                             </div>
 
+                            {/* 7. LinkedIn URL */}
+                            <div className="flex flex-col gap-2">
+                                <label htmlFor="linkedin" className={labelClass}>LinkedIn URL <span className="text-(--gray-normal) font-normal">(optional)</span></label>
+                                <InputField
+                                    id="linkedin"
+                                    type="url"
+                                    autoComplete="url"
+                                    placeholder="e.g. https://linkedin.com" value={form.linkedin}
+                                    onChange={(e) => updateField('linkedin', e.target.value)}
+                                />
+                                {errors.linkedin && <p className={errorClass}>{errors.linkedin}</p>}
+                            </div>
+
+                            {/* 8. GitHub URL */}
+                            <div className="flex flex-col gap-2">
+                                <label htmlFor="github" className={labelClass}>GitHub URL <span className="text-(--gray-normal) font-normal">(optional)</span></label>
+                                <InputField
+                                    id="github"
+                                    type="url"
+                                    autoComplete="url"
+                                    placeholder="e.g. https://github.com" value={form.github}
+                                    onChange={(e) => updateField('github', e.target.value)}
+                                />
+                                {errors.github && <p className={errorClass}>{errors.github}</p>}
+                            </div>
+
+                            {/* 9. Portfolio URL */}
+                            <div className="flex flex-col gap-2">
+                                <label htmlFor="portfolio" className={labelClass}>Portfolio/Website URL <span className="text-(--gray-normal) font-normal">(optional)</span></label>
+                                <InputField
+                                    id="portfolio"
+                                    type="url"
+                                    autoComplete="url"
+                                    placeholder="e.g. https://example.com" value={form.portfolio}
+                                    onChange={(e) => updateField('portfolio', e.target.value)}
+                                />
+                                {errors.portfolio && <p className={errorClass}>{errors.portfolio}</p>}
+                            </div>
+
+                            {/* 10. Current address */}
                             <div className="flex flex-col gap-2">
                                 <label htmlFor="current-address" className={labelClass}>Current Address</label>
                                 <InputField
@@ -246,6 +280,7 @@ const PersonalInfoPage = () => {
                                 {errors.currentAddress && <p className={errorClass}>{errors.currentAddress}</p>}
                             </div>
 
+                            {/* 11. Permanent address */}
                             <div className="flex flex-col gap-2">
                                 <label htmlFor="permanent-address" className={labelClass}>Permanent Address</label>
                                 <InputField

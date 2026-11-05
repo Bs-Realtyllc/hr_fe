@@ -5,24 +5,9 @@ import InputField from "@/components/InputField/InputField";
 import { BSRealtyDropdown } from "@bsrealtyllc/design-system";
 import { useParams, useRouter } from "next/navigation";
 import React, { useState } from "react";
-
-type EmergencyContact = {
-    fullName: string;
-    relationship: string;
-    phone: string;
-    email: string;
-    address: string;
-};
+import { useOnboarding, type EmergencyContact } from "../../OnboardingContext";
 
 type Errors = Partial<Record<keyof EmergencyContact, string>>;
-
-const INITIAL_STATE: EmergencyContact = {
-    fullName: "",
-    relationship: "",
-    phone: "",
-    email: "",
-    address: "",
-};
 
 const RELATIONSHIP_OPTIONS = [
 
@@ -70,14 +55,15 @@ function validate(values: EmergencyContact): Errors {
 const EmergencyContactPage = () => {
     const router = useRouter();
     const { value } = useParams<{ value: string }>();
+    const { data, updateSection } = useOnboarding();
+    const form = data.emergencyContact;
 
-    const [form, setForm] = useState<EmergencyContact>(INITIAL_STATE);
     const [errors, setErrors] = useState<Errors>({});
     const [submitting, setSubmitting] = useState(false);
 
 
     function updateField<K extends keyof EmergencyContact>(key: K, value: EmergencyContact[K]) {
-        setForm((prev) => ({ ...prev, [key]: value }));
+        updateSection("emergencyContact", { ...form, [key]: value });
         if (errors[key]) {
             setErrors((prev) => ({ ...prev, [key]: undefined }));
         }

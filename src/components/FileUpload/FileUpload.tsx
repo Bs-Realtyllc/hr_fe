@@ -178,9 +178,15 @@ const FileItemPreview = ({
 
             {/* Preview */}
             <div className="h-[180px] w-full rounded-lg overflow-hidden bg-white">
-                {isImage && previewUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={previewUrl} alt={fileItem.name} className="w-full h-full object-cover object-top" />
+                {isImage ? (
+                    previewUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={previewUrl} alt={fileItem.name} className="w-full h-full object-cover object-top" />
+                    ) : (
+                        <div className="flex h-full items-center justify-center text-sm text-gray-500">
+                            Loading image preview...
+                        </div>
+                    )
                 ) : (
                     <DocumentPreview file={fileItem} />
                 )}

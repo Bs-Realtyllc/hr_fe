@@ -147,11 +147,15 @@ const DocumentPreview = ({ file }: DocumentPreviewProps) => {
     const isPdf =
         file.type === "application/pdf" ||
         file.name.toLowerCase().endsWith(".pdf");
+    const isDocx =
+        file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+        file.name.toLowerCase().endsWith(".docx");
 
     useEffect(() => {
-        if (isPdf) {
+        if (isPdf || !isDocx) {
             setHtml("");
             setLoading(false);
+            setDocxError(false);
             return;
         }
 
@@ -192,10 +196,21 @@ const DocumentPreview = ({ file }: DocumentPreviewProps) => {
         return () => {
             cancelled = true;
         };
-    }, [file, isPdf]);
+    }, [file, isDocx, isPdf]);
 
     if (isPdf) {
         return <PdfPreview file={file} />;
+    }
+
+    if (!isDocx) {
+        return (
+            <div className="flex h-full flex-col items-center justify-center gap-2 overflow-hidden">
+                <p className="text-sm">Preview unavailable</p>
+                <p className="text-xs">
+                    You can still replace or download the file.
+                </p>
+            </div>
+        );
     }
 
     if (loading) {

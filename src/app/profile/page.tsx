@@ -1022,10 +1022,10 @@ export default function ProfilePage() {
   // Also shared across roles — new_login_detected / password_changed apply to
   // every role (see notificationTypes.ts), not just admin.
   const securityNotificationsSection = (
-    <div className='flex flex-col gap-7'>
+    <div className='flex flex-col gap-7 mb-5'>
       <div className='flex flex-col gap-7'>
         <div>
-          <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Security Notifications</h1>
+          <h1 className='text-[16px] font-semibold text-(--neutral-normal) '>Security Notifications</h1>
           <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Receive alerts about important account activity.</p>
         </div>
 
@@ -1059,33 +1059,33 @@ export default function ProfilePage() {
   // list renders directly from whatever GET /notifications/preferences sends
   // back instead of a hardcoded per-role set.
   const notificationSection = (
-      <div className='flex flex-col gap-7'>
-        <div>
-          <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Email Notifications</h1>
-          <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Manage when you receive updates via email.</p>
-        </div>
-
-        <div className="flex flex-col gap-4">
-          {!notificationPreferencesLoaded && (
-            <p className='text-[14px] text-(--soft-white-dark-active)'>Loading…</p>
-          )}
-          {notificationPreferencesLoaded && notificationPreferences
-            .filter((p) => p.group === 'email')
-            .map((pref) => (
-              <div key={pref.type} className='flex justify-between'>
-                <span className='flex items-center gap-2'>
-                  <p className='text-[16px] font-semibold text-(--gray-darker)'>{pref.label}</p>
-                  <NotificationInfo text={pref.description} />
-                </span>
-                <BSRealtyToggle
-                  checked={pref.enabled}
-                  onChange={() => toggleNotificationPreference(pref.type)}
-                  disabled={savingNotificationType === pref.type}
-                />
-              </div>
-            ))}
-        </div>
+    <div className='flex flex-col gap-7'>
+      <div>
+        <h1 className='text-[16px] font-semibold text-(--neutral-normal)'>Email Notifications</h1>
+        <p className='text-[14px] text-(--soft-white-dark-active) font-medium'>Manage when you receive updates via email.</p>
       </div>
+
+      <div className="flex flex-col gap-4">
+        {!notificationPreferencesLoaded && (
+          <p className='text-[14px] text-(--soft-white-dark-active)'>Loading…</p>
+        )}
+        {notificationPreferencesLoaded && notificationPreferences
+          .filter((p) => p.group === 'email')
+          .map((pref) => (
+            <div key={pref.type} className='flex justify-between'>
+              <span className='flex items-center gap-2'>
+                <p className='text-[16px] font-semibold text-(--gray-darker)'>{pref.label}</p>
+                <NotificationInfo text={pref.description} />
+              </span>
+              <BSRealtyToggle
+                checked={pref.enabled}
+                onChange={() => toggleNotificationPreference(pref.type)}
+                disabled={savingNotificationType === pref.type}
+              />
+            </div>
+          ))}
+      </div>
+    </div>
   );
 
 
@@ -1198,7 +1198,7 @@ export default function ProfilePage() {
             <div className='flex justify-between py-6'>
               <div className='min-w-0 max-w-full overflow-x-auto'>
                 <BSRealtyTabs
-                  className='flex-nowrap whitespace-nowrap'
+                  className='flex-nowrap whitespace-nowrap m-1'
                   defaultValue='personal'
                   value={tab}
                   onChange={(newTab) => setTab(newTab as Tab)}
@@ -1423,7 +1423,7 @@ export default function ProfilePage() {
               <div className='flex justify-between py-6'>
                 <div className='min-w-0 max-w-full overflow-x-auto'>
                   <BSRealtyTabs
-                    className='flex-nowrap whitespace-nowrap'
+                    className='flex-nowrap whitespace-nowrap m-1'
                     defaultValue='personal'
                     value={employeeTab}
                     onChange={(newTab) => setEmployeeTab(newTab as EmployeeTab)}

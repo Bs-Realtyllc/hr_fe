@@ -4,13 +4,11 @@ import { useId, useState, type FormEvent } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Button from '@/components/Button/Button'
 import FileUpload from '@/components/FileUpload/FileUpload'
+import { useOnboarding, type ContractDocumentKey, type ContractDocuments } from '../../OnboardingContext'
 
 /* ---------- Document config ---------- */
 
-type DocKey = 'signedContract' | 'offerLetter' | 'otherEmployment'
-
-// We represent each document field's value type explicitly
-type DocumentValue<K extends DocKey> = K extends 'otherEmployment' ? File[] : File | null
+type DocKey = ContractDocumentKey
 
 type DocField = {
     key: DocKey;
@@ -26,19 +24,7 @@ const DOCUMENT_FIELDS: DocField[] = [
     { key: 'otherEmployment', label: 'Other Employment Documents', required: false, optional: true, multiple: true },
 ]
 
-type DocumentsState = {
-    signedContract: File | null;
-    offerLetter: File | null;
-    otherEmployment: File[];
-}
-
 type ErrorsState = Partial<Record<DocKey | 'confirm', string>>
-
-const INITIAL_DOCUMENTS: DocumentsState = {
-    signedContract: null,
-    offerLetter: null,
-    otherEmployment: [],
-}
 
 /* ---------- Page ---------- */
 
@@ -46,26 +32,23 @@ const Page = () => {
     const router = useRouter()
     const confirmId = useId()
     const { value } = useParams<{ value: string }>();
-
-    const [documents, setDocuments] = useState<DocumentsState>(INITIAL_DOCUMENTS)
-    const [confirmed, setConfirmed] = useState(false)
+    const { data, updateSection } = useOnboarding()
+    const documents = data.contractDocuments
+    const confirmed = data.confirmed
     const [errors, setErrors] = useState<ErrorsState>({})
     const [submitError, setSubmitError] = useState<string | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     // Handle single or multi file changes
-    const handleFileChange = (key: DocKey, files: File | File[] | null) => {
-        setDocuments((prev) => ({
-            ...prev,
-            [key]: files
-        }))
+    const handleFileChange = <K extends DocKey>(key: K, files: ContractDocuments[K]) => {
+        updateSection("contractDocuments", { ...documents, [key]: files })
         if (files && (Array.isArray(files) ? files.length > 0 : true)) {
             setErrors((prev) => ({ ...prev, [key]: undefined }))
         }
     }
 
     const handleConfirmChange = (checked: boolean) => {
-        setConfirmed(checked)
+        updateSection("confirmed", checked)
         if (checked) setErrors((prev) => ({ ...prev, confirm: undefined }))
     }
 

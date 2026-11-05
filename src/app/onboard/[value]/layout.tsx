@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import '../../../styles/global.css';
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { OnboardingProvider } from "./OnboardingContext";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
     subsets: ['latin'],
@@ -23,5 +24,9 @@ export default async function OnboardLayout({
 }) {
     const { value } = await params;
     if (!ALLOWED_VALUES.includes(value)) notFound();
-    return <div className={`${plusJakartaSans.className} max-w-full bg-white`}>{children}</div>;
+    return (
+        <OnboardingProvider>
+            <div className={`${plusJakartaSans.className} max-w-full bg-white`}>{children}</div>
+        </OnboardingProvider>
+    );
 }
