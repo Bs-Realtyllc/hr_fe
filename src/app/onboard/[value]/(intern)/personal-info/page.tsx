@@ -5,30 +5,9 @@ import InputField from "@/components/InputField/InputField"
 import { BSRealtyDropdown } from "@bsrealtyllc/design-system"
 import { useParams, useRouter } from "next/navigation"
 import { useState } from "react"
-
-type PersonalInfo = {
-    name: string
-    dob: string // "YYYY-MM-DD"
-    gender: string
-    nationality: string
-    email: string
-    phone: string
-    currentAddress: string
-    permanentAddress: string
-}
+import { useInternOnboarding, type PersonalInfo } from "../_context/InternOnboardingContext"
 
 type Errors = Partial<Record<keyof PersonalInfo, string>>
-
-const INITIAL_STATE: PersonalInfo = {
-    name: '',
-    dob: '',
-    gender: '',
-    nationality: '',
-    email: '',
-    phone: '',
-    currentAddress: '',
-    permanentAddress: '',
-}
 
 const GENDER_OPTIONS = [
     { label: 'Male', value: 'male' },
@@ -81,20 +60,23 @@ const PersonalInfoPage = () => {
     const router = useRouter()
     const { value } = useParams<{ value: string }>();
 
-    const [form, setForm] = useState<PersonalInfo>(INITIAL_STATE)
+    const { data, updateSection } = useInternOnboarding()
+    const form = data.personalInfo
     const [errors, setErrors] = useState<Errors>({})
-    const [sameAsCurrent, setSameAsCurrent] = useState(false)
+    // Restore the checkbox when coming back to this step with matching addresses
+    const [sameAsCurrent, setSameAsCurrent] = useState(
+        () => !!form.currentAddress && form.currentAddress === form.permanentAddress
+    )
     const [submitting, setSubmitting] = useState(false)
 
     function updateField<K extends keyof PersonalInfo>(key: K, value: PersonalInfo[K]) {
-        setForm((prev) => {
-            const next = { ...prev, [key]: value }
-            // Keep permanent address in sync while the checkbox is ticked
-            if (key === 'currentAddress' && sameAsCurrent) {
-                next.permanentAddress = value
-            }
-            return next
-        })
+        // Keep permanent address in sync while the checkbox is ticked
+        updateSection(
+            'personalInfo',
+            key === 'currentAddress' && sameAsCurrent
+                ? { currentAddress: value, permanentAddress: value }
+                : { [key]: value }
+        )
         // Clear the error for this field as the user fixes it
         if (errors[key]) {
             setErrors((prev) => ({ ...prev, [key]: undefined }))
@@ -104,7 +86,7 @@ const PersonalInfoPage = () => {
     function handleSameAsCurrent(checked: boolean) {
         setSameAsCurrent(checked)
         if (checked) {
-            setForm((prev) => ({ ...prev, permanentAddress: prev.currentAddress }))
+            updateSection('personalInfo', { permanentAddress: form.currentAddress })
             setErrors((prev) => ({ ...prev, permanentAddress: undefined }))
         }
     }
@@ -118,15 +100,8 @@ const PersonalInfoPage = () => {
 
         setSubmitting(true)
         try {
-            const payload = {
-                ...form,
-                name: form.name.trim(),
-                email: form.email.trim().toLowerCase(),
-                phone: form.phone.trim(),
-            }
-
-            console.log('Personal info:', payload)
-
+            // Data is already in the shared onboarding state; it's normalised and
+            // posted in one request from the final (contract-sign) step.
             router.push(`/onboard/${value}/employee-info`)
         } catch (err) {
             console.error(err)

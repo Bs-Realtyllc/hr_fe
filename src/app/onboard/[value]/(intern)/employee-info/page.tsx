@@ -5,26 +5,9 @@ import InputField from "@/components/InputField/InputField";
 import { BSRealtyDropdown } from "@bsrealtyllc/design-system";
 import { useParams, useRouter } from "next/navigation";
 import React, { useState } from "react";
-
-type EmploymentInfo = {
-    jobTitle: string;
-    department: string;
-    startDate: string; // "YYYY-MM-DD"
-    reportingManager: string;
-    employmentType: string;
-    workLocation: string;
-};
+import { useInternOnboarding, type EmploymentInfo } from "../_context/InternOnboardingContext";
 
 type Errors = Partial<Record<keyof EmploymentInfo, string>>;
-
-const INITIAL_STATE: EmploymentInfo = {
-    jobTitle: "",
-    department: "",
-    startDate: "",
-    reportingManager: "",
-    employmentType: "",
-    workLocation: "",
-};
 
 const DEPARTMENT_OPTIONS = [
     { label: "Admin", value: "admin" },
@@ -67,12 +50,13 @@ const EmploymentInfoPage = () => {
     const router = useRouter();
     const { value } = useParams<{ value: string }>();
 
-    const [form, setForm] = useState<EmploymentInfo>(INITIAL_STATE);
+    const { data, updateSection } = useInternOnboarding();
+    const form = data.employmentInfo;
     const [errors, setErrors] = useState<Errors>({});
     const [submitting, setSubmitting] = useState(false);
 
     function updateField<K extends keyof EmploymentInfo>(key: K, value: EmploymentInfo[K]) {
-        setForm((prev) => ({ ...prev, [key]: value }));
+        updateSection("employmentInfo", { [key]: value });
         if (errors[key]) {
             setErrors((prev) => ({ ...prev, [key]: undefined }));
         }
@@ -87,15 +71,7 @@ const EmploymentInfoPage = () => {
 
         setSubmitting(true);
         try {
-            const payload = {
-                ...form,
-                jobTitle: form.jobTitle.trim(),
-                reportingManager: form.reportingManager.trim() || null,
-                workLocation: form.workLocation.trim(),
-            };
-
-            console.log("Employment info:", payload);
-
+            // Saved in the shared onboarding state; submitted from the final step.
             router.push(`/onboard/${value}/emergency-contact`)
         } catch (err) {
             console.error(err);

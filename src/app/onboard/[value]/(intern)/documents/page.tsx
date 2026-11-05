@@ -4,16 +4,9 @@ import { useState, type FormEvent } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Button from '@/components/Button/Button'
 import FileUpload from '@/components/FileUpload/FileUpload'
+import { useInternOnboarding, type DocumentKey as DocKey } from '../_context/InternOnboardingContext'
 
 /* ---------- Document config ---------- */
-
-type DocKey =
-    | 'citizenshipFront'
-    | 'citizenshipBack'
-    | 'panFront'
-    | 'panBack'
-    | 'educational'
-    | 'additional'
 
 type DocField = { key: DocKey; label: string; required: boolean }
 type DocSection = { title: string; fields: DocField[] }
@@ -42,17 +35,7 @@ const DOCUMENT_SECTIONS: DocSection[] = [
     },
 ]
 
-type DocumentsState = Record<DocKey, File | null>
 type ErrorsState = Partial<Record<DocKey, string>>
-
-const INITIAL_DOCUMENTS: DocumentsState = {
-    citizenshipFront: null,
-    citizenshipBack: null,
-    panFront: null,
-    panBack: null,
-    educational: null,
-    additional: null,
-}
 
 /* ---------- Page ---------- */
 
@@ -61,13 +44,14 @@ const Page = () => {
     const { value } = useParams<{ value: string }>();
 
 
-    const [documents, setDocuments] = useState<DocumentsState>(INITIAL_DOCUMENTS)
+    const { data, updateSection } = useInternOnboarding()
+    const documents = data.documents
     const [errors, setErrors] = useState<ErrorsState>({})
     const [submitError, setSubmitError] = useState<string | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     const handleFileChange = (key: DocKey, file: File | null) => {
-        setDocuments((prev) => ({ ...prev, [key]: file }))
+        updateSection('documents', { [key]: file })
         // Clear the error as soon as the user uploads a file
         if (file) setErrors((prev) => ({ ...prev, [key]: undefined }))
     }
@@ -93,21 +77,10 @@ const Page = () => {
             return
         }
 
-        const formData = new FormData()
-            ; (Object.keys(documents) as DocKey[]).forEach((key) => {
-                const file = documents[key]
-                if (file) formData.append(key, file)
-            })
-
         try {
             setIsSubmitting(true)
-            // Replace with your backend endpoint or onboarding service
-            // const res = await fetch('/api/onboarding/documents', {
-            //     method: 'POST',
-            //     body: formData,
-            // })
-            // if (!res.ok) throw new Error('Upload failed')
-
+            // Files are kept in the shared onboarding state; uploaded with
+            // everything else from the final (contract-sign) step.
             router.push(`/onboard/${value}/contract-sign`)
         } catch {
             setSubmitError("Your documents couldn't be uploaded. Check your connection and try again.")

@@ -5,24 +5,9 @@ import InputField from "@/components/InputField/InputField";
 import { BSRealtyDropdown } from "@bsrealtyllc/design-system";
 import { useParams, useRouter } from "next/navigation";
 import React, { useState } from "react";
-
-type EmergencyContact = {
-    fullName: string;
-    relationship: string;
-    phone: string;
-    email: string;
-    address: string;
-};
+import { useInternOnboarding, type EmergencyContact } from "../_context/InternOnboardingContext";
 
 type Errors = Partial<Record<keyof EmergencyContact, string>>;
-
-const INITIAL_STATE: EmergencyContact = {
-    fullName: "",
-    relationship: "",
-    phone: "",
-    email: "",
-    address: "",
-};
 
 const RELATIONSHIP_OPTIONS = [
 
@@ -71,13 +56,13 @@ const EmergencyContactPage = () => {
     const router = useRouter();
     const { value } = useParams<{ value: string }>();
 
-    const [form, setForm] = useState<EmergencyContact>(INITIAL_STATE);
+    const { data, updateSection } = useInternOnboarding();
+    const form = data.emergencyContact;
     const [errors, setErrors] = useState<Errors>({});
     const [submitting, setSubmitting] = useState(false);
 
-
     function updateField<K extends keyof EmergencyContact>(key: K, value: EmergencyContact[K]) {
-        setForm((prev) => ({ ...prev, [key]: value }));
+        updateSection("emergencyContact", { [key]: value });
         if (errors[key]) {
             setErrors((prev) => ({ ...prev, [key]: undefined }));
         }
@@ -92,16 +77,7 @@ const EmergencyContactPage = () => {
 
         setSubmitting(true);
         try {
-            const payload = {
-                fullName: form.fullName.trim(),
-                relationship: form.relationship,
-                phone: form.phone.trim(),
-                email: form.email.trim().toLowerCase() || null,
-                address: form.address.trim() || null,
-            };
-
-            console.log("Emergency contact:", payload);
-
+            // Saved in the shared onboarding state; submitted from the final step.
             router.push(`/onboard/${value}/documents`)
         } catch (err) {
             console.error(err);

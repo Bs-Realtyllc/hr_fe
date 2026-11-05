@@ -4,10 +4,17 @@ import { useId, useState, type FormEvent } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Button from '@/components/Button/Button'
 import FileUpload from '@/components/FileUpload/FileUpload'
+import {
+    buildFormData,
+    findIncompleteStep,
+    useInternOnboarding,
+    type ContractDocumentKey as DocKey,
+} from '../_context/InternOnboardingContext'
+
+const SUBMIT_URL = `${process.env.NEXT_PUBLIC_API_URL}/onboard`
 
 /* ---------- Document config ---------- */
 
-type DocKey = 'signedContract' | 'offerLetter' | 'otherEmployment'
 type DocField = { key: DocKey; label: string; required: boolean }
 
 const DOCUMENT_FIELDS: DocField[] = [
@@ -16,14 +23,7 @@ const DOCUMENT_FIELDS: DocField[] = [
     { key: 'otherEmployment', label: 'Other Employment Documents (optional)', required: false },
 ]
 
-type DocumentsState = Record<DocKey, File | null>
 type ErrorsState = Partial<Record<DocKey | 'confirm', string>>
-
-const INITIAL_DOCUMENTS: DocumentsState = {
-    signedContract: null,
-    offerLetter: null,
-    otherEmployment: null,
-}
 
 /* ---------- Page ---------- */
 
@@ -33,14 +33,15 @@ const Page = () => {
     const { value } = useParams<{ value: string }>();
 
 
-    const [documents, setDocuments] = useState<DocumentsState>(INITIAL_DOCUMENTS)
-    const [confirmed, setConfirmed] = useState(false)
+    const { data, updateSection, setConfirmed, reset } = useInternOnboarding()
+    const documents = data.contractDocuments
+    const confirmed = data.confirmed
     const [errors, setErrors] = useState<ErrorsState>({})
     const [submitError, setSubmitError] = useState<string | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     const handleFileChange = (key: DocKey, file: File | null) => {
-        setDocuments((prev) => ({ ...prev, [key]: file }))
+        updateSection('contractDocuments', { [key]: file })
         if (file) setErrors((prev) => ({ ...prev, [key]: undefined }))
     }
 
@@ -68,23 +69,35 @@ const Page = () => {
             return
         }
 
-        const formData = new FormData()
-            ; (Object.keys(documents) as DocKey[]).forEach((key) => {
-                const file = documents[key]
-                if (file) formData.append(key, file)
-            })
-        formData.append('confirmed', 'true')
+        // State is in memory only — a refresh mid-flow clears earlier steps
+        const incompleteStep = findIncompleteStep(data)
+        if (incompleteStep) {
+            setSubmitError(`Your ${incompleteStep} details are missing. Go back to that step, complete it, and submit again.`)
+            return
+        }
 
         try {
             setIsSubmitting(true)
-            // Replace with your backend endpoint or onboarding service
-            // const res = await fetch('/api/onboarding/submit', {
-            //     method: 'POST',
-            //     body: formData,
-            // })
-            // if (!res.ok) throw new Error('Submit failed')
+            const res = await fetch(SUBMIT_URL, {
+                method: 'POST',
+                body: buildFormData(data, value),
+            })
+            console.log(buildFormData(data, value))
 
-            router.push(`/`)
+            if (!res.ok) {
+                let message: string | null = null
+                try {
+                    const errBody = await res.json()
+                    message = errBody.error || errBody.message || null
+                } catch {
+                    // Response wasn't JSON — fall back to the generic message
+                }
+                setSubmitError(message ?? "Your information couldn't be submitted. Try again.")
+                return
+            }
+
+            // router.push(`/onboard/${value}/success`)
+            reset()
         } catch {
             setSubmitError("Your information couldn't be submitted. Check your connection and try again.")
         } finally {
