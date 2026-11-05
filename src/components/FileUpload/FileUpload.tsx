@@ -20,6 +20,7 @@ type FileUploadProps = {
     /** e.g. "PAN Card - Front" */
     label?: ReactNode
     required?: boolean
+    optional?: boolean
     name?: string
     /** Controlled value (optional) */
     value?: File | null
@@ -123,6 +124,7 @@ const dashedBorder = (color: string) =>
 const FileUpload = ({
     label,
     required = false,
+    optional = false,
     name,
     value,
     onChange,
@@ -238,6 +240,9 @@ const FileUpload = ({
                 <label htmlFor={inputId} className="text-[14px] font-medium text-(--gray-dark-active)">
                     {label}
                     {required && <span className="text-(--error-normal-hover)">*</span>}
+                    {
+                        optional && <span className="text-(--soft-white-dark-hover)">(optional)</span>
+                    }
                 </label>
             )}
 
@@ -280,7 +285,8 @@ const FileUpload = ({
                         </p>
                     </div>
                     <div onClick={(e) => e.stopPropagation()}>
-                        <Button type="button" onClick={openPicker} disabled={disabled}>
+                        <Button type="button"
+                            size='xs' onClick={openPicker} disabled={disabled}>
                             <span className="flex items-center gap-2">
                                 <SmallUploadIcon />
                                 Upload

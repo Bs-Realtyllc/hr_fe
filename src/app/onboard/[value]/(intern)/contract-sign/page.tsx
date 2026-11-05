@@ -8,12 +8,12 @@ import FileUpload from '@/components/FileUpload/FileUpload'
 /* ---------- Document config ---------- */
 
 type DocKey = 'signedContract' | 'offerLetter' | 'otherEmployment'
-type DocField = { key: DocKey; label: string; required: boolean }
+type DocField = { key: DocKey; label: string; required: boolean; optional?: boolean }
 
 const DOCUMENT_FIELDS: DocField[] = [
     { key: 'signedContract', label: 'Signed Employment/Internship Contract', required: true },
-    { key: 'offerLetter', label: 'Offer Letter (optional)', required: false },
-    { key: 'otherEmployment', label: 'Other Employment Documents (optional)', required: false },
+    { key: 'offerLetter', label: 'Offer Letter ', required: false, optional: true },
+    { key: 'otherEmployment', label: 'Other Employment Documents', required: false, optional: true },
 ]
 
 type DocumentsState = Record<DocKey, File | null>
@@ -84,7 +84,7 @@ const Page = () => {
             // })
             // if (!res.ok) throw new Error('Submit failed')
 
-            router.push(`/`)
+            router.push(`/onboard/${value}/success`)
         } catch {
             setSubmitError("Your information couldn't be submitted. Check your connection and try again.")
         } finally {
@@ -93,27 +93,28 @@ const Page = () => {
     }
 
     return (
-        <div className="relative flex max-w-[820px] min-h-screen px-15 pt-22 pb-8">
-            <div className="absolute top-9 left-15">
-                <img width={111} height={20} src="/logos/gitgi-hr-logo.svg" alt="Gitgi HR" />
-            </div>
+        <div className="relative flex max-w-[820px] min-h-screen px-4 lg:px-15 pt-20 lg:pt-22 pb-5 lg:pb-8">
+            <div className=' absolute top-7.5 left-4 lg:left-15  '>
+                <img className='h-4 w-22 lg:h-5 lg:w-28' src="/logos/gitgi-hr-logo.svg" alt="" />
+            </div >
 
             <div className="flex w-full  flex-col gap-13">
                 <div className="flex flex-col gap-1">
-                    <h2 className="text-[24px] text-(--neutral-normal) font-medium">Other Documents</h2>
-                    <p className="text-[16px] font-medium text-[#4B5768]">
+                    <h2 className="text-[22px] lg:text-[24px] text-(--neutral-normal) font-semibold">Other Documents</h2>
+                    <p className="text-[16px] lg:font-medium text-(--gray-dark)">
                         Upload any additional employment-related documents.
                     </p>
                 </div>
 
                 <form className="flex flex-col gap-10" onSubmit={handleSubmit} noValidate>
-                    <div className="grid grid-cols-2 md:grid-cols-2 gap-6">
-                        {DOCUMENT_FIELDS.map(({ key, label, required }) => (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {DOCUMENT_FIELDS.map(({ key, label, required, optional }) => (
                             <FileUpload
                                 key={key}
                                 name={key}
                                 label={label}
                                 required={required}
+                                optional={optional}
                                 value={documents[key]}
                                 onChange={(file) => handleFileChange(key, file)}
                                 error={errors[key]}
@@ -136,7 +137,7 @@ const Page = () => {
                                 />
                                 <label
                                     htmlFor={confirmId}
-                                    className="text-[14px] text-(--neutral-dark) cursor-pointer select-none"
+                                    className="text-[14px] font-medium text-(--neutral-dark) cursor-pointer select-none"
                                 >
                                     I confirm that the information and documents provided are accurate and
                                     complete to the best of my knowledge.
@@ -159,14 +160,15 @@ const Page = () => {
                             <Button
                                 className="outline text-(--blue-sky-hover)!"
                                 variant="text"
-                                size="medium"
+                                size="small"
                                 type="button"
                                 onClick={() => router.push(`/onboard/${value}/documents`)}
                                 disabled={isSubmitting}
                             >
                                 Back
                             </Button>
-                            <Button type="submit" disabled={isSubmitting}>
+                            <Button type="submit"
+                                size='small' disabled={isSubmitting}>
                                 {isSubmitting ? 'Submitting...' : 'Submit Information'}
                             </Button>
                         </div>

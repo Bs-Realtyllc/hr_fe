@@ -13,9 +13,15 @@
 .main-content {
   flex: 1;
   margin-left: var(--sidebar-width);
-  padding: 0;
   min-height: 100vh;
+  --page-container-gutter: 24px;
+  padding-inline: var(--page-container-gutter);
 }
+
+/* .page-container {
+  --page-container-gutter: 24px;
+  margin-inline: var(--page-container-gutter);
+} */
 
 /* ── Mobile topbar (hidden on desktop) ── */
 .mobile-topbar {
@@ -24,7 +30,6 @@
 
 /* ── Sidebar ── */
 .sidebar {
-  /* border: 1px solid black; */
   position: fixed;
   top: 0;
   left: 0;
@@ -217,7 +222,8 @@
 
 /* ── Page Header ── */
 .page-header {
-  /* margin-bottom: 20px; */
+  margin-bottom: 20px;
+  margin-inline: calc(0px - var(--page-container-gutter, 0px));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -228,6 +234,10 @@
 
 .page-header > .flex.justify-between {
   width: 100%;
+}
+
+.page-container .fixed .page-header {
+  margin-inline: 0;
 }
 
 .page-header > .flex.justify-between > *:first-child {
@@ -279,6 +289,12 @@
     margin-left: 0;
     padding: 16px;
     padding-top: 76px;
+    padding-inline: 24px;
+  }
+
+  .page-container {
+    --page-container-gutter: 0px;
+    margin-inline: var(--page-container-gutter);
   }
 
   .mobile-topbar {

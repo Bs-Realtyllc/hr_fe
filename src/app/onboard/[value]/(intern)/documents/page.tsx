@@ -117,41 +117,44 @@ const Page = () => {
     }
 
     return (
-        <div className="relative flex w-full min-h-screen px-15 pt-22 pb-8">
-            <div className="absolute top-9 left-15">
-                <img width={111} height={20} src="/logos/gitgi-hr-logo.svg" alt="Gitgi HR" />
-            </div>
+        <div className="relative  flex w-full min-h-screen px-4 lg:px-15 pt-20 lg:pt-22 pb-5 lg:pb-8">
+            <div className=' absolute top-7.5 left-4 lg:left-15  '>
+                <img className='h-4 w-22 lg:h-5 lg:w-28' src="/logos/gitgi-hr-logo.svg" alt="" />
+            </div >
 
-            <div className="flex w-full max-w-[880px] flex-col gap-13">
+            <div className="flex w-full max-w-[880px] flex-col gap-7 lg:gap-13">
                 <div className="flex flex-col gap-2">
-                    <h2 className="text-[24px] text-(--neutral-normal) font-medium">Upload your documents</h2>
-                    <p className="text-[16px] text-[#4B5768]">
+                    <h2 className="text-[20px] lg:text-[24px] text-(--neutral-normal) font-semibold">Upload your documents</h2>
+                    <p className="text-[16px] text-(--gray-dark)">
                         Upload the required documents to complete your HR record.
                     </p>
                 </div>
 
-                <form className=" flex flex-col gap-8" onSubmit={handleSubmit} noValidate>
-                    {DOCUMENT_SECTIONS.map((section) => (
-                        <section key={section.title} className=" flex flex-col gap-5">
-                            <h3 className="text-[18px] font-medium text-(--neutral-normal)">{section.title}</h3>
+                <form className="flex flex-col gap-5 lg:gap-8" onSubmit={handleSubmit} noValidate>
+                    <div className=' flex flex-col gap-5 lg:gap-6'>
+                        {DOCUMENT_SECTIONS.map((section) => (
+                            <section key={section.title} className=" flex flex-col gap-5">
+                                <h3 className="text-[16px] lg:text-[18px] font-medium text-(--neutral-normal)">{section.title}</h3>
 
-                            <div className=" flex justify-between">
-                                {section.fields.map(({ key, label, required }) => (
-                                    <FileUpload
+                                <div className="flex flex-wrap gap-5 lg:justify-between">
+                                    {section.fields.map(({ key, label, required }) => (
+                                        <FileUpload
 
-                                        key={key}
-                                        name={key}
-                                        label={label}
-                                        required={required}
-                                        value={documents[key]}
-                                        onChange={(file) => handleFileChange(key, file)}
-                                        error={errors[key]}
-                                        disabled={isSubmitting}
-                                    />
-                                ))}
-                            </div>
-                        </section>
-                    ))}
+                                            key={key}
+                                            name={key}
+                                            label={label}
+                                            required={required}
+                                            value={documents[key]}
+                                            onChange={(file) => handleFileChange(key, file)}
+                                            error={errors[key]}
+                                            disabled={isSubmitting}
+                                        />
+                                    ))}
+                                </div>
+                            </section>
+
+                        ))}
+                    </div>
 
                     {submitError && (
                         <p role="alert" className=" text-[13px] text-(--error-normal)">
@@ -163,14 +166,14 @@ const Page = () => {
                         <Button
                             className="outline text-(--blue-sky-hover)!"
                             variant="text"
-                            size="medium"
+                            size="small"
                             type='button'
                             onClick={() => router.push(`/onboard/${value}/emergency-contact`)}
                             disabled={isSubmitting}
                         >
                             Back
                         </Button>
-                        <Button type="submit" disabled={isSubmitting}>
+                        <Button type="submit" size="small" disabled={isSubmitting}>
                             {isSubmitting ? 'Uploading...' : 'Next Page'}
                         </Button>
                     </div>

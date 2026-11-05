@@ -105,14 +105,14 @@ const EmploymentInfoPage = () => {
     }
 
     return (
-        <div className="flex w-full justify-between items-center px-15 pt-22 pb-8">
-            <div className="absolute top-9 left-15">
-                <img width={111} height={20} src="/logos/gitgi-hr-logo.svg" alt="Gitgi HR" />
-            </div>
+        <div className="flex w-full justify-between items-center px-4 lg:px-15 pt-20  lg:pt-22 pb-8">
+            <div className=' absolute top-7.5 left-4 lg:left-15  '>
+                <img className='h-4 w-22 lg:h-5 lg:w-28' src="/logos/gitgi-hr-logo.svg" alt="" />
+            </div >
 
-            <div className="flex w-[534px] flex-col gap-13">
+            <div className="flex w-full lg:w-[534px] flex-col lg:gap-13">
                 <div className="flex flex-col gap-5">
-                    <h2 className="text-[16px] text-(--neutral-normal) font-semibold">Employment Information</h2>
+                    <h2 className="text-[16px] text-(--neutral-normal) font-medium lg:font-semibold">Employment Information</h2>
 
                     <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
                         <div className="flex flex-col gap-5">
@@ -190,10 +190,11 @@ const EmploymentInfoPage = () => {
                                 />
                                 {errors.workLocation && <p className={errorClass}>{errors.workLocation}</p>}
                             </div>
-                            <div className="flex items-center gap-2 text-[12px] font-medium text-(--blue-dark-normal)">
+                            <div className="flex mt-1 lg:mt-0  items-start gap-1 text-[12px] font-medium text-(--blue-dark-normal)">
+
                                 <span
                                     aria-hidden="true"
-                                    className="size-4 shrink-0 bg-current"
+                                    className="size-3 my-1 shrink-0 bg-(--blue-dark-normal)"
                                     style={{
                                         maskImage: "url('/icons/info-circle.svg')",
                                         maskSize: "contain",
@@ -201,6 +202,7 @@ const EmploymentInfoPage = () => {
                                         maskPosition: "center",
                                     }}
                                 />
+
                                 <p>Employee ID will be automatically generated after the form is submitted.</p>
                             </div>
                         </div>
@@ -209,14 +211,14 @@ const EmploymentInfoPage = () => {
                             <Button
                                 className="outline text-(--blue-sky-hover)!"
                                 variant="text"
-                                size="medium"
+                                size="small"
                                 type="button"
-                                onClick={() => router.push(`/onboard/${value}/personal-info`)}
+                                onClick={() => router.push(`/onboard/${value}/personal-information`)}
                                 disabled={submitting}
                             >
                                 Back
                             </Button>
-                            <Button variant="primary" size="medium" type="submit" disabled={submitting}>
+                            <Button variant="primary" size="small" type="submit" disabled={submitting}>
                                 {submitting ? "Saving…" : "Next Page"}
                             </Button>
                         </div>
@@ -225,7 +227,7 @@ const EmploymentInfoPage = () => {
                 </div>
             </div>
 
-            <div>
+            <div className="hidden lg:flex">
                 <img src="/images/intern-onboarding.png" alt="Onboarding illustration" width={489} height={721} />
             </div>
         </div>

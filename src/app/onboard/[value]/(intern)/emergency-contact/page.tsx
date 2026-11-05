@@ -111,14 +111,14 @@ const EmergencyContactPage = () => {
     }
 
     return (
-        <div className="flex w-full justify-between items-center px-15 pt-22 pb-8">
-            <div className="absolute top-9 left-15">
-                <img width={111} height={20} src="/logos/gitgi-hr-logo.svg" alt="Gitgi HR" />
-            </div>
+        <div className="flex w-full justify-between items-center px-4 lg:px-15 pt-20 lg:pt-22 lg:pb-8">
+            <div className=' absolute top-7.5 left-4 lg:left-15  '>
+                <img className='h-4 w-22 lg:h-5 lg:w-28' src="/logos/gitgi-hr-logo.svg" alt="" />
+            </div >
 
-            <div className="flex w-[534px] flex-col gap-13">
+            <div className="flex w-full pb-5 lg:pb-0  lg:w-[534px] flex-col">
                 <div className="flex flex-col gap-5">
-                    <h2 className="text-[16px] text-(--neutral-normal) font-semibold">Emergency Contact</h2>
+                    <h2 className="text-[16px] tracking-[0.15px] text-(--neutral-normal) font-medium lg:font-semibold">Emergency Contact</h2>
 
                     <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
                         <div className="flex flex-col gap-3">
@@ -195,14 +195,14 @@ const EmergencyContactPage = () => {
                             <Button
                                 className="outline text-(--blue-sky-hover)!"
                                 variant="text"
-                                size="medium"
+                                size="small"
                                 type="button"
-                                onClick={() => router.push(`/onboard/${value}/employee-info`)}
+                                onClick={() => router.push(`/onboard/${value}/employment-information`)}
                                 disabled={submitting}
                             >
                                 Back
                             </Button>
-                            <Button variant="primary" size="medium" type="submit" disabled={submitting}>
+                            <Button variant="primary" size="small" type="submit" disabled={submitting}>
                                 {submitting ? "Saving…" : "Next Page"}
                             </Button>
                         </div>
@@ -210,7 +210,7 @@ const EmergencyContactPage = () => {
                 </div>
             </div>
 
-            <div>
+            <div className='hidden lg:flex'>
                 <img src="/images/intern-onboarding.png" alt="Onboarding illustration" width={489} height={721} />
             </div>
         </div>

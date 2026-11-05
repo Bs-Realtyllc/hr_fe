@@ -1,133 +1,76 @@
 'use client';
-
 import { useEffect, useRef, useState } from 'react';
-
 import { api } from '@/lib/api';
-
 import { getToken } from '@/lib/auth';
-
 import { useAuth } from '@/contexts/AuthContext';
-
 import PdfThumbnail from './PdfThumbnail';
-
 import Button from './Button/Button';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL!.replace('/api', '');
-
 interface Policy {
-
   id: number;
-
   type: string;
-
   category: string;
-
   title: string;
-
   file_path: string;
-
   folder_path: string | null;
-
   version: number;
-
   uploaded_by_name: string | null;
-
   created_at: string;
-
   date_modified?: string | null;
-
   file_size?: string | number | null;
-
   is_pinned: boolean | number;
-
 }
 
 interface Acknowledgement {
-
   id: number;
-
   policy_id: number;
-
   status: 'pending' | 'approved' | 'rejected';
-
   rejection_reason: string | null;
-
   submitted_at: string;
-
 }
 
 interface Submission {
-
   id: number;
-
   employee_id: number;
-
   employee_name: string;
-
   employee_email: string;
-
   signed_file_path: string;
-
   status: 'pending' | 'approved' | 'rejected';
-
   rejection_reason: string | null;
-
   submitted_at: string;
-
 }
 
 function fmtDate(d: string) {
-
   return new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-
 }
 
 function titleFromFilename(filename: string) {
-
   return filename
-
     .replace(/\.pdf$/i, '')
-
     .replace(/[_-]+/g, ' ')
-
     .trim();
-
 }
 
 function isRecent(dateStr: string) {
-
   const ageMs = Date.now() - new Date(dateStr).getTime();
-
   return ageMs < 2 * 24 * 60 * 60 * 1000; // 2 days
-
 }
 
 function slugify(text: string) {
-
   return text
-
     .toLowerCase()
-
     .replace(/[^a-z0-9]+/g, '-')
-
     .replace(/^-+|-+$/g, '') || 'document';
-
 }
 
 interface PolicyDocumentsProps {
-
   category?: string;
-
   heading: string;
-
   adminSubtitle: string;
-
   employeeSubtitle: string;
-
   emptyMessage: any;
-
   requiresSignature?: boolean;
-
 }
 
 export default function PolicyDocuments({
@@ -213,25 +156,15 @@ export default function PolicyDocuments({
 
 
   const ackFor = (policyId: number) => myAcks.find(a => a.policy_id === policyId);
-
   const loadMyAcks = () =>
-
     api.get<Acknowledgement[]>('/policies/acknowledgements/mine').then(setMyAcks).catch(() => { });
-
   useEffect(() => { if (requiresSignature && !isAdmin) loadMyAcks(); }, [requiresSignature, isAdmin]);
-
   const load = () =>
-
     api.get<Policy[]>(category ? `/policies?category=${category}` : '/policies')
-
       .then(setPolicies).catch(() => { }).finally(() => setLoading(false));
-
   useEffect(() => { load(); }, [category]);
-
   const filteredPolicies = policies.filter(p =>
-
     p.title.toLowerCase().includes(search.toLowerCase())
-
   );
 
   async function handleFilePicked(
@@ -493,187 +426,105 @@ export default function PolicyDocuments({
   }
 
   function startSigning(p: Policy) {
-
     setSignTarget(p);
-
     setError('');
-
     signInputRef.current?.click();
-
   }
 
   async function handleSignFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
-
     const picked = e.target.files?.[0] ?? null;
-
     e.target.value = '';
-
     const policy = signTarget;
-
     setSignTarget(null);
-
     if (!picked || !policy) return;
-
     setSigningId(policy.id);
-
     setError('');
-
     try {
-
       const token = getToken();
-
       const fd = new FormData();
-
       fd.append('file', picked);
-
       const res = await fetch(`${BACKEND}/api/policies/${policy.id}/acknowledgements`, {
-
         method: 'POST',
-
         headers: token ? { Authorization: `Bearer ${token}` } : {},
-
         body: fd,
-
       });
-
       if (!res.ok) throw new Error();
-
       await loadMyAcks();
-
     } catch {
 
       setError('Could not submit your signed copy. Please try again.');
-
     } finally {
-
       setSigningId(null);
-
     }
 
   }
 
   function openReview(p: Policy) {
-
     setReviewFor(p);
-
     setRejectingId(null);
-
     setRejectReason('');
-
     setSubmissionsLoading(true);
-
     api.get<Submission[]>(`/policies/${p.id}/acknowledgements`)
-
       .then(setSubmissions)
-
       .catch(() => setSubmissions([]))
-
       .finally(() => setSubmissionsLoading(false));
-
   }
 
   async function approveSubmission(sub: Submission) {
-
     setReviewingId(sub.id);
-
     try {
-
       await api.put(`/policies/acknowledgements/${sub.id}/review`, { status: 'approved' });
-
       setSubmissions(subs => subs.map(s => s.id === sub.id ? { ...s, status: 'approved', rejection_reason: null } : s));
-
     } catch {
-
       setError('Could not approve this submission. Please try again.');
-
     } finally {
-
       setReviewingId(null);
-
     }
-
   }
 
   async function rejectSubmission(sub: Submission) {
-
     if (!rejectReason.trim()) return;
-
     setReviewingId(sub.id);
-
     try {
-
       await api.put(`/policies/acknowledgements/${sub.id}/review`, {
-
         status: 'rejected',
-
         rejection_reason: rejectReason.trim(),
-
       });
 
       setSubmissions(subs => subs.map(s => s.id === sub.id ? { ...s, status: 'rejected', rejection_reason: rejectReason.trim() } : s));
-
       setRejectingId(null);
-
       setRejectReason('');
-
     } catch {
-
       setError('Could not reject this submission. Please try again.');
-
     } finally {
-
       setReviewingId(null);
-
     }
-
   }
 
   async function togglePin(p: Policy) {
-
     const nextPinned = !p.is_pinned;
-
     setPinningId(p.id);
-
     try {
-
       await api.put(`/policies/${p.id}/pin`, { pinned: nextPinned });
-
       await load();
-
     } catch {
-
       setError('Could not update pin. Please try again.');
-
     } finally {
-
       setPinningId(null);
-
     }
-
   }
 
   async function handleDelete(p: Policy) {
-
     if (!window.confirm(`Delete "${p.title}"? This cannot be undone.`)) return;
-
     setDeletingId(p.id);
-
     try {
-
       await api.delete(`/policies/${p.id}`);
-
       await load();
-
     } catch {
-
       setError('Delete failed. Please try again.');
-
     } finally {
-
       setDeletingId(null);
-
     }
-
   }
 
   // short filter
@@ -775,7 +626,7 @@ export default function PolicyDocuments({
 
   return (
 
-    <div className='m-6 h-full flex flex-col gsp-6'>
+    <div className='my-6 h-full flex flex-col gsp-6'>
 
       {policies.length > 0 && <div className="w-full  flex gap-3">
         <div className="search-bar w-full">
@@ -786,15 +637,10 @@ export default function PolicyDocuments({
           />
 
           <input
-
             className="form-input"
-
             placeholder="Search by title..."
-
             value={search}
-
             onChange={e => setSearch(e.target.value)}
-
           />
 
         </div>
@@ -835,7 +681,6 @@ export default function PolicyDocuments({
               height={20}
             />
           </button>
-
         </div>
       </div>
 
@@ -855,10 +700,10 @@ export default function PolicyDocuments({
 
             <>
 
-              <div className="flex gap-2">
+              <div className="flex mt-4 gap-2">
                 {/* Upload individual PDFs */}
                 <Button
-                  variant="secondary"
+                  variant="primary"
                   size="small"
                   onClick={() => {
                     setError('');
@@ -870,7 +715,7 @@ export default function PolicyDocuments({
                 </Button>
 
                 {/* Upload folder */}
-                <Button
+                {/* <Button
                   variant="primary"
                   size="small"
                   onClick={() => {
@@ -880,7 +725,7 @@ export default function PolicyDocuments({
                   disabled={uploading}
                 >
                   {uploading ? 'Uploading...' : '+ Upload folder'}
-                </Button>
+                </Button> */}
               </div>
 
               {/* Individual PDF input */}
@@ -904,35 +749,23 @@ export default function PolicyDocuments({
                 onChange={handleFilePicked}
               />
             </>
-
           )}
 
         </div>
 
-
-
         {error && (
-
           <p style={{ color: 'var(--color-error)', fontSize: 13, marginBottom: 12 }}>{error}</p>
-
         )}
 
         {loading ? (
 
           <p className="text-muted" style={{ fontSize: 13.5 }}>Loading…</p>
-
         ) : filteredPolicies.length === 0 ? (
-
           <p className=" h-full text-muted" style={{ fontSize: 13.5 }}>
-
             {policies.length === 0 ? <div className=' h-full rounded-lg bg-(--soft-white-light) flex '>
-
               {emptyMessage}
-
             </div> : 'No documents match your search.'}
-
           </p>
-
         ) : (
 
           <>
@@ -1563,212 +1396,117 @@ export default function PolicyDocuments({
 
       {
         reviewFor && (
-
           <div className="modal-overlay" onClick={() => setReviewFor(null)}>
-
             <div
-
               className="modal"
-
               style={{ maxWidth: 600, width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
-
               onClick={e => e.stopPropagation()}
-
             >
 
               <div className="modal-header">
-
                 <h2>Submissions — {reviewFor.title}</h2>
-
                 <Button variant='text' size='small' onClick={() => setReviewFor(null)}>X</Button>
-
               </div>
 
               <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
-
                 {submissionsLoading ? (
-
                   <p className="text-muted" style={{ fontSize: 13.5 }}>Loading…</p>
-
                 ) : submissions.length === 0 ? (
-
                   <p className="text-muted" style={{ fontSize: 13.5 }}>No one has submitted a signed copy yet.</p>
-
                 ) : (
-
                   submissions.map(sub => {
-
                     const badgeClass = sub.status === 'approved' ? 'badge-success'
-
                       : sub.status === 'rejected' ? 'badge-error' : 'badge-warning';
-
                     const badgeLabel = sub.status === 'approved' ? 'Approved'
-
                       : sub.status === 'rejected' ? 'Rejected' : 'Pending Review';
-
                     return (
-
                       <div key={sub.id} style={{ border: '1px solid var(--color-border)', borderRadius: 10, padding: 12 }}>
-
                         <div
-
                           style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
-
                           onClick={() => reviewFor && previewSubmission(sub, reviewFor.title)}
-
                           title="Preview signed copy"
-
                         >
-
                           <div style={{ flex: 1 }}>
-
                             <div style={{ fontWeight: 700, fontSize: 13.5 }}>{sub.employee_name}</div>
-
                             <div className="text-muted" style={{ fontSize: 11.5 }}>
-
                               {sub.employee_email} · Submitted {fmtDate(sub.submitted_at)}
-
                             </div>
-
                           </div>
-
                           <span className={`badge ${badgeClass}`}>{badgeLabel}</span>
-
                         </div>
 
                         <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
 
                           <a
-
                             href={`${BACKEND}/uploads/policy-acks/${sub.signed_file_path}`}
-
                             target="_blank"
-
                             rel="noreferrer"
-
                             className="btn btn-ghost btn-sm"
-
                             style={{ textDecoration: 'none' }}
-
                           >
-
                             Download
-
                           </a>
 
                           {sub.status !== 'approved' && (
-
                             <button
-
                               className="btn btn-primary btn-sm"
-
                               onClick={() => approveSubmission(sub)}
-
                               disabled={reviewingId === sub.id}
-
                             >
-
                               Approve
-
                             </button>
-
                           )}
 
                           {sub.status !== 'rejected' && rejectingId !== sub.id && (
 
                             <button
-
                               className="btn btn-danger btn-sm"
-
                               onClick={() => { setRejectingId(sub.id); setRejectReason(''); }}
-
                               disabled={reviewingId === sub.id}
-
                             >
-
                               Reject
-
                             </button>
-
                           )}
-
                         </div>
 
                         {rejectingId === sub.id && (
 
                           <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-
                             <textarea
-
                               className="form-input"
-
                               placeholder="Reason for rejection (sent to the employee by email)"
-
                               value={rejectReason}
-
                               onChange={e => setRejectReason(e.target.value)}
-
                               rows={2}
-
                             />
-
                             <div style={{ display: 'flex', gap: 6 }}>
-
                               <button
-
                                 className="btn btn-danger btn-sm"
-
                                 onClick={() => rejectSubmission(sub)}
-
                                 disabled={!rejectReason.trim() || reviewingId === sub.id}
-
                               >
-
                                 {reviewingId === sub.id ? 'Rejecting…' : 'Confirm Reject'}
-
                               </button>
-
                               <button className="btn btn-ghost btn-sm" onClick={() => setRejectingId(null)}>
-
                                 Cancel
-
                               </button>
-
                             </div>
-
                           </div>
-
                         )}
-
                         {sub.status === 'rejected' && sub.rejection_reason && rejectingId !== sub.id && (
-
                           <div style={{ color: 'var(--color-error)', fontSize: 12, marginTop: 8 }}>
-
                             Reason: {sub.rejection_reason}
-
                           </div>
-
                         )}
-
                       </div>
-
                     );
-
                   })
-
                 )}
-
               </div>
-
             </div>
-
           </div>
-
         )
       }
-
     </div >
-
   );
-
 }

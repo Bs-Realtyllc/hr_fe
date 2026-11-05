@@ -19,6 +19,7 @@ import EmployeePersonalInformation from '@/components/profile/employee/EmployeeP
 import EmployeeEmployment from '@/components/profile/employee/EmployeeEmployment';
 import EmployeeBank from '@/components/profile/employee/EmployeeBank';
 import EmployeeDocuments from '@/components/profile/employee/EmployeeDocuments';
+import ErrorPage from '@/components/ErrorPage';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL!.replace('/api', '');
 
@@ -394,8 +395,11 @@ export default function ProfilePage() {
       return;
     }
     // Phone is optional, but if filled it must look like a phone number.
-    if (phone && !/^\+?[0-9\s-]{7, 15}$/.test(phone)) {
-      flash('Enter a valid phone number.', 'err');
+    // Allows optional country code (+ followed by 1-3 digits) and a 10-digit number
+    const phoneRegex = /^\d{3}[-\s]?\d{3}[-\s]?\d{4}$/;
+
+    if (phone && !phoneRegex.test(phone)) {
+      flash('Enter a valid 10-digit phone number.', 'err');
       return;
     }
 
@@ -572,11 +576,12 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>
+      <div className=" " style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>
         {loadError ? (
           <div className="flex flex-col items-center gap-3">
-            <p>{loadError}</p>
-            <Button variant="primary" size="small" type="button" onClick={load}>Retry</Button>
+            {/* <p>{loadError}</p>
+            <Button variant="primary" size="small" type="button" onClick={load}>Retry</Button> */}
+            <ErrorPage />
           </div>
         ) : 'Loading profile…'}
       </div>
@@ -631,7 +636,7 @@ export default function ProfilePage() {
       )}
 
       {/* Profile container */}
-      <div className='mt-6 mx-6 mb-6'>
+      <div className='mt-6 mb-6'>
         {/* ── Profile Header Card ───────────────────────────────────────────── */}
         <div className="mb-9 flex items-center justify-between rounded-lg border border-(--soft-white-normal-hover) bg-(--soft-white-light) p-6">
           <div className="flex flex-col items-center justify-center gap-1">
@@ -729,17 +734,19 @@ export default function ProfilePage() {
                   { label: 'Notification', value: 'notification' },
                 ]}
               />
-              <div className="flex justify-end">
-                <Button
-                  variant='primary'
-                  size='small'
-                  type="button"
-                  disabled={saving || (tab === 'personal' && !isDirty)}
-                  onClick={handleSaveChanges}
-                >
-                  {saving ? 'Saving…' : 'Save Changes'}
-                </Button>
-              </div>
+              {(tab === 'personal' || tab === 'organization') && (
+                <div className="flex justify-end">
+                  <Button
+                    variant='primary'
+                    size='small'
+                    type="button"
+                    disabled={saving || (tab === 'personal' && !isDirty)}
+                    onClick={handleSaveChanges}
+                  >
+                    {saving ? 'Saving…' : 'Save Changes'}
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* ── PERSONAL INFO ─────────────────────────────────────────────── */}
