@@ -8,7 +8,7 @@ import { BSRealtyAvatar } from '@bsrealtyllc/design-system';
 import { setSidebarOpen } from '@/store/slices/sidebarSlice'
 import { useEffect, useRef, useState } from 'react';
 
-type Role = 'admin' | 'lead' | 'employee';
+type Role = 'admin' | 'lead' | 'employee' | 'intern';
 
 interface NavItem {
   href: string;
@@ -24,7 +24,7 @@ const allNav: { section: string; items: NavItem[] }[] = [
   {
     section: 'Overview',
     items: [
-      { href: '/', label: 'Dashboard', icon: 'dashboard.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
+      { href: '/', label: 'Dashboard', icon: 'dashboard.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
     ],
   },
   {
@@ -217,9 +217,9 @@ export default function Sidebar() {
           >
 
             <BSRealtyAvatar size='md' name={user ? initials(user.name) : '?'} />
-            <div className="flex flex-col w-full">
+            <div className="flex flex-col min-w-0 w-full">
               <div className='flex  items-center justify-between'>
-                <span className="text-[14px] font-medium leading-5 text-(--neutral-normal)">{user?.name ?? ''}</span>
+                <span className="text-[14px] font-medium leading-5 text-(--neutral-normal) truncate">{user?.name ?? ''}</span>
                 <span
                   className="border inline-block h-4 w-4 bg-(--neutral-dark)"
                   style={{
@@ -234,7 +234,7 @@ export default function Sidebar() {
                   }}
                 />
               </div>
-              <span className="text-[12px] font-normal text-(--gray-normal-active)">{user?.email ?? ''}</span>
+              <span className="text-[12px] font-normal text-(--gray-normal-active) truncate">{user?.email ?? ''}</span>
             </div>
 
 
@@ -242,17 +242,17 @@ export default function Sidebar() {
           {
             showProfileToogle && (
               <>
-                <div className="absolute flex flex-col justify-end py-3 px-2 rounded-lg gap-2 left-6 bottom-24  bg-(--soft-white-light) shadow-(--shadow-sm) z-50 overflow-visible " >
+                <div className=" w-[230px] absolute flex flex-col justify-end py-3 px-2 rounded-lg gap-2 left-4 bottom-24  bg-(--soft-white-light) shadow-(--shadow-sm) z-50 overflow-hidden " >
                   <div className={`flex items-center p-2 gap-2 cursor-pointer rounded-lg  $
                   ? 'bg-(--blue-sky-light)'
                   : 'hover:bg-(--blue-sky-light)'
                   }`}
                   >
-                    <BSRealtyAvatar size='md' name={user ? initials(user.name) : '?'} />
+                    <BSRealtyAvatar size='sm' name={user ? initials(user.name) : '?'} />
 
-                    <div className="flex flex-col">
-                      <span className="text-[14px] font-medium leading-5 text-(--neutral-normal)">{user?.name ?? ''}</span>
-                      <span className="sidebar-profile-email">{user?.email ?? ''}</span>
+                    <div className="flex min-w-0 flex-col">
+                      <span className="text-[14px] font-medium leading-5 text-(--neutral-normal) truncate">{user?.name ?? ''}</span>
+                      <span className="sidebar-profile-email truncate">{user?.email ?? ''}</span>
                     </div>
                     <span
                       className="inline-block h-4 w-4 bg-(--neutral-dark)"

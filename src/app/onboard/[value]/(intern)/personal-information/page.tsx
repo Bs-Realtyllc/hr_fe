@@ -2,7 +2,7 @@
 
 import Button from "@/components/Button/Button"
 import InputField from "@/components/InputField/InputField"
-import { BSRealtyDropdown } from "@bsrealtyllc/design-system"
+import { BSRealtyDatePicker, BSRealtyDropdown } from "@bsrealtyllc/design-system"
 import { useParams, useRouter } from "next/navigation"
 import { useState } from "react"
 
@@ -127,7 +127,7 @@ const PersonalInfoPage = () => {
 
             console.log('Personal info:', payload)
 
-            router.push(`/onboard/${value}/employee-info`)
+            router.push(`/onboard/${value}/educational-information`)
         } catch (err) {
             console.error(err)
         } finally {
@@ -135,22 +135,24 @@ const PersonalInfoPage = () => {
         }
     }
 
-    return (
-        <div className=" flex w-full justify-between items-center px-15 pt-22 pb-8">
-            <div className="absolute top-9 left-15">
-                <img width={111} height={20} src="/logos/gitgi-hr-logo.svg" alt="Gitgi HR" />
-            </div>
 
-            <div className="flex w-[534px] flex-col gap-13">
-                <div className="flex flex-col gap-2">
-                    <h1 className="text-[24px] text-(--neutral-normal) font-medium">Finish setting up your HR profile</h1>
-                    <p className="text-[16px] font-medium text-[#4B5768]">
+
+    return (
+        <div className=" flex w-full justify-between items-center px-4 lg:px-15 pt-22 p-5 lg:pb-8">
+            <div className=' absolute top-7.5 left-4 lg:left-15  '>
+                <img className='h-4 w-22 lg:h-5 lg:w-28' src="/logos/gitgi-hr-logo.svg" alt="" />
+            </div >
+
+            <div className="flex  w-full lg:w-[534px] flex-col gap-7 lg:gap-13">
+                <div className="flex  flex-col gap-1 lg:gap-2 mr-12 lg:mr-0">
+                    <h1 className="text-[20px] lg:text-[24px] leading-7 lg:leading-8 text-(--neutral-normal) font-semibold ">Finish setting up your HR profile</h1>
+                    <p className="text-[14px] lg:text-[16px] font-normal lg:font-medium text-(--gray-dark)">
                         Provide your personal, employment, and document details to complete your employee record. Fields marked optional can be skipped.
                     </p>
                 </div>
 
-                <div className="flex flex-col gap-5">
-                    <h2 className="text-[18px] text-(--neutral-normal) font-medium">Personal Information</h2>
+                <div className="flex flex-col gap-4 lg:gap-5">
+                    <h2 className="text-[16px] lg:text-[18px] text-(--neutral-normal) font-semibold">Personal Information</h2>
 
                     <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
                         <div className="flex flex-col gap-5">
@@ -167,13 +169,12 @@ const PersonalInfoPage = () => {
 
                             <div className="flex flex-col gap-2">
                                 <label htmlFor="dob" className={labelClass}>Date of Birth</label>
-                                <InputField
-                                    type="date"
-                                    id="dob"
-                                    value={form.dob}
-                                    max={today()}
-                                    onChange={(e) => updateField('dob', e.target.value)}
 
+                                <BSRealtyDatePicker
+                                    label=""
+                                    dateFormat="MM-DD-YYYY"
+                                    value={form.dob}
+                                    onChange={(value) => updateField('dob', value)}
                                 />
                                 {errors.dob && <p className={errorClass}>{errors.dob}</p>}
                             </div>
@@ -254,8 +255,8 @@ const PersonalInfoPage = () => {
                                     disabled={sameAsCurrent}
                                     onChange={(e) => updateField('permanentAddress', e.target.value)}
                                 />
-                                <label className="flex items-center gap-2 text-[12px] font-medium text-(--gray-dark) cursor-pointer">
-                                    <input
+                                <label className="flex items-center gap-1 lg:gap-2 text-[12px] font-medium text-(--gray-dark) cursor-pointer">
+                                    <input className='w-4 h-4'
                                         type="checkbox"
                                         checked={sameAsCurrent}
                                         onChange={(e) => handleSameAsCurrent(e.target.checked)}
@@ -267,7 +268,7 @@ const PersonalInfoPage = () => {
                         </div>
 
                         <div>
-                            <Button variant="primary" size="medium" type="submit" disabled={submitting}>
+                            <Button variant="primary" size="small" type="submit" disabled={submitting}>
                                 {submitting ? 'Saving…' : 'Next'}
                             </Button>
                         </div>
@@ -275,7 +276,7 @@ const PersonalInfoPage = () => {
                 </div>
             </div>
 
-            <div>
+            <div className='hidden lg:flex'>
                 <img src="/images/intern-onboarding.png" alt="Onboarding illustration" width={489} height={721} />
             </div>
         </div>

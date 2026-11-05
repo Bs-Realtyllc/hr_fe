@@ -230,8 +230,9 @@ const EmployeeDocuments = () => {
                                         }
                                         required={required}
                                         value={documents[key]}
+                                        multiple={false}
                                         onChange={(file) =>
-                                            handleFileChange(key, file)
+                                            handleFileChange(key, Array.isArray(file) ? file[0] ?? null : file)
                                         }
                                         error={errors[key]}
                                     />

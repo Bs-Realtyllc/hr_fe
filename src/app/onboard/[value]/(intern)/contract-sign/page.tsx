@@ -8,21 +8,36 @@ import FileUpload from '@/components/FileUpload/FileUpload'
 /* ---------- Document config ---------- */
 
 type DocKey = 'signedContract' | 'offerLetter' | 'otherEmployment'
-type DocField = { key: DocKey; label: string; required: boolean }
+
+// We represent each document field's value type explicitly
+type DocumentValue<K extends DocKey> = K extends 'otherEmployment' ? File[] : File | null
+
+type DocField = {
+    key: DocKey;
+    label: string;
+    required: boolean;
+    optional?: boolean;
+    multiple?: boolean;
+}
 
 const DOCUMENT_FIELDS: DocField[] = [
-    { key: 'signedContract', label: 'Signed Employment/Internship Contract', required: true },
-    { key: 'offerLetter', label: 'Offer Letter (optional)', required: false },
-    { key: 'otherEmployment', label: 'Other Employment Documents (optional)', required: false },
+    { key: 'signedContract', label: 'Signed Employment/Internship Contract/offerLetter', required: true },
+    // { key: 'offerLetter', label: 'Offer Letter ', required: false, optional: true },
+    { key: 'otherEmployment', label: 'Other Employment Documents', required: false, optional: true, multiple: true },
 ]
 
-type DocumentsState = Record<DocKey, File | null>
+type DocumentsState = {
+    signedContract: File | null;
+    offerLetter: File | null;
+    otherEmployment: File[];
+}
+
 type ErrorsState = Partial<Record<DocKey | 'confirm', string>>
 
 const INITIAL_DOCUMENTS: DocumentsState = {
     signedContract: null,
     offerLetter: null,
-    otherEmployment: null,
+    otherEmployment: [],
 }
 
 /* ---------- Page ---------- */
@@ -32,16 +47,21 @@ const Page = () => {
     const confirmId = useId()
     const { value } = useParams<{ value: string }>();
 
-
     const [documents, setDocuments] = useState<DocumentsState>(INITIAL_DOCUMENTS)
     const [confirmed, setConfirmed] = useState(false)
     const [errors, setErrors] = useState<ErrorsState>({})
     const [submitError, setSubmitError] = useState<string | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
-    const handleFileChange = (key: DocKey, file: File | null) => {
-        setDocuments((prev) => ({ ...prev, [key]: file }))
-        if (file) setErrors((prev) => ({ ...prev, [key]: undefined }))
+    // Handle single or multi file changes
+    const handleFileChange = (key: DocKey, files: File | File[] | null) => {
+        setDocuments((prev) => ({
+            ...prev,
+            [key]: files
+        }))
+        if (files && (Array.isArray(files) ? files.length > 0 : true)) {
+            setErrors((prev) => ({ ...prev, [key]: undefined }))
+        }
     }
 
     const handleConfirmChange = (checked: boolean) => {
@@ -52,7 +72,14 @@ const Page = () => {
     const validate = () => {
         const newErrors: ErrorsState = {}
         DOCUMENT_FIELDS.forEach(({ key, label, required }) => {
-            if (required && !documents[key]) newErrors[key] = `Upload your ${label}.`
+            const val = documents[key]
+            if (required) {
+                if (Array.isArray(val)) {
+                    if (val.length === 0) newErrors[key] = `Upload your ${label}.`
+                } else {
+                    if (!val) newErrors[key] = `Upload your ${label}.`
+                }
+            }
         })
         if (!confirmed) newErrors.confirm = 'Confirm that your information is accurate to submit.'
         setErrors(newErrors)
@@ -70,8 +97,15 @@ const Page = () => {
 
         const formData = new FormData()
             ; (Object.keys(documents) as DocKey[]).forEach((key) => {
-                const file = documents[key]
-                if (file) formData.append(key, file)
+                const val = documents[key]
+                if (Array.isArray(val)) {
+                    // Append each file in the array under the same key or key[] depending on backend requirements
+                    val.forEach((file) => {
+                        formData.append(`${key}[]`, file)
+                    })
+                } else if (val) {
+                    formData.append(key, val)
+                }
             })
         formData.append('confirmed', 'true')
 
@@ -84,7 +118,7 @@ const Page = () => {
             // })
             // if (!res.ok) throw new Error('Submit failed')
 
-            router.push(`/`)
+            router.push(`/onboard/${value}/success`)
         } catch {
             setSubmitError("Your information couldn't be submitted. Check your connection and try again.")
         } finally {
@@ -93,29 +127,31 @@ const Page = () => {
     }
 
     return (
-        <div className="relative flex max-w-[820px] min-h-screen px-15 pt-22 pb-8">
-            <div className="absolute top-9 left-15">
-                <img width={111} height={20} src="/logos/gitgi-hr-logo.svg" alt="Gitgi HR" />
-            </div>
+        <div className="relative flex max-w-[820px] min-h-screen px-4 lg:px-15 pt-20 lg:pt-22 pb-5 lg:pb-8">
+            <div className=' absolute top-7.5 left-4 lg:left-15  '>
+                <img className='h-4 w-22 lg:h-5 lg:w-28' src="/logos/gitgi-hr-logo.svg" alt="" />
+            </div >
 
             <div className="flex w-full  flex-col gap-13">
                 <div className="flex flex-col gap-1">
-                    <h2 className="text-[24px] text-(--neutral-normal) font-medium">Other Documents</h2>
-                    <p className="text-[16px] font-medium text-[#4B5768]">
+                    <h2 className="text-[22px] lg:text-[24px] text-(--neutral-normal) font-semibold">Other Documents</h2>
+                    <p className="text-[16px] lg:font-medium text-(--gray-dark)">
                         Upload any additional employment-related documents.
                     </p>
                 </div>
 
                 <form className="flex flex-col gap-10" onSubmit={handleSubmit} noValidate>
-                    <div className="grid grid-cols-2 md:grid-cols-2 gap-6">
-                        {DOCUMENT_FIELDS.map(({ key, label, required }) => (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6  items-end">
+                        {DOCUMENT_FIELDS.map(({ key, label, required, optional, multiple }) => (
                             <FileUpload
                                 key={key}
                                 name={key}
                                 label={label}
                                 required={required}
+                                optional={optional}
+                                multiple={multiple}
                                 value={documents[key]}
-                                onChange={(file) => handleFileChange(key, file)}
+                                onChange={(files) => handleFileChange(key, files)}
                                 error={errors[key]}
                                 disabled={isSubmitting}
                             />
@@ -136,7 +172,7 @@ const Page = () => {
                                 />
                                 <label
                                     htmlFor={confirmId}
-                                    className="text-[14px] text-(--neutral-dark) cursor-pointer select-none"
+                                    className="text-[14px] font-medium text-(--neutral-dark) cursor-pointer select-none"
                                 >
                                     I confirm that the information and documents provided are accurate and
                                     complete to the best of my knowledge.
@@ -159,14 +195,15 @@ const Page = () => {
                             <Button
                                 className="outline text-(--blue-sky-hover)!"
                                 variant="text"
-                                size="medium"
+                                size="small"
                                 type="button"
                                 onClick={() => router.push(`/onboard/${value}/documents`)}
                                 disabled={isSubmitting}
                             >
                                 Back
                             </Button>
-                            <Button type="submit" disabled={isSubmitting}>
+                            <Button type="submit"
+                                size='small' disabled={isSubmitting}>
                                 {isSubmitting ? 'Submitting...' : 'Submit Information'}
                             </Button>
                         </div>

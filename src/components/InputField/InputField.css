@@ -2,8 +2,6 @@
    InputField Based on HR InputField design
    ========================================================= */
 
-@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
-
 /* ── Input Field ─────────────────────────────────────────── */
 
 .input-field {
@@ -20,7 +18,7 @@
   display: flex;
   align-items: center;
   overflow: hidden;
-  font-family: "Plus Jakarta Sans", sans-serif;
+  font-family: var(--font-body);
   background-color: var(--soft-white-light-active);
   border: 1px solid var(--soft-white-dark-hover);
   border-radius: var(--radius-sm);
@@ -38,7 +36,7 @@
   border: none;
   outline: none;
   background: transparent;
-  font-family: "Lato", sans-serif;
+  font-family: var(--font-body);
   font-size: 16px;
   font-weight: 400;
   line-height: 24px;

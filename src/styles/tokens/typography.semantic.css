@@ -1,14 +1,13 @@
 /*
  * Semantic Type Roles
  * Source: Figma — HR Management System (node 4:1207, "Typography")
- * Typeface: IBM Plex Sans
+ * Typeface: Plus Jakarta Sans
  *
  * Each role has a Baseline weight and an Emphasized weight, matching the
  * "Baseline" / "Emphasis" columns in the Figma type scale.
  */
 
 :root {
-  /* --font-body: var(--font-ibm-plex-sans), 'IBM Plex Sans', system-ui, sans-serif; */
   --font-body:
     var(--font-plus-jakarta-sans), "Plus Jakarta Sans", system-ui, sans-serif;
 

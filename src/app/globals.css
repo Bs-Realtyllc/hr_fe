@@ -40,7 +40,7 @@
   --sidebar-width: 240px;
 
   /* Typography */
-  --font-family: "Inter", "Roboto", system-ui, sans-serif;
+  --font-family: var(--font-plus-jakarta-sans), "Plus Jakarta Sans", system-ui, sans-serif;
 
   /* Radius / Shadow */
   --radius-sm: 6px;

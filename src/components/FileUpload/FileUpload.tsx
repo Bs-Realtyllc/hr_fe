@@ -7,7 +7,6 @@ import {
 import Button from "../Button/Button"
 import DocumentPreview from "../DocumentPreview"
 
-
 const ACCEPTED_MIME_TYPES = [
     "image/png",
     "image/jpeg",
@@ -17,17 +16,16 @@ const ACCEPTED_MIME_TYPES = [
 const ACCEPTED_EXTENSIONS = [".png", ".jpg", ".jpeg", ".pdf", ".docx"]
 
 type FileUploadProps = {
-    /** e.g. "PAN Card - Front" */
     label?: ReactNode
     required?: boolean
+    optional?: boolean
     name?: string
-    /** Controlled value (optional) */
-    value?: File | null
-    onChange?: (file: File | null) => void
+    value?: File | File[] | null
+    onChange?: (files: File | File[] | null) => void
     maxSizeMB?: number
-    /** External error, e.g. from react-hook-form */
     error?: string
     disabled?: boolean
+    multiple?: boolean
 }
 
 const formatSize = (bytes: number) => {
@@ -38,7 +36,6 @@ const formatSize = (bytes: number) => {
 
 const isAccepted = (file: File) => {
     const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase()
-    // Some browsers send an empty MIME type for .docx, so check the extension too
     return ACCEPTED_MIME_TYPES.includes(file.type) || ACCEPTED_EXTENSIONS.includes(ext)
 }
 
@@ -66,36 +63,11 @@ const ImageFileIcon = () => (
 )
 
 const PdfIcon = () => (
-    <svg
-        width="16"
-        height="16"
-        viewBox="0 0 16 18"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-    >
-        <path
-            d="M13 5H9V1L13 5ZM9 1H3C2.45 1 2 1.45 2 2V16C2 16.55 2.45 17 3 17H13C13.55 17 14 16.55 14 16V5L9 1Z"
-            stroke="#A51D1D"
-            strokeWidth="1.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        />
-
-        <text
-            x="8"
-            y="12"
-            textAnchor="middle"
-            fontSize="4.5"
-            fontWeight="bold"
-            fill="#A51D1D"
-        >
-            PDF
-        </text>
+    <svg width="16" height="16" viewBox="0 0 16 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M13 5H9V1L13 5ZM9 1H3C2.45 1 2 1.45 2 2V16C2 16.55 2.45 17 3 17H13C13.55 17 14 16.55 14 16V5L9 1Z" stroke="#A51D1D" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        <text x="8" y="12" textAnchor="middle" fontSize="4.5" fontWeight="bold" fill="#A51D1D">PDF</text>
     </svg>
 );
-
-
-
 
 const DocFileIcon = ({ size = 16 }: { size?: number }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -103,8 +75,6 @@ const DocFileIcon = ({ size = 16 }: { size?: number }) => (
         <path d="M14 3v5h5M9 13h6M9 17h4" stroke="#D92D20" strokeWidth="2" strokeLinecap="round" />
     </svg>
 )
-
-
 
 const DotsIcon = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="#5A687D" aria-hidden="true">
@@ -114,59 +84,151 @@ const DotsIcon = () => (
     </svg>
 )
 
-// Dashed border as an SVG so the dash/gap can be tuned: stroke-dasharray='<dash>, <gap>'
 const dashedBorder = (color: string) =>
     `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg'%3e%3crect x='1' y='1' width='calc(100%25 - 2px)' height='calc(100%25 - 2px)' fill='none' rx='12' ry='12' stroke='${encodeURIComponent(color)}' stroke-width='1.5' stroke-dasharray='6%2c 14' stroke-linecap='round'/%3e%3c/svg%3e")`
 
-/* ---------------- Component ---------------- */
+/* ---------------- Isolated File Item Preview Component ---------------- */
+type FileItemPreviewProps = {
+    fileItem: File
+    idx: number
+    menuOpenIndex: number | null
+    setMenuOpenIndex: (idx: number | null) => void
+    disabled: boolean
+    handleReplace: (idx: number) => void
+    handleRemove: (idx: number) => void
+    menuRef: (element: HTMLDivElement | null) => void
+}
+
+const FileItemPreview = ({
+    fileItem,
+    idx,
+    menuOpenIndex,
+    setMenuOpenIndex,
+    disabled,
+    handleReplace,
+    handleRemove,
+    menuRef,
+}: FileItemPreviewProps) => {
+    const isImage = fileItem.type.startsWith("image/")
+    const isPdf = fileItem.type === "application/pdf" || fileItem.name.toLowerCase().endsWith(".pdf")
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+
+    useEffect(() => {
+        if (!isImage) {
+            setPreviewUrl(null)
+            return
+        }
+        const url = URL.createObjectURL(fileItem)
+        setPreviewUrl(url)
+        return () => URL.revokeObjectURL(url)
+    }, [fileItem, isImage])
+
+    return (
+        <div className="flex flex-col gap-2 pb-1 border-b border-gray-200 last:border-b-0">
+            {/* Header: icon + file name + 3-dot menu */}
+            <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                    {isImage ? <ImageFileIcon /> : isPdf ? <PdfIcon /> : <DocFileIcon />}
+                    <span className="text-[13px] font-medium text-(--gray-dark-active) truncate" title={fileItem.name}>
+                        {fileItem.name}
+                    </span>
+                </div>
+
+                <div
+                    ref={menuOpenIndex === idx ? menuRef : undefined}
+                    className="relative shrink-0"
+                >
+                    <button
+                        type="button"
+                        aria-label="File options"
+                        aria-haspopup="menu"
+                        aria-expanded={menuOpenIndex === idx}
+                        disabled={disabled}
+                        onClick={() => setMenuOpenIndex(menuOpenIndex === idx ? null : idx)}
+                        className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-(--blue-salt-light-hover) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--blue-sky-dark-hover)/40"
+                    >
+                        <DotsIcon />
+                    </button>
+
+                    {menuOpenIndex === idx && (
+                        <div
+                            role="menu"
+                            className="absolute right-0 top-8 z-30 w-32 py-1 bg-white rounded-lg border border-(--blue-salt-light-hover) shadow-lg"
+                        >
+                            <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => handleReplace(idx)}
+                                className="w-full text-left px-3 py-2 text-[13px] text-(--gray-dark-active) hover:bg-(--soft-white-normal)"
+                            >
+                                Replace
+                            </button>
+                            <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => handleRemove(idx)}
+                                className="w-full text-left px-3 py-2 text-[13px] text-(--error-normal-active) hover:bg-(--warning-light)"
+                            >
+                                Remove
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Preview */}
+            <div className="h-[180px] w-full rounded-lg overflow-hidden bg-white">
+                {isImage && previewUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={previewUrl} alt={fileItem.name} className="w-full h-full object-cover object-top" />
+                ) : (
+                    <DocumentPreview file={fileItem} />
+                )}
+            </div>
+        </div>
+    )
+}
+
+/* ---------------- Main Component ---------------- */
 
 const FileUpload = ({
     label,
     required = false,
+    optional = false,
     name,
     value,
     onChange,
     maxSizeMB = 10,
     error,
     disabled = false,
+    multiple = false,
 }: FileUploadProps) => {
     const inputId = useId()
     const inputRef = useRef<HTMLInputElement>(null)
-    const menuRef = useRef<HTMLDivElement>(null)
-
-    const [internalFile, setInternalFile] = useState<File | null>(null)
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+    const [internalFiles, setInternalFiles] = useState<File[]>([])
     const [isDragging, setIsDragging] = useState(false)
     const [localError, setLocalError] = useState<string | null>(null)
-    const [menuOpen, setMenuOpen] = useState(false)
+    const [menuOpenIndex, setMenuOpenIndex] = useState<number | null>(null)
+    const [showAllFiles, setShowAllFiles] = useState(false)
+    const [menuElement, setMenuElement] = useState<HTMLDivElement | null>(null)
 
-    const file = value !== undefined ? value : internalFile
-    const isImage = !!file && file.type.startsWith("image/")
-    const isPdf =
-        !!file &&
-        (file.type === "application/pdf" ||
-            file.name.toLowerCase().endsWith(".pdf"));
+    const files: File[] = (() => {
+        if (value !== undefined) {
+            if (!value) return []
+            return Array.isArray(value) ? value : [value]
+        }
+        return internalFiles
+    })()
+
     const shownError = error || localError
 
-    // Image preview URL
     useEffect(() => {
-        if (!file || !file.type.startsWith("image/")) {
-            setPreviewUrl(null)
-            return
-        }
-        const url = URL.createObjectURL(file)
-        setPreviewUrl(url)
-        return () => URL.revokeObjectURL(url)
-    }, [file])
-
-    // Close the 3-dot menu on outside click or Escape
-    useEffect(() => {
-        if (!menuOpen) return
+        if (menuOpenIndex === null) return
         const onClick = (e: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+            if (menuElement && !menuElement.contains(e.target as Node)) setMenuOpenIndex(null)
         }
         const onKey = (e: globalThis.KeyboardEvent) => {
-            if (e.key === "Escape") setMenuOpen(false)
+            if (e.key === "Escape") setMenuOpenIndex(null)
         }
         document.addEventListener("mousedown", onClick)
         document.addEventListener("keydown", onKey)
@@ -174,21 +236,34 @@ const FileUpload = ({
             document.removeEventListener("mousedown", onClick)
             document.removeEventListener("keydown", onKey)
         }
-    }, [menuOpen])
+    }, [menuElement, menuOpenIndex])
 
-    const handleFile = (selected: File | null | undefined) => {
-        if (!selected) return
-        if (!isAccepted(selected)) {
-            setLocalError("This file type isn't supported. Upload a PNG, JPG, PDF or DOCX.")
-            return
+    const processFiles = (incomingList: FileList | File[] | null) => {
+        if (!incomingList || incomingList.length === 0) return
+        const newFiles = Array.from(incomingList)
+
+        for (const f of newFiles) {
+            if (!isAccepted(f)) {
+                setLocalError("This file type isn't supported. Upload a PNG, JPG, PDF or DOCX.")
+                return
+            }
+            if (f.size > maxSizeMB * 1024 * 1024) {
+                setLocalError(`This file is ${formatSize(f.size)}. The limit is ${maxSizeMB}MB.`)
+                return
+            }
         }
-        if (selected.size > maxSizeMB * 1024 * 1024) {
-            setLocalError(`This file is ${formatSize(selected.size)}. The limit is ${maxSizeMB}MB.`)
-            return
-        }
+
         setLocalError(null)
-        setInternalFile(selected)
-        onChange?.(selected)
+
+        let updatedFiles: File[]
+        if (multiple) {
+            updatedFiles = [...files, ...newFiles]
+        } else {
+            updatedFiles = [newFiles[0]]
+        }
+
+        setInternalFiles(updatedFiles)
+        onChange?.(multiple ? updatedFiles : updatedFiles[0])
     }
 
     const openPicker = () => {
@@ -196,20 +271,21 @@ const FileUpload = ({
     }
 
     const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-        handleFile(e.target.files?.[0])
-        e.target.value = "" // allow re-selecting the same file
+        processFiles(e.target.files)
+        e.target.value = ""
     }
 
-    const handleReplace = () => {
-        setMenuOpen(false)
+    const handleReplace = (_index: number) => {
+        setMenuOpenIndex(null)
         openPicker()
     }
 
-    const handleRemove = () => {
-        setMenuOpen(false)
-        setInternalFile(null)
-        setLocalError(null)
-        onChange?.(null)
+    const handleRemove = (indexToRemove: number) => {
+        setMenuOpenIndex(null)
+        const updated = files.filter((_, idx) => idx !== indexToRemove)
+        setInternalFiles(updated)
+        onChange?.(multiple ? (updated.length ? updated : null) : null)
+        if (updated.length <= 1) setShowAllFiles(false)
     }
 
     const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
@@ -223,7 +299,7 @@ const FileUpload = ({
     const handleDrop = (e: DragEvent<HTMLDivElement>) => {
         e.preventDefault()
         setIsDragging(false)
-        if (!disabled) handleFile(e.dataTransfer.files?.[0])
+        if (!disabled) processFiles(e.dataTransfer.files)
     }
     const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -232,12 +308,16 @@ const FileUpload = ({
         }
     }
 
+    const displayedFiles = multiple && !showAllFiles ? files.slice(0, 1) : files
+    const hiddenCount = files.length - 1
+
     return (
         <div className="flex flex-col gap-2 w-full max-w-[400px]">
             {label && (
                 <label htmlFor={inputId} className="text-[14px] font-medium text-(--gray-dark-active)">
                     {label}
                     {required && <span className="text-(--error-normal-hover)">*</span>}
+                    {optional && <span className="text-(--soft-white-dark-hover)">(optional)</span>}
                 </label>
             )}
 
@@ -247,12 +327,13 @@ const FileUpload = ({
                 name={name}
                 type="file"
                 className="hidden"
+                multiple={multiple}
                 accept={ACCEPTED_EXTENSIONS.join(",")}
                 onChange={handleInputChange}
                 disabled={disabled}
             />
 
-            {!file ? (
+            {files.length === 0 ? (
                 /* ================= BEFORE UPLOAD ================= */
                 <div
                     role="button"
@@ -280,7 +361,7 @@ const FileUpload = ({
                         </p>
                     </div>
                     <div onClick={(e) => e.stopPropagation()}>
-                        <Button type="button" onClick={openPicker} disabled={disabled}>
+                        <Button type="button" size='xs' onClick={openPicker} disabled={disabled}>
                             <span className="flex items-center gap-2">
                                 <SmallUploadIcon />
                                 Upload
@@ -294,76 +375,71 @@ const FileUpload = ({
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    className={`w-full rounded-xl bg-(--soft-white-normal) p-3 border transition-colors
+                    className={`relative flex flex-col w-full h-[230px] rounded-xl bg-(--soft-white-normal) p-3 border transition-colors overflow-hidden
                         ${isDragging ? "border-dashed border-(--soft-white-normal)" : "border-transparent"}`}
                 >
-                    {/* Header: icon + file name + 3-dot menu */}
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                            {isImage ? (
-                                <ImageFileIcon />
-                            ) : isPdf ? (
-                                <PdfIcon />
-                            ) : (
-                                <DocFileIcon />
-                            )}
-                            <span className="text-[13px] font-medium text-(--gray-dark-active) truncate" title={file.name}>
-                                {file.name}
-                            </span>
-                        </div>
+                    {/* Displayed File Preview Area with internal scroll enabled ONLY when viewing all */}
+                    <div className={`flex flex-col gap-3 pr-1 ${showAllFiles ? 'overflow-y-auto h-[170px]' : ''}`}>
+                        {displayedFiles.map((fileItem, idx) => (
+                            <FileItemPreview
+                                key={idx}
+                                fileItem={fileItem}
+                                idx={idx}
+                                menuOpenIndex={menuOpenIndex}
+                                setMenuOpenIndex={setMenuOpenIndex}
+                                disabled={disabled}
+                                handleReplace={handleReplace}
+                                handleRemove={handleRemove}
+                                menuRef={setMenuElement}
+                            />
+                        ))}
+                    </div>
 
-                        <div ref={menuRef} className="relative shrink-0">
+                    {/* Floating Overlay Badge + Add Button in the bottom with high z-index */}
+                    {multiple && hiddenCount > 0 && !showAllFiles && (
+                        <div className="absolute inset-x-3 bottom-3 z-10 flex items-center justify-between bg-white/95 backdrop-blur-sm px-3 py-2 rounded-lg border border-(--blue-salt-light-hover) shadow-md">
+                            <span className="text-[12px] font-semibold text-(--gray-dark-active)">
+                                +{hiddenCount} more file{hiddenCount > 1 ? 's' : ''}
+                            </span>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAllFiles(true)}
+                                    className="text-[12px] font-medium text-(--blue-sky-dark-hover) hover:underline"
+                                >
+                                    View all
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={openPicker}
+                                    disabled={disabled}
+                                    className="text-[12px] font-medium text-(--blue-sky-dark-hover) hover:underline"
+                                >
+                                    + Add
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {multiple && showAllFiles && (
+                        <div className="absolute inset-x-3 bottom-3 z-10 flex items-center justify-between bg-white/95 backdrop-blur-sm px-3 py-2 rounded-lg border border-(--blue-salt-light-hover) shadow-md">
                             <button
                                 type="button"
-                                aria-label="File options"
-                                aria-haspopup="menu"
-                                aria-expanded={menuOpen}
-                                disabled={disabled}
-                                onClick={() => setMenuOpen((o) => !o)}
-                                className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-(--blue-salt-light-hover) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--blue-sky-dark-hover)/40"
+                                onClick={() => setShowAllFiles(false)}
+                                className="text-[12px] font-medium text-(--blue-sky-dark-hover) hover:underline"
                             >
-                                <DotsIcon />
+                                Show less
                             </button>
-
-                            {menuOpen && (
-                                <div
-                                    role="menu"
-                                    className="absolute right-0 top-8 z-20 w-32 py-1 bg-white rounded-lg border border-(--blue-salt-light-hover) shadow-lg"
-                                >
-                                    <button
-                                        type="button"
-                                        role="menuitem"
-                                        onClick={handleReplace}
-                                        className="w-full text-left px-3 py-2 text-[13px] text-(--gray-dark-active) hover:bg-(--soft-white-normal)"
-                                    >
-                                        Replace
-                                    </button>
-                                    <button
-                                        type="button"
-                                        role="menuitem"
-                                        onClick={handleRemove}
-                                        className="w-full text-left px-3 py-2 text-[13px] text-(--error-normal-active) hover:bg-(--warning-light)"
-                                    >
-                                        Remove
-                                    </button>
-                                </div>
-                            )}
+                            <button
+                                type="button"
+                                onClick={openPicker}
+                                disabled={disabled}
+                                className="text-[12px] font-medium text-(--blue-sky-dark-hover) hover:underline"
+                            >
+                                + Add another document
+                            </button>
                         </div>
-                    </div>
-
-                    {/* Preview */}
-                    <div className="h-[180px] w-full rounded-lg overflow-hidden bg-white">
-                        {isImage && previewUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                                src={previewUrl}
-                                alt={file.name}
-                                className="w-full h-full object-cover object-top"
-                            />
-                        ) : (
-                            <DocumentPreview file={file} />
-                        )}
-                    </div>
+                    )}
                 </div>
             )}
 

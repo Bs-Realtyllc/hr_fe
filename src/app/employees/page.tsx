@@ -133,7 +133,7 @@ export default function EmployeesPage() {
       api
         .get<Employee[]>("/employees")
         .then(setEmployees)
-        .catch(() => {});
+        .catch(() => { });
     }
   };
 
@@ -235,7 +235,7 @@ export default function EmployeesPage() {
       api
         .get<Employee[]>("/employees")
         .then(setEmployees)
-        .catch(() => {});
+        .catch(() => { });
     }
   };
 
@@ -611,11 +611,10 @@ export default function EmployeesPage() {
                 onDrop={handleDrop}
                 className={`flex flex-col items-center justify-center rounded-xl
             border-2 border-dashed px-6 py-10 text-center transition
-            ${
-              isDragging
-                ? "border-blue-500 bg-blue-50"
-                : "border-gray-300 bg-gray-50 hover:border-blue-400"
-            }`}
+            ${isDragging
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-gray-300 bg-gray-50 hover:border-blue-400"
+                  }`}
               >
                 {/* Icon */}
                 <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
@@ -756,11 +755,10 @@ export default function EmployeesPage() {
 
                                 <td className="whitespace-nowrap border-b px-4 py-3">
                                   <span
-                                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                                      employee.status === "Active"
-                                        ? "bg-green-100 text-green-700"
-                                        : "bg-gray-100 text-gray-600"
-                                    }`}
+                                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${employee.status === "Active"
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-gray-100 text-gray-600"
+                                      }`}
                                   >
                                     {employee.status}
                                   </span>
