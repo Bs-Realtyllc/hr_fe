@@ -14,11 +14,19 @@ type DocKey =
     | 'panBack'
     | 'educational'
     | 'additional'
+    | 'passwordSizePhoto'
 
 type DocField = { key: DocKey; label: string; required: boolean }
 type DocSection = { title: string; fields: DocField[] }
 
 const DOCUMENT_SECTIONS: DocSection[] = [
+    {
+        title: 'Password Size Photo',
+        fields: [
+            { key: 'passwordSizePhoto', label: 'Password Size Photo', required: true },
+
+        ],
+    },
     {
         title: 'Identity Documents',
         fields: [
@@ -26,6 +34,7 @@ const DOCUMENT_SECTIONS: DocSection[] = [
             { key: 'citizenshipBack', label: 'Citizenship/National ID - Back', required: true },
         ],
     },
+
     {
         title: 'Tax Documents',
         fields: [
@@ -46,6 +55,7 @@ type DocumentsState = Record<DocKey, File | null>
 type ErrorsState = Partial<Record<DocKey, string>>
 
 const INITIAL_DOCUMENTS: DocumentsState = {
+    passwordSizePhoto: null,
     citizenshipFront: null,
     citizenshipBack: null,
     panFront: null,
@@ -145,7 +155,8 @@ const Page = () => {
                                             label={label}
                                             required={required}
                                             value={documents[key]}
-                                            onChange={(file) => handleFileChange(key, file)}
+                                            multiple={false}
+                                            onChange={(file) => handleFileChange(key, Array.isArray(file) ? file[0] ?? null : file)}
                                             error={errors[key]}
                                             disabled={isSubmitting}
                                         />

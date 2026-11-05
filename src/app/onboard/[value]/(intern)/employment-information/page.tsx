@@ -112,7 +112,7 @@ const EmploymentInfoPage = () => {
 
             <div className="flex w-full lg:w-[534px] flex-col lg:gap-13">
                 <div className="flex flex-col gap-5">
-                    <h2 className="text-[16px] text-(--neutral-normal) font-medium lg:font-semibold">Employment Information</h2>
+                    <h2 className="text-[20px] lg:text-[24px] text-(--neutral-normal) font-semibold">Employment Information</h2>
 
                     <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
                         <div className="flex flex-col gap-5">

@@ -8,21 +8,36 @@ import FileUpload from '@/components/FileUpload/FileUpload'
 /* ---------- Document config ---------- */
 
 type DocKey = 'signedContract' | 'offerLetter' | 'otherEmployment'
-type DocField = { key: DocKey; label: string; required: boolean; optional?: boolean }
+
+// We represent each document field's value type explicitly
+type DocumentValue<K extends DocKey> = K extends 'otherEmployment' ? File[] : File | null
+
+type DocField = {
+    key: DocKey;
+    label: string;
+    required: boolean;
+    optional?: boolean;
+    multiple?: boolean;
+}
 
 const DOCUMENT_FIELDS: DocField[] = [
-    { key: 'signedContract', label: 'Signed Employment/Internship Contract', required: true },
-    { key: 'offerLetter', label: 'Offer Letter ', required: false, optional: true },
-    { key: 'otherEmployment', label: 'Other Employment Documents', required: false, optional: true },
+    { key: 'signedContract', label: 'Signed Employment/Internship Contract/offerLetter', required: true },
+    // { key: 'offerLetter', label: 'Offer Letter ', required: false, optional: true },
+    { key: 'otherEmployment', label: 'Other Employment Documents', required: false, optional: true, multiple: true },
 ]
 
-type DocumentsState = Record<DocKey, File | null>
+type DocumentsState = {
+    signedContract: File | null;
+    offerLetter: File | null;
+    otherEmployment: File[];
+}
+
 type ErrorsState = Partial<Record<DocKey | 'confirm', string>>
 
 const INITIAL_DOCUMENTS: DocumentsState = {
     signedContract: null,
     offerLetter: null,
-    otherEmployment: null,
+    otherEmployment: [],
 }
 
 /* ---------- Page ---------- */
@@ -32,16 +47,21 @@ const Page = () => {
     const confirmId = useId()
     const { value } = useParams<{ value: string }>();
 
-
     const [documents, setDocuments] = useState<DocumentsState>(INITIAL_DOCUMENTS)
     const [confirmed, setConfirmed] = useState(false)
     const [errors, setErrors] = useState<ErrorsState>({})
     const [submitError, setSubmitError] = useState<string | null>(null)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
-    const handleFileChange = (key: DocKey, file: File | null) => {
-        setDocuments((prev) => ({ ...prev, [key]: file }))
-        if (file) setErrors((prev) => ({ ...prev, [key]: undefined }))
+    // Handle single or multi file changes
+    const handleFileChange = (key: DocKey, files: File | File[] | null) => {
+        setDocuments((prev) => ({
+            ...prev,
+            [key]: files
+        }))
+        if (files && (Array.isArray(files) ? files.length > 0 : true)) {
+            setErrors((prev) => ({ ...prev, [key]: undefined }))
+        }
     }
 
     const handleConfirmChange = (checked: boolean) => {
@@ -52,7 +72,14 @@ const Page = () => {
     const validate = () => {
         const newErrors: ErrorsState = {}
         DOCUMENT_FIELDS.forEach(({ key, label, required }) => {
-            if (required && !documents[key]) newErrors[key] = `Upload your ${label}.`
+            const val = documents[key]
+            if (required) {
+                if (Array.isArray(val)) {
+                    if (val.length === 0) newErrors[key] = `Upload your ${label}.`
+                } else {
+                    if (!val) newErrors[key] = `Upload your ${label}.`
+                }
+            }
         })
         if (!confirmed) newErrors.confirm = 'Confirm that your information is accurate to submit.'
         setErrors(newErrors)
@@ -70,8 +97,15 @@ const Page = () => {
 
         const formData = new FormData()
             ; (Object.keys(documents) as DocKey[]).forEach((key) => {
-                const file = documents[key]
-                if (file) formData.append(key, file)
+                const val = documents[key]
+                if (Array.isArray(val)) {
+                    // Append each file in the array under the same key or key[] depending on backend requirements
+                    val.forEach((file) => {
+                        formData.append(`${key}[]`, file)
+                    })
+                } else if (val) {
+                    formData.append(key, val)
+                }
             })
         formData.append('confirmed', 'true')
 
@@ -107,16 +141,17 @@ const Page = () => {
                 </div>
 
                 <form className="flex flex-col gap-10" onSubmit={handleSubmit} noValidate>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {DOCUMENT_FIELDS.map(({ key, label, required, optional }) => (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6  items-end">
+                        {DOCUMENT_FIELDS.map(({ key, label, required, optional, multiple }) => (
                             <FileUpload
                                 key={key}
                                 name={key}
                                 label={label}
                                 required={required}
                                 optional={optional}
+                                multiple={multiple}
                                 value={documents[key]}
-                                onChange={(file) => handleFileChange(key, file)}
+                                onChange={(files) => handleFileChange(key, files)}
                                 error={errors[key]}
                                 disabled={isSubmitting}
                             />

@@ -127,7 +127,7 @@ const PersonalInfoPage = () => {
 
             console.log('Personal info:', payload)
 
-            router.push(`/onboard/${value}/employment-information`)
+            router.push(`/onboard/${value}/educational-information`)
         } catch (err) {
             console.error(err)
         } finally {
@@ -152,7 +152,7 @@ const PersonalInfoPage = () => {
                 </div>
 
                 <div className="flex flex-col gap-4 lg:gap-5">
-                    <h2 className="text-[16px] lg:text-[18px] text-(--neutral-normal) font-medium">Personal Information</h2>
+                    <h2 className="text-[16px] lg:text-[18px] text-(--neutral-normal) font-semibold">Personal Information</h2>
 
                     <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
                         <div className="flex flex-col gap-5">

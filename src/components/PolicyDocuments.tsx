@@ -626,7 +626,7 @@ export default function PolicyDocuments({
 
   return (
 
-    <div className='m-6 h-full flex flex-col gap-6'>
+    <div className='my-6 h-full flex flex-col gap-6'>
 
       {policies.length > 0 && <div className="w-full  flex gap-3">
         <div className="search-bar w-full">

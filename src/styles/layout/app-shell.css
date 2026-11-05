@@ -13,10 +13,7 @@
 .main-content {
   flex: 1;
   margin-left: var(--sidebar-width);
-<<<<<<< HEAD
-=======
   padding: 24px;
->>>>>>> 3a6cfaf665e37d418feddb5c38086d8eadb20c56
   min-height: 100vh;
   --page-container-gutter: 24px;
   padding-inline: var(--page-container-gutter);

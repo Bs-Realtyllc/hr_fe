@@ -111,14 +111,14 @@ const EmergencyContactPage = () => {
     }
 
     return (
-        <div className="flex w-full justify-between items-center px-4 lg:px-15 pt-20 lg:pt-22 lg:pb-8">
+        <div className="flex min-h-screen w-full justify-between items-center px-4 lg:px-15 pt-20 lg:pt-22 lg:pb-8">
             <div className=' absolute top-7.5 left-4 lg:left-15  '>
                 <img className='h-4 w-22 lg:h-5 lg:w-28' src="/logos/gitgi-hr-logo.svg" alt="" />
             </div >
 
             <div className="flex w-full pb-5 lg:pb-0  lg:w-[534px] flex-col">
                 <div className="flex flex-col gap-5">
-                    <h2 className="text-[16px] tracking-[0.15px] text-(--neutral-normal) font-medium lg:font-semibold">Emergency Contact</h2>
+                    <h2 className="text-[16px] lg:text-[18px] text-(--neutral-normal) font-semibold">Emergency Contact</h2>
 
                     <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
                         <div className="flex flex-col gap-3">
@@ -197,7 +197,7 @@ const EmergencyContactPage = () => {
                                 variant="text"
                                 size="small"
                                 type="button"
-                                onClick={() => router.push(`/onboard/${value}/employment-information`)}
+                                onClick={() => router.push(`/onboard/${value}/experience`)}
                                 disabled={submitting}
                             >
                                 Back
@@ -210,8 +210,13 @@ const EmergencyContactPage = () => {
                 </div>
             </div>
 
-            <div className='hidden lg:flex'>
-                <img src="/images/intern-onboarding.png" alt="Onboarding illustration" width={489} height={721} />
+            <div className="hidden lg:flex">
+                <img
+                    src="/images/intern-onboarding.png"
+                    alt="Onboarding illustration"
+                    width={489}
+                    className="h-[500px]"
+                />
             </div>
         </div>
     );
