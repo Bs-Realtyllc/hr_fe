@@ -25,7 +25,7 @@ export default async function OnboardLayout({
     const { value } = await params;
     if (!ALLOWED_VALUES.includes(value)) notFound();
     return (
-        <OnboardingProvider>
+        <OnboardingProvider role={value as "intern" | "employee"}>
             <div className={`${plusJakartaSans.className} max-w-full bg-white`}>{children}</div>
         </OnboardingProvider>
     );

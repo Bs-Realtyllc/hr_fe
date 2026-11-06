@@ -26,6 +26,8 @@ type FileUploadProps = {
     error?: string
     disabled?: boolean
     multiple?: boolean
+    /** With `multiple`: most files allowed in total. */
+    maxFiles?: number
 }
 
 const formatSize = (bytes: number) => {
@@ -208,6 +210,7 @@ const FileUpload = ({
     error,
     disabled = false,
     multiple = false,
+    maxFiles,
 }: FileUploadProps) => {
     const inputId = useId()
     const inputRef = useRef<HTMLInputElement>(null)
@@ -259,6 +262,16 @@ const FileUpload = ({
             }
         }
 
+        if (multiple && maxFiles !== undefined && files.length + newFiles.length > maxFiles) {
+            const left = maxFiles - files.length
+            setLocalError(
+                left > 0
+                    ? `You can upload up to ${maxFiles} files. ${left} more allowed.`
+                    : `You can upload up to ${maxFiles} files. Remove one to add another.`
+            )
+            return
+        }
+
         setLocalError(null)
 
         let updatedFiles: File[]
@@ -288,6 +301,7 @@ const FileUpload = ({
 
     const handleRemove = (indexToRemove: number) => {
         setMenuOpenIndex(null)
+        setLocalError(null)
         const updated = files.filter((_, idx) => idx !== indexToRemove)
         setInternalFiles(updated)
         onChange?.(multiple ? (updated.length ? updated : null) : null)
