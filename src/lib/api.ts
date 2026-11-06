@@ -18,6 +18,9 @@ async function req<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
+  if (typeof FormData !== "undefined" && options?.body instanceof FormData) {
+    delete headers["Content-Type"];
+  }
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(`${BASE}${path}`, {
@@ -48,6 +51,8 @@ export const api = {
   get: <T>(path: string) => req<T>(path),
   post: <T>(path: string, body: unknown) =>
     req<T>(path, { method: "POST", body: JSON.stringify(body) }),
+  postForm: <T>(path: string, body: FormData) =>
+    req<T>(path, { method: "POST", body }),
   put: <T>(path: string, body: unknown) =>
     req<T>(path, { method: "PUT", body: JSON.stringify(body) }),
   patch: <T>(path: string, body: unknown) =>

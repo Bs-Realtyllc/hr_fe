@@ -23,6 +23,7 @@ type FileUploadProps = {
     value?: File | File[] | null
     onChange?: (files: File | File[] | null) => void
     maxSizeMB?: number
+    allowedExtensions?: string[]
     error?: string
     disabled?: boolean
     multiple?: boolean
@@ -34,9 +35,10 @@ const formatSize = (bytes: number) => {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-const isAccepted = (file: File) => {
+const isAccepted = (file: File, allowedExtensions = ACCEPTED_EXTENSIONS) => {
     const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase()
-    return ACCEPTED_MIME_TYPES.includes(file.type) || ACCEPTED_EXTENSIONS.includes(ext)
+    if (allowedExtensions !== ACCEPTED_EXTENSIONS) return allowedExtensions.includes(ext)
+    return ACCEPTED_MIME_TYPES.includes(file.type) || allowedExtensions.includes(ext)
 }
 
 /* ---------------- Icons ---------------- */
@@ -205,6 +207,7 @@ const FileUpload = ({
     value,
     onChange,
     maxSizeMB = 10,
+    allowedExtensions = ACCEPTED_EXTENSIONS,
     error,
     disabled = false,
     multiple = false,
@@ -227,6 +230,9 @@ const FileUpload = ({
     })()
 
     const shownError = error || localError
+    const acceptedTypesLabel = allowedExtensions
+        .map((extension) => extension.slice(1).toUpperCase())
+        .join(", ")
 
     useEffect(() => {
         if (menuOpenIndex === null) return
@@ -249,8 +255,8 @@ const FileUpload = ({
         const newFiles = Array.from(incomingList)
 
         for (const f of newFiles) {
-            if (!isAccepted(f)) {
-                setLocalError("This file type isn't supported. Upload a PNG, JPG, PDF or DOCX.")
+            if (!isAccepted(f, allowedExtensions)) {
+                setLocalError(`This file type isn't supported. Upload one of: ${acceptedTypesLabel}.`)
                 return
             }
             if (f.size > maxSizeMB * 1024 * 1024) {
@@ -334,7 +340,7 @@ const FileUpload = ({
                 type="file"
                 className="hidden"
                 multiple={multiple}
-                accept={ACCEPTED_EXTENSIONS.join(",")}
+                accept={allowedExtensions.join(",")}
                 onChange={handleInputChange}
                 disabled={disabled}
             />
@@ -363,7 +369,7 @@ const FileUpload = ({
                             {isDragging ? "Drop your file here" : "Select your file or drag and drop"}
                         </h3>
                         <p className="text-[11px] font-medium text-(--gray-normal-hover)">
-                            PNG, JPG, PDF or DOCX - Max {maxSizeMB}MB
+                            {acceptedTypesLabel} - Max {maxSizeMB}MB
                         </p>
                     </div>
                     <div onClick={(e) => e.stopPropagation()}>
