@@ -5,26 +5,9 @@ import InputField from "@/components/InputField/InputField";
 import { BSRealtyDropdown } from "@bsrealtyllc/design-system";
 import { useParams, useRouter } from "next/navigation";
 import React, { useState } from "react";
-
-type EmploymentInfo = {
-    jobTitle: string;
-    department: string;
-    startDate: string; // "YYYY-MM-DD"
-    reportingManager: string;
-    employmentType: string;
-    workLocation: string;
-};
+import { useOnboarding, type EmploymentInfo } from "../../OnboardingContext";
 
 type Errors = Partial<Record<keyof EmploymentInfo, string>>;
-
-const INITIAL_STATE: EmploymentInfo = {
-    jobTitle: "",
-    department: "",
-    startDate: "",
-    reportingManager: "",
-    employmentType: "",
-    workLocation: "",
-};
 
 const DEPARTMENT_OPTIONS = [
     { label: "Admin", value: "admin" },
@@ -66,13 +49,14 @@ function validate(values: EmploymentInfo): Errors {
 const EmploymentInfoPage = () => {
     const router = useRouter();
     const { value } = useParams<{ value: string }>();
+    const { data, updateSection } = useOnboarding();
+    const form = data.employmentInfo;
 
-    const [form, setForm] = useState<EmploymentInfo>(INITIAL_STATE);
     const [errors, setErrors] = useState<Errors>({});
     const [submitting, setSubmitting] = useState(false);
 
     function updateField<K extends keyof EmploymentInfo>(key: K, value: EmploymentInfo[K]) {
-        setForm((prev) => ({ ...prev, [key]: value }));
+        updateSection("employmentInfo", { ...form, [key]: value });
         if (errors[key]) {
             setErrors((prev) => ({ ...prev, [key]: undefined }));
         }
