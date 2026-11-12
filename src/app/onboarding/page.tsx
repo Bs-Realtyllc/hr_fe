@@ -66,7 +66,7 @@ interface OnboardingProfile {
 }
 
 type ActionState = "idle" | "loading";
-type RoleFilter = "all" | "intern" | "employee";
+type RoleFilter = "all" | "intern" | "employee"| "admin";
 
 /** Upload field names accepted by GET /onboard/:id/:type/url. */
 const PROFILE_DOCUMENTS: {
@@ -238,6 +238,8 @@ const Page = () => {
             { value: "all", label: `All (${countFor("all")})` },
             { value: "intern", label: `Intern (${countFor("intern")})` },
             { value: "employee", label: `Employee (${countFor("employee")})` },
+            { value: "admin", label: `Admin (${countFor("admin")})` },
+
           ]}
         />
       </div>
