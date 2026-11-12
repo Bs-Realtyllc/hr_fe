@@ -57,7 +57,7 @@ interface OnboardingProfile {
   pan_back_path: string | null;
   additional_document_path: string | null;
   contract_path: string | null;
-  other_document_path: string | null;
+  other_document_paths: string[] | string | null;
   confirmed: boolean | null;
   is_active: boolean | null;
   role: "intern" | "employee" | "admin";
@@ -81,7 +81,6 @@ const PROFILE_DOCUMENTS: {
   { type: "panBack", label: "PAN (Back)", key: "pan_back_path" },
   { type: "additionalDocument", label: "Additional Document", key: "additional_document_path" },
   { type: "contract", label: "Signed Contract", key: "contract_path" },
-  { type: "otherDocument", label: "Other Document", key: "other_document_path" },
 ];
 
 /** JSON columns may arrive already parsed or as a string, depending on the driver. */
@@ -297,11 +296,17 @@ function ApplicationCard({
 }) {
   const education = parseJsonArray(user.education_info);
   const experience = parseJsonArray(user.previous_experience_info);
+  const otherDocuments = parseJsonArray(user.other_document_paths).filter(Boolean);
 
   const documents = [
     ...PROFILE_DOCUMENTS.filter((d) => user[d.key]).map((d) => ({
       type: d.type,
       label: d.label,
+    })),
+    // otherDocument_<i> matches other_document_paths[i] on the backend.
+    ...otherDocuments.map((_, i) => ({
+      type: `otherDocument_${i}`,
+      label: otherDocuments.length > 1 ? `Other Document ${i + 1}` : "Other Document",
     })),
     ...education.flatMap((e, i) =>
       e?.certificate

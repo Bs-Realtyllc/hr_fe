@@ -90,7 +90,7 @@ export default function ResourcesPage() {
       </div>
 
       {/* Announce card */}
-      <div className='mb-6 flex rounded-lg p-3 gap-2 bg-(--soft-white-light)'>
+      <div className=' flex rounded-lg p-3 gap-2 bg-(--soft-white-light)'>
 
         <div className='h-7 w-7 bg-(--success-light) rounded-lg flex justify-center items-center'>
           <span

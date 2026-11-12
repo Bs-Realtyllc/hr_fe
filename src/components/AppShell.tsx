@@ -15,7 +15,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const dispatch = useAppDispatch();
 
 
-  const PUBLIC_PATHS = ['/login', '/logout', '/forgot-password', '/reset-password', '/onboard/', '/request-access', '/welcome', '/twoFactorAuth','/setup-twoFactorAuth'];
+  const PUBLIC_PATHS = ['/login', '/logout', '/forgot-password', '/reset-password', '/onboard/', '/request-access', '/welcome', '/twoFactorAuth', '/setup-twoFactorAuth'];
   const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p));
 
   useEffect(() => {
@@ -49,7 +49,9 @@ function Shell({ children }: { children: React.ReactNode }) {
         </button>
         <span className="mobile-topbar-title">HR Platform</span>
       </div>
-      <main className="main-content">{children}</main>
+      <main className="main-content">
+        <div className="page-container">{children}</div>
+      </main>
     </div>
   );
 }
@@ -57,7 +59,8 @@ function Shell({ children }: { children: React.ReactNode }) {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <Shell>{children}</Shell>
-    </AuthProvider>
+      <Shell>
+        {children}</Shell>
+    </AuthProvider >
   );
 }

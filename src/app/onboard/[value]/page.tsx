@@ -6,5 +6,5 @@ export default async function OnboardPage({
   params: Promise<{ value: string }>;
 }) {
   const { value } = await params;
-  redirect(`/onboard/${value}/personal-info`);
+  redirect(`/onboard/${value}/personal-information`);
 }

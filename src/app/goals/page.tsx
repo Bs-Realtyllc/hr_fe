@@ -211,7 +211,7 @@ export default function GoalsPage() {
         <PageHeader title={'Goals & KPIs'} discription={isPrivileged ? 'Track individual, team, and company goals across the org' : 'Track your goals and key performance indicators'} />
       </div>
 
-      <div className='mt-16'>
+      <div className='mb-6 mt-22'>
         <div className=" flex items-center justify-between pt-7 pb-6" style={{ marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
           {/* <div className="pill-group">
           <button type="button" className={`pill ${statusFilter === '' ? 'pill-active' : ''}`} onClick={() => setStatusFilter('')}>
