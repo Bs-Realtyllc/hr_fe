@@ -2,13 +2,13 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { showToast } from "@/lib/toast";
+import { getPosition, geolocationErrorMessage } from "@/lib/geolocation";
 
 interface clockInResponse {
   message: string;
   clockInTime: string;
 }
 interface PauseType {
-  id: number;
   pause: string;
   resume: string | null;
   reason: string;
@@ -18,9 +18,9 @@ interface PauseType {
 interface ClockRecord {
   employeeId: number;
   clockIn: string | null;
-  clockOut: string | null;
   totalPauseDuration: number | null;
-  status: "idle" | "paused" | "running" | "done";
+  totalSecondsEarlierToday: number;
+  status: "idle" | "paused" | "running";
   pauses: PauseType[];
 }
 
@@ -39,26 +39,31 @@ function setKey(value: "1" | "0") {
   localStorage.setItem(todayKey(), value);
 }
 
-function isWithinClockInWindow(): boolean {
-  const now = new Date();
-  const hours = now.getHours();
-  return hours >= 8 && hours < 12;
+// "HH:MM" → hours as a decimal, e.g. "09:30" -> 9.5.
+function parseHourDecimal(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h + m / 60;
 }
 
-function getPosition(): Promise<GeolocationPosition> {
-  return new Promise((resolve, reject) =>
-    navigator.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: true,
-      timeout: 10_000,
-    }),
-  );
+// Falls back to a generic 8am–noon morning window when the company hasn't
+// configured Working Hours yet — once set, the reminder follows the real
+// work day instead, so a company that starts later (or whose day runs past
+// noon) still gets nudged for the whole time someone could show up late.
+function isWithinClockInWindow(workStart: string | null, workEnd: string | null): boolean {
+  const now = new Date();
+  const currentHour = now.getHours() + now.getMinutes() / 60;
+  if (workStart && workEnd) {
+    return currentHour >= parseHourDecimal(workStart) && currentHour < parseHourDecimal(workEnd);
+  }
+  return currentHour >= 8 && currentHour < 12;
 }
 
 export default function ClockInPopup() {
   const [showPopup, setShowPopup] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(false);
   const [forcePopup, setForcePopup] = useState<boolean>(false);
-  const [status, setStatus] = useState<'idle' | 'running' | 'paused' | 'done'>('idle')
+  const [status, setStatus] = useState<'idle' | 'running' | 'paused'>('idle')
+  const [workingHours, setWorkingHours] = useState<{ workStart: string | null; workEnd: string | null }>({ workStart: null, workEnd: null });
 
   const fetchClock = async () => {
     const { result } = await api.get<ClockResponse>("/clock");
@@ -71,13 +76,18 @@ export default function ClockInPopup() {
 
     }
     fetchClock();
+    api.get<{ work_start: string | null; work_end: string | null }>("/company").then((data) => {
+      setWorkingHours({ workStart: data.work_start?.slice(0, 5) ?? null, workEnd: data.work_end?.slice(0, 5) ?? null });
+    });
   }, []);
   useEffect(() => {
+    // A deliberate click on the header widget should always open the
+    // clock-in prompt — split shifts mean clocking in any time of day is
+    // valid. The working-hours window only gates the UNPROMPTED reminder
+    // popup below, not something the user explicitly asked for.
     const handler = () => {
-      if (isWithinClockInWindow()) {
-        setShowPopup(true);
-        setForcePopup(true);
-      }
+      setShowPopup(true);
+      setForcePopup(true);
     };
     window.addEventListener("clock-popup-request", handler);
     return () => window.removeEventListener("clock-popup-request", handler);
@@ -99,7 +109,7 @@ export default function ClockInPopup() {
       );
       showToast("success", "Clocked in!");
     } catch (err) {
-      showToast("error", "Could not clock in");
+      showToast("error", geolocationErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -107,7 +117,7 @@ export default function ClockInPopup() {
 
   if (!showPopup) return null;
 
-  if ((isWithinClockInWindow() && status === 'idle' && getKey()) || forcePopup) {
+  if ((isWithinClockInWindow(workingHours.workStart, workingHours.workEnd) && status === 'idle' && getKey()) || forcePopup) {
     return (
       <div className="modal-overlay flex items-center justify-center p-4">
         <div className="modal max-w-sm w-full p-6">

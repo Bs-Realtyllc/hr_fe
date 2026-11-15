@@ -1,5 +1,7 @@
-import { useEffect, useState, useCallback, Fragment } from "react";
-import {api} from "@/lib/api"; // adjust to your actual api client import
+import { useEffect, useState, useCallback } from "react";
+import { api } from "@/lib/api";
+import { formatTimeNepal } from "@/lib/datetime";
+import LocationLink from "@/components/LocationLink";
 
 interface Employee {
   id: number;
@@ -16,10 +18,6 @@ interface PauseRecord {
 interface AttendanceRecord {
   employeeId: number;
   name: string;
-  email: string;
-  address: string | null;
-  profilePicture: string | null;
-  phone: string | null;
   clockId: number;
   clockIn: string;
   clockOut: string | null;
@@ -27,7 +25,13 @@ interface AttendanceRecord {
   pauses: PauseRecord[];
   totalPauseDuration: number;
   totalClockInDuration: number;
+  isLate: boolean;
+  clockInLat: number | null;
+  clockInLng: number | null;
+  clockOutLat: number | null;
+  clockOutLng: number | null;
 }
+
 
 interface Pagination {
   page: number;
@@ -43,11 +47,11 @@ function formatDuration(seconds: number) {
   return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
 }
 
-function formatTime(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
+function formatDate(clockDate: string) {
+  return new Date(`${clockDate}T00:00:00`).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
   });
 }
 
@@ -67,12 +71,11 @@ export default function AttendancePage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(1);
-  const [expandedClockId, setExpandedClockId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const fetchEmployee = async()=>{
+  const fetchEmployee = async () => {
     api.get(`/employees/names`).then((res: any) => setEmployees(res));
-  }
+  };
   useEffect(() => {
     fetchEmployee();
   }, []);
@@ -87,7 +90,7 @@ export default function AttendancePage() {
     params.set("limit", String(PAGE_SIZE));
 
     try {
-      const res:any = await api.get(`/clock/attendance?${params}`);
+      const res: any = await api.get(`/clock/attendance?${params}`);
       setRecords(res.data);
       setPagination(res.pagination);
     } finally {
@@ -112,194 +115,138 @@ export default function AttendancePage() {
   };
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Employee attendance</h1>
+    <div className="attendance-page">
+      <div className="card">
+        <div className="card-title">Employee attendance</div>
+        <div className="attendance-filters">
+          <div className="form-group attendance-filter-field">
+            <label className="form-label" htmlFor="employee-filter">Employee</label>
+            <select
+              id="employee-filter"
+              className="form-select"
+              value={employeeId}
+              onChange={(e) => updateFilter(setEmployeeId)(e.target.value)}
+            >
+              <option value="">All employees</option>
+              {employees.map((emp) => (
+                <option key={emp.id} value={emp.id}>{emp.name}</option>
+              ))}
+            </select>
+          </div>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <label className="block text-sm mb-1" htmlFor="employee-filter">
-            Employee
-          </label>
-          <select
-            id="employee-filter"
-            className="border rounded px-2 py-1"
-            value={employeeId}
-            onChange={(e) => updateFilter(setEmployeeId)(e.target.value)}
-          >
-            <option value="">All employees</option>
-            {employees.map((emp) => (
-              <option key={emp.id} value={emp.id}>
-                {emp.name}
-              </option>
-            ))}
-          </select>
+          <div className="form-group attendance-filter-field">
+            <label className="form-label" htmlFor="start-date">Start date</label>
+            <input
+              id="start-date"
+              type="date"
+              className="form-input"
+              value={startDate}
+              max={endDate || undefined}
+              onChange={(e) => updateFilter(setStartDate)(e.target.value)}
+            />
+          </div>
+
+          <div className="form-group attendance-filter-field">
+            <label className="form-label" htmlFor="end-date">End date</label>
+            <input
+              id="end-date"
+              type="date"
+              className="form-input"
+              value={endDate}
+              min={startDate || undefined}
+              onChange={(e) => updateFilter(setEndDate)(e.target.value)}
+            />
+          </div>
+
+          <button type="button" className="btn btn-ghost" onClick={clearFilters}>
+            Clear filters
+          </button>
         </div>
-
-        <div>
-          <label className="block text-sm mb-1" htmlFor="start-date">
-            Start date
-          </label>
-          <input
-            id="start-date"
-            type="date"
-            className="border rounded px-2 py-1"
-            value={startDate}
-            max={endDate || undefined}
-            onChange={(e) => updateFilter(setStartDate)(e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm mb-1" htmlFor="end-date">
-            End date
-          </label>
-          <input
-            id="end-date"
-            type="date"
-            className="border rounded px-2 py-1"
-            value={endDate}
-            min={startDate || undefined}
-            onChange={(e) => updateFilter(setEndDate)(e.target.value)}
-          />
-        </div>
-
-        <button
-          type="button"
-          className="border rounded px-3 py-1 text-sm"
-          onClick={clearFilters}
-        >
-          Clear filters
-        </button>
       </div>
 
-      <div className="overflow-x-auto border rounded">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100">
+      <div className="card table-wrap">
+        <table className="attendance-table">
+          <thead>
             <tr>
-              <th className="text-left px-3 py-2">Employee</th>
-              <th className="text-left px-3 py-2">Date</th>
-              <th className="text-left px-3 py-2">Clock in</th>
-              <th className="text-left px-3 py-2">Clock out</th>
-              <th className="text-left px-3 py-2">Total pause</th>
-              <th className="text-left px-3 py-2">Total Clock Duration</th>
-              <th className="text-left px-3 py-2">Pauses</th>
+              <th>Employee</th>
+              <th>Date</th>
+              <th>Clock In</th>
+              <th>Clock Out</th>
+              <th>Pauses</th>
+              <th className="attendance-total-header">Total</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr>
-                <td colSpan={6} className="text-center py-4">
-                  Loading…
-                </td>
-              </tr>
+              <tr><td colSpan={6} className="attendance-empty">Loading…</td></tr>
             )}
 
             {!loading && records.length === 0 && (
-              <tr>
-                <td colSpan={6} className="text-center py-4">
-                  No attendance records match these filters.
-                </td>
-              </tr>
+              <tr><td colSpan={6} className="attendance-empty">No attendance records match these filters.</td></tr>
             )}
 
-            {!loading &&
-              records.map((r) => (
-                <Fragment key={r.clockId}>
-                  <tr className="border-t">
-                    <td className="px-3 py-2">{r.name}</td>
-                    <td className="px-3 py-2">{r.clockDate}</td>
-                    <td className="px-3 py-2">{formatTime(r.clockIn)}</td>
-                    <td className="px-3 py-2">{formatTime(r.clockOut)}</td>
-                    <td className="px-3 py-2">
-                      {formatDuration(r.totalPauseDuration)}
-                    </td>
-                    <td className="px-3 py-2">
-                      {formatDuration(r.totalClockInDuration)}
-                    </td>
-                    <td className="px-3 py-2">
-                      {r.pauses.length > 0 ? (
-                        <button
-                          type="button"
-                          className="text-blue-600 underline"
-                          onClick={() =>
-                            setExpandedClockId(
-                              expandedClockId === r.clockId
-                                ? null
-                                : r.clockId,
-                            )
-                          }
-                        >
-                          {expandedClockId === r.clockId
-                            ? "Hide"
-                            : `View (${r.pauses.length})`}
-                        </button>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  </tr>
-
-                  {expandedClockId === r.clockId && (
-                    <tr className="bg-gray-50">
-                      <td colSpan={6} className="px-3 py-2">
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr>
-                              <th className="text-left py-1">Pause</th>
-                              <th className="text-left py-1">Resume</th>
-                              <th className="text-left py-1">Reason</th>
-                              <th className="text-left py-1">Duration</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {r.pauses.map((p, i) => (
-                              <tr key={i}>
-                                <td className="py-1">{formatTime(p.pause)}</td>
-                                <td className="py-1">
-                                  {formatTime(p.resume)}
-                                </td>
-                                <td className="py-1">{p.reason ?? "—"}</td>
-                                <td className="py-1">
-                                  {p.pauseDuration != null
-                                    ? formatDuration(p.pauseDuration)
-                                    : "—"}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </td>
-                    </tr>
+            {!loading && records.map((r) => (
+              <tr key={r.clockId}>
+                <td className="attendance-name-cell">{r.name}</td>
+                <td>{formatDate(r.clockDate)}</td>
+                <td>
+                  {formatTimeNepal(r.clockIn)}
+                  {r.isLate && <span className="badge badge-error attendance-late-badge">Late</span>}
+                  <LocationLink lat={r.clockInLat} lng={r.clockInLng} label="clock-in" />
+                </td>
+                <td>
+                  {r.clockOut ? formatTimeNepal(r.clockOut) : "still running"}
+                  <LocationLink lat={r.clockOutLat} lng={r.clockOutLng} label="clock-out" />
+                </td>
+                <td>
+                  {r.pauses.length > 0 ? (
+                    <div className="attendance-pause-list">
+                      {r.pauses.map((p, pi) => (
+                        <div key={pi} className="attendance-pause-chip">
+                          <span className="attendance-pause-chip-reason">{p.reason ?? "Pause"}</span>
+                          <span className="attendance-muted">
+                            {" · "}{formatTimeNepal(p.pause)} – {p.resume ? formatTimeNepal(p.resume) : "ongoing"}
+                            {" · "}{p.pauseDuration != null ? formatDuration(p.pauseDuration) : "—"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="attendance-muted">—</span>
                   )}
-                </Fragment>
-              ))}
+                </td>
+                <td className="attendance-total-cell">{formatDuration(r.totalClockInDuration)}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
-      </div>
 
-      <div className="flex items-center justify-between text-sm">
-        <span>
-          Page {pagination.page} of {pagination.totalPages} (
-          {pagination.total} records)
-        </span>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className="border rounded px-3 py-1 disabled:opacity-50"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            Previous
-          </button>
-          <button
-            type="button"
-            className="border rounded px-3 py-1 disabled:opacity-50"
-            disabled={page >= pagination.totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-          </button>
-        </div>
+        {!loading && records.length > 0 && (
+          <div className="attendance-pagination">
+            <span>{pagination.total} record{pagination.total === 1 ? "" : "s"}</span>
+            {pagination.totalPages > 1 && (
+              <div className="flex gap-2">
+                <span>Page {pagination.page} of {pagination.totalPages}</span>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  disabled={page >= pagination.totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
