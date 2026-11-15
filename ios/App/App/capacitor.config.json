@@ -1,8 +1,9 @@
 {
-	"appId": "com.raralabs.hrplatform",
+	"appId": "com.gitgi.hrplatform",
 	"appName": "HR Platform",
 	"webDir": "out",
 	"server": {
+		"url": "https://hr.gitgi.com",
 		"androidScheme": "https"
 	},
 	"plugins": {
@@ -27,11 +28,5 @@
 			"resizeOnFullScreen": true
 		}
 	},
-	"packageClassList": [
-		"AppPlugin",
-		"HapticsPlugin",
-		"KeyboardPlugin",
-		"SplashScreenPlugin",
-		"StatusBarPlugin"
-	]
+	"packageClassList": []
 }

@@ -3,6 +3,7 @@
 	"appName": "HR Platform",
 	"webDir": "out",
 	"server": {
+		"url": "https://hr.gitgi.com",
 		"androidScheme": "https"
 	},
 	"plugins": {
