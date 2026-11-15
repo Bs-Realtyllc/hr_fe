@@ -10,6 +10,7 @@ import { CreateChannelModal } from './components/CreateChannelModal';
 import { NewDmModal } from './components/NewDmModal';
 import { StatusSelector } from './components/StatusSelector';
 import { MessageContextMenu, type ContextAction } from './components/MessageContextMenu';
+import { ProfilePopover } from './components/ProfilePopover';
 import { ReplyPreview, type ReplyTarget } from './components/ReplyPreview';
 import { ForwardModal } from './components/ForwardModal';
 import { PinnedMessagesPanel } from './components/PinnedMessagesPanel';
@@ -50,6 +51,8 @@ function mapApiMessage(m: any): ChatMessage {
 function mapApiDm(m: any, dmCh: string): ChatMessage {
   return { id: String(m.id), channelId: dmCh, userId: String(m.from_employee_id), userName: m.author_name ?? 'Unknown', userDesignation: '', content: m.content, timestamp: new Date(m.created_at), edited: Boolean(m.is_edited), reactions: [] };
 }
+
+const ROLE_LABEL: Record<string, string> = { admin: 'Admin', lead: 'Team Lead', employee: 'Employee', intern: 'Intern' };
 
 function initials(n: string) { return n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(); }
 function fmtTime(d: Date)    { return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }); }
@@ -168,6 +171,7 @@ export default function InboxClient() {
 
   const [replyingTo, setReplyingTo]     = useState<ReplyTarget | null>(null);
   const [contextMenu, setContextMenu]   = useState<{ x: number; y: number; msg: ChatMessage } | null>(null);
+  const [profileCard, setProfileCard]   = useState<{ anchorLeft: number; anchorRight: number; anchorTop: number; anchorBottom: number; employeeId: string; fallbackName?: string; fallbackDesignation?: string } | null>(null);
   const [forwardMsg, setForwardMsg]     = useState<ChatMessage | null>(null);
   const [showPins, setShowPins]         = useState(false);
   const [showSaved, setShowSaved]       = useState(false);
@@ -223,6 +227,14 @@ export default function InboxClient() {
     { id: myId, name: myName, designation: user?.role ?? 'employee', status: userStatus },
     ...members.filter(m => m.id !== myId),
   ];
+
+  const employeesById = new Map(allEmployees.map((e: any) => [String(e.id), e]));
+  const dmEmployee = activeDm ? employeesById.get(activeDm.userId) as any : null;
+  function statusForId(id: string): UserStatus { return id === myId ? userStatus : members.find(m => m.id === id)?.status ?? 'offline'; }
+  function openProfile(id: string, e: React.MouseEvent, fallbackName?: string, fallbackDesignation?: string) {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setProfileCard({ anchorLeft: r.left, anchorRight: r.right, anchorTop: r.top, anchorBottom: r.bottom, employeeId: id, fallbackName, fallbackDesignation });
+  }
 
   const paneMsgs = (selectedDmId
     ? messages.filter(m => m.channelId === `dm-${selectedDmId}`)
@@ -591,6 +603,22 @@ export default function InboxClient() {
 
       {/* Context menu */}
       {contextMenu && <MessageContextMenu x={contextMenu.x} y={contextMenu.y} actions={buildActions(contextMenu.msg)} onClose={() => setContextMenu(null)} />}
+      {profileCard && (() => {
+        const emp  = employeesById.get(profileCard.employeeId) as any;
+        const name = emp?.name ?? profileCard.fallbackName ?? 'Unknown';
+        const designation = emp?.designation ?? profileCard.fallbackDesignation ?? '';
+        const isSelf = profileCard.employeeId === myId;
+        return (
+          <ProfilePopover
+            anchorLeft={profileCard.anchorLeft} anchorRight={profileCard.anchorRight} anchorTop={profileCard.anchorTop} anchorBottom={profileCard.anchorBottom}
+            employee={{ id: profileCard.employeeId, name, designation, department: emp?.department, role: emp?.role, email: emp?.email, start_date: emp?.start_date, discord_username: emp?.discord_username, github_url: emp?.github_url }}
+            status={statusForId(profileCard.employeeId)}
+            isSelf={isSelf}
+            onClose={() => setProfileCard(null)}
+            onMessage={isSelf ? undefined : () => { selDm(profileCard.employeeId, name, designation); setProfileCard(null); }}
+          />
+        );
+      })()}
 
       {/* Modals */}
       {showCreateChannel && <CreateChannelModal categories={categories} onClose={() => setShowCreateChannel(false)} onCreate={d => api.post('/inbox/channels', d)} />}
@@ -690,13 +718,15 @@ export default function InboxClient() {
 
         {/* User footer */}
         <div className="inbox-user-footer">
-          <div className="inbox-user-footer-avatar" style={{ position: 'relative' }}>
-            {initials(myName)}
-            <span className="inbox-user-footer-status-dot" style={{ background: STATUS_COLOR[userStatus] }} />
-          </div>
-          <div className="inbox-user-footer-info">
-            <div className="inbox-user-footer-name">{myName}</div>
-            <div className="inbox-user-footer-role">{user?.role}</div>
+          <div className="inbox-user-footer-profile" title="View your profile" onClick={e => openProfile(myId, e, myName, user?.role)}>
+            <div className="inbox-user-footer-avatar" style={{ position: 'relative' }}>
+              {initials(myName)}
+              <span className="inbox-user-footer-status-dot" style={{ background: STATUS_COLOR[userStatus] }} />
+            </div>
+            <div className="inbox-user-footer-info">
+              <div className="inbox-user-footer-name">{myName}</div>
+              <div className="inbox-user-footer-role">{user?.role}</div>
+            </div>
           </div>
           <StatusSelector status={userStatus} onChange={handleStatus} />
           <button className={`inbox-footer-btn${micMuted ? ' muted' : ''}`} title={micMuted ? 'Unmute' : 'Mute'} onClick={() => setMicMuted(p => !p)}><span className="icon" style={{ WebkitMaskImage: micMuted ? 'url(/icons/mic-off.svg)' : 'url(/icons/mic.svg)', maskImage: micMuted ? 'url(/icons/mic-off.svg)' : 'url(/icons/mic.svg)' }} /></button>
@@ -710,7 +740,7 @@ export default function InboxClient() {
         {/* Header */}
         <div className="inbox-ch-header">
           {activeDm ? (
-            <><div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 8, flexShrink: 0 }}>{initials(activeDm.userName)}</div><span className="inbox-ch-header-name">{activeDm.userName}</span><span className="inbox-ch-header-divider" /><span className="inbox-ch-header-desc">{activeDm.userDesignation}</span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: STATUS_COLOR[activeDm.status], marginLeft: 6, flexShrink: 0 }} /></>
+            <><div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 8, flexShrink: 0, cursor: 'pointer' }} onClick={e => openProfile(activeDm.userId, e, activeDm.userName, activeDm.userDesignation)}>{initials(activeDm.userName)}</div><span className="inbox-ch-header-name" style={{ cursor: 'pointer' }} onClick={e => openProfile(activeDm.userId, e, activeDm.userName, activeDm.userDesignation)}>{activeDm.userName}</span><span className="inbox-ch-header-divider" /><span className="inbox-ch-header-desc">{activeDm.userDesignation}</span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: STATUS_COLOR[activeDm.status], marginLeft: 6, flexShrink: 0 }} /></>
           ) : showSaved ? (
             <><span style={{ fontSize: 18 }}>🔖</span><span className="inbox-ch-header-name" style={{ marginLeft: 8 }}>Saved Messages</span></>
           ) : selCh ? (
@@ -748,11 +778,31 @@ export default function InboxClient() {
           <>
             <div className="inbox-messages-wrap">
               <div className="inbox-channel-welcome">
-                <div className="inbox-channel-welcome-icon">
-                  {activeDm ? <span style={{ fontSize: 28 }}>💬</span> : <span style={{ display: 'block', width: 28, height: 28, background: 'var(--color-primary)', WebkitMaskImage: `url(${selCh ? chIcon(selCh.type) : '/icons/hash.svg'})`, maskImage: `url(${selCh ? chIcon(selCh.type) : '/icons/hash.svg'})`, WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center', WebkitMaskSize: 'contain', maskSize: 'contain' }} />}
-                </div>
+                {activeDm ? (
+                  <div
+                    className="inbox-channel-welcome-icon inbox-channel-welcome-avatar"
+                    onClick={e => openProfile(activeDm.userId, e, activeDm.userName, activeDm.userDesignation)}
+                  >
+                    {initials(activeDm.userName)}
+                    <span className="inbox-dm-status" style={{ background: STATUS_COLOR[activeDm.status], position: 'absolute', bottom: -2, right: -2, borderColor: 'var(--color-surface)' }} />
+                  </div>
+                ) : (
+                  <div className="inbox-channel-welcome-icon">
+                    <span style={{ display: 'block', width: 28, height: 28, background: 'var(--color-primary)', WebkitMaskImage: `url(${selCh ? chIcon(selCh.type) : '/icons/hash.svg'})`, maskImage: `url(${selCh ? chIcon(selCh.type) : '/icons/hash.svg'})`, WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center', WebkitMaskSize: 'contain', maskSize: 'contain' }} />
+                  </div>
+                )}
                 <h2>{activeDm ? activeDm.userName : selCh ? `# ${selCh.name}` : 'Inbox'}</h2>
-                <p>{activeDm ? `Beginning of your DMs with ${activeDm.userName}.` : selCh?.description ? selCh.description : 'Start a conversation.'}</p>
+                {activeDm?.userDesignation && (
+                  <div className="inbox-channel-welcome-role">
+                    {activeDm.userDesignation}
+                    {dmEmployee?.role && <span className="inbox-channel-welcome-role-badge">{ROLE_LABEL[dmEmployee.role] ?? dmEmployee.role}</span>}
+                  </div>
+                )}
+                <p>
+                  {activeDm
+                    ? <>This is the beginning of your direct messages with <strong>{activeDm.userName}</strong>.</>
+                    : selCh?.description ? selCh.description : 'Start a conversation.'}
+                </p>
               </div>
 
               <MessageList messages={paneMsgs} myId={myId} myName={myName} editingId={editingId} editValue={editValue}
@@ -761,6 +811,7 @@ export default function InboxClient() {
                 onCtxMenu={(msg, x, y) => setContextMenu({ msg, x, y })}
                 onReply={msg => setReplyingTo({ id: msg.id, userName: msg.userName, content: msg.content })}
                 onForward={msg => setForwardMsg(msg)}
+                onOpenProfile={openProfile}
               />
               <div ref={msgEndRef} />
             </div>
@@ -809,7 +860,7 @@ export default function InboxClient() {
       <div className={`inbox-members${showMembers ? '' : ' hidden'}`}>
         <div className="inbox-members-title">Members — {allMems.length}</div>
         <div className="inbox-members-list">
-          <MembersPanel members={allMems} myId={myId} statusColor={STATUS_COLOR} />
+          <MembersPanel members={allMems} myId={myId} statusColor={STATUS_COLOR} onOpenProfile={openProfile} />
         </div>
       </div>
     </div>
@@ -825,9 +876,10 @@ interface MsgListProps {
   onReaction: (id: string, e: string) => void; onDelete: (id: string) => void; onStartEdit: (m: ChatMessage) => void;
   onCtxMenu: (m: ChatMessage, x: number, y: number) => void;
   onReply: (m: ChatMessage) => void; onForward: (m: ChatMessage) => void;
+  onOpenProfile: (id: string, e: React.MouseEvent, name?: string, designation?: string) => void;
 }
 
-function MessageList({ messages, myId, myName, editingId, editValue, onEditChange, onEditSubmit, onEditCancel, onReaction, onDelete, onStartEdit, onCtxMenu, onReply, onForward }: MsgListProps) {
+function MessageList({ messages, myId, myName, editingId, editValue, onEditChange, onEditSubmit, onEditCancel, onReaction, onDelete, onStartEdit, onCtxMenu, onReply, onForward, onOpenProfile }: MsgListProps) {
   if (messages.length === 0) return (
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: 14 }}>No messages yet. Say hello! 👋</div>
   );
@@ -858,12 +910,12 @@ function MessageList({ messages, myId, myName, editingId, editValue, onEditChang
             className={`inbox-msg-group${isFirst ? ' first-in-group' : ''}${msg.isPinned ? ' pinned' : ''}${msg.isLocal ? ' local-msg' : ''}`}
             onContextMenu={e => { e.preventDefault(); onCtxMenu(msg, e.clientX, e.clientY); }}>
             <div className="inbox-msg-avatar-col">
-              {isFirst ? <div className="inbox-msg-avatar">{initials(msg.userName)}</div> : <span className="inbox-msg-time-compact">{fmtTime(msg.timestamp)}</span>}
+              {isFirst ? <div className="inbox-msg-avatar" onClick={e => onOpenProfile(msg.userId, e, msg.userName, msg.userDesignation)}>{initials(msg.userName)}</div> : <span className="inbox-msg-time-compact">{fmtTime(msg.timestamp)}</span>}
             </div>
             <div className="inbox-msg-body">
               {isFirst && (
                 <div className="inbox-msg-header">
-                  <span className="inbox-msg-author">{msg.userName}</span>
+                  <span className="inbox-msg-author" onClick={e => onOpenProfile(msg.userId, e, msg.userName, msg.userDesignation)}>{msg.userName}</span>
                   {msg.userDesignation && <span className="inbox-msg-role-badge">{msg.userDesignation}</span>}
                   <span className="inbox-msg-timestamp">{fmtTs(msg.timestamp)}</span>
                   {msg.isPinned && <span style={{ fontSize: 11, color: 'var(--color-warning)', fontWeight: 600 }}>📌</span>}
@@ -962,7 +1014,7 @@ function PresenceVoiceView({ channel, occupants, isInChannel, micMuted, deafened
 
 /* ─────────────────── MembersPanel ───────────────────────── */
 
-function MembersPanel({ members, myId, statusColor }: { members: Member[]; myId: string; statusColor: Record<UserStatus, string> }) {
+function MembersPanel({ members, myId, statusColor, onOpenProfile }: { members: Member[]; myId: string; statusColor: Record<UserStatus, string>; onOpenProfile: (id: string, e: React.MouseEvent, name?: string, designation?: string) => void }) {
   const online  = members.filter(m => m.status !== 'offline');
   const offline = members.filter(m => m.status === 'offline');
   const labels: Record<UserStatus, string> = { online: 'Online', away: 'Away', dnd: 'Do Not Disturb', offline: 'Offline' };
@@ -970,7 +1022,7 @@ function MembersPanel({ members, myId, statusColor }: { members: Member[]; myId:
     <>
       <div className="inbox-members-section-label">Online — {online.length}</div>
       {online.map(m => (
-        <div key={m.id} className="inbox-member-row" title={`${m.name} — ${labels[m.status]}`}>
+        <div key={m.id} className="inbox-member-row" title={`${m.name} — ${labels[m.status]}`} onClick={e => onOpenProfile(m.id, e, m.name, m.designation)}>
           <div className="inbox-member-avatar-wrap"><div className="inbox-member-av">{initials(m.name)}</div><span className="inbox-member-status-dot" style={{ background: statusColor[m.status] }} /></div>
           <div className="inbox-member-info"><div className="inbox-member-name">{m.name}{m.id === myId ? ' (you)' : ''}</div><div className="inbox-member-designation">{m.designation}</div></div>
         </div>
@@ -979,7 +1031,7 @@ function MembersPanel({ members, myId, statusColor }: { members: Member[]; myId:
         <>
           <div className="inbox-members-section-label" style={{ marginTop: 8 }}>Offline — {offline.length}</div>
           {offline.map(m => (
-            <div key={m.id} className="inbox-member-row offline-member" title={`${m.name} — Offline`}>
+            <div key={m.id} className="inbox-member-row offline-member" title={`${m.name} — Offline`} onClick={e => onOpenProfile(m.id, e, m.name, m.designation)}>
               <div className="inbox-member-avatar-wrap"><div className="inbox-member-av">{initials(m.name)}</div><span className="inbox-member-status-dot" style={{ background: statusColor[m.status] }} /></div>
               <div className="inbox-member-info"><div className="inbox-member-name">{m.name}</div><div className="inbox-member-designation">{m.designation}</div></div>
             </div>

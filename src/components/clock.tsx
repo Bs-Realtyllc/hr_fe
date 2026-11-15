@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import Popup from "reactjs-popup";
 import { showToast } from "@/lib/toast";
+import { getPosition, geolocationErrorMessage } from "@/lib/geolocation";
 
 interface PauseType {
-  id: number;
   pause: string;
   resume: string | null;
   reason: string;
@@ -16,9 +16,9 @@ interface PauseType {
 interface ClockRecord {
   employeeId: number;
   clockIn: string | null;
-  clockOut: string | null;
   totalPauseDuration: number | null;
-  status: "idle" | "paused" | "running" | "done";
+  totalSecondsEarlierToday: number;
+  status: "idle" | "paused" | "running";
   pauses: PauseType[];
 }
 
@@ -26,12 +26,13 @@ interface ClockResponse {
   result: ClockRecord;
 }
 
-type ClockStatus = "idle" | "running" | "paused" | "done";
+type ClockStatus = "idle" | "running" | "paused";
 
-function formatHM(totalSeconds: number): string {
+function formatHMS(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  const s = totalSeconds % 60;
+  return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
 }
 
 function diffSeconds(from: string, to: string | number): number {
@@ -43,7 +44,6 @@ const STATUS_STYLES: Record<ClockStatus, string> = {
   idle: "bg-slate-200 text-slate-700",
   running: "bg-indigo-100 text-indigo-700",
   paused: "bg-amber-100 text-amber-700",
-  done: "bg-emerald-100 text-emerald-700",
 };
 
 export default function TimeElapsed() {
@@ -57,50 +57,40 @@ export default function TimeElapsed() {
   const [pauseReason, setPauseReason] = useState<string>("");
   const [reasonError, setReasonError] = useState<string>("");
 
+  async function refresh() {
+    const { result } = await api.get<ClockResponse>("/clock");
+    applyRecord(result);
+  }
+
   // ── Load today's record and derive the correct starting state ──
   useEffect(() => {
-    async function getClock() {
-      try {
-        const { result } = await api.get<ClockResponse>("/clock");
-        applyRecord(result);
-      } catch {
-        setStatus("idle");
-      } finally {
-        setLoading(false);
-      }
-    }
-    getClock();
+    refresh().catch(() => setStatus("idle")).finally(() => setLoading(false));
   }, []);
 
   function applyRecord(result: ClockRecord) {
     setStatus(result.status);
     const totalPause = result.totalPauseDuration ?? 0;
-
-    if (result.status === "done" && result.clockIn && result.clockOut) {
-      setBaseSeconds(diffSeconds(result.clockIn, result.clockOut) - totalPause);
-      setSegmentStart(null);
-      return;
-    }
+    const banked = result.totalSecondsEarlierToday ?? 0;
 
     if (result.status === "paused" && result.clockIn) {
       const openPause = result.pauses.find((p) => !p.resume);
       const freezePoint = openPause
         ? openPause.pause
         : new Date().toISOString();
-      setBaseSeconds(diffSeconds(result.clockIn, freezePoint) - totalPause);
+      setBaseSeconds(banked + diffSeconds(result.clockIn, freezePoint) - totalPause);
       setSegmentStart(null);
       return;
     }
 
     if (result.status === "running" && result.clockIn) {
       const now = Date.now();
-      setBaseSeconds(diffSeconds(result.clockIn, now) - totalPause);
+      setBaseSeconds(banked + diffSeconds(result.clockIn, now) - totalPause);
       setSegmentStart(now);
       return;
     }
 
-    // idle
-    setBaseSeconds(0);
+    // idle — may still carry banked time from an earlier shift today
+    setBaseSeconds(banked);
     setSegmentStart(null);
   }
 
@@ -121,7 +111,7 @@ export default function TimeElapsed() {
 
   // Freeze display at baseSeconds whenever not running
   useEffect(() => {
-    if (status === "paused" || status === "done" || status === "idle") {
+    if (status === "paused" || status === "idle") {
       setDisplaySeconds(baseSeconds);
     }
   }, [status, baseSeconds]);
@@ -130,7 +120,6 @@ export default function TimeElapsed() {
     const handler = (e: Event) => {
       const { clockInTime } = (e as CustomEvent).detail;
       setStatus("running");
-      setBaseSeconds(0);
       setSegmentStart(new Date(clockInTime).getTime());
     };
     window.addEventListener("clockIn", handler);
@@ -146,21 +135,15 @@ export default function TimeElapsed() {
     setActionLoading(true);
     try {
       if (status === "running") {
-        await api
-          .post<ClockResponse>("/clock/pause", {
-            reason: pauseReason,
-          })
-          .catch(() => {
-            showToast("error", "Failed to pause clock.");
-          });
+        await api.post<ClockResponse>("/clock/pause", {
+          reason: pauseReason,
+        });
         setClockOutPopup(false);
         setPauseReason("");
         setStatus("paused");
         showToast("success", "Break started");
       } else if (status === "paused") {
-        await api.post<ClockResponse>("/clock/resume", {}).catch(() => {
-          showToast("error", "Failed to resume clock.");
-        });
+        await api.post<ClockResponse>("/clock/resume", {});
         setSegmentStart(Date.now());
         setClockOutPopup(false);
         setStatus("running");
@@ -169,7 +152,7 @@ export default function TimeElapsed() {
     } catch (err) {
       showToast(
         "error",
-        `Could not ${status === "running" ? "pause" : "resume"}`,
+        err instanceof Error ? err.message : `Could not ${status === "running" ? "pause" : "resume"}`,
       );
     } finally {
       setActionLoading(false);
@@ -179,12 +162,18 @@ export default function TimeElapsed() {
   const handleClockOut = async () => {
     setActionLoading(true);
     try {
-      const { result } = await api.post<ClockResponse>("/clock/out", {});
-      setStatus('done')
+      const pos = await getPosition();
+      await api.post<ClockResponse>("/clock/out", {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+      });
       setClockOutPopup(false);
       showToast("success", "Clocked out!");
+      // Re-fetch so banked time picks up the shift that just ended and
+      // status drops back to idle (another shift can start later today).
+      await refresh();
     } catch (err) {
-      showToast("error", "Could not clock out");
+      showToast("error", geolocationErrorMessage(err));
     } finally {
       setActionLoading(false);
     }
@@ -205,14 +194,14 @@ export default function TimeElapsed() {
               "1",
             );
             window.dispatchEvent(new Event("clock-popup-request"));
-          } else if (status !== "done") {
+          } else {
             setClockOutPopup(true);
           }
         }}
       >
         <StatusIcon status={status} />
         <span className="tabular-nums">
-          {status === "idle" ? "--:--" : formatHM(displaySeconds)}
+          {status === "idle" && displaySeconds === 0 ? "Clock In" : formatHMS(displaySeconds)}
         </span>
       </div>
 
@@ -254,6 +243,7 @@ export default function TimeElapsed() {
               disabled={actionLoading}
               className="btn btn-ghost"
             >
+              <Icon name={status === "paused" ? "play-circle" : "pause-circle"} />
               {actionLoading ? "…" : status === "paused" ? "Resume" : "Pause"}
             </button>
             <button
@@ -261,6 +251,7 @@ export default function TimeElapsed() {
               disabled={actionLoading}
               className="btn btn-primary"
             >
+              <Icon name="stop-circle" />
               {actionLoading ? "Clocking out…" : "Clock Out"}
             </button>
           </div>
@@ -270,25 +261,21 @@ export default function TimeElapsed() {
   );
 }
 
+function Icon({ name }: { name: string }) {
+  return (
+    <span
+      className="icon-mask"
+      style={{ WebkitMaskImage: `url(/icons/${name}.svg)`, maskImage: `url(/icons/${name}.svg)` }}
+    />
+  );
+}
+
 function StatusIcon({ status }: { status: ClockStatus }) {
   if (status === "paused") {
     return (
       <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 shrink-0">
         <rect x="7" y="6" width="3" height="12" rx="1" fill="currentColor" />
         <rect x="14" y="6" width="3" height="12" rx="1" fill="currentColor" />
-      </svg>
-    );
-  }
-  if (status === "done") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 shrink-0">
-        <path
-          d="M5 13l4 4L19 7"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
       </svg>
     );
   }
