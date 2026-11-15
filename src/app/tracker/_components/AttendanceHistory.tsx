@@ -14,6 +14,7 @@ interface AttendanceRecord {
   clockId: number;
   clockIn: string;
   clockOut: string | null;
+  clockOutEstimated: boolean;
   clockDate: string;
   pauses: PauseRecord[];
   totalPauseDuration: number;
@@ -185,6 +186,15 @@ export default function AttendanceHistory() {
                       </td>
                       <td>
                         {shift.clockOut ? formatTimeNepal(shift.clockOut) : "still running"}
+                        {shift.clockOutEstimated && (
+                          <span
+                            title="This clock-out was auto-estimated by the system, not actually reported by you."
+                            className="tracker-table-muted"
+                            style={{ fontStyle: "italic", marginLeft: 4 }}
+                          >
+                            (estimated)
+                          </span>
+                        )}
                         <LocationLink lat={shift.clockOutLat} lng={shift.clockOutLng} label="clock-out" />
                       </td>
                       <td>

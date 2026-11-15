@@ -64,6 +64,7 @@ interface ClockSession {
   clockDate: string;
   clockIn: string;
   clockOut: string | null;
+  clockOutEstimated: boolean;
   totalPauseDuration: number;
   totalClockInDuration: number;
 }
@@ -649,6 +650,13 @@ export default function OvertimePage() {
                                 <div style={{ flex: 1 }}>
                                   <div className="text-sm" style={{ fontWeight: 600 }}>
                                     {formatDay(s.clockDate, today)} · {formatTimeNepal(s.clockIn)} – {s.clockOut ? formatTimeNepal(s.clockOut) : 'still running'}
+                                    {s.clockOutEstimated && (
+                                      <span
+                                        title="This clock-out was auto-estimated by the system, not actually reported — double-check this is right before claiming it."
+                                        className="text-muted"
+                                        style={{ fontWeight: 400, fontStyle: 'italic' }}
+                                      > (estimated)</span>
+                                    )}
                                   </div>
                                   {s.totalPauseDuration > 0 && (
                                     <div className="text-muted" style={{ fontSize: 11 }}>includes {formatHoursMinutes(s.totalPauseDuration)} of pauses</div>
