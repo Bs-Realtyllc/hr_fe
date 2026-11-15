@@ -11,7 +11,7 @@ export default function DefaultPage() {
   const canViewAll = user?.role === "admin" || user?.role === "lead";
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: "active", label: "Active users" },
+    { id: "active", label: "Today" },
     ...(canViewAll ? [{ id: "attendence" as Tab, label: "Attendence" }] : []),
   ];
 
@@ -21,11 +21,11 @@ export default function DefaultPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Active employees & Attendence</h1>
+          <h1>Today & Attendence</h1>
           <p>
             {canViewAll
-              ? "View active users and manage attendence"
-              : "See who's currently active"}
+              ? "View today's roster and manage attendence"
+              : "See who's working, on a break, or done for the day"}
           </p>
         </div>
       </div>

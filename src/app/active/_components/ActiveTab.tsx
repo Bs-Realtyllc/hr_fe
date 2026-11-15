@@ -16,24 +16,36 @@ interface ClockUser {
   clockDate: string;
   clockId: number;
   clockIn: string;
+  clockOut: string | null;
   status: Status;
   pauses: Array<PausesType>;
   isLate: boolean;
+  // Only set when status is "done" — total time worked across every shift
+  // today (split shifts included), already net of pauses.
+  totalSeconds: number | null;
 }
 
-// /clock/all only ever returns people with a currently open shift, so
-// "done" (a finished shift) can never show up here.
-type Status = "running" | "paused";
+// /clock/all now covers everyone with any activity today, not just people
+// currently clocked in — "done" means every shift today is closed.
+type Status = "running" | "paused" | "done";
 
 const STATUS_LABEL: Record<Status, string> = {
   running: "Working",
   paused: "On a break",
+  done: "Done",
 };
 
 const STATUS_BADGE: Record<Status, string> = {
   running: "badge badge-success",
   paused: "badge badge-warning",
+  done: "badge badge-neutral",
 };
+
+function formatHoursMinutes(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.round((totalSeconds % 3600) / 60);
+  return h === 0 ? `${m}m` : `${h}h ${m}m`;
+}
 
 function initials(name: string) {
   return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
@@ -75,7 +87,7 @@ export default function ActiveTab() {
   return (
     <div className="card active-list">
       {users.length === 0 ? (
-        <div className="active-empty">No one is currently active.</div>
+        <div className="active-empty">No one has clocked in today.</div>
       ) : (
         users.map((user) => (
           <div key={user.employeeId} className="active-row">
@@ -88,9 +100,18 @@ export default function ActiveTab() {
             <div className="active-row-info">
               <div className="active-row-name">{user.name}</div>
               <div className="active-row-meta">
-                Since {formatTimeNepal(user.clockIn)}
-                {user.status === "paused" && user.pauses[user.pauses.length - 1]?.reason && (
-                  <> · {user.pauses[user.pauses.length - 1].reason}</>
+                {user.status === "done" ? (
+                  <>
+                    Finished at {user.clockOut ? formatTimeNepal(user.clockOut) : "—"}
+                    {user.totalSeconds != null && <> · worked {formatHoursMinutes(user.totalSeconds)}</>}
+                  </>
+                ) : (
+                  <>
+                    Since {formatTimeNepal(user.clockIn)}
+                    {user.status === "paused" && user.pauses[user.pauses.length - 1]?.reason && (
+                      <> · {user.pauses[user.pauses.length - 1].reason}</>
+                    )}
+                  </>
                 )}
               </div>
             </div>

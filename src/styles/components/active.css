@@ -34,6 +34,7 @@
 }
 .active-row-dot-running { background: #23a55a; }
 .active-row-dot-paused { background: #f0b232; }
+.active-row-dot-done { background: #80848e; }
 .active-row-info {
   flex: 1;
   min-width: 0;
