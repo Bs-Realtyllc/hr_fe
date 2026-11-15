@@ -21,6 +21,7 @@ interface AttendanceRecord {
   clockId: number;
   clockIn: string;
   clockOut: string | null;
+  clockOutEstimated: boolean;
   clockDate: string;
   pauses: PauseRecord[];
   totalPauseDuration: number;
@@ -196,6 +197,15 @@ export default function AttendancePage() {
                 </td>
                 <td>
                   {r.clockOut ? formatTimeNepal(r.clockOut) : "still running"}
+                  {r.clockOutEstimated && (
+                    <span
+                      title="This clock-out was auto-estimated by the system, not actually reported by the employee."
+                      className="attendance-muted"
+                      style={{ fontStyle: "italic", marginLeft: 4 }}
+                    >
+                      (estimated)
+                    </span>
+                  )}
                   <LocationLink lat={r.clockOutLat} lng={r.clockOutLng} label="clock-out" />
                 </td>
                 <td>
