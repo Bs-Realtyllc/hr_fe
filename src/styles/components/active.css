@@ -1,0 +1,120 @@
+/* ── Active users (who's currently clocked in) ── */
+.active-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.active-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 13.5px;
+}
+.active-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--color-border);
+}
+.active-row:last-child { border-bottom: none; }
+.active-row-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.active-row-avatar-wrap .avatar { color: #fff; }
+.active-row-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid var(--color-surface);
+}
+.active-row-dot-running { background: #23a55a; }
+.active-row-dot-paused { background: #f0b232; }
+.active-row-dot-done { background: #80848e; }
+.active-row-info {
+  flex: 1;
+  min-width: 0;
+}
+.active-row-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-h3);
+}
+.active-row-meta {
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  margin-top: 1px;
+}
+
+/* ── Employee attendance (admin, cross-employee history) ── */
+.attendance-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.attendance-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+.attendance-filter-field {
+  width: 170px;
+  margin-bottom: 0;
+}
+.attendance-table td {
+  vertical-align: top;
+}
+.attendance-name-cell {
+  font-weight: 600;
+  color: var(--color-text-h3);
+  white-space: nowrap;
+}
+.attendance-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 13.5px;
+}
+.attendance-muted {
+  color: var(--color-text-muted);
+}
+.attendance-late-badge {
+  margin-left: 6px;
+}
+.attendance-pause-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.attendance-pause-chip {
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.attendance-pause-chip-reason {
+  font-weight: 500;
+  color: var(--color-text-body);
+}
+.attendance-total-header {
+  text-align: right;
+}
+.attendance-total-cell {
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-h1);
+}
+.attendance-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
