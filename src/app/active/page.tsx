@@ -1,24 +1,31 @@
 'use client';
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import ActiveTab from "./_components/ActiveTab";
 import AttendenceTab from "./_components/AttendenceTab";
 
 type Tab = "active" | "attendence";
 
-
-
-
-
 export default function DefaultPage() {
+  const { user } = useAuth();
+  const canViewAll = user?.role === "admin" || user?.role === "lead";
+
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "active", label: "Today" },
+    ...(canViewAll ? [{ id: "attendence" as Tab, label: "Attendence" }] : []),
+  ];
+
   const [tab, setTab] = useState<Tab>("active");
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <h1>Active employees & Attendence</h1>
+          <h1>Today & Attendence</h1>
           <p>
-            View active users and manage attendence
+            {canViewAll
+              ? "View today's roster and manage attendence"
+              : "See who's working, on a break, or done for the day"}
           </p>
         </div>
       </div>
@@ -33,12 +40,7 @@ export default function DefaultPage() {
           paddingBottom: 0,
         }}
       >
-        {(
-          [
-            { id: "active", label: "Active users" },
-            { id: "attendence", label: "Attendence" },
-          ] as { id: Tab; label: string }[]
-        ).map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -61,7 +63,7 @@ export default function DefaultPage() {
       </div>
 
       {tab === "active" && <ActiveTab />}
-      {tab === "attendence" && <AttendenceTab />}
+      {tab === "attendence" && canViewAll && <AttendenceTab />}
     </div>
   );
 }

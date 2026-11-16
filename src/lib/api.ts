@@ -1,17 +1,6 @@
 import { clearAuth, getToken } from "@/lib/auth";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL;
-// export class ApiError extends Error {
-//   response: {
-//     status: number;
-//     data: any;
-//   };
-
-//   constructor(status: number, data: any) {
-//     super(data?.message ?? data?.error ?? `API error ${status}`);
-//     this.response = { status, data };
-//   }
-// }
 
 async function req<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getToken();
@@ -35,14 +24,18 @@ async function req<T>(path: string, options?: RequestInit): Promise<T> {
   }
 
   if (!res.ok) {
-    throw new Error(`API error ${res.status}`);
-    //   let data: any = null;
-    //   try {
-    //     data = await res.json();
-    //   } catch {
-    //     data = { message: res.statusText || `API error ${res.status}` };
-    //   }
-    //   throw new ApiError(res.status, data);
+    // errorHandler.ts sends { error: "<descriptive message>" } on every
+    // AppError — surface that instead of a bare status code, so callers
+    // that already do `catch (err) { showToast('error', err.message) }`
+    // actually show the real validation/authorization reason.
+    let message = `API error ${res.status}`;
+    try {
+      const data = await res.json();
+      message = data?.error ?? data?.message ?? message;
+    } catch {
+      // body wasn't JSON — keep the generic fallback
+    }
+    throw new Error(message);
   }
   return res.json();
 }

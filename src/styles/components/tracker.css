@@ -1,0 +1,113 @@
+/* ── Tracker page ── */
+.tracker-live-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.tracker-live-skeleton {
+  height: 140px;
+  background: var(--color-border);
+  opacity: 0.4;
+}
+.tracker-live-time {
+  font-size: 48px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-h1);
+  transition: color 0.3s ease;
+}
+.tracker-live-time-running { color: var(--color-primary); }
+.tracker-live-time-paused { color: var(--color-warning); }
+
+.tracker-live-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tracker-live-actions .icon-mask { width: 16px; height: 16px; }
+.tracker-pause-input {
+  width: 240px;
+}
+.tracker-live-error {
+  font-size: 12.5px;
+  color: #991B1B;
+}
+.tracker-live-caption {
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  margin-top: -6px;
+}
+
+.tracker-history {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tracker-history-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+.tracker-filter-field {
+  width: 170px;
+  margin-bottom: 0;
+}
+.tracker-history-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 13.5px;
+}
+.tracker-day-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tracker-day-block-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.tracker-table-date-label {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--color-text-h3);
+}
+.tracker-table-total-header {
+  text-align: right;
+}
+.tracker-table-total-cell {
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-h1);
+}
+.tracker-table-muted {
+  color: var(--color-text-muted);
+}
+.tracker-day-table td {
+  vertical-align: top;
+}
+.tracker-pause-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tracker-pause-chip {
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.tracker-pause-chip-reason {
+  font-weight: 500;
+  color: var(--color-text-body);
+}
+.tracker-history-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
