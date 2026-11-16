@@ -151,7 +151,6 @@ const maskIcon = (url: string) => ({
 /* ---------- Component ---------- */
 
 const EmployeeDocuments = () => {
-    const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [picked, setPicked] = useState<PickedState>({});
     const [saved, setSaved] = useState<SavedState>({});
@@ -159,34 +158,22 @@ const EmployeeDocuments = () => {
     const [editingSection, setEditingSection] = useState<Record<string, boolean>>({});
 
     // Load saved documents on mount.
-    useEffect(() => {
-        async function loadDocuments() {
-            try {
-                setLoading(true);
-                const data = await profileService.getProfile();
+    // useEffect(() => {
+    //     async function loadDocuments() {
+    //         try {
+    //             setLoading(true);
+    //             const data = await profileService.getProfile();
 
-                // GET /profile only returns the ID filenames for now.
-                setSaved({
-                    idFront: data.id_front ? [data.id_front] : [],
-                    idBack: data.id_back ? [data.id_back] : [],
-                });
+    //             // GET /profile only returns the ID filenames for now.
 
-                const [front, back] = await Promise.all([
-                    data.id_front ? loadIdPreview(data.id_front) : null,
-                    data.id_back ? loadIdPreview(data.id_back) : null,
-                ]);
-                setIdPreviewFiles({
-                    ...(front && { idFront: front }),
-                    ...(back && { idBack: back }),
-                });
-            } catch (err: any) {
-                setError(err.message || 'Failed to load documents');
-            } finally {
-                setLoading(false);
-            }
-        }
-        loadDocuments();
-    }, []);
+    //         } catch (err: any) {
+    //             setError(err.message || 'Failed to load documents');
+    //         } finally {
+    //             setLoading(false);
+    //         }
+    //     }
+    //     loadDocuments();
+    // }, []);
 
     const setEditing = (title: string, value: boolean) =>
         setEditingSection((prev) => ({ ...prev, [title]: value }));
@@ -255,7 +242,6 @@ const EmployeeDocuments = () => {
         }
     };
 
-    if (loading) return <div className="p-4 text-gray-500">Loading documents...</div>;
     if (error) return <div className="p-4 text-red-500">Error: {error}</div>;
 
     return (

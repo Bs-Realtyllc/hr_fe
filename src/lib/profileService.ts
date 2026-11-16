@@ -15,15 +15,22 @@ export interface Profile {
   dob: string;
   gender: string;
   github_url: string;
-  address: string;
+  current_address: string;
+  permanent_address: string;
   discord_username: string;
   panNo: string;
   role: string;
   status: string;
   profile_picture: string;
   id_front: string;
+  work_hours: string;
   id_back: string;
   nationality: string;
+  emergency_contact_name: string;
+  emergency_contact_relation: string;
+  emergency_contact_address: string;
+  emergency_contact_email: string;
+  emergency_contact_phone: string;
   
 }
 
@@ -46,4 +53,5 @@ export const profileService = {
       formData,
     );
   },
+
 };

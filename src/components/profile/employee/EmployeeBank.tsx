@@ -16,6 +16,7 @@ const EmployeeBank = () => {
         accountNumber: '',
         branchName: '',
         accountType: '',
+        bankName: '',
     })
     const [isEditingBank, setIsEditingBank] = useState(false)
 
@@ -25,13 +26,13 @@ const EmployeeBank = () => {
             try {
                 setLoading(true);
                 const data = await profileService.getProfile();
-                console.log("Fetched Profile Data for Bank:", data);
 
                 setBankInfo({
                     accountHolder: (data as any).account_holder_name,
                     accountNumber: (data as any).account_number,
                     branchName: (data as any).bank_branch_name,
                     accountType: (data as any).account_type || (data as any).acc_type || '',
+                    bankName: (data as any).bank_name,
                 });
             } catch (err: any) {
                 setError(err.message || "Failed to load bank details");
@@ -47,10 +48,13 @@ const EmployeeBank = () => {
         e.preventDefault()
         try {
             await profileService.updateProfile({
-                account_holder: bankInfo.accountHolder,
+                account_holder_name: bankInfo.accountHolder,
                 account_number: bankInfo.accountNumber,
                 branch_name: bankInfo.branchName,
                 account_type: bankInfo.accountType,
+                bank_name: bankInfo.bankName,
+                bank_branch_name: bankInfo.branchName
+                
             } as any);
             console.log("Updated Bank Info:", bankInfo);
             setIsEditingBank(false);
@@ -79,7 +83,7 @@ const EmployeeBank = () => {
     );
 
     return (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 mb-20">
             {/* Bank Details */}
             <div className="flex flex-col gap-4 p-3">
                 <div className="flex justify-between">
@@ -140,6 +144,26 @@ const EmployeeBank = () => {
                             </div>
                         ) : (
                             <p className="text-[14px] font-medium text-(--white-darker)">{bankInfo.accountNumber || '-'}</p>
+                        )}
+                    </div>
+
+                    {/* Bank Name */}
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+                        <label htmlFor="branch" className="text-[14px] font-medium text-(--gray-darker)">
+                            Bank Name
+                        </label>
+                        {isEditingBank ? (
+                            <div className="w-60">
+                                <InputField
+                                    className="h-9! text-end!"
+                                    id="bank"
+                                    type="text"
+                                    value={bankInfo.bankName}
+                                    onChange={(e) => setBankInfo({ ...bankInfo, bankName: e.target.value })}
+                                />
+                            </div>
+                        ) : (
+                            <p className="text-[14px] font-medium text-(--white-darker)">{bankInfo.bankName || '-'}</p>
                         )}
                     </div>
 
