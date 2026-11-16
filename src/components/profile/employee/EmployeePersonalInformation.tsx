@@ -1,233 +1,651 @@
-'use client'
+"use client";
 
-import Button from "@/components/Button/Button"
-import InputField from "@/components/InputField/InputField"
+import Button from "@/components/Button/Button";
+import InputField from "@/components/InputField/InputField";
+import { useEffect, useState } from "react";
+import { profileService, Profile } from "@/lib/profileService";
+import { BSRealtyDropdown } from "@bsrealtyllc/design-system";
+import { api } from "@/lib/api";
 
 const EmployeePersonalInformation = () => {
-    return (
-        <div className="flex flex-col gap-4">
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-            {/* Personal detail */}
-            <div className="flex flex-col gap-4 p-3">
-                <div className="flex justify-between ">
-                    <div className="flex gap-2">
-                        <div className="flex justify-center items-center  bg-(--blue-sky-light) rounded-full h-7 w-7 text-(--blue-salt)"><span style={{
-                            display: 'inline-block',
-                            width: '20px',
-                            height: '20px',
-                            backgroundColor: 'currentColor',
-                            maskImage: 'url(/icons/user.svg)',
-                            maskSize: 'contain',
-                            maskRepeat: 'no-repeat',
-                            WebkitMaskImage: 'url(/icons/user.svg)',
-                            WebkitMaskSize: 'contain',
-                            WebkitMaskRepeat: 'no-repeat'
-                        }}
-                        /></div>
-                        <h1 className="text-[16px] font-semibold text-(--gray-darker)">Personal Detail</h1>
-                    </div>
-                    <div>
-                        <Button className="text-(--blue-dark-normal)!" variant="text" size="small" leftIcon={
-                            <span style={{
-                                display: 'inline-block',
-                                width: '20px',
-                                height: '20px',
-                                backgroundColor: 'currentColor',
-                                maskImage: 'url(/icons/edit-4.svg)',
-                                maskSize: 'contain',
-                                maskRepeat: 'no-repeat',
-                                WebkitMaskImage: 'url(/icons/edit-4.svg)',
-                                WebkitMaskSize: 'contain',
-                                WebkitMaskRepeat: 'no-repeat'
-                            }}
+  // 1. Personal Info State & Toggle
+  const [personalInfo, setPersonalInfo] = useState({
+    name: "",
+    dob: "",
+    gender: "",
+    nationality: "",
+  });
+  const [isEditingPersonal, setIsEditingPersonal] = useState(false);
 
-                            />}>Edit</Button>
-                    </div>
-                </div>
+  // 2. Contact Info State & Toggle
+  const [contactInfo, setContactInfo] = useState({
+    companyEmail: "",
+    personalEmail: "",
+    phone: "",
+    currentAddress: "",
+    permanentAddress: "",
+  });
+  const [isEditingContact, setIsEditingContact] = useState(false);
 
-                <form className="">
-                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
-                        <label htmlFor="name" className="text-[14px] font-medium text-(--gray-darker)">
-                            Full Name
-                        </label>
-                        <p className="text-[14px] font-medium text-(--white-darker)">Olivia Rodriya</p>
-                        {/* <InputField className="" /> */}
-                    </div>
-                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
-                        <label htmlFor="dob" className="text-[14px] font-medium text-(--gray-darker)">
-                            Date of Birth
-                        </label>
-                        <p className="text-[14px] font-medium text-(--white-darker)">Sep 15, 2007</p>
-                        {/* <InputField className="" /> */}
-                    </div>
-                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
-                        <label htmlFor="gender" className="text-[14px] font-medium text-(--gray-darker)">
-                            Gender
-                        </label>
-                        <p className="text-[14px] font-medium text-(--white-darker)">Female</p>
-                        {/* <InputField className="" /> */}
-                    </div>
-                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
-                        <label htmlFor="nationality" className="text-[14px] font-medium text-(--gray-darker)">
-                            Nationality
-                        </label>
-                        <p className="text-[14px] font-medium text-(--white-darker)">Nepali</p>
-                        {/* <InputField className="" /> */}
-                    </div>
-                </form>
+  // 3. Emergency Contact State & Toggle
+  const [emergencyInfo, setEmergencyInfo] = useState({
+    name: "",
+    relationship: "",
+    email: "",
+    phone: "",
+    address: "",
+  });
+  const [isEditingEmergency, setIsEditingEmergency] = useState(false);
+
+  // fetch profile data
+  useEffect(() => {
+    async function loadProfileData() {
+      try {
+        setLoading(true);
+        const data = await profileService.getProfile();
+        setPersonalInfo({
+          name: data.name || "",
+          dob: data.dob || "",
+          gender: data.gender || "",
+          nationality: data.nationality || "",
+        });
+
+        setContactInfo({
+          companyEmail: data.email || "",
+          personalEmail: data.secondary_email || "",
+          phone: data.phone || "",
+          currentAddress: data.current_address || "",
+          permanentAddress: data.permanent_address || "",
+        });
+
+        setEmergencyInfo({
+          name: (data as any).emergency_contact_name || "",
+          relationship: (data as any).emergency_contact_relation || "",
+          email: (data as any).emergency_contact_email || "",
+          phone: (data as any).emergency_contact_phone || "",
+          address: (data as any).emergency_contact_address || "",
+        });
+      } catch (err: any) {
+        setError(err.message || "Failed to load profile");
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProfileData();
+  }, []);
+
+  // Handlers for saving each section
+  const handleSavePersonal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await profileService.updateProfile({
+        name: personalInfo.name,
+        dob: personalInfo.dob,
+        gender: personalInfo.gender,
+        nationality: personalInfo.nationality,
+      });
+      console.log("Updated Personal Info:", personalInfo);
+      setIsEditingPersonal(false);
+    } catch (err: any) {
+      alert(err.message || "Failed to update personal details");
+    }
+  };
+
+  const handleSaveContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await profileService.updateProfile({
+        email: contactInfo.companyEmail,
+        secondary_email: contactInfo.personalEmail,
+        phone: contactInfo.phone,
+        current_address: contactInfo.currentAddress,
+        permanent_address: contactInfo.permanentAddress,
+      });
+      console.log("Updated Contact Info:", contactInfo);
+      setIsEditingContact(false);
+    } catch (err: any) {
+      alert(err.message || "Failed to update contact info");
+    }
+  };
+
+  const handleSaveEmergency = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await profileService.updateProfile({
+        emergency_contact_name: emergencyInfo.name,
+        emergency_contact_relation: emergencyInfo.relationship,
+        emergency_contact_email: emergencyInfo.email,
+        emergency_contact_phone: emergencyInfo.phone,
+        emergency_contact_address: emergencyInfo.address,
+      });
+      console.log("Updated Personal Info:", personalInfo);
+      setIsEditingPersonal(false);
+    } catch (err: any) {
+      alert(err.message || "Failed to update personal details");
+    }
+    setIsEditingEmergency(false);
+  };
+
+  if (loading)
+    return <div className="p-4 text-gray-500">Loading profile data...</div>;
+  if (error) return <div className="p-4 text-red-500">Error: {error}</div>;
+
+  // Reusable Icon Renderer
+  const renderMaskIcon = (iconPath: string, size = "14px") => (
+    <span
+      style={{
+        display: "inline-block",
+        width: size,
+        height: size,
+        backgroundColor: "currentColor",
+        maskImage: `url(${iconPath})`,
+        maskSize: "contain",
+        maskRepeat: "no-repeat",
+        WebkitMaskImage: `url(${iconPath})`,
+        WebkitMaskSize: "contain",
+        WebkitMaskRepeat: "no-repeat",
+      }}
+    />
+  );
+
+  return (
+    <div className="flex flex-col gap-4 mb-20">
+      {/* Personal detail */}
+      <div className="flex flex-col gap-4 p-3">
+        <div className="flex justify-between ">
+          <div className="flex gap-2">
+            <div className="flex justify-center items-center bg-(--blue-sky-light) rounded-full h-7 w-7 text-(--blue-salt)">
+              {renderMaskIcon("/icons/user.svg", "20px")}
             </div>
+            <h1 className="text-[16px] font-semibold text-(--gray-darker)">
+              Personal Detail
+            </h1>
+          </div>
+          <div>
+            <Button
+              className="text-(--blue-dark-normal)!"
+              variant="text"
+              size="xs"
+              onClick={() => setIsEditingPersonal(!isEditingPersonal)}
+              leftIcon={renderMaskIcon("/icons/edit-4.svg")}
+            >
+              {isEditingPersonal ? "Cancel" : "Edit"}
+            </Button>
+          </div>
+        </div>
 
-            {/* Contact Information */}
-            <div className="flex flex-col gap-4 p-3">
-                <div className="flex justify-between ">
-                    <div className="flex gap-2">
-                        <div className="flex justify-center items-center  bg-(--blue-sky-light) rounded-full h-7 w-7 text-[#4A6FA5]"><span style={{
-                            display: 'inline-block',
-                            width: '20px',
-                            height: '20px',
-                            backgroundColor: 'currentColor',
-                            maskImage: 'url(/icons/mail.svg)',
-                            maskSize: 'contain',
-                            maskRepeat: 'no-repeat',
-                            WebkitMaskImage: 'url(/icons/mail.svg)',
-                            WebkitMaskSize: 'contain',
-                            WebkitMaskRepeat: 'no-repeat'
-                        }}
-                        /></div>
-                        <h1 className="text-[16px] font-semibold text-(--gray-darker)">Contact Information</h1>
-                    </div>
-                    <div>
-                        <Button className="text-(--blue-dark-normal)!" variant="text" size="small"
-                            leftIcon={
-                                <span style={{
-                                    display: 'inline-block',
-                                    width: '20px',
-                                    height: '20px',
-                                    backgroundColor: 'currentColor',
-                                    maskImage: 'url(/icons/edit-4.svg)',
-                                    maskSize: 'contain',
-                                    maskRepeat: 'no-repeat',
-                                    WebkitMaskImage: 'url(/icons/edit-4.svg)',
-                                    WebkitMaskSize: 'contain',
-                                    WebkitMaskRepeat: 'no-repeat'
-                                }}
+        <form onSubmit={handleSavePersonal}>
+          {/* Full Name */}
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <label
+              htmlFor="name"
+              className="text-[14px] font-medium text-(--gray-darker)"
+            >
+              Full Name
+            </label>
+            {isEditingPersonal ? (
+              <div className="w-60">
+                <InputField
+                  className="h-9! text-end!"
+                  id="name"
+                  type="text"
+                  value={personalInfo.name}
+                  onChange={(e) =>
+                    setPersonalInfo({ ...personalInfo, name: e.target.value })
+                  }
+                />
+              </div>
+            ) : (
+              <p className="text-[14px] font-medium text-(--white-darker)">
+                {personalInfo.name || "-"}
+              </p>
+            )}
+          </div>
 
-                                />}
-                        >
-                            Edit</Button>
-                    </div>
-                </div>
+          {/* DOB */}
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <label
+              htmlFor="dob"
+              className="text-[14px] font-medium text-(--gray-darker)"
+            >
+              Date of Birth
+            </label>
+            {isEditingPersonal ? (
+              <div className="w-60">
+                <InputField
+                  className="h-9! text-end!"
+                  id="dob"
+                  type="date"
+                  value={personalInfo.dob}
+                  onChange={(e) =>
+                    setPersonalInfo({ ...personalInfo, dob: e.target.value })
+                  }
+                />
+              </div>
+            ) : (
+              <p className="text-[14px] font-medium text-(--white-darker)">
+                {personalInfo.dob || "-"}
+              </p>
+            )}
+          </div>
 
-                <form className="">
-                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
-                        <label htmlFor="comp-email" className="text-[14px] font-medium text-(--gray-darker)">
-                            Company email
-                        </label>
-                        <p className="text-[14px] font-medium text-(--white-darker)">olivia@company.com</p>
-                        {/* <InputField className="" /> */}
-                    </div>
-                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
-                        <label htmlFor="dob" className="text-[14px] font-medium text-(--gray-darker)">
-                            Personal email
-                        </label>
-                        <p className="text-[14px] font-medium text-(--white-darker)">Oliviarodriya@gmail.com</p>
-                        {/* <InputField className="" /> */}
-                    </div>
-                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
-                        <label htmlFor="phone" className="text-[14px] font-medium text-(--gray-darker)">
-                            Phone Number
-                        </label>
-                        <p className="text-[14px] font-medium text-(--white-darker)">+9779812345678</p>
-                        {/* <InputField className="" /> */}
-                    </div>
-                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
-                        <label htmlFor="current-add" className="text-[14px] font-medium text-(--gray-darker)">
-                            Current Address
-                        </label>
-                        <p className="text-[14px] font-medium text-(--white-darker)">Kathmandu</p>
-                        {/* <InputField className="" /> */}
-                    </div>
-                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
-                        <label htmlFor="permanent-add" className="text-[14px] font-medium text-(--gray-darker)">
-                            Permanent Address
-                        </label>
-                        <p className="text-[14px] font-medium text-(--white-darker)">Kailali</p>
-                        {/* <InputField className="" /> */}
-                    </div>
-                </form>
+          {/* Gender */}
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <label
+              htmlFor="gender"
+              className="text-[14px] font-medium text-(--gray-darker)"
+            >
+              Gender
+            </label>
+            {isEditingPersonal ? (
+              <div className="w-60 pb-1">
+                <BSRealtyDropdown
+                  className="w-60! [&_.bsr-dropdown\_input-wrapper]:h-9! [&_.bsr-dropdown\_input]:h-full! "
+                  value={personalInfo.gender}
+                  onChange={(val: string) =>
+                    setPersonalInfo({ ...personalInfo, gender: val })
+                  }
+                  options={[
+                    { label: "Male", value: "male" },
+                    { label: "Female", value: "female" },
+                    { label: "Other", value: "other" },
+                  ]}
+                />
+              </div>
+            ) : (
+              <p className="text-[14px] font-medium text-(--white-darker) capitalize">
+                {personalInfo.gender || "-"}
+              </p>
+            )}
+          </div>
+
+          {/* Nationality */}
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <label
+              htmlFor="nationality"
+              className="text-[14px] font-medium text-(--gray-darker)"
+            >
+              Nationality
+            </label>
+            {isEditingPersonal ? (
+              <div className="w-60">
+                <InputField
+                  className="h-9! text-end!"
+                  id="nationality"
+                  type="text"
+                  value={personalInfo.nationality}
+                  onChange={(e) =>
+                    setPersonalInfo({
+                      ...personalInfo,
+                      nationality: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            ) : (
+              <p className="text-[14px] font-medium text-(--white-darker)">
+                {personalInfo.nationality || "-"}
+              </p>
+            )}
+          </div>
+          {isEditingPersonal && (
+            <div className="flex justify-end gap-2 mt-4">
+              <Button type="submit" size="xs">
+                Save Changes
+              </Button>
             </div>
+          )}
+        </form>
+      </div>
 
-            {/* Emergency Contact */}
-            <div className="flex flex-col gap-4 p-3">
-                <div className="flex justify-between ">
-                    <div className="flex gap-2">
-                        <div className="flex justify-center items-center  bg-(--blue-sky-light) rounded-full h-7 w-7 text-(--blue-salt)"><span style={{
-                            display: 'inline-block',
-                            width: '20px',
-                            height: '20px',
-                            backgroundColor: 'currentColor',
-                            maskImage: 'url(/icons/phone.svg)',
-                            maskSize: 'contain',
-                            maskRepeat: 'no-repeat',
-                            WebkitMaskImage: 'url(/icons/phone.svg)',
-                            WebkitMaskSize: 'contain',
-                            WebkitMaskRepeat: 'no-repeat'
-                        }}
-                        /></div>
-                        <h1 className="text-[16px] font-semibold text-(--gray-darker)">Emergency Contact</h1>
-                    </div>
-                    <div>
-                        <Button className="text-(--blue-dark-normal)!" variant="text" size="small" leftIcon={
-                            <span style={{
-                                display: 'inline-block',
-                                width: '20px',
-                                height: '20px',
-                                backgroundColor: 'currentColor',
-                                maskImage: 'url(/icons/edit-4.svg)',
-                                maskSize: 'contain',
-                                maskRepeat: 'no-repeat',
-                                WebkitMaskImage: 'url(/icons/edit-4.svg)',
-                                WebkitMaskSize: 'contain',
-                                WebkitMaskRepeat: 'no-repeat'
-                            }}
-
-                            />}>Edit</Button>
-                    </div>
-                </div>
-
-                <form className="">
-                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
-                        <label htmlFor="rel-name" className="text-[14px] font-medium text-(--gray-darker)">
-                            Full Name
-                        </label>
-                        <p className="text-[14px] font-medium text-(--white-darker)">John Smith</p>
-                        {/* <InputField className="" /> */}
-                    </div>
-                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
-                        <label htmlFor="relationship" className="text-[14px] font-medium text-(--gray-darker)">
-                            Relationship
-                        </label>
-                        <p className="text-[14px] font-medium text-(--white-darker)">Father</p>
-                        {/* <InputField className="" /> */}
-                    </div>
-                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
-                        <label htmlFor="rel-email" className="text-[14px] font-medium text-(--gray-darker)">
-                            Email
-                        </label>
-                        <p className="text-[14px] font-medium text-(--white-darker)">johnsmi@gmail.com</p>
-                        {/* <InputField className="" /> */}
-                    </div>
-                    <div className="flex border-b border-(--neutral-light) justify-between py-3">
-                        <label htmlFor="rel-phone" className="text-[14px] font-medium text-(--gray-darker)">
-                            Phone Number
-                        </label>
-                        <p className="text-[14px] font-medium text-(--white-darker)">+977 98********</p>
-                        {/* <InputField className="" /> */}
-                    </div>
-                </form>
+      {/* Contact Information */}
+      <div className="flex flex-col gap-4 p-3">
+        <div className="flex justify-between ">
+          <div className="flex gap-2">
+            <div className="flex justify-center items-center bg-(--blue-sky-light) rounded-full h-7 w-7 text-[#4A6FA5]">
+              {renderMaskIcon("/icons/mail.svg", "20px")}
             </div>
-        </div >
-    )
-}
+            <h1 className="text-[16px] font-semibold text-(--gray-darker)">
+              Contact Information
+            </h1>
+          </div>
+          <div>
+            <Button
+              className="text-(--blue-dark-normal)!"
+              variant="text"
+              size="xs"
+              onClick={() => setIsEditingContact(!isEditingContact)}
+              leftIcon={renderMaskIcon("/icons/edit-4.svg")}
+            >
+              {isEditingContact ? "Cancel" : "Edit"}
+            </Button>
+          </div>
+        </div>
 
-export default EmployeePersonalInformation
+        <form onSubmit={handleSaveContact}>
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <label
+              htmlFor="comp-email"
+              className="text-[14px] font-medium text-(--gray-darker)"
+            >
+              Company email
+            </label>
+            {isEditingContact ? (
+              <div className="w-60">
+                <InputField
+                  className="h-9! text-end!"
+                  id="comp-email"
+                  type="text"
+                  value={contactInfo.companyEmail}
+                  onChange={(e) =>
+                    setContactInfo({
+                      ...contactInfo,
+                      companyEmail: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            ) : (
+              <p className="text-[14px] font-medium text-(--white-darker)">
+                {contactInfo.companyEmail || "-"}
+              </p>
+            )}
+          </div>
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <label
+              htmlFor="email"
+              className="text-[14px] font-medium text-(--gray-darker)"
+            >
+              Personal email
+            </label>
+            {isEditingContact ? (
+              <div className="w-60">
+                <InputField
+                  className="h-9! text-end!"
+                  id="email"
+                  type="text"
+                  value={contactInfo.personalEmail}
+                  onChange={(e) =>
+                    setContactInfo({
+                      ...contactInfo,
+                      personalEmail: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            ) : (
+              <p className="text-[14px] font-medium text-(--white-darker)">
+                {contactInfo.personalEmail || "-"}
+              </p>
+            )}
+          </div>
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <label
+              htmlFor="phone"
+              className="text-[14px] font-medium text-(--gray-darker)"
+            >
+              Phone Number
+            </label>
+            {isEditingContact ? (
+              <div className="w-60">
+                <InputField
+                  className="h-9! text-end!"
+                  id="phone"
+                  type="text"
+                  value={contactInfo.phone}
+                  onChange={(e) =>
+                    setContactInfo({ ...contactInfo, phone: e.target.value })
+                  }
+                />
+              </div>
+            ) : (
+              <p className="text-[14px] font-medium text-(--white-darker)">
+                {contactInfo.phone || "-"}
+              </p>
+            )}
+          </div>
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <label
+              htmlFor="current-add"
+              className="text-[14px] font-medium text-(--gray-darker)"
+            >
+              Current Address
+            </label>
+            {isEditingContact ? (
+              <div className="w-60">
+                <InputField
+                  className="h-9! text-end!"
+                  id="current-add"
+                  type="text"
+                  value={contactInfo.currentAddress}
+                  onChange={(e) =>
+                    setContactInfo({
+                      ...contactInfo,
+                      currentAddress: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            ) : (
+              <p className="text-[14px] font-medium text-(--white-darker)">
+                {contactInfo.currentAddress || "-"}
+              </p>
+            )}
+          </div>
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <label
+              htmlFor="permanent-add"
+              className="text-[14px] font-medium text-(--gray-darker)"
+            >
+              Permanent Address
+            </label>
+            {isEditingContact ? (
+              <div className="w-60">
+                <InputField
+                  className="h-9! text-end!"
+                  id="permanent-add"
+                  type="text"
+                  value={contactInfo.permanentAddress}
+                  onChange={(e) =>
+                    setContactInfo({
+                      ...contactInfo,
+                      permanentAddress: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            ) : (
+              <p className="text-[14px] font-medium text-(--white-darker)">
+                {contactInfo.permanentAddress || "-"}
+              </p>
+            )}
+          </div>
+          {isEditingContact && (
+            <div className="flex justify-end gap-2 mt-4">
+              <Button type="submit" size="xs">
+                Save Changes
+              </Button>
+            </div>
+          )}
+        </form>
+      </div>
+
+      {/* Emergency Contact */}
+      <div className="flex flex-col gap-4 p-3">
+        <div className="flex justify-between ">
+          <div className="flex gap-2">
+            <div className="flex justify-center items-center bg-(--blue-sky-light) rounded-full h-7 w-7 text-(--blue-salt)">
+              {renderMaskIcon("/icons/phone.svg", "20px")}
+            </div>
+            <h1 className="text-[16px] font-semibold text-(--gray-darker)">
+              Emergency Contact
+            </h1>
+          </div>
+          <div>
+            <Button
+              className="text-(--blue-dark-normal)!"
+              variant="text"
+              size="xs"
+              onClick={() => setIsEditingEmergency(!isEditingEmergency)}
+              leftIcon={renderMaskIcon("/icons/edit-4.svg")}
+            >
+              {isEditingEmergency ? "Cancel" : "Edit"}
+            </Button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSaveEmergency}>
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <label
+              htmlFor="rel-name"
+              className="text-[14px] font-medium text-(--gray-darker)"
+            >
+              Full Name
+            </label>
+            {isEditingEmergency ? (
+              <div className="w-60">
+                <InputField
+                  className="h-9! text-end!"
+                  id="rel-name"
+                  type="text"
+                  value={emergencyInfo.name}
+                  onChange={(e) =>
+                    setEmergencyInfo({ ...emergencyInfo, name: e.target.value })
+                  }
+                />
+              </div>
+            ) : (
+              <p className="text-[14px] font-medium text-(--white-darker)">
+                {emergencyInfo.name || "-"}
+              </p>
+            )}
+          </div>
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <label
+              htmlFor="relationship"
+              className="text-[14px] font-medium text-(--gray-darker)"
+            >
+              Relationship
+            </label>
+            {isEditingEmergency ? (
+              <div className="w-60">
+                <InputField
+                  className="h-9! text-end!"
+                  id="relationship"
+                  type="text"
+                  value={emergencyInfo.relationship}
+                  onChange={(e) =>
+                    setEmergencyInfo({
+                      ...emergencyInfo,
+                      relationship: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            ) : (
+              <p className="text-[14px] font-medium text-(--white-darker)">
+                {emergencyInfo.relationship || "-"}
+              </p>
+            )}
+          </div>
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <label
+              htmlFor="rel-email"
+              className="text-[14px] font-medium text-(--gray-darker)"
+            >
+              Email
+            </label>
+            {isEditingEmergency ? (
+              <div className="w-60">
+                <InputField
+                  className="h-9! text-end!"
+                  id="rel-email"
+                  type="text"
+                  value={emergencyInfo.email}
+                  onChange={(e) =>
+                    setEmergencyInfo({
+                      ...emergencyInfo,
+                      email: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            ) : (
+              <p className="text-[14px] font-medium text-(--white-darker)">
+                {emergencyInfo.email || "-"}
+              </p>
+            )}
+          </div>
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <label
+              htmlFor="rel-phone"
+              className="text-[14px] font-medium text-(--gray-darker)"
+            >
+              Phone Number
+            </label>
+            {isEditingEmergency ? (
+              <div className="w-60">
+                <InputField
+                  className="h-9! text-end!"
+                  id="rel-phone"
+                  type="text"
+                  value={emergencyInfo.phone}
+                  onChange={(e) =>
+                    setEmergencyInfo({
+                      ...emergencyInfo,
+                      phone: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            ) : (
+              <p className="text-[14px] font-medium text-(--white-darker)">
+                {emergencyInfo.phone || "-"}
+              </p>
+            )}
+          </div>
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <label
+              htmlFor="rel-phone"
+              className="text-[14px] font-medium text-(--gray-darker)"
+            >
+              Address
+            </label>
+            {isEditingEmergency ? (
+              <div className="w-60">
+                <InputField
+                  className="h-9! text-end!"
+                  id="rel-address"
+                  type="text"
+                  value={emergencyInfo.address}
+                  onChange={(e) =>
+                    setEmergencyInfo({
+                      ...emergencyInfo,
+                      address: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            ) : (
+              <p className="text-[14px] font-medium text-(--white-darker)">
+                {emergencyInfo.address || "-"}
+              </p>
+            )}
+          </div>
+          {isEditingEmergency && (
+            <div className="flex justify-end gap-2 mt-4">
+              <Button type="submit" size="xs">
+                Save Changes
+              </Button>
+            </div>
+          )}
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default EmployeePersonalInformation;

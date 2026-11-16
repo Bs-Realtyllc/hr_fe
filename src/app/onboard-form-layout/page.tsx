@@ -64,7 +64,11 @@ const SECTIONS: SectionDefinition[] = [
     description: "Applies to each education entry the joiner adds.",
     fields: [
       { name: "educationLevel", label: "Education Level", type: "option" },
-      { name: "institutionName", label: "Institution / College Name", type: "text" },
+      {
+        name: "institutionName",
+        label: "Institution / College Name",
+        type: "text",
+      },
       { name: "fieldOfStudy", label: "Field of Study", type: "text" },
       { name: "stillEnrolled", label: "Still Enrolled", type: "boolean" },
       { name: "graduationDate", label: "Graduation Date", type: "date" },
@@ -109,7 +113,11 @@ const SECTIONS: SectionDefinition[] = [
       { name: "idBackPath", label: "ID (Back)", type: "file" },
       { name: "panFrontPath", label: "PAN (Front)", type: "file" },
       { name: "panBackPath", label: "PAN (Back)", type: "file" },
-      { name: "additionalDocumentPath", label: "Additional Document", type: "file" },
+      {
+        name: "additionalDocumentPath",
+        label: "Additional Document",
+        type: "file",
+      },
     ],
   },
   {
@@ -152,10 +160,7 @@ const emptyLayout = (): LayoutState =>
  * Accepts the saved layout as either `{ intern_onboard_personal: [...] }` or an
  * array of forms_layout rows (`[{ name, data }]`), possibly wrapped in `{ data }`.
  */
-const parseSavedLayout = (
-  raw: unknown,
-  type: FormLayoutType,
-): LayoutState => {
+const parseSavedLayout = (raw: unknown, type: FormLayoutType): LayoutState => {
   const layout = emptyLayout();
   let payload: unknown = raw;
   if (payload && typeof payload === "object" && "data" in payload) {
@@ -166,7 +171,9 @@ const parseSavedLayout = (
   if (Array.isArray(payload)) {
     payload.forEach((row) => {
       if (row && typeof row === "object" && "name" in row) {
-        byName[(row as { name: string }).name] = (row as { data: unknown }).data;
+        byName[(row as { name: string }).name] = (
+          row as { data: unknown }
+        ).data;
       }
     });
   } else if (payload && typeof payload === "object") {
@@ -365,10 +372,10 @@ const Page = () => {
           onClick={handleSave}
           disabled={layoutLoading || saving}
         >
-          {saving ? "Submitting…" : "Submit"}
+          {saving ? "Saving…" : "Save"}
         </Button>
       </div>
-
+      {/* 
       <div className="card mb-4">
         <div className="flex flex-wrap items-center gap-2 text-sm text-(--color-text-muted)">
           <span>Always included and required:</span>
@@ -378,7 +385,7 @@ const Page = () => {
             </span>
           ))}
         </div>
-      </div>
+      </div> */}
 
       {layoutLoading ? (
         <div className="card text-sm text-(--color-text-muted)">
@@ -421,6 +428,35 @@ const Page = () => {
                 </div>
 
                 <ul className="space-y-0.5">
+                  {/* For personal only -- always included and required field : Name and email */}
+                  {section.key === "personal"
+                    ? ALWAYS_INCLUDED.map((ai) => (
+                        <li
+                          key={ai}
+                          className="flex items-center justify-between gap-4 rounded-md px-2 py-2 hover:bg-(--color-bg)"
+                        >
+                          <label className="flex flex-1 cursor-pointer items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={true}
+                              className="h-4 w-4 cursor-pointer accent-(--color-primary)"
+                            />
+                            <span className="text-sm text-(--color-text-body)">
+                              {ai}
+                            </span>
+                            <span className="badge badge-neutral">text</span>
+                          </label>
+
+                          <input
+                            type="checkbox"
+                            aria-label={`Name required`}
+                            checked={true}
+                            className="h-4 w-4 cursor-pointer accent-(--color-primary) disabled:cursor-not-allowed disabled:opacity-40"
+                          />
+                        </li>
+                      ))
+                    : null}
+
                   {section.fields.map((field) => {
                     const state = states[field.name];
                     return (
