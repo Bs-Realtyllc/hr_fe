@@ -93,9 +93,9 @@ const EmployeeBank = () => {
                         <Button
                             className="text-(--blue-dark-normal)!"
                             variant="text"
-                            size="small"
+                            size="xs"
                             onClick={() => setIsEditingBank(!isEditingBank)}
-                            leftIcon={renderMaskIcon('/icons/edit-4.svg', '20px')}
+                            leftIcon={renderMaskIcon('/icons/edit-4.svg')}
                         >
                             {isEditingBank ? "Cancel" : "Edit"}
                         </Button>

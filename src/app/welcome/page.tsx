@@ -290,7 +290,7 @@ export default function WelcomePage() {
                             <div className="space-y-4">
                                 <p className="flex justify-between text-[14px] font-semibold ">
                                     <span className="text-(--neutral-normal)">My Progress</span>
-                                    <span className="text-(--neutral-light-active)">3 of 5 completed</span>
+                                    <span className="text-(--gray-normal)">3 of 5 completed</span>
                                 </p>
 
                                 <div className="relative w-full h-[10px] bg-(--neutral-light-hover) rounded-full overflow-hidden">

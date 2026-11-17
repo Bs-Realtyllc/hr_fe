@@ -4,10 +4,23 @@ import {
     createContext,
     useCallback,
     useContext,
+    useEffect,
     useMemo,
     useState,
     type ReactNode,
 } from "react";
+import { useRouter } from "next/navigation";
+import {
+    DEFAULT_LAYOUT,
+    isStepVisible,
+    nextStep,
+    prevStep,
+    resolveLayout,
+    sectionHelpers,
+    type ResolvedLayout,
+    type SectionKey,
+    type StepPath,
+} from "./formLayout";
 
 export type PersonalInfo = {
     name: string;
@@ -77,6 +90,7 @@ export type ContractDocumentKey = "signedContract" | "offerLetter" | "otherEmplo
 export type ContractDocuments = {
     signedContract: File | null;
     offerLetter: File | null;
+    /** Up to MAX_OTHER_DOCUMENTS files, sent as repeated "otherDocument" parts. */
     otherEmployment: File[];
 };
 
@@ -161,6 +175,11 @@ const INITIAL_DATA: OnboardingData = {
 };
 
 type OnboardingContextValue = {
+    role: "intern" | "employee";
+    /** Admin-configured fields per section (DEFAULT_LAYOUT if none configured). */
+    layout: ResolvedLayout;
+    /** True when the layout failed to load and the full default form is shown. */
+    layoutFallback: boolean;
     data: OnboardingData;
     updateSection: <K extends keyof OnboardingData>(
         section: K,
@@ -171,8 +190,41 @@ type OnboardingContextValue = {
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 
-export function OnboardingProvider({ children }: { children: ReactNode }) {
+export function OnboardingProvider({
+    role,
+    children,
+}: {
+    role: "intern" | "employee";
+    children: ReactNode;
+}) {
     const [data, setData] = useState<OnboardingData>(INITIAL_DATA);
+    const [layout, setLayout] = useState<ResolvedLayout | null>(null);
+    const [layoutFallback, setLayoutFallback] = useState(false);
+
+    // Public endpoint: the candidate isn't logged in, so no auth header.
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL}/form-layout?type=${role}`,
+                );
+                if (!res.ok) throw new Error(`form-layout ${res.status}`);
+                const resolved = resolveLayout(await res.json(), role);
+                if (cancelled) return;
+                setLayout(resolved.layout);
+                setLayoutFallback(false);
+            } catch (err) {
+                console.error("Could not load form layout", err);
+                if (cancelled) return;
+                setLayout(DEFAULT_LAYOUT);
+                setLayoutFallback(true);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [role]);
 
     const updateSection = useCallback(
         <K extends keyof OnboardingData>(section: K, value: OnboardingData[K]) => {
@@ -183,9 +235,24 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
 
     const reset = useCallback(() => setData(INITIAL_DATA), []);
     const contextValue = useMemo(
-        () => ({ data, updateSection, reset }),
-        [data, updateSection, reset],
+        () => ({
+            role,
+            layout: layout ?? DEFAULT_LAYOUT,
+            layoutFallback,
+            data,
+            updateSection,
+            reset,
+        }),
+        [role, layout, layoutFallback, data, updateSection, reset],
     );
+
+    if (!layout) {
+        return (
+            <div className="flex min-h-screen items-center justify-center text-[14px] text-(--gray-dark)">
+                Loading form…
+            </div>
+        );
+    }
 
     return (
         <OnboardingContext.Provider value={contextValue}>
@@ -200,4 +267,28 @@ export function useOnboarding() {
         throw new Error("useOnboarding must be used within OnboardingProvider");
     }
     return context;
+}
+
+/**
+ * Layout + navigation for one onboarding step. Redirects to the next step when
+ * this step's section has no fields in the layout.
+ */
+export function useOnboardingStep(path: StepPath, section: SectionKey) {
+    const router = useRouter();
+    const { role, layout } = useOnboarding();
+    const visible = isStepVisible(layout, path);
+    const next = nextStep(layout, path);
+    const prev = prevStep(layout, path);
+
+    useEffect(() => {
+        if (!visible) router.replace(`/onboard/${role}/${next}`);
+    }, [visible, next, role, router]);
+
+    return {
+        ...sectionHelpers(layout[section]),
+        /** False while redirecting away from a hidden step; render nothing then. */
+        stepVisible: visible,
+        goNext: () => router.push(`/onboard/${role}/${next}`),
+        goBack: () => router.push(`/onboard/${role}/${prev}`),
+    };
 }

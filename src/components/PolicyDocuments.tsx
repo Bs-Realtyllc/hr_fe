@@ -1,10 +1,13 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import PdfThumbnail from './PdfThumbnail';
 import Button from './Button/Button';
+import MaskIcon from './ui/MaskIcon';
+import InputField from './InputField/InputField';
+import { initialMockFolders } from '@/data/mockResources';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL!.replace('/api', '');
 interface Policy {
@@ -80,7 +83,6 @@ export default function PolicyDocuments({
 }: PolicyDocumentsProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const [expandedFolder, setExpandedFolder] = useState<string | null>(null);
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<number, string>>({});
   const [search, setSearch] = useState('');
@@ -121,6 +123,51 @@ export default function PolicyDocuments({
   const [selectedSortField, setSelectedSortField] =
     useState<SortField>('name');
   const [previewLoading, setPreviewLoading] = useState(false);
+
+  const [selectedPolicyIds, setSelectedPolicyIds] = useState<number[]>([])
+
+  const [folders, setFolders] = useState(initialMockFolders);
+  const [showCreateFolder, setShowCreateFolder] = useState(false);
+  const [folderName, setFolderName] = useState("");
+  const [folderDescription, setFolderDescription] = useState("");
+  const [openFolderId, setOpenFolderId] = useState<number | string | null>(null);
+  const folderDropdownRefs = useRef<Record<number | string, HTMLDivElement | null>>({});
+
+
+  // create folder
+  const createFolder = () => {
+    if (!folderName.trim()) return;
+
+    const newFolder = {
+      id: Date.now(),
+      name: folderName,
+      description: folderDescription,
+      fileCount: 0,
+    }
+    // Prepend the new folder to your state list
+    setFolders((prevFolders) => [newFolder, ...prevFolders]);
+    // Reset form and close modal
+    setFolderName("");
+    setFolderDescription("");
+    setShowCreateFolder(false);
+  }
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (openFolderId === null) return;
+
+      const activeRef = folderDropdownRefs.current[openFolderId];
+      if (activeRef && event.target instanceof Node && !activeRef.contains(event.target)) {
+        setOpenFolderId(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [openFolderId]);
+
 
   useEffect(() => {
     if (activeDropdown === null) return;
@@ -335,6 +382,15 @@ export default function PolicyDocuments({
     };
   }, [fileView, isAdmin, policies]);
 
+  function toggleSelectPolicy(id: number) {
+    setSelectedPolicyIds(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(policyId => policyId !== id);
+      }
+      return [...prev, id];
+    });
+  }
+
   async function previewFile(
     title: string,
     folder: 'policies' | 'policy-acks',
@@ -358,6 +414,8 @@ export default function PolicyDocuments({
       setPreviewLoading(false);
     }
   }
+
+
 
   function previewPolicy(p: Policy) {
     setActiveDropdown(null);
@@ -628,60 +686,81 @@ export default function PolicyDocuments({
 
     <div className='my-6 h-full flex flex-col gap-6'>
 
-      {policies.length > 0 && <div className="w-full  flex gap-3">
-        <div className="search-bar w-full">
+      {policies.length > 0 && <div className="w-full flex gap-3">
+        <div className='flex w-full gap-3'>
+          <div className="search-bar w-full">
 
-          <span
-            className="icon-mask search-bar-icon"
-            style={{ WebkitMaskImage: 'url(/icons/search.svg)', maskImage: 'url(/icons/search.svg)' }}
-          />
+            <span
+              className="icon-mask search-bar-icon"
+              style={{ WebkitMaskImage: 'url(/icons/search.svg)', maskImage: 'url(/icons/search.svg)' }}
+            />
 
-          <input
-            className="form-input"
-            placeholder="Search by title..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+            <input
+              className="form-input"
+              placeholder="Search by title..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
 
-        </div>
-        <div className="flex p-2 rounded-lg bg-(--soft-white-light) gap-1">
+          </div>
+          <div className="flex p-2 rounded-lg bg-(--soft-white-light) gap-1">
 
-          {/* List View */}
-          <button
-            type="button"
-            onClick={() => setFileView('list')}
-            className={`flex justify-center items-center px-2 py-1 rounded-sm transition-colors
+            {/* List View */}
+            <button
+              type="button"
+              onClick={() => setFileView('list')}
+              className={`flex justify-center items-center px-2 py-1 rounded-sm transition-colors
       ${fileView === 'list'
-                ? 'bg-[#E0F0F9]'
-                : 'hover:bg-[#E0F0F9]'
-              }`}
-          >
-            <img
-              src="/icons/menu.svg"
-              alt="List view"
-              width={20}
-              height={20}
-            />
-          </button>
+                  ? 'bg-[#E0F0F9]'
+                  : 'hover:bg-[#E0F0F9]'
+                }`}
+            >
+              <img
+                src="/icons/menu.svg"
+                alt="List view"
+                width={20}
+                height={20}
+              />
+            </button>
 
-          {/* Grid View */}
-          <button
-            type="button"
-            onClick={() => setFileView('grid')}
-            className={`flex justify-center items-center px-2 py-1 rounded-sm transition-colors
+            {/* Grid View */}
+            <button
+              type="button"
+              onClick={() => setFileView('grid')}
+              className={`flex justify-center items-center px-2 py-1 rounded-sm transition-colors
       ${fileView === 'grid'
-                ? 'bg-[#E0F0F9]'
-                : 'hover:bg-[#E0F0F9]'
-              }`}
-          >
-            <img
-              src="/icons/grid.svg"
-              alt="Grid view"
-              width={20}
-              height={20}
-            />
-          </button>
+                  ? 'bg-[#E0F0F9]'
+                  : 'hover:bg-[#E0F0F9]'
+                }`}
+            >
+              <img
+                src="/icons/grid.svg"
+                alt="Grid view"
+                width={20}
+                height={20}
+              />
+            </button>
+          </div>
         </div>
+
+        {/* Upload individual PDFs */}
+        {user?.role === 'admin' && (
+          <div className='min-w-[191px]'>
+            <Button
+              className='w-full!'
+              variant="primary"
+              size="medium"
+              onClick={() => {
+                setError('');
+                individualFileInputRef.current?.click();
+              }}
+              disabled={uploading}
+            >
+              + Add Documents
+            </Button>
+          </div>)
+
+        }
       </div>
 
       }
@@ -690,42 +769,13 @@ export default function PolicyDocuments({
 
         <div className='' style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
 
-          <div className="card-title" style={{ marginBottom: 0 }}>
 
-            {isAdmin ? 'Published documents' : ''}
-
-          </div>
 
           {isAdmin && (
 
             <>
 
               <div className="flex mt-4 gap-2">
-                {/* Upload individual PDFs */}
-                <Button
-                  variant="primary"
-                  size="small"
-                  onClick={() => {
-                    setError('');
-                    individualFileInputRef.current?.click();
-                  }}
-                  disabled={uploading}
-                >
-                  + Upload PDF
-                </Button>
-
-                {/* Upload folder */}
-                {/* <Button
-                  variant="primary"
-                  size="small"
-                  onClick={() => {
-                    setError('');
-                    fileInputRef.current?.click();
-                  }}
-                  disabled={uploading}
-                >
-                  {uploading ? 'Uploading...' : '+ Upload folder'}
-                </Button> */}
               </div>
 
               {/* Individual PDF input */}
@@ -761,19 +811,38 @@ export default function PolicyDocuments({
 
           <p className="text-muted" style={{ fontSize: 13.5 }}>Loading…</p>
         ) : filteredPolicies.length === 0 ? (
-          <p className=" h-full text-muted" style={{ fontSize: 13.5 }}>
-            {policies.length === 0 ? <div className=' h-full rounded-lg bg-(--soft-white-light) flex '>
+          policies.length === 0 ? (
+            <div className="h-full w-full rounded-lg bg-(--soft-white-light) flex flex-col items-center justify-center">
               {emptyMessage}
-            </div> : 'No documents match your search.'}
-          </p>
+              {isAdmin && (
+                <div className="my-4">
+                  <Button
+                    variant="primary"
+                    size="medium"
+                    onClick={() => {
+                      setError('');
+                      individualFileInputRef.current?.click();
+                    }}
+                    disabled={uploading}
+                  >
+                    Upload Document
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="h-full text-muted" style={{ fontSize: 13.5 }}>
+              No documents match your search.
+            </p>
+          )
         ) : (
 
           <>
             {
               fileView === 'list' ? (
-                <div className='p-4 w-full overflow-x-auto rounded-lg bg-(--soft-white-light)'>
+                <div className=' p-4 w-full h-full overflow-x-auto rounded-lg bg-(--soft-white-light) '>
 
-                  <table className="w-full min-w-[750px] border-separate border-spacing-y-2">
+                  <table className=" w-full min-w-[750px] border-separate border-spacing-y-2">
                     <thead>
                       <tr className="bg-(--soft-white-normal)">
                         <th className="px-4 py-3 rounded-l-lg text-left ">
@@ -859,7 +928,7 @@ export default function PolicyDocuments({
 
 
                             {showSortMenu && (
-                              <div className="absolute right-0 top-full mt-2 w-[260px] bg-(--soft-white-light) border border-(--white-light-hover) rounded-lg shadow-lg z-50 p-3 text-left">
+                              <div className="absolute right-0 top-full mt-2 w-[260px] bg-(--soft-white-light) border border-(--white-light-hover) rounded-lg shadow-lg z-500 p-3 text-left ">
 
                                 {/* Sort By */}
                                 <div className="mb-3">
@@ -941,7 +1010,10 @@ export default function PolicyDocuments({
                         sortedPolicies.map((p) => (
                           <tr
                             key={p.id}
-                            className="group hover:bg-(--blue-sky-light) transition-colors"
+                            className={`group transition-colors ${selectedPolicyIds.includes(p.id)
+                              ? 'bg-[#EBF5FB]'
+                              : 'hover:bg-(--blue-sky-light)'
+                              }`}
                           >
                             {/* Name */}
                             <td className="px-4 py-4 border-b border-(--gray-light-hover) rounded-l-lg">
@@ -984,74 +1056,105 @@ export default function PolicyDocuments({
 
                             {/* Actions */}
                             <td className="px-4 py-4 border-b border-(--gray-light-hover) rounded-r-lg text-center">
-                              <div
-                                ref={activeDropdown === p.id ? dropdownRef : null}
-                                className="relative inline-block"
-                              >
-
-                                {/* Three dots */}
+                              {selectedPolicyIds.includes(p.id) ? (
                                 <button
                                   type="button"
-                                  aria-label={`Actions for ${p.title}`}
-                                  aria-expanded={activeDropdown === p.id}
-                                  onClick={() =>
-                                    setActiveDropdown(prev => prev === p.id ? null : p.id)
-                                  }
-                                  className="p-1 rounded-md hover:bg-(--blue-dark-light) transition-colors"
+                                  aria-label="Unselect file"
+                                  onClick={() => toggleSelectPolicy(p.id)}
+                                  className="p-1 rounded-md hover:bg-(--blue-dark-light) transition-colors cursor-pointer mx-auto block"
                                 >
-                                  <span
-                                    className="inline-block h-6 w-6 bg-(--gray-normal)"
-                                    style={{
-                                      WebkitMaskImage: 'url(/icons/dots-menu.svg)',
-                                      maskImage: 'url(/icons/dots-menu.svg)',
-                                      WebkitMaskRepeat: 'no-repeat',
-                                      maskRepeat: 'no-repeat',
-                                      WebkitMaskPosition: 'center',
-                                      maskPosition: 'center',
-                                      WebkitMaskSize: 'contain',
-                                      maskSize: 'contain',
-                                    }}
+                                  <img
+                                    src="/icons/square-check.svg"
+                                    alt="Selected"
+                                    className="w-5 h-5 mx-auto"
                                   />
                                 </button>
-
-                                {/* Dropdown menu */}
-                                {activeDropdown === p.id && (
-                                  <div className="absolute right-0 top-full mt-1 w-[264px] bg-(--soft-white-light-active) border border-(--white-light-hover) rounded-lg z-50 p-3">
-
-                                    {/* View PDF */}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        previewPolicy(p);
-                                        setActiveDropdown(null);
+                              ) : (
+                                <div
+                                  ref={activeDropdown === p.id ? dropdownRef : null}
+                                  className="relative inline-block"
+                                >
+                                  {/* Three dots button */}
+                                  <button
+                                    type="button"
+                                    aria-label={`Actions for ${p.title}`}
+                                    aria-expanded={activeDropdown === p.id}
+                                    onClick={() =>
+                                      setActiveDropdown(prev => prev === p.id ? null : p.id)
+                                    }
+                                    className="p-1 rounded-md hover:bg-(--blue-dark-light) transition-colors"
+                                  >
+                                    <span
+                                      className="inline-block h-6 w-6 bg-(--gray-normal)"
+                                      style={{
+                                        WebkitMaskImage: 'url(/icons/dots-menu.svg)',
+                                        maskImage: 'url(/icons/dots-menu.svg)',
+                                        WebkitMaskRepeat: 'no-repeat',
+                                        maskRepeat: 'no-repeat',
+                                        WebkitMaskPosition: 'center',
+                                        maskPosition: 'center',
+                                        WebkitMaskSize: 'contain',
+                                        maskSize: 'contain',
                                       }}
-                                      className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light) transition-colors"
-                                    >
-                                      <img
-                                        src="/icons/eye.svg"
-                                        alt=""
-                                        className="w-4 h-4"
-                                      />
-                                      Preview
-                                    </button>
+                                    />
+                                  </button>
 
-                                    {/* Download PDF */}
-                                    <button
-                                      type="button"
-                                      onClick={() => downloadPolicy(p)}
-                                      className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light) transition-colors"
-                                    >
-                                      <img
-                                        src="/icons/download.svg"
-                                        alt=""
-                                        className="w-4 h-4"
-                                      />
-                                      Download
-                                    </button>
+                                  {/* Dropdown menu */}
+                                  {activeDropdown === p.id && (
+                                    <div className="absolute right-0 top-full mt-1 w-[264px] bg-(--soft-white-light-active) border border-(--white-light-hover) rounded-lg z-50 p-3 text-left">
+                                      {isAdmin && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            toggleSelectPolicy(p.id);
+                                            setActiveDropdown(null);
+                                          }}
+                                          className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light)"
+                                        >
+                                          <img src="/icons/square-check.svg" alt="" className="w-4 h-4" />
+                                          Select
+                                        </button>
+                                      )}
 
-                                  </div>
-                                )}
-                              </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          previewPolicy(p);
+                                          setActiveDropdown(null);
+                                        }}
+                                        className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light) transition-colors"
+                                      >
+                                        <img src="/icons/eye.svg" alt="" className="w-4 h-4" />
+                                        Preview
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => downloadPolicy(p)}
+                                        className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light) transition-colors"
+                                      >
+                                        <img src="/icons/download.svg" alt="" className="w-4 h-4" />
+                                        Download
+                                      </button>
+
+                                      {isAdmin && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setActiveDropdown(null);
+                                            handleDelete(p);
+                                          }}
+                                          disabled={deletingId === p.id}
+                                          className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light)"
+                                        >
+                                          <MaskIcon src="/icons/trash-2.svg" size={16} />
+                                          {deletingId === p.id ? 'Deleting…' : 'Delete'}
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </td>
                           </tr>
                         ))
@@ -1081,22 +1184,136 @@ export default function PolicyDocuments({
                       borderRadius: 12,
                     }}
                   >
+
+
+
+                    {
+                      folders.map((folder) => {
+                        const isOpen = openFolderId === folder.id;
+                        return (
+
+                          <div
+                            key={folder.id}
+                            ref={(el) => {
+                              folderDropdownRefs.current[folder.id] = el;
+                            }}
+                            className=" relative overflow-hidden p-4  h-[284px] rounded-xl bg-[#FEFEFE]   group"
+                          >
+
+
+
+                            <div className='relative '>
+                              {/* Top 3-dot Menu Icon */}
+                              <div className="absolute right-0  flex justify-end z-50">
+                                <button
+                                  onClick={() => setOpenFolderId(isOpen ? null : folder.id)}
+                                >                                  <MaskIcon src='icons/dots.svg' color='#6C6E70' size={18} />
+                                </button>
+                              </div>
+
+                              {/* Folder dropdown menu */}
+                              {
+                                openFolderId === folder.id && (
+                                  <div className='absolute bg-(--soft-white-light-active) w-[264px] right-0 top-5 flex flex-col p-3 rounded-lg border border-[#E6E6E6]  z-50'>
+                                    <div className='p-2 rounded-lg flex gap-1 hover:bg-[#E9EFF4]'
+                                      onClick={() => {
+                                        // Handle open folder logic here
+                                        setOpenFolderId(null); // close dropdown on click
+                                      }}
+                                    >
+                                      <MaskIcon src='/icons/folder-01.svg' size={20} color='#3C4653' />
+                                      <span className='text-[14px] text-[#3C4653] font-medium'>Open Folder</span>
+                                    </div>
+
+                                    <div className='p-2 rounded-lg flex gap-1 hover:bg-[#E9EFF4]'
+                                      onClick={() => {
+                                        // Handle open folder logic here
+                                        setOpenFolderId(null); // close dropdown on click
+                                      }}
+                                    >
+                                      <MaskIcon src='/icons/download-01.svg' size={20} color='#3C4653' />
+                                      <span className='text-[14px] text-[#3C4653] font-medium'>Download all files</span>
+                                    </div>
+
+                                  </div>
+                                )
+                              }
+
+                              {/* Stacked Documents Illustration */}
+                              <div className="relative h-44 flex items-center justify-center my-1 ">
+
+                                <div className='absolute  z-1 top-6 left-4'>
+                                  <img src="/icons/file-bg-02.svg" height={'132px'} width={'113px'} alt="" />
+                                </div>
+                                <div className='absolute w-[125px]  z-2 flex flex-col p-3 gap-3 -rotate-5 bg-[#FBFCFD] top-4 left-15'>
+
+                                  <div className='flex flex-wrap'>
+                                    <h1 className='text-[14px] text-center font-semibold'>Employee Handbook</h1>
+                                  </div>
+                                  <img src="/icons/file-bg-01.svg" height={'132px'} width={'113px'} alt="" />
+                                </div>
+                                <div className='absolute  z-1 top-11 left-30'>
+                                  <img src="/icons/file-bg-03.svg" height={'132px'} width={'113px'} alt="" />
+                                </div>
+
+
+
+                              </div>
+
+                              {/* Folder Container / Bottom Section */}
+                              <div className="relative h-[148px] overflow-hidden  bottom-18 z-5 flex flex-col gap-3">
+                                <img src="/icons/folder-bg.svg" alt="" />
+                                <div className='absolute mt-6 mx-3 mb-2 '>
+                                  {/* Title & Description */}
+                                  <div className="  flex flex-col">
+                                    <h3 className="text-[14px] font-semibold text-[#17212B] ">
+                                      {folder.name}
+                                    </h3>
+                                    <p className="text-[11px] text-[#4B5768] ">
+                                      {folder.description || "No description provided."}
+                                    </p>
+                                  </div>
+
+                                  {/* File Count & Arrow Action Button */}
+                                  <div className="flex  items-center justify-between pt-1">
+                                    <div className="flex items-baseline gap-1.5">
+                                      <span className="text-[32px] font-extrabold text-[#111920] tracking-tight">
+                                        {folder?.fileCount ?? 0}
+                                      </span>
+                                      <span className="text-[14px] font-medium text-[#4B5768]">Files</span>
+                                    </div>
+                                    <MaskIcon src='/icons/chevron-right.svg' color='#17212B' size={16} />
+                                  </div>
+
+
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })
+                    }
+
+
+
                     {filteredPolicies.map(p => {
                       const ack = ackFor(p.id);
                       const filename = p.title.toLowerCase().endsWith('.pdf')
                         ? p.title
                         : `${p.title}.pdf`;
+                      const isSelected = selectedPolicyIds?.includes(p.id);
 
                       return (
                         <article
                           key={p.id}
                           style={{
                             position: 'relative',
-                            zIndex: activeDropdown === p.id ? 2 : 0,
+                            zIndex: 0,
                             padding: 12,
-                            background: '#FFFFFF',
-                            border: '1px solid #E8EAEE',
+                            background: isSelected ? '#EBF5FB' : '#FFFFFF',
+                            border: isSelected ? '1px solid #26759F' : '1px solid #E8EAEE',
                             borderRadius: 14,
+                            transition: 'all 0.2s ease',
                           }}
                         >
                           <div
@@ -1125,17 +1342,11 @@ export default function PolicyDocuments({
                               {filename}
                             </span>
 
-                            <div
-                              ref={activeDropdown === p.id ? dropdownRef : null}
-                              style={{ position: 'relative', flexShrink: 0 }}
-                            >
+                            {isSelected ? (
                               <button
                                 type="button"
-                                aria-label={`Actions for ${p.title}`}
-                                aria-expanded={activeDropdown === p.id}
-                                onClick={() =>
-                                  setActiveDropdown(prev => prev === p.id ? null : p.id)
-                                }
+                                aria-label="Unselect file"
+                                onClick={() => toggleSelectPolicy(p.id)}
                                 style={{
                                   width: 28,
                                   height: 28,
@@ -1148,100 +1359,120 @@ export default function PolicyDocuments({
                                   cursor: 'pointer',
                                 }}
                               >
-                                <span
-                                  className="inline-block h-6 w-6 bg-(--gray-normal)"
-                                  style={{
-                                    WebkitMaskImage: 'url(/icons/dots-menu.svg)',
-                                    maskImage: 'url(/icons/dots-menu.svg)',
-                                    WebkitMaskRepeat: 'no-repeat',
-                                    maskRepeat: 'no-repeat',
-                                    WebkitMaskPosition: 'center',
-                                    maskPosition: 'center',
-                                    WebkitMaskSize: 'contain',
-                                    maskSize: 'contain',
-                                  }}
-                                />
+                                {/* <img
+                                  src="/icons/square-check.svg"
+                                  alt="Selected"
+                                  style={{ width: 20, height: 20 }}
+                                /> */}
+                                <input type="checkbox" checked />
                               </button>
-
-                              {activeDropdown === p.id && (
-                                <div
+                            ) : (
+                              <div
+                                ref={activeDropdown === p.id ? dropdownRef : null}
+                                style={{ position: 'relative', flexShrink: 0 }}
+                              >
+                                <button
+                                  type="button"
+                                  aria-label={`Actions for ${p.title}`}
+                                  aria-expanded={activeDropdown === p.id}
+                                  onClick={() =>
+                                    setActiveDropdown(prev => prev === p.id ? null : p.id)
+                                  }
                                   style={{
-                                    position: 'absolute',
-                                    top: '100%',
-                                    right: 0,
-                                    zIndex: 10,
-                                    width: 220,
-                                    padding: 8,
-                                    background: '#FBFCFD',
-                                    border: '1px solid #E6E6E6',
-                                    borderRadius: 10,
-                                    boxShadow: '0 8px 24px rgba(15, 23, 42, 0.14)',
+                                    width: 28,
+                                    height: 28,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    border: 0,
+                                    borderRadius: 6,
+                                    background: 'transparent',
+                                    cursor: 'pointer',
                                   }}
                                 >
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      previewPolicy(p);
-                                      setActiveDropdown(null);
+                                  <span
+                                    className="inline-block h-6 w-6 bg-(--gray-normal)"
+                                    style={{
+                                      WebkitMaskImage: 'url(/icons/dots-menu.svg)',
+                                      maskImage: 'url(/icons/dots-menu.svg)',
+                                      WebkitMaskRepeat: 'no-repeat',
+                                      maskRepeat: 'no-repeat',
+                                      WebkitMaskPosition: 'center',
+                                      maskPosition: 'center',
+                                      WebkitMaskSize: 'contain',
+                                      maskSize: 'contain',
                                     }}
-                                    className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light)"
+                                  />
+                                </button>
+
+                                {activeDropdown === p.id && (
+                                  <div
+                                    style={{
+                                      position: 'absolute',
+                                      top: '100%',
+                                      right: 0,
+                                      zIndex: 10,
+                                      width: 220,
+                                      padding: 8,
+                                      background: '#FBFCFD',
+                                      border: '1px solid #E6E6E6',
+                                      borderRadius: 10,
+                                      boxShadow: '0 8px 24px rgba(15, 23, 42, 0.14)',
+                                    }}
                                   >
-                                    <img src="/icons/eye.svg" alt="" className="w-4 h-4" />
-                                    Preview
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => downloadPolicy(p)}
-                                    className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light)"
-                                  >
-                                    <img src="/icons/download.svg" alt="" className="w-4 h-4" />
-                                    Download
-                                  </button>
-                                  {/* {requiresSignature && !isAdmin && (
+                                    {isAdmin && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          toggleSelectPolicy(p.id);
+                                          setActiveDropdown(null);
+                                        }}
+                                        className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light)"
+                                      >
+                                        <img src="/icons/square-check.svg" alt="" className="w-5 h-5" />
+                                        Select
+                                      </button>
+                                    )}
+
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        startSigning(p);
+                                        previewPolicy(p);
                                         setActiveDropdown(null);
                                       }}
-                                      disabled={signingId === p.id}
-                                      className="w-full p-2 rounded-lg text-left text-[14px] font-medium text-[#3C4653] hover:bg-[#E9EFF4]"
+                                      className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light)"
                                     >
-                                      {signingId === p.id
-                                        ? 'Uploading…'
-                                        : ack
-                                          ? 'Re-upload Signed Copy'
-                                          : 'Sign & Upload'}
+                                      <img src="/icons/eye.svg" alt="" className="w-5 h-5" />
+                                      Preview
                                     </button>
-                                  )} */}
-                                  {/* {requiresSignature && isAdmin && (
+
                                     <button
                                       type="button"
-                                      onClick={() => {
-                                        openReview(p);
-                                        setActiveDropdown(null);
-                                      }}
-                                      className="w-full p-2 rounded-lg text-left text-[14px] font-medium text-[#3C4653] hover:bg-[#E9EFF4]"
+                                      onClick={() => downloadPolicy(p)}
+                                      className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light)"
                                     >
-                                      Submissions
+                                      <img src="/icons/download.svg" alt="" className="w-5 h-5" />
+                                      Download
                                     </button>
-                                  )} */}
-                                  {isAdmin && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveDropdown(null);
-                                        handleDelete(p);
-                                      }}
-                                      disabled={deletingId === p.id}
-                                      className="w-full p-2 rounded-lg text-left text-[14px] font-medium text-red-600 hover:bg-red-50"
-                                    >
-                                      {deletingId === p.id ? 'Deleting…' : 'Delete'}
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
+
+                                    {isAdmin && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setActiveDropdown(null);
+                                          handleDelete(p);
+                                        }}
+                                        disabled={deletingId === p.id}
+                                        className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light)"
+                                      >
+                                        <MaskIcon src="/icons/trash-2.svg" size={20} />
+                                        {deletingId === p.id ? 'Deleting…' : 'Delete'}
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
 
                           <div
@@ -1272,14 +1503,7 @@ export default function PolicyDocuments({
                                 <PdfThumbnail url={thumbnailUrls[p.id]} />
                               ) : (<div className='flex justify-center items-center'> <PdfIcon /> </div>)}
                             </button>
-                            {/* {isRecent(p.created_at) && (
-                              <span
-                                className="badge badge-accent"
-                                style={{ position: 'absolute', top: 8, right: 8, pointerEvents: 'none' }}
-                              >
-                                New
-                              </span>
-                            )} */}
+
                             {isAdmin ? (
                               <button
                                 type="button"
@@ -1320,21 +1544,6 @@ export default function PolicyDocuments({
                               </span>
                             ) : null}
                           </div>
-
-                          {/* {requiresSignature && !isAdmin && (
-                            <div style={{ marginTop: 8 }}>
-                              <span className={`badge ${!ack ? 'badge-neutral'
-                                : ack.status === 'approved' ? 'badge-success'
-                                  : ack.status === 'rejected' ? 'badge-error'
-                                    : 'badge-warning'
-                                }`}>
-                                {!ack ? 'Not Signed'
-                                  : ack.status === 'approved' ? 'Approved'
-                                    : ack.status === 'rejected' ? 'Rejected'
-                                      : 'Pending Review'}
-                              </span>
-                            </div>
-                          )} */}
                         </article>
                       );
                     })}
@@ -1349,48 +1558,127 @@ export default function PolicyDocuments({
 
       {/* ── PDF preview modal ───────────────────────────────────────────── */}
 
-      {previewFor && (
-        <div
-          className="modal-overlay"
-          onClick={closePreview}
-        >
+      {
+        previewFor && (
           <div
-            className="modal"
-            style={{
-              maxWidth: 860,
-              width: '100%',
-              height: 'min(720px, calc(100vh - 96px))',
-              display: 'flex',
-              flexDirection: 'column',
-              padding: 0,
-              overflow: 'hidden',
-            }}
-            onClick={e => e.stopPropagation()}
+            className="modal-overlay"
+            onClick={closePreview}
           >
-            <div className="modal-header">
-              <h2>{previewFor.title}</h2>
-
-              <button
-                className="modal-close"
-                onClick={closePreview}
-              >
-                ×
-              </button>
-            </div>
-
-            <iframe
-              src={`${previewFor.url}#toolbar=0&navpanes=0`}
-              title={previewFor.title}
+            <div
+              className="modal"
               style={{
-                flex: 1,
+                maxWidth: 860,
                 width: '100%',
-                border: 'none',
-                background: 'var(--color-bg)',
+                height: 'min(720px, calc(100vh - 96px))',
+                display: 'flex',
+                flexDirection: 'column',
+                padding: 0,
+                overflow: 'hidden',
               }}
-            />
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h2>{previewFor.title}</h2>
+
+                <button
+                  className="modal-close"
+                  onClick={closePreview}
+                >
+                  ×
+                </button>
+              </div>
+
+              <iframe
+                src={`${previewFor.url}#toolbar=0&navpanes=0`}
+                title={previewFor.title}
+                style={{
+                  flex: 1,
+                  width: '100%',
+                  border: 'none',
+                  background: 'var(--color-bg)',
+                }}
+              />
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
+
+      {/* Create folder popup  */}
+
+      {
+        selectedPolicyIds.length > 0 && (
+          <div className='fixed left-0 right-0 bottom-10 bg-transparent w-full  flex justify-center z-20 '>
+            <div className='flex py-2 px-5 gap-12 bg-(--neutral-light) rounded-[50px] items-center'>
+              <div className='text-[14px] font-semibold text-(--blue-dark-darker)'>
+                <span>{selectedPolicyIds.length}</span>
+                <span> documents selected</span>
+              </div>
+              <div className='flex gap-1 items-center'>
+                <Button variant='text' size='xs' leftIcon={<MaskIcon src='/icons/folder-01.svg' size={14} />} onClick={(e) => setShowCreateFolder(true)}>Create Folder</Button>
+
+                <span className='border-r border-(--soft-white-dark-hover) h-4'></span>
+
+                <Button variant='text' size='xs' leftIcon={<MaskIcon src='/icons/cross-outline.svg' size={14} />}>Cancel</Button>
+              </div>
+
+            </div>
+          </div>
+        )
+      }
+
+      {/* Create new folder */}
+      {
+        showCreateFolder && (
+          <div className="modal-overlay">
+            <div className=' flex flex-col w-[601px] p-6 rounded-xl gap-4 bg-(--soft-white-light) '>
+              <div className='flex flex-col gap-6 '>
+                <div className='flex justify-between items-start'>
+                  <div>
+                    <h3 className='text-[20px] font-semibold text-[#111920]'>Create New Folder</h3>
+                    <p className='text-[14px] text-[#4B5768]'>Group related documents and make them easier to find.</p>
+                  </div>
+                  <button onClick={() => setShowCreateFolder(false)}>
+                    <MaskIcon src='/icons/cross-outline.svg' size={20} />
+                  </button>
+                </div>
+                <div className='flex flex-col gap-3'>
+                  <div className='flex flex-col gap-2'>
+                    <label className='text-[16px] font-medium text-[#2D343F]' htmlFor="folder-name">Folder Name</label>
+                    <InputField
+                      value={folderName}
+                      onChange={(e) => setFolderName(e.target.value)}
+                      id='folder-name' placeholder='Enter folder name' required />
+                  </div>
+                  <div className='flex flex-col gap-2'>
+                    <label className='text-[16px] font-medium text-[#2D343F]' htmlFor="folder-description">Folder Description</label>
+                    <textarea
+                      value={folderDescription}
+                      onChange={(e) => setFolderDescription(e.target.value)}
+                      id='folder-description'
+                      placeholder='Click to add description'
+                      rows={5}
+                      maxLength={500}
+                      className='py-2 px-4 text-[16px] border
+                    rounded-[5px]   border-(--soft-white-dark-hover) hover:border-(--blue-dark-normal)' required
+                    />
+                    <p className='text-[12px] text-[#4B5768]'>Maximum 500 characters allowed.
+                      <span>{' '}({folderDescription.length}/500)</span>
+                    </p>
+
+                  </div>
+
+                </div>
+              </div>
+              <div className='flex justify-end'>
+                <Button size='small' onClick={createFolder}>
+                  Create
+                </Button>
+              </div>
+
+            </div>
+          </div>
+        )
+      }
 
       {/* ── Submissions review modal ────────────────────────────────────── */}
 
@@ -1503,10 +1791,16 @@ export default function PolicyDocuments({
                   })
                 )}
               </div>
+
             </div>
+
           </div>
         )
       }
+
+
+
+
     </div >
   );
 }

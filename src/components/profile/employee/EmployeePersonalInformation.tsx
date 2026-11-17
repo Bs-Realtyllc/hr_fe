@@ -44,7 +44,7 @@ const EmployeePersonalInformation = () => {
             try {
                 setLoading(true);
                 const data = await profileService.getProfile();
-                console.log("Fetched Profile Data:", data);
+                // console.log("Fetched Profile Data:", data);
 
                 setPersonalInfo({
                     name: data.name || '',
@@ -86,7 +86,7 @@ const EmployeePersonalInformation = () => {
                 gender: personalInfo.gender,
                 address: personalInfo.nationality,
             });
-            console.log("Updated Personal Info:", personalInfo)
+            // console.log("Updated Personal Info:", personalInfo)
             setIsEditingPersonal(false)
         } catch (err: any) {
             alert(err.message || "Failed to update personal details");
@@ -102,7 +102,7 @@ const EmployeePersonalInformation = () => {
                 phone: contactInfo.phone,
                 address: contactInfo.currentAddress,
             });
-            console.log("Updated Contact Info:", contactInfo)
+            // console.log("Updated Contact Info:", contactInfo)
             setIsEditingContact(false)
         } catch (err: any) {
             alert(err.message || "Failed to update contact info");
@@ -111,7 +111,7 @@ const EmployeePersonalInformation = () => {
 
     const handleSaveEmergency = (e: React.FormEvent) => {
         e.preventDefault()
-        console.log("Updated Emergency Info:", emergencyInfo)
+        // console.log("Updated Emergency Info:", emergencyInfo)
         setIsEditingEmergency(false)
     }
 
@@ -166,9 +166,9 @@ const EmployeePersonalInformation = () => {
                             Full Name
                         </label>
                         {isEditingPersonal ? (
-                            <div className="w-60">
+                            <div className="w-80">
                                 <InputField
-                                    className="h-9! text-end!"
+                                    className=" text-end!"
                                     id="name"
                                     type="text"
                                     value={personalInfo.name}
@@ -186,9 +186,9 @@ const EmployeePersonalInformation = () => {
                             Date of Birth
                         </label>
                         {isEditingPersonal ? (
-                            <div className="w-60">
+                            <div className="w-80">
                                 <InputField
-                                    className="h-9! text-end!"
+                                    className=" text-end!"
                                     id="dob"
                                     type="date"
                                     value={personalInfo.dob}
@@ -206,9 +206,9 @@ const EmployeePersonalInformation = () => {
                             Gender
                         </label>
                         {isEditingPersonal ? (
-                            <div className="w-60 pb-1">
+                            <div className="w-80 pb-1">
                                 <BSRealtyDropdown
-                                    className="w-60! [&_.bsr-dropdown\_input-wrapper]:h-9! [&_.bsr-dropdown\_input]:h-full! " value={personalInfo.gender}
+                                    className="w-80! [&_.bsr-dropdown\_input-wrapper]:h-11! [&_.bsr-dropdown\_input]:h-full! " value={personalInfo.gender}
                                     onChange={(val: string) => setPersonalInfo({ ...personalInfo, gender: val })}
                                     options={[
                                         { label: 'Male', value: 'male' },
@@ -228,9 +228,9 @@ const EmployeePersonalInformation = () => {
                             Nationality
                         </label>
                         {isEditingPersonal ? (
-                            <div className="w-60">
+                            <div className="w-80">
                                 <InputField
-                                    className="h-9! text-end!"
+                                    className=" text-end!"
                                     id="nationality"
                                     type="text"
                                     value={personalInfo.nationality}
@@ -243,7 +243,7 @@ const EmployeePersonalInformation = () => {
                     </div>
                     {isEditingPersonal && (
                         <div className="flex justify-end gap-2 mt-4">
-                            <Button type="submit" size="xs">Save Changes</Button>
+                            <Button type="submit" size="small">Save Changes</Button>
                         </div>
                     )}
                 </form>
@@ -277,9 +277,9 @@ const EmployeePersonalInformation = () => {
                             Company email
                         </label>
                         {isEditingContact ? (
-                            <div className="w-60">
+                            <div className="w-80">
                                 <InputField
-                                    className="h-9! text-end!"
+                                    className=" text-end!"
                                     id="comp-email"
                                     type="text"
                                     value={contactInfo.companyEmail}
@@ -295,9 +295,9 @@ const EmployeePersonalInformation = () => {
                             Personal email
                         </label>
                         {isEditingContact ? (
-                            <div className="w-60">
+                            <div className="w-80">
                                 <InputField
-                                    className="h-9! text-end!"
+                                    className=" text-end!"
                                     id="email"
                                     type="text"
                                     value={contactInfo.personalEmail}
@@ -313,9 +313,9 @@ const EmployeePersonalInformation = () => {
                             Phone Number
                         </label>
                         {isEditingContact ? (
-                            <div className="w-60">
+                            <div className="w-80">
                                 <InputField
-                                    className="h-9! text-end!"
+                                    className=" text-end!"
                                     id="phone"
                                     type="text"
                                     value={contactInfo.phone}
@@ -331,9 +331,9 @@ const EmployeePersonalInformation = () => {
                             Current Address
                         </label>
                         {isEditingContact ? (
-                            <div className="w-60">
+                            <div className="w-80">
                                 <InputField
-                                    className="h-9! text-end!"
+                                    className=" text-end!"
                                     id="current-add"
                                     type="text"
                                     value={contactInfo.currentAddress}
@@ -349,9 +349,9 @@ const EmployeePersonalInformation = () => {
                             Permanent Address
                         </label>
                         {isEditingContact ? (
-                            <div className="w-60">
+                            <div className="w-80">
                                 <InputField
-                                    className="h-9! text-end!"
+                                    className=" text-end!"
                                     id="permanent-add"
                                     type="text"
                                     value={contactInfo.permanentAddress}
@@ -364,7 +364,7 @@ const EmployeePersonalInformation = () => {
                     </div>
                     {isEditingContact && (
                         <div className="flex justify-end gap-2 mt-4">
-                            <Button type="submit" size="xs">Save Changes</Button>
+                            <Button type="submit" size="small">Save Changes</Button>
                         </div>
                     )}
                 </form>
@@ -398,9 +398,9 @@ const EmployeePersonalInformation = () => {
                             Full Name
                         </label>
                         {isEditingEmergency ? (
-                            <div className="w-60">
+                            <div className="w-80">
                                 <InputField
-                                    className="h-9! text-end!"
+                                    className=" text-end!"
                                     id="rel-name"
                                     type="text"
                                     value={emergencyInfo.name}
@@ -416,9 +416,9 @@ const EmployeePersonalInformation = () => {
                             Relationship
                         </label>
                         {isEditingEmergency ? (
-                            <div className="w-60">
+                            <div className="w-80">
                                 <InputField
-                                    className="h-9! text-end!"
+                                    className=" text-end!"
                                     id="relationship"
                                     type="text"
                                     value={emergencyInfo.relationship}
@@ -434,9 +434,9 @@ const EmployeePersonalInformation = () => {
                             Email
                         </label>
                         {isEditingEmergency ? (
-                            <div className="w-60">
+                            <div className="w-80">
                                 <InputField
-                                    className="h-9! text-end!"
+                                    className=" text-end!"
                                     id="rel-email"
                                     type="text"
                                     value={emergencyInfo.email}
@@ -452,9 +452,9 @@ const EmployeePersonalInformation = () => {
                             Phone Number
                         </label>
                         {isEditingEmergency ? (
-                            <div className="w-60">
+                            <div className="w-80">
                                 <InputField
-                                    className="h-9! text-end!"
+                                    className=" text-end!"
                                     id="rel-phone"
                                     type="text"
                                     value={emergencyInfo.phone}
@@ -467,7 +467,7 @@ const EmployeePersonalInformation = () => {
                     </div>
                     {isEditingEmergency && (
                         <div className="flex justify-end gap-2 mt-4">
-                            <Button type="submit" size="xs">Save Changes</Button>
+                            <Button type="submit" size="small">Save Changes</Button>
                         </div>
                     )}
                 </form>

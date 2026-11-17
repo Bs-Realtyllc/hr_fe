@@ -3,9 +3,9 @@ import Link from "next/link";
 
 export default function NotFound() {
     return (
-        <div className="fixed w-full h-full inset-0 flex justify-center items-center z-9999">
+        <div className="fixed  top-0 right-0 left-[260px]   h-full flex justify-center items-center">
             <div className="flex flex-col gap-4 items-center">
-                <img src="/images/error-page-img.svg" alt="" width={150} height={150} />
+                <img src="/images/error.png" alt="Error" width={150} height={150} />
 
                 <div className="space-y-4">
                     <div className="text-center">

@@ -4,139 +4,197 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import Button from "@/components/Button/Button";
+import PillTabs from "@/components/PillTabs";
 import { showToast } from "@/lib/toast";
 
-type FieldType = "text" | "date" | "option" | "file";
-type FieldSection = "personal" | "education" | "professional" | "additional";
-type FormLayoutType = "intern" | "employee";
-
-interface FieldDefinition {
-  key: string;
-  label: string;
-  type: FieldType;
-  section: FieldSection;
-}
-
-// Mirrors InternFormData — predefined so the admin never has to type a name or pick a type.
-const FIELD_DEFINITIONS: FieldDefinition[] = [
-  { key: "name", label: "Full Name", type: "text", section: "personal" },
-  { key: "dob", label: "Date of Birth", type: "date", section: "personal" },
-  { key: "gender", label: "Gender", type: "option", section: "personal" },
-  { key: "phone", label: "Contact Number", type: "text", section: "personal" },
-  { key: "email", label: "Email Address", type: "text", section: "personal" },
-  {
-    key: "current_address",
-    label: "Current Address",
-    type: "text",
-    section: "personal",
-  },
-  {
-    key: "permanent_address",
-    label: "Permanent Address",
-    type: "text",
-    section: "personal",
-  },
-  {
-    key: "emergency_contact",
-    label: "Emergency Contact Number",
-    type: "text",
-    section: "personal",
-  },
-
-  {
-    key: "education_level",
-    label: "Education Level",
-    type: "option",
-    section: "education",
-  },
-  {
-    key: "institution_name",
-    label: "Institution / College Name",
-    type: "text",
-    section: "education",
-  },
-  {
-    key: "field_of_study",
-    label: "Field of Study",
-    type: "text",
-    section: "education",
-  },
-  {
-    key: "graduation_date",
-    label: "Graduation Date",
-    type: "date",
-    section: "education",
-  },
-
-  {
-    key: "previous_experience",
-    label: "Previous Work / Internship Experience",
-    type: "text",
-    section: "professional",
-  },
-  {
-    key: "tech_stack",
-    label: "Tech Stack",
-    type: "text",
-    section: "professional",
-  },
-  {
-    key: "areas_of_interest",
-    label: "Areas of Interest",
-    type: "text",
-    section: "professional",
-  },
-  {
-    key: "linkedin_url",
-    label: "LinkedIn Profile",
-    type: "text",
-    section: "professional",
-  },
-  {
-    key: "github_url",
-    label: "GitHub Profile",
-    type: "text",
-    section: "professional",
-  },
-  {
-    key: "portfolio_url",
-    label: "Portfolio / Website",
-    type: "text",
-    section: "professional",
-  },
-
-  {
-    key: "additional_info",
-    label: "Additional Info",
-    type: "text",
-    section: "additional",
-  },
-];
-
-const SECTION_LABELS: Record<FieldSection, string> = {
-  personal: "Personal Information",
-  education: "Educational Information",
-  professional: "Professional Information",
-  additional: "Additional Information",
+/** One entry in a forms_layout row's `data` column. */
+type FormFieldConfig = {
+  name: string;
+  required: boolean;
 };
 
-const SECTION_ORDER: FieldSection[] = [
-  "personal",
-  "education",
-  "professional",
-  "additional",
+type FieldType = "text" | "date" | "option" | "boolean" | "url" | "file";
+type FormLayoutType = "intern" | "employee";
+
+type SectionKey =
+  | "personal"
+  | "educational"
+  | "experience"
+  | "emergency"
+  | "documents"
+  | "other";
+
+interface FieldDefinition {
+  /** Matches the employee_onboarding_profile column (or JSON entry key) in camelCase. */
+  name: string;
+  label: string;
+  type: FieldType;
+}
+
+interface SectionDefinition {
+  key: SectionKey;
+  label: string;
+  description: string;
+  fields: FieldDefinition[];
+}
+
+// Mirrors employee_onboarding_profile. id, name, email and role are omitted on
+// purpose: they're always collected (NOT NULL in the DB), so they can't be toggled.
+// System columns (confirmed, isActive, source, sourceApplicationId) aren't form fields.
+const SECTIONS: SectionDefinition[] = [
+  {
+    key: "personal",
+    label: "Personal Information",
+    description: "Basic details about the new joiner.",
+    fields: [
+      { name: "dob", label: "Date of Birth", type: "date" },
+      { name: "gender", label: "Gender", type: "option" },
+      { name: "nationality", label: "Nationality", type: "text" },
+      { name: "phone", label: "Contact Number", type: "text" },
+      { name: "currentAddress", label: "Current Address", type: "text" },
+      { name: "permanentAddress", label: "Permanent Address", type: "text" },
+      { name: "linkedinUrl", label: "LinkedIn Profile", type: "url" },
+      { name: "githubUrl", label: "GitHub Profile", type: "url" },
+      { name: "portfolioUrl", label: "Portfolio / Website", type: "url" },
+    ],
+  },
+  {
+    key: "educational",
+    label: "Educational Information",
+    description: "Applies to each education entry the joiner adds.",
+    fields: [
+      { name: "educationLevel", label: "Education Level", type: "option" },
+      { name: "institutionName", label: "Institution / College Name", type: "text" },
+      { name: "fieldOfStudy", label: "Field of Study", type: "text" },
+      { name: "stillEnrolled", label: "Still Enrolled", type: "boolean" },
+      { name: "graduationDate", label: "Graduation Date", type: "date" },
+      { name: "certificate", label: "Certificate", type: "file" },
+    ],
+  },
+  {
+    key: "experience",
+    label: "Previous Experience",
+    description: "Applies to each previous job or internship entry.",
+    fields: [
+      { name: "company", label: "Company", type: "text" },
+      { name: "role", label: "Role", type: "text" },
+      { name: "startDate", label: "Start Date", type: "date" },
+      { name: "endDate", label: "End Date", type: "date" },
+      { name: "stillWorking", label: "Still Working", type: "boolean" },
+      { name: "employmentType", label: "Employment Type", type: "option" },
+      { name: "workLocation", label: "Work Location", type: "option" },
+      { name: "description", label: "Description", type: "text" },
+      { name: "experienceLetter", label: "Experience Letter", type: "file" },
+    ],
+  },
+  {
+    key: "emergency",
+    label: "Emergency Contact",
+    description: "Who to reach in case of an emergency.",
+    fields: [
+      { name: "emergencyContactName", label: "Contact Name", type: "text" },
+      { name: "emergencyContactRelation", label: "Relation", type: "text" },
+      { name: "emergencyContactPhone", label: "Phone", type: "text" },
+      { name: "emergencyContactEmail", label: "Email", type: "text" },
+      { name: "emergencyContactAddress", label: "Address", type: "text" },
+    ],
+  },
+  {
+    key: "documents",
+    label: "Upload Documents",
+    description: "Identity documents and photo.",
+    fields: [
+      { name: "photoPath", label: "Passport Photo", type: "file" },
+      { name: "idFrontPath", label: "ID (Front)", type: "file" },
+      { name: "idBackPath", label: "ID (Back)", type: "file" },
+      { name: "panFrontPath", label: "PAN (Front)", type: "file" },
+      { name: "panBackPath", label: "PAN (Back)", type: "file" },
+      { name: "additionalDocumentPath", label: "Additional Document", type: "file" },
+    ],
+  },
+  {
+    key: "other",
+    label: "Other Documents",
+    description: "Signed contract and anything else.",
+    fields: [
+      { name: "contractPath", label: "Signed Contract", type: "file" },
+      { name: "otherDocumentPath", label: "Other Document", type: "file" },
+    ],
+  },
 ];
 
-// key -> whether it's selected
-type SelectedMap = Record<string, boolean>;
-// key -> whether it's required (only meaningful if selected)
-type RequiredMap = Record<string, boolean>;
+const ALWAYS_INCLUDED = ["Full Name", "Email Address"];
 
-const emptySelected = (): SelectedMap =>
-  Object.fromEntries(FIELD_DEFINITIONS.map((f) => [f.key, false]));
+const LAYOUT_TYPE_OPTIONS = [
+  { value: "intern", label: "Intern" },
+  { value: "employee", label: "Employee" },
+];
 
-const emptyRequired = (): RequiredMap =>
-  Object.fromEntries(FIELD_DEFINITIONS.map((f) => [f.key, false]));
+/** forms_layout.name for a section, e.g. "intern_onboard_personal". */
+const layoutName = (type: FormLayoutType, section: SectionKey) =>
+  `${type}_onboard_${section}`;
+
+type FieldState = { selected: boolean; required: boolean };
+/** section key -> field name -> state */
+type LayoutState = Record<SectionKey, Record<string, FieldState>>;
+
+const emptyLayout = (): LayoutState =>
+  Object.fromEntries(
+    SECTIONS.map((s) => [
+      s.key,
+      Object.fromEntries(
+        s.fields.map((f) => [f.name, { selected: false, required: false }]),
+      ),
+    ]),
+  ) as LayoutState;
+
+/**
+ * Accepts the saved layout as either `{ intern_onboard_personal: [...] }` or an
+ * array of forms_layout rows (`[{ name, data }]`), possibly wrapped in `{ data }`.
+ */
+const parseSavedLayout = (
+  raw: unknown,
+  type: FormLayoutType,
+): LayoutState => {
+  const layout = emptyLayout();
+  let payload: unknown = raw;
+  if (payload && typeof payload === "object" && "data" in payload) {
+    payload = (payload as { data: unknown }).data;
+  }
+
+  const byName: Record<string, unknown> = {};
+  if (Array.isArray(payload)) {
+    payload.forEach((row) => {
+      if (row && typeof row === "object" && "name" in row) {
+        byName[(row as { name: string }).name] = (row as { data: unknown }).data;
+      }
+    });
+  } else if (payload && typeof payload === "object") {
+    Object.assign(byName, payload);
+  }
+
+  SECTIONS.forEach((section) => {
+    let entries = byName[layoutName(type, section.key)];
+    if (typeof entries === "string") {
+      try {
+        entries = JSON.parse(entries);
+      } catch {
+        entries = null;
+      }
+    }
+    if (!Array.isArray(entries)) return;
+    entries.forEach((entry: Partial<FormFieldConfig>) => {
+      if (entry?.name && layout[section.key][entry.name]) {
+        layout[section.key][entry.name] = {
+          selected: true,
+          required: !!entry.required,
+        };
+      }
+    });
+  });
+
+  return layout;
+};
 
 interface ContractTemplateInfo {
   filename: string;
@@ -145,73 +203,34 @@ interface ContractTemplateInfo {
 
 const Page = () => {
   const [layoutType, setLayoutType] = useState<FormLayoutType>("intern");
-  const [selected, setSelected] = useState<SelectedMap>(emptySelected());
-  const [required, setRequired] = useState<RequiredMap>(emptyRequired());
+  const [layout, setLayout] = useState<LayoutState>(emptyLayout);
   const [layoutLoading, setLayoutLoading] = useState(true);
-  const [saveStatus, setSaveStatus] = useState<
-    "idle" | "saving" | "success" | "error"
-  >("idle");
+  const [saving, setSaving] = useState(false);
 
-  const [currentTemplate, setCurrentTemplate] = useState<ContractTemplateInfo | null>(null);
+  const [currentTemplate, setCurrentTemplate] =
+    useState<ContractTemplateInfo | null>(null);
   const [templateFile, setTemplateFile] = useState<File | null>(null);
   const [templateBusy, setTemplateBusy] = useState(false);
-  const [templateMsg, setTemplateMsg] = useState("");
   const templateInputRef = useRef<HTMLInputElement>(null);
 
-  // Reflect whichever layout type is selected — the template is stored per type.
   useEffect(() => {
     let cancelled = false;
-    setCurrentTemplate(null);
-    setTemplateMsg("");
     setLayoutLoading(true);
+    setCurrentTemplate(null);
 
     (async () => {
       try {
         const res = await api.get<{
-          data: Record<
-            string,
-            FieldDefinition[] & { required: boolean }[]
-          > | null;
+          data?: unknown;
           contractTemplate?: ContractTemplateInfo;
         }>(`/form-layout?type=${layoutType}`);
-
         if (cancelled) return;
-
-          setCurrentTemplate(
-          (res.data?.contractTemplate as any) ?? null,
-        );
-
-        // Flatten the saved sections into a lookup by field key
-        const savedByKey: Record<string, { required: boolean }> = {};
-        const savedData = (res as any).data?.data ?? res.data ?? null;
-        if (savedData) {
-          Object.values(savedData as Record<string, any[]>).forEach(
-            (sectionFields) => {
-              (sectionFields ?? []).forEach((f) => {
-                savedByKey[f.key] = { required: !!f.required };
-              });
-            },
-          );
-        }
-
-        const newSelected: SelectedMap = {};
-        const newRequired: RequiredMap = {};
-        FIELD_DEFINITIONS.forEach((f) => {
-          const saved = savedByKey[f.key];
-          newSelected[f.key] = !!saved;
-          newRequired[f.key] = saved ? saved.required : false;
-        });
-
-        setSelected(newSelected);
-        setRequired(newRequired);
+        setCurrentTemplate(res?.contractTemplate ?? null);
+        setLayout(parseSavedLayout(res, layoutType));
       } catch {
-        // Layout not configured yet, or fetch failed — fall back to nothing
-        // selected, not "everything selected", so a failed load can't
-        // silently blow away a good saved layout on the next Save click.
-        if (!cancelled) {
-          setSelected(emptySelected());
-          setRequired(emptyRequired());
-        }
+        // Not configured yet, or the fetch failed — start from nothing selected
+        // so a failed load can't silently overwrite a good layout on save.
+        if (!cancelled) setLayout(emptyLayout());
       } finally {
         if (!cancelled) setLayoutLoading(false);
       }
@@ -222,11 +241,60 @@ const Page = () => {
     };
   }, [layoutType]);
 
+  const updateField = (
+    section: SectionKey,
+    name: string,
+    patch: Partial<FieldState>,
+  ) => {
+    setLayout((prev) => {
+      const next = { ...prev[section][name], ...patch };
+      // A field that isn't shown can't be required.
+      if (!next.selected) next.required = false;
+      return { ...prev, [section]: { ...prev[section], [name]: next } };
+    });
+  };
+
+  const setSectionSelected = (section: SectionKey, selected: boolean) => {
+    setLayout((prev) => ({
+      ...prev,
+      [section]: Object.fromEntries(
+        Object.entries(prev[section]).map(([name, state]) => [
+          name,
+          { selected, required: selected ? state.required : false },
+        ]),
+      ),
+    }));
+  };
+
+  const buildPayload = (): Record<string, FormFieldConfig[]> =>
+    Object.fromEntries(
+      SECTIONS.map((section) => [
+        layoutName(layoutType, section.key),
+        section.fields
+          .filter((f) => layout[section.key][f.name].selected)
+          .map((f) => ({
+            name: f.name,
+            required: layout[section.key][f.name].required,
+          })),
+      ]),
+    );
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await api.post("/form-layout", buildPayload());
+      showToast("success", "Form layout submitted successfully.");
+    } catch (err) {
+      console.error("Failed to save form layout", err);
+      showToast("error", "Failed to submit form layout. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleUploadTemplate = async () => {
     if (!templateFile) return;
     setTemplateBusy(true);
-    setTemplateMsg("");
-
     try {
       const body = new FormData();
       body.append("file", templateFile, templateFile.name);
@@ -243,11 +311,9 @@ const Page = () => {
       setCurrentTemplate({ filename: "", originalName: templateFile.name });
       setTemplateFile(null);
       if (templateInputRef.current) templateInputRef.current.value = "";
-      setTemplateMsg("Template saved.");
-    } catch (err) {
-      setTemplateMsg(
-        err instanceof Error ? err.message : "Could not upload template.",
-      );
+      showToast("success", "Contract template saved.");
+    } catch {
+      showToast("error", "Could not upload the contract template.");
     } finally {
       setTemplateBusy(false);
     }
@@ -255,8 +321,6 @@ const Page = () => {
 
   const handleRemoveTemplate = async () => {
     setTemplateBusy(true);
-    setTemplateMsg("");
-
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/form-layout/template?type=${layoutType}`,
@@ -266,89 +330,158 @@ const Page = () => {
         },
       );
       if (!res.ok) throw new Error(`Remove failed (${res.status})`);
-
       setCurrentTemplate(null);
-      setTemplateMsg("Reverted to the default template.");
-    } catch (err) {
-      setTemplateMsg(
-        err instanceof Error ? err.message : "Could not remove template.",
-      );
+      showToast("success", "Reverted to the default template.");
+    } catch {
+      showToast("error", "Could not remove the contract template.");
     } finally {
       setTemplateBusy(false);
     }
   };
 
-  const toggleSelected = (key: string) => {
-    setSelected((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const toggleRequired = (key: string) => {
-    setRequired((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const handleSetForm = async () => {
-    setSaveStatus("saving");
-
-    const flatFields = FIELD_DEFINITIONS.filter((f) => selected[f.key]).map(
-      (f) => ({
-        key: f.key,
-        label: f.label,
-        type: f.type,
-        section: f.section,
-        required: required[f.key],
-      }),
-    );
-
-    const grouped = SECTION_ORDER.reduce(
-      (acc, section) => {
-        acc[section] = flatFields.filter((f) => f.section === section);
-        return acc;
-      },
-      {} as Record<FieldSection, typeof flatFields>,
-    );
-
-    try {
-      await api.post<any>("/form-layout", {
-      name: layoutType,
-      data: JSON.stringify(grouped),
-    });
-      setSaveStatus("success");
-    } catch (err) {
-      console.error("Failed to save form layout", err);
-      setSaveStatus("error");
-    }
-  };
-
   return (
-    <div className="">
+    <div>
       <div className="page-header">
         <div className="flex justify-between items-center">
           <div>
             <h1>Form Layout</h1>
             <p>
-              Choose which fields appear on the intern onboarding form, and mark
-              each as required or optional.
+              Choose which fields appear on the onboarding form, and mark each
+              as required or optional.
             </p>
           </div>
         </div>
       </div>
-      <select
-        value={layoutType}
-        onChange={(e) => setLayoutType(e.target.value as FormLayoutType)}
-        className="mt-1 w-1/3 md:w-1/4 rounded-md border border-slate-300 bg-white px-1 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 mb-4"
-      >
-        <option value="intern">Intern</option>
-        <option value="employee">Employee</option>
-      </select>
 
-      <section className="mb-8 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <PillTabs
+          options={LAYOUT_TYPE_OPTIONS}
+          value={layoutType}
+          onChange={(v) => setLayoutType(v as FormLayoutType)}
+        />
+        <Button
+          variant="primary"
+          size="small"
+          onClick={handleSave}
+          disabled={layoutLoading || saving}
+        >
+          {saving ? "Submitting…" : "Submit"}
+        </Button>
+      </div>
+
+      <div className="card mb-4">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-(--color-text-muted)">
+          <span>Always included and required:</span>
+          {ALWAYS_INCLUDED.map((label) => (
+            <span key={label} className="badge badge-accent">
+              {label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {layoutLoading ? (
+        <div className="card text-sm text-(--color-text-muted)">
+          Loading layout…
+        </div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {SECTIONS.map((section) => {
+            const states = layout[section.key];
+            const shownCount = section.fields.filter(
+              (f) => states[f.name].selected,
+            ).length;
+            const allShown = shownCount === section.fields.length;
+
+            return (
+              <section key={section.key} className="card">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-semibold text-(--color-text-h3)">
+                      {section.label}
+                    </h2>
+                    <p className="mt-0.5 text-xs text-(--color-text-muted)">
+                      {section.description}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSectionSelected(section.key, !allShown)}
+                    className="shrink-0 text-xs font-medium text-(--color-primary) hover:underline"
+                  >
+                    {allShown ? "Clear all" : "Select all"}
+                  </button>
+                </div>
+
+                <div className="mb-2 flex items-center justify-between border-b border-(--color-border) px-2 pb-2 text-xs font-medium uppercase tracking-wide text-(--color-text-muted)">
+                  <span>
+                    Field · {shownCount}/{section.fields.length} shown
+                  </span>
+                  <span>Required</span>
+                </div>
+
+                <ul className="space-y-0.5">
+                  {section.fields.map((field) => {
+                    const state = states[field.name];
+                    return (
+                      <li
+                        key={field.name}
+                        className="flex items-center justify-between gap-4 rounded-md px-2 py-2 hover:bg-(--color-bg)"
+                      >
+                        <label className="flex flex-1 cursor-pointer items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={state.selected}
+                            onChange={(e) =>
+                              updateField(section.key, field.name, {
+                                selected: e.target.checked,
+                              })
+                            }
+                            className="h-4 w-4 cursor-pointer accent-(--color-primary)"
+                          />
+                          <span
+                            className={`text-sm ${
+                              state.selected
+                                ? "text-(--color-text-body)"
+                                : "text-(--color-text-muted)"
+                            }`}
+                          >
+                            {field.label}
+                          </span>
+                          <span className="badge badge-neutral">
+                            {field.type}
+                          </span>
+                        </label>
+
+                        <input
+                          type="checkbox"
+                          aria-label={`${field.label} required`}
+                          checked={state.required}
+                          disabled={!state.selected}
+                          onChange={(e) =>
+                            updateField(section.key, field.name, {
+                              required: e.target.checked,
+                            })
+                          }
+                          className="h-4 w-4 cursor-pointer accent-(--color-primary) disabled:cursor-not-allowed disabled:opacity-40"
+                        />
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            );
+          })}
+        </div>
+      )}
+
+      <section className="card mt-4">
+        <h2 className="text-sm font-semibold text-(--color-text-h3)">
           Default Contract Template
         </h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Uploaded here, this file replaces the built-in default as the
-          &quot;Download template&quot; option on the {layoutType} onboarding
-          form.
+        <p className="mt-0.5 text-xs text-(--color-text-muted)">
+          Replaces the built-in default as the &quot;Download template&quot;
+          option on the {layoutType} onboarding form.
         </p>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -357,113 +490,41 @@ const Page = () => {
             type="file"
             accept=".pdf,.doc,.docx"
             onChange={(e) => setTemplateFile(e.target.files?.[0] ?? null)}
-            className="text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+            className="text-sm text-(--color-text-body) file:mr-3 file:rounded-md file:border-0 file:bg-(--color-primary-light) file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-(--color-primary)"
           />
-
-          <Button type="button"
+          <Button
+            variant="secondary"
+            size="small"
             onClick={handleUploadTemplate}
-            disabled={!templateFile || templateBusy} size="small">{templateBusy ? "Saving…" : "Upload"}</Button>
+            disabled={!templateFile || templateBusy}
+          >
+            {templateBusy ? "Saving…" : "Upload"}
+          </Button>
           {currentTemplate && (
-            <button
-              type="button"
+            <Button
+              variant="text"
+              size="small"
               onClick={handleRemoveTemplate}
               disabled={templateBusy}
-              className="text-sm font-medium text-red-600 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Revert to default
-            </button>
+            </Button>
           )}
         </div>
 
-        {currentTemplate ? (
-          <p className="mt-3 text-sm text-slate-500">
-            Current file:{" "}
-            <span className="font-medium text-slate-700">
-              {currentTemplate.originalName}
-            </span>
-          </p>
-        ) : (
-          <p className="mt-3 text-sm text-slate-400">
-            No custom template set — the built-in default is used.
-          </p>
-        )}
-
-        {templateMsg && (
-          <p className="mt-2 text-sm text-amber-700">{templateMsg}</p>
-        )}
+        <p className="mt-3 text-sm text-(--color-text-muted)">
+          {currentTemplate ? (
+            <>
+              Current file:{" "}
+              <span className="font-medium text-(--color-text-body)">
+                {currentTemplate.originalName}
+              </span>
+            </>
+          ) : (
+            "No custom template set — the built-in default is used."
+          )}
+        </p>
       </section>
-
-      <div className="space-y-8">
-        {SECTION_ORDER.map((section) => (
-          <div key={section}>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-              {SECTION_LABELS[section]}
-            </h2>
-            <div className="space-y-1 rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
-              {FIELD_DEFINITIONS.filter((f) => f.section === section).map(
-                (field) => (
-                  <div
-                    key={field.key}
-                    className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-slate-50"
-                  >
-                    <label className="flex flex-1 items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={selected[field.key]}
-                        onChange={() => toggleSelected(field.key)}
-                        className="h-4 w-4 rounded border-slate-300"
-                      />
-                      <span className="text-sm text-slate-800">
-                        {field.label}
-                      </span>
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
-                        {field.type}
-                      </span>
-                    </label>
-
-                    <label
-                      className={`flex items-center gap-1.5 text-xs ${selected[field.key]
-                        ? "text-slate-600"
-                        : "text-slate-300"
-                        }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={required[field.key]}
-                        onChange={() => toggleRequired(field.key)}
-                        disabled={!selected[field.key]}
-                        className="h-3.5 w-3.5 rounded border-slate-300 disabled:cursor-not-allowed"
-                      />
-                      Required
-                    </label>
-                  </div>
-                ),
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-8 flex justify-end">
-        <div className="mt-8 flex items-center justify-end gap-4">
-          {saveStatus === "success" && (
-            <span className="text-sm font-medium text-emerald-600">Saved</span>
-          )}
-          {saveStatus === "error" && (
-            <span className="text-sm font-medium text-red-600">
-              Could not save. Try again.
-            </span>
-          )}
-          <Button
-            variant="primary"
-            size="small"
-            onClick={handleSetForm}
-            disabled={layoutLoading || saveStatus === "saving"}
-          >
-            {saveStatus === "saving" ? "Saving…" : "Set form"}
-          </Button>
-      </div>
-    </div>
     </div>
   );
 };

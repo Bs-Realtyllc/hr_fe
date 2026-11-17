@@ -2,40 +2,10 @@
 
 import { BSRealtyAvatar } from '@bsrealtyllc/design-system'
 import React, { useEffect, useState } from 'react'
-import { getToken } from "@/lib/auth"
 import { api } from '@/lib/api'
 import Button from '@/components/Button/Button'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-
-interface TokenUser {
-    name: string;
-    email: string;
-    role: string;
-}
-
-function getUserFromToken(token: string | null | undefined): TokenUser {
-    const empty: TokenUser = { name: '', email: '', role: '', };
-    if (!token) return empty;
-    try {
-        const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-        const json = decodeURIComponent(
-            atob(base64)
-                .split('')
-                .map((c) => '%' + c.charCodeAt(0).toString(16).padStart(2, '0'))
-                .join('')
-        );
-        const payload = JSON.parse(json);
-        const user = payload.user ?? payload;
-        return {
-            name: String(user.name ?? user.full_name ?? user.username ?? ''),
-            email: String(user.email ?? ''),
-            role: String(user.role ?? (Array.isArray(user.roles) ? user.roles[0] : '') ?? ''),
-        };
-    } catch {
-        return empty;
-    }
-}
 
 interface Profile {
     profile_picture?: string | null;
@@ -44,18 +14,29 @@ interface Profile {
 const BACKEND = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/api\/?$/, '');
 
 const LogoutPage = () => {
-    const { logout } = useAuth();
-    const user = getUserFromToken(getToken());
-    const name = user.name.trim() || 'User';
-    const email = user.email.trim();
+    const { logout, user } = useAuth();
     const router = useRouter();
 
     const [profile, setProfile] = useState<Profile | null>(null);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    const [displayUser, setDisplayUser] = useState(() => ({
+        name: user?.name?.trim(),
+        email: user?.email?.trim(),
+    }));
+
+    useEffect(() => {
+        if (user) {
+            setDisplayUser({
+                name: user.name?.trim(),
+                email: user.email?.trim(),
+            });
+        }
+    }, [user]);
 
     useEffect(() => {
         async function loadProfile() {
             try {
-                // Only used for the profile picture
                 const data = await api.get<Profile>('/profile');
                 setProfile(data ?? null);
             } catch {
@@ -69,10 +50,17 @@ const LogoutPage = () => {
         ? `${BACKEND}/uploads/profile/photo/${profile.profile_picture}`
         : undefined;
 
+    async function handleLogout() {
+        if (isLoggingOut) return;
+        setIsLoggingOut(true);
 
-    function handleLogout() {
-        logout();
-        router.replace('/login');
+        try {
+            await logout();
+            router.replace('/login');
+        } catch {
+            // Only reset loading state if logout fails
+            setIsLoggingOut(false);
+        }
     }
 
     return (
@@ -91,19 +79,32 @@ const LogoutPage = () => {
                         </h1>
 
                         <div className="flex items-start justify-between rounded-lg bg-(--soft-white-normal) px-2 py-3">
-                            <div className="flex min-w-0 items-center gap-4">
-                                <BSRealtyAvatar name={name} size="lg" src={profileImage} />
-                                <div className="min-w-0">
-                                    <h3 className="break-words text-[18px] font-medium leading-7 text-(--neutral-normal)">
-                                        {name}
-                                    </h3>
-                                    {email && (
-                                        <p className="break-all text-[14px] leading-6 text-(--neutral-light-dark-active)">
-                                            {email}
-                                        </p>
-                                    )}
+                            {displayUser.name || displayUser.email ? (
+                                <div className="flex min-w-0 items-center gap-4">
+                                    <BSRealtyAvatar name={displayUser.name || displayUser.email || "User"} size="lg" src={profileImage} />
+                                    <div className="min-w-0">
+                                        {displayUser.name && (
+                                            <h3 className="break-words text-[18px] font-medium leading-7 text-(--neutral-normal)">
+                                                {displayUser.name}
+                                            </h3>
+                                        )}
+                                        {displayUser.email && (
+                                            <p className="break-all text-[14px] leading-6 text-(--neutral-light-dark-active)">
+                                                {displayUser.email}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
+                            ) : (
+                                /* Skeleton placeholder while AuthContext hydrates */
+                                <div className="flex min-w-0 flex-1 animate-pulse items-center gap-4">
+                                    <div className="h-12 w-12 shrink-0 rounded-full bg-gray-200" />
+                                    <div className="flex flex-1 flex-col gap-2">
+                                        <div className="h-5 w-32 rounded bg-gray-200" />
+                                        <div className="h-4 w-44 rounded bg-gray-200" />
+                                    </div>
+                                </div>
+                            )}
                             <div className="rotate-90">
                                 <img src="/icons/chevron-up.svg" alt="" className="opacity-50" />
                             </div>
@@ -115,11 +116,12 @@ const LogoutPage = () => {
                             You’ll need to log in again to access this portal
                         </p>
                         <div className="flex flex-col gap-2">
-                            <Button onClick={handleLogout}>Logout</Button>
+                            <Button onClick={handleLogout} disabled={isLoggingOut}>{isLoggingOut ? 'Logging out.....' : 'Logout'}</Button>
                             <Button
                                 variant="text"
-                                className="border! border-(--neutral-light-hover)!"
+                                className="text-[#2E8CBF]! border! border-[#2E8CBF]!"
                                 onClick={() => router.push('/')}
+                                disabled={isLoggingOut}
                             >
                                 Cancel
                             </Button>
