@@ -11,6 +11,34 @@
   mask-size: contain;
 }
 
+/* ── Inline location-link pin (attendance tables) ── */
+.location-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 4px;
+  vertical-align: middle;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.location-link:hover {
+  color: var(--color-primary);
+  background: var(--color-primary-light, #eef2ff);
+}
+
+.location-link .icon-mask {
+  width: 13px;
+  height: 13px;
+}
+
 /* ── Topbar icon button (bell, theme toggle, etc.) ── */
 .topbar-icon-btn {
   position: relative;

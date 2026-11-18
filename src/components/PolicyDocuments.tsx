@@ -7,7 +7,10 @@ import PdfThumbnail from './PdfThumbnail';
 import Button from './Button/Button';
 import MaskIcon from './ui/MaskIcon';
 import InputField from './InputField/InputField';
-import { initialMockFolders } from '@/data/mockResources';
+import {
+  initialMockFolders,
+  mockPolicies,
+} from '@/data/mockResources';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL!.replace('/api', '');
 interface Policy {
@@ -44,6 +47,13 @@ interface Submission {
   submitted_at: string;
 }
 
+interface PolicyFolder {
+  id: number;
+  name: string;
+  description: string;
+  fileCount: number;
+}
+
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
@@ -72,18 +82,18 @@ interface PolicyDocumentsProps {
   heading: string;
   adminSubtitle: string;
   employeeSubtitle: string;
-  emptyMessage: any;
+  emptyMessage?: string;
   requiresSignature?: boolean;
 }
 
 export default function PolicyDocuments({
   category,
-  emptyMessage,
   requiresSignature = true,
 }: PolicyDocumentsProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const [policies, setPolicies] = useState<Policy[]>([]);
+  const [policies, setPolicies] = useState<Policy[]>(mockPolicies);
+  const mockFilesRef = useRef<Record<string, File>>({});
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<number, string>>({});
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -126,30 +136,47 @@ export default function PolicyDocuments({
 
   const [selectedPolicyIds, setSelectedPolicyIds] = useState<number[]>([])
 
-  const [folders, setFolders] = useState(initialMockFolders);
+  const [folders, setFolders] = useState<PolicyFolder[]>(initialMockFolders);
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [folderName, setFolderName] = useState("");
   const [folderDescription, setFolderDescription] = useState("");
   const [openFolderId, setOpenFolderId] = useState<number | string | null>(null);
   const folderDropdownRefs = useRef<Record<number | string, HTMLDivElement | null>>({});
-
+  const [activeFolder, setActiveFolder] = useState<PolicyFolder | null>(null);
 
   // create folder
   const createFolder = () => {
-    if (!folderName.trim()) return;
+    if (!folderName.trim()) {
+      setError('Please enter a folder name.');
+      return;
+    };
 
-    const newFolder = {
+    const selectedIds = [...selectedPolicyIds];
+    const newFolderName = folderName.trim();
+
+    //move selected files into new folder
+    setPolicies(currentPolicies =>
+      currentPolicies.map(policy =>
+        selectedIds.includes(policy.id)
+          ? { ...policy, folder_path: newFolderName }
+          : policy
+      )
+    );
+
+    const newFolder: PolicyFolder = {
       id: Date.now(),
-      name: folderName,
+      name: newFolderName,
       description: folderDescription,
-      fileCount: 0,
+      fileCount: selectedIds.length,
     }
     // Prepend the new folder to your state list
     setFolders((prevFolders) => [newFolder, ...prevFolders]);
     // Reset form and close modal
-    setFolderName("");
-    setFolderDescription("");
+    setSelectedPolicyIds([]);
+    setFolderName('');
+    setFolderDescription('');
     setShowCreateFolder(false);
+    setError('');
   }
 
   useEffect(() => {
@@ -206,15 +233,35 @@ export default function PolicyDocuments({
   const loadMyAcks = () =>
     api.get<Acknowledgement[]>('/policies/acknowledgements/mine').then(setMyAcks).catch(() => { });
   useEffect(() => { if (requiresSignature && !isAdmin) loadMyAcks(); }, [requiresSignature, isAdmin]);
-  const load = () =>
-    api.get<Policy[]>(category ? `/policies?category=${category}` : '/policies')
-      .then(setPolicies).catch(() => { }).finally(() => setLoading(false));
-  useEffect(() => { load(); }, [category]);
-  const filteredPolicies = policies.filter(p =>
-    p.title.toLowerCase().includes(search.toLowerCase())
-  );
 
-  async function handleFilePicked(
+  const load = () => {
+    // Keep backend policy records untouched while this screen uses mock data.
+    // api.get<Policy[]>(category ? `/policies?category=${category}` : '/policies').then(setPolicies);
+    setPolicies(
+      mockPolicies.filter(
+        policy =>
+          !category ||
+          category === 'policy' ||
+          policy.category === category
+      )
+    );
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, [category]);
+  const filteredPolicies = policies.filter((policy) => {
+    const matchesSearch = policy.title
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
+    const matchesFolder = activeFolder
+      ? policy.folder_path === activeFolder.name
+      : !folders.some(folder => folder.name === policy.folder_path);
+
+    return matchesSearch && matchesFolder;
+  });
+
+  function handleFilePicked(
     e: React.ChangeEvent<HTMLInputElement>
   ) {
     const files = Array.from(e.target.files || []);
@@ -236,72 +283,53 @@ export default function PolicyDocuments({
     setUploading(true);
     setError('');
 
-    const failedFiles: string[] = [];
-
     try {
-      const token = getToken();
-
-      if (!token) {
-        throw new Error('Authentication token not found.');
-      }
-
-      for (const picked of pdfFiles) {
+      const newPolicies = pdfFiles.map((picked, index): Policy => {
+        const id = Date.now() * 1000 + index;
         const title = titleFromFilename(picked.name);
-        const fd = new FormData();
-
-        fd.append('type', slugify(title));
-        fd.append('title', title);
-
-        if (category) {
-          fd.append('category', category);
-        }
-
-        fd.append('file', picked);
-
-        // Get folder path BEFORE sending the request.
         const relativePath = (
           picked as File & { webkitRelativePath?: string }
         ).webkitRelativePath;
+        const folderPath = activeFolder
+          ? activeFolder.name
+          : relativePath
+            ? relativePath.split('/').slice(0, -1).join('/')
+            : '';
+        const filePath = `mock-${id}-${picked.name}`;
+        mockFilesRef.current[filePath] = picked;
 
-        const folderPath = relativePath
-          ? relativePath.split('/').slice(0, -1).join('/')
-          : '';
+        return {
+          id,
+          type: slugify(title),
+          category: category || 'general',
+          title,
+          file_path: filePath,
+          folder_path: folderPath || null,
+          version: 1,
+          uploaded_by_name: user?.name || 'Admin',
+          created_at: new Date().toISOString(),
+          date_modified: new Date().toISOString(),
+          file_size: `${(picked.size / (1024 * 1024)).toFixed(1)} MB`,
+          is_pinned: false,
+        };
+      });
 
-        fd.append('folder_path', folderPath);
+      // Backend uploads remain available below when policy storage is enabled again.
+      /*
+      const token = getToken();
+      const fd = new FormData();
+      fd.append('type', slugify(titleFromFilename(pdfFiles[0].name)));
+      fd.append('title', titleFromFilename(pdfFiles[0].name));
+      if (category) fd.append('category', category);
+      fd.append('file', pdfFiles[0]);
+      await fetch(`${BACKEND}/api/policies`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      */
 
-        try {
-          const res = await fetch(`${BACKEND}/api/policies`, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-            body: fd,
-          });
-
-          if (!res.ok) {
-            const responseText = await res.text();
-
-            console.error(
-              `Upload failed for ${picked.name}:`,
-              res.status,
-              responseText
-            );
-
-            failedFiles.push(picked.name);
-          }
-        } catch (error) {
-          console.error(`Upload error for ${picked.name}:`, error);
-          failedFiles.push(picked.name);
-        }
-      }
-
-      await load();
-
-      if (failedFiles.length) {
-        setError(
-          `Failed to upload ${failedFiles.length} file(s): ${failedFiles.join(', ')}`
-        );
-      }
+      setPolicies(currentPolicies => [...newPolicies, ...currentPolicies]);
     } finally {
       setUploading(false);
     }
@@ -311,6 +339,10 @@ export default function PolicyDocuments({
     folder: 'policies' | 'policy-acks',
     filePath: string
   ): Promise<Blob> {
+    if (folder === 'policies' && mockFilesRef.current[filePath]) {
+      return mockFilesRef.current[filePath];
+    }
+
     const token = getToken();
 
     if (!token) {
@@ -559,12 +591,15 @@ export default function PolicyDocuments({
     }
   }
 
-  async function togglePin(p: Policy) {
+  function togglePin(p: Policy) {
     const nextPinned = !p.is_pinned;
     setPinningId(p.id);
     try {
-      await api.put(`/policies/${p.id}/pin`, { pinned: nextPinned });
-      await load();
+      setPolicies(currentPolicies =>
+        currentPolicies.map(policy =>
+          policy.id === p.id ? { ...policy, is_pinned: nextPinned } : policy
+        )
+      );
     } catch {
       setError('Could not update pin. Please try again.');
     } finally {
@@ -572,14 +607,15 @@ export default function PolicyDocuments({
     }
   }
 
-  async function handleDelete(p: Policy) {
-    if (!window.confirm(`Delete "${p.title}"? This cannot be undone.`)) return;
+  function handleDelete(p: Policy) {
+    if (!window.confirm(`Remove "${p.title}" from this mock list? Backend files are not changed.`)) return;
     setDeletingId(p.id);
     try {
-      await api.delete(`/policies/${p.id}`);
-      await load();
+      // await api.delete(`/policies/${p.id}`);
+      setPolicies(currentPolicies => currentPolicies.filter(policy => policy.id !== p.id));
+      delete mockFilesRef.current[p.file_path];
     } catch {
-      setError('Delete failed. Please try again.');
+      setError('Could not remove this document from the mock list.');
     } finally {
       setDeletingId(null);
     }
@@ -682,11 +718,41 @@ export default function PolicyDocuments({
     });
   }
 
+  const hasPolicies = filteredPolicies.length > 0;
+  const hasFolders = folders.length > 0;
+  const hasContent = activeFolder
+    ? hasPolicies
+    : hasPolicies || hasFolders;
+  const showGridView = activeFolder
+    ? fileView === 'grid'
+    : hasFolders || fileView === 'grid';
   return (
 
-    <div className='my-6 h-full flex flex-col gap-6'>
+    <div className=' w-full flex flex-col gap-6 mt-4'>
 
-      {policies.length > 0 && <div className="w-full flex gap-3">
+      {activeFolder && (
+        <div className="flex px-3 items-center gap-2 text-[14px] font-medium ">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveFolder(null);
+              setSearch('');
+              setSelectedPolicyIds([]);
+            }}
+            className=" text-(--soft-white-dark-hover) "
+          >
+            Resources
+          </button>
+
+          <MaskIcon src='/icons/chevron-right.svg' size={18} color='var(--soft-white-dark-hover)' />
+          <span className="text-(--gray-dark-active)">
+            {activeFolder.name}
+          </span>
+        </div>
+      )}
+
+      {/* search box section */}
+      {(hasContent || activeFolder) && <div className="w-full  flex gap-3">
         <div className='flex w-full gap-3'>
           <div className="search-bar w-full">
 
@@ -703,61 +769,97 @@ export default function PolicyDocuments({
             />
 
           </div>
-          <div className="flex p-2 rounded-lg bg-(--soft-white-light) gap-1">
 
-            {/* List View */}
-            <button
-              type="button"
-              onClick={() => setFileView('list')}
-              className={`flex justify-center items-center px-2 py-1 rounded-sm transition-colors
+          {/* List / Grid toggle: show only when no folders exist */}
+          {(!hasFolders || activeFolder) && (
+            <div className="flex p-2 rounded-lg bg-(--soft-white-light) gap-1">
+
+              {/* List View */}
+              <button
+                type="button"
+                onClick={() => setFileView('list')}
+                className={`flex justify-center items-center px-2 py-1 rounded-sm transition-colors
       ${fileView === 'list'
-                  ? 'bg-[#E0F0F9]'
-                  : 'hover:bg-[#E0F0F9]'
-                }`}
-            >
-              <img
-                src="/icons/menu.svg"
-                alt="List view"
-                width={20}
-                height={20}
-              />
-            </button>
+                    ? 'bg-[#E0F0F9]'
+                    : 'hover:bg-[#E0F0F9]'
+                  }`}
+              >
+                <img
+                  src="/icons/menu.svg"
+                  alt="List view"
+                  width={20}
+                  height={20}
+                />
+              </button>
 
-            {/* Grid View */}
-            <button
-              type="button"
-              onClick={() => setFileView('grid')}
-              className={`flex justify-center items-center px-2 py-1 rounded-sm transition-colors
+              {/* Grid View */}
+              <button
+                type="button"
+                onClick={() => setFileView('grid')}
+                className={`flex justify-center items-center px-2 py-1 rounded-sm transition-colors
       ${fileView === 'grid'
-                  ? 'bg-[#E0F0F9]'
-                  : 'hover:bg-[#E0F0F9]'
-                }`}
-            >
-              <img
-                src="/icons/grid.svg"
-                alt="Grid view"
-                width={20}
-                height={20}
-              />
-            </button>
-          </div>
+                    ? 'bg-[#E0F0F9]'
+                    : 'hover:bg-[#E0F0F9]'
+                  }`}
+              >
+                <img
+                  src="/icons/grid.svg"
+                  alt="Grid view"
+                  width={20}
+                  height={20}
+                />
+              </button>
+            </div>
+          )}
+
         </div>
 
         {/* Upload individual PDFs */}
         {user?.role === 'admin' && (
           <div className='min-w-[191px]'>
-            <Button
-              className='w-full!'
-              variant="primary"
-              size="medium"
-              onClick={() => {
-                setError('');
-                individualFileInputRef.current?.click();
-              }}
-              disabled={uploading}
-            >
-              + Add Documents
-            </Button>
+            {
+              activeFolder ? (
+                //inside folder: add document
+                <Button
+                  className='w-full!'
+                  variant="primary"
+                  size="medium"
+                  onClick={() => {
+                    setError('');
+                    individualFileInputRef.current?.click();
+                  }}
+                  disabled={uploading}
+                >
+                  + Add Documents
+                </Button>) : hasFolders ? (
+                  <Button
+                    className='w-full!'
+                    variant="primary"
+                    size="medium"
+                    onClick={() => {
+                      setError('');
+                      setShowCreateFolder(true);
+                    }}
+                    disabled={uploading}
+                  >
+                    Create Folder
+                  </Button>
+                ) : (
+                // No folders yet: Add Documents
+                <Button
+                  className="w-full!"
+                  variant="primary"
+                  size="medium"
+                  onClick={() => {
+                    setError('');
+                    individualFileInputRef.current?.click();
+                  }}
+                  disabled={uploading}
+                >
+                  + Add Documents
+                </Button>
+              )
+            }
           </div>)
 
         }
@@ -765,7 +867,7 @@ export default function PolicyDocuments({
 
       }
 
-      <div className="h-full  ">
+      <div className="h-full ">
 
         <div className='' style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
 
@@ -774,7 +876,6 @@ export default function PolicyDocuments({
           {isAdmin && (
 
             <>
-
               <div className="flex mt-4 gap-2">
               </div>
 
@@ -810,279 +911,645 @@ export default function PolicyDocuments({
         {loading ? (
 
           <p className="text-muted" style={{ fontSize: 13.5 }}>Loading…</p>
-        ) : filteredPolicies.length === 0 ? (
-          policies.length === 0 ? (
-            <div className="h-full w-full rounded-lg bg-(--soft-white-light) flex flex-col items-center justify-center">
-              {emptyMessage}
-              {isAdmin && (
-                <div className="my-4">
-                  <Button
-                    variant="primary"
-                    size="medium"
-                    onClick={() => {
-                      setError('');
-                      individualFileInputRef.current?.click();
-                    }}
-                    disabled={uploading}
-                  >
-                    Upload Document
-                  </Button>
+        ) : !hasContent && policies.length === 0 ? (
+
+          <div className="w-full h-full rounded-lg bg-(--soft-white-light) flex flex-col items-center justify-center ">
+            {/* Empety state */}
+            {isAdmin ? (
+              <div className="rounded-xl border border-dashed border-(--white-dark) py-10 px-32 flex justify-center"
+                style={{
+                  width: "514px",
+                  height: "272px",
+                  gap: "10px",
+                  paddingTop: "40px",
+                  paddingRight: "128px",
+                  paddingBottom: "40px",
+                  paddingLeft: "128px",
+                  backgroundImage: `url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='12' ry='12' stroke='%239ca3af' stroke-width='1' stroke-dasharray='10%2c 4' stroke-dashoffset='0' stroke-linecap='square'/%3e%3csvg%3e")`,
+                  backgroundClip: "padding-box"
+                }}>
+                <div className=' w-[252px] flex flex-col gap-3 items-center'>
+                  <div className='w-12 h-12 bg-(--blue-sky-light) rounded-full flex justify-center items-center'>
+                    <MaskIcon src='/icons/cloud-upload.svg' size={32} color='var(--blue-dark-normal)' />
+                  </div>
+
+                  <div className='flex flex-col gap-2 items-center'>
+                    <p className='text-[16px] font-semibold text-(--gray-dark-active)'>Drag and drop your files here</p>
+                    <p className='text-[14px] font-medium text-(--gray-normal-active)'>or</p>
+                    <Button size='small'
+                      onClick={() => {
+                        setError('');
+                        individualFileInputRef.current?.click();
+                      }}
+                      disabled={uploading}>Browse files</Button>
+                    <p className='text-[14px] font-medium text-(--gray-normal) '>Supported formats: PDF, DOCX, PPTX</p>
+                  </div>
+
+
                 </div>
-              )}
-            </div>
-          ) : (
-            <p className="h-full text-muted" style={{ fontSize: 13.5 }}>
-              No documents match your search.
-            </p>
-          )
-        ) : (
 
-          <>
-            {
-              fileView === 'list' ? (
-                <div className=' p-4 w-full h-full overflow-x-auto rounded-lg bg-(--soft-white-light) '>
+              </div>
+            ) : (
+              <>
+                < div className=' flex flex-1 w-full justify-center items-center rounded-lg  bg-(--soft-white-light)'>
+                  <div className='flex flex-col justify-center items-center w-[574px] h-[253px]'>
+                    <img src="/images/documents-01.webp" alt="doc" height={'141px'} width={'160px'} />
+                    <div className='flex flex-col py-4 px-2 text-center gap-1'>
+                      <h1 className='text-[20px] text-(--neutral-dark) font-semibold'>No resources available yet</h1>
+                      <p className='text-[16px] text-(--gray-normal-active) font-medium'>Company policies, handbooks, and helpful resources will appear here once they're added.</p>
 
-                  <table className=" w-full min-w-[750px] border-separate border-spacing-y-2">
-                    <thead>
-                      <tr className="bg-(--soft-white-normal)">
-                        <th className="px-4 py-3 rounded-l-lg text-left ">
-                          <div className="flex items-center gap-2 text-(--gray-dark-active) text-[16px] font-medium">
-                            Name
-                            <button
-                              type="button"
-                              aria-label={`Sort by name ${sortDirection === 'asc' ? 'ascending' : 'descending'
-                                }`}
-                              onClick={() => {
-                                if (sortField !== 'name') {
-                                  setSortField('name');
-                                  setSortDirection('asc');
-                                } else {
-                                  setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-                                }
-                              }}
-                              className="bg-(--gray-normal) p-1 rounded-full h-[22px] w-[22px] flex items-center justify-center cursor-pointer "
-                            >
-                              <span
-                                className="inline-block h-4 w-4 bg-(--soft-white-light) transition-transform duration-200"
-                                style={{
-                                  WebkitMaskImage: 'url(/icons/arrow-up.svg)',
-                                  maskImage: 'url(/icons/arrow-up.svg)',
-                                  WebkitMaskRepeat: 'no-repeat',
-                                  maskRepeat: 'no-repeat',
-                                  WebkitMaskPosition: 'center',
-                                  maskPosition: 'center',
-                                  WebkitMaskSize: 'contain',
-                                  maskSize: 'contain',
-                                  transform:
-                                    sortField !== 'name'
-                                      ? 'rotate(0deg)'
-                                      : sortDirection === 'desc'
-                                        ? 'rotate(180deg)'
-                                        : 'rotate(0deg)',
-                                }}
-                              />
-                            </button>
-                          </div>
-                        </th>
-
-                        <th className="">
-                          <span className="text-center text-(--gray-dark-active) text-[16px] font-medium">Owner</span>
-
-                        </th>
-
-                        <th >
-                          <span className=" text-center text-(--gray-dark-active) text-[16px] font-medium"> Date Modified</span>
-
-                        </th>
-
-                        <th >
-                          <span className=" text-center text-(--gray-dark-active) text-[16px] font-medium">File Size</span>
-
-                        </th>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
 
-                        <th className='flex justify-center' >
-                          <div ref={sortMenuRef} className="  rounded-r-lg w-14 text-center items-center px-4 relative inline-block">
-                            <button
-                              type="button"
-                              onClick={() => setShowSortMenu(prev => !prev)}
-                              aria-label="Open sorting options"
-                              aria-expanded={showSortMenu}
-                              className="p-2 rounded-md hover:bg-(--blue-dark-light-hover)"
-                            >
-                              <span
-                                className="inline-block h-4 w-4 bg-(--gray-dark-active) transition-transform duration-200"
-                                style={{
-                                  WebkitMaskImage: 'url(/icons/bar-chart-2.svg)',
-                                  maskImage: 'url(/icons/bar-chart-2.svg)',
-                                  WebkitMaskRepeat: 'no-repeat',
-                                  maskRepeat: 'no-repeat',
-                                  WebkitMaskPosition: 'center',
-                                  maskPosition: 'center',
-                                  WebkitMaskSize: 'contain',
-                                  maskSize: 'contain',
-                                  transform: 'rotate(90deg)',
-                                }}
-                              />
-                            </button>
 
+          </div>
+        ) : !hasContent && policies.length > 0 ? (
+          <p className="h-full text-muted" style={{ fontSize: 13.5 }}>
+            {activeFolder
+              ? `No documents found in ${activeFolder.name}.`
+              : search
+                ? 'No documents match your search.'
+                : 'No documents available.'}
+          </p>
+        )
+          : (
+            <>
+              {
+                !showGridView ? (
+                  <div className=' p-4 w-full h-full overflow-x-auto rounded-lg bg-(--soft-white-light) '>
 
-                            {showSortMenu && (
-                              <div className="absolute right-0 top-full mt-2 w-[260px] bg-(--soft-white-light) border border-(--white-light-hover) rounded-lg shadow-lg z-500 p-3 text-left ">
-
-                                {/* Sort By */}
-                                <div className="mb-3">
-                                  <p className="px-2 py-2 text-[12px] font-medium text-(--soft-white-dark-active) ">
-                                    Sort By
-                                  </p>
-
-                                  {sortOptions.map(option => (
-                                    <button
-                                      key={option.field}
-                                      type="button"
-                                      onClick={() => {
-                                        setSelectedSortField(option.field);
-                                      }}
-                                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-[14px] font-medium text-(--gray-dark-hover) ${selectedSortField === option.field
-                                        ? 'bg-[#E9EFF4]  font-medium'
-                                        : 'hover:bg-[#E9EFF4]'
-                                        }`}
-                                    >
-
-
-                                      <span className="w-4 shrink-0 text-(--blue-dark-normal)">
-                                        {selectedSortField === option.field ? '✓' : ''}
-                                      </span>
-
-                                      {option.label}
-                                    </button>
-                                  ))}
-                                </div>
-
-                                <div className="border-t border-(--white-light-hover) my-2" />
-
-                                {/* Sort Direction */}
-                                <div>
-                                  <p className="px-2 py-2 text-[12px] font-medium text-(--soft-white-dark-active) ">
-                                    Sort Direction
-                                  </p>
-
-                                  {directionOptions[selectedSortField].map(direction => (
-                                    <button
-                                      key={direction.value}
-                                      type="button"
-                                      onClick={() => {
-                                        setSortField(selectedSortField);
-                                        setSortDirection(direction.value);
-                                        setShowSortMenu(false);
-                                      }}
-                                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-[14px] font-medium text-[--gray-dark-hover] ${sortField === selectedSortField &&
-                                        sortDirection === direction.value
-                                        ? 'bg-[#E9EFF4]  font-medium'
-                                        : ' hover:bg-[#E9EFF4]'
-                                        }`}
-                                    >
-
-
-                                      <span className="w-4 shrink-0 text-(--blue-dark-normal)">
-                                        {sortField === selectedSortField &&
-                                          sortDirection === direction.value
-                                          ? '✓'
-                                          : ''}
-                                      </span>
-
-                                      {direction.label}
-                                    </button>
-                                  ))}
-                                </div>
-
-                              </div>
-                            )}
-
-                          </div>
-                        </th>
-
-                      </tr>
-                    </thead>
-                    <tbody aria-hidden="true" className="h-2 block"></tbody>
-                    <tbody >
-                      {filteredPolicies.length > 0 ? (
-                        sortedPolicies.map((p) => (
-                          <tr
-                            key={p.id}
-                            className={`group transition-colors ${selectedPolicyIds.includes(p.id)
-                              ? 'bg-[#EBF5FB]'
-                              : 'hover:bg-(--blue-sky-light)'
-                              }`}
-                          >
-                            {/* Name */}
-                            <td className="px-4 py-4 border-b border-(--gray-light-hover) rounded-l-lg">
-                              <div className="flex items-center gap-3">
-                                <PdfIcon />
-
-                                <span className="text-[14px] font-medium text-(--gray-darker)">
-                                  {p.title.toLowerCase().endsWith('.pdf')
-                                    ? p.title
-                                    : `${p.title}.pdf`
+                    <table className=" w-full min-w-[750px] border-separate border-spacing-y-2">
+                      <thead>
+                        <tr className="bg-(--soft-white-normal)">
+                          <th className="px-4 py-3 rounded-l-lg text-left ">
+                            <div className="flex items-center gap-2 text-(--gray-dark-active) text-[16px] font-medium">
+                              Name
+                              <button
+                                type="button"
+                                aria-label={`Sort by name ${sortDirection === 'asc' ? 'ascending' : 'descending'
+                                  }`}
+                                onClick={() => {
+                                  if (sortField !== 'name') {
+                                    setSortField('name');
+                                    setSortDirection('asc');
+                                  } else {
+                                    setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
                                   }
+                                }}
+                                className="bg-(--gray-normal) p-1 rounded-full h-[22px] w-[22px] flex items-center justify-center cursor-pointer "
+                              >
+                                <span
+                                  className="inline-block h-4 w-4 bg-(--soft-white-light) transition-transform duration-200"
+                                  style={{
+                                    WebkitMaskImage: 'url(/icons/arrow-up.svg)',
+                                    maskImage: 'url(/icons/arrow-up.svg)',
+                                    WebkitMaskRepeat: 'no-repeat',
+                                    maskRepeat: 'no-repeat',
+                                    WebkitMaskPosition: 'center',
+                                    maskPosition: 'center',
+                                    WebkitMaskSize: 'contain',
+                                    maskSize: 'contain',
+                                    transform:
+                                      sortField !== 'name'
+                                        ? 'rotate(0deg)'
+                                        : sortDirection === 'desc'
+                                          ? 'rotate(180deg)'
+                                          : 'rotate(0deg)',
+                                  }}
+                                />
+                              </button>
+                            </div>
+                          </th>
+
+                          <th className="">
+                            <span className="text-center text-(--gray-dark-active) text-[16px] font-medium">Owner</span>
+
+                          </th>
+
+                          <th >
+                            <span className=" text-center text-(--gray-dark-active) text-[16px] font-medium"> Date Modified</span>
+
+                          </th>
+
+                          <th >
+                            <span className=" text-center text-(--gray-dark-active) text-[16px] font-medium">File Size</span>
+
+                          </th>
+
+
+                          <th className='flex justify-center' >
+                            <div ref={sortMenuRef} className="  rounded-r-lg w-14 text-center items-center px-4 relative inline-block">
+                              <button
+                                type="button"
+                                onClick={() => setShowSortMenu(prev => !prev)}
+                                aria-label="Open sorting options"
+                                aria-expanded={showSortMenu}
+                                className="p-2 rounded-md hover:bg-(--blue-dark-light-hover)"
+                              >
+                                <span
+                                  className="inline-block h-4 w-4 bg-(--gray-dark-active) transition-transform duration-200"
+                                  style={{
+                                    WebkitMaskImage: 'url(/icons/bar-chart-2.svg)',
+                                    maskImage: 'url(/icons/bar-chart-2.svg)',
+                                    WebkitMaskRepeat: 'no-repeat',
+                                    maskRepeat: 'no-repeat',
+                                    WebkitMaskPosition: 'center',
+                                    maskPosition: 'center',
+                                    WebkitMaskSize: 'contain',
+                                    maskSize: 'contain',
+                                    transform: 'rotate(90deg)',
+                                  }}
+                                />
+                              </button>
+
+
+                              {showSortMenu && (
+                                <div className="absolute right-0 top-full mt-2 w-[260px] bg-(--soft-white-light) border border-(--white-light-hover) rounded-lg shadow-lg z-500 p-3 text-left ">
+
+                                  {/* Sort By */}
+                                  <div className="mb-3">
+                                    <p className="px-2 py-2 text-[12px] font-medium text-(--soft-white-dark-active) ">
+                                      Sort By
+                                    </p>
+
+                                    {sortOptions.map(option => (
+                                      <button
+                                        key={option.field}
+                                        type="button"
+                                        onClick={() => {
+                                          setSelectedSortField(option.field);
+                                        }}
+                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-[14px] font-medium text-(--gray-dark-hover) ${selectedSortField === option.field
+                                          ? 'bg-[#E9EFF4]  font-medium'
+                                          : 'hover:bg-[#E9EFF4]'
+                                          }`}
+                                      >
+
+
+                                        <span className="w-4 shrink-0 text-(--blue-dark-normal)">
+                                          {selectedSortField === option.field ? '✓' : ''}
+                                        </span>
+
+                                        {option.label}
+                                      </button>
+                                    ))}
+                                  </div>
+
+                                  <div className="border-t border-(--white-light-hover) my-2" />
+
+                                  {/* Sort Direction */}
+                                  <div>
+                                    <p className="px-2 py-2 text-[12px] font-medium text-(--soft-white-dark-active) ">
+                                      Sort Direction
+                                    </p>
+
+                                    {directionOptions[selectedSortField].map(direction => (
+                                      <button
+                                        key={direction.value}
+                                        type="button"
+                                        onClick={() => {
+                                          setSortField(selectedSortField);
+                                          setSortDirection(direction.value);
+                                          setShowSortMenu(false);
+                                        }}
+                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-[14px] font-medium text-[--gray-dark-hover] ${sortField === selectedSortField &&
+                                          sortDirection === direction.value
+                                          ? 'bg-[#E9EFF4]  font-medium'
+                                          : ' hover:bg-[#E9EFF4]'
+                                          }`}
+                                      >
+
+
+                                        <span className="w-4 shrink-0 text-(--blue-dark-normal)">
+                                          {sortField === selectedSortField &&
+                                            sortDirection === direction.value
+                                            ? '✓'
+                                            : ''}
+                                        </span>
+
+                                        {direction.label}
+                                      </button>
+                                    ))}
+                                  </div>
+
+                                </div>
+                              )}
+
+                            </div>
+                          </th>
+
+                        </tr>
+                      </thead>
+                      <tbody aria-hidden="true" className="h-2 block"></tbody>
+                      <tbody >
+                        {filteredPolicies.length > 0 ? (
+                          sortedPolicies.map((p) => (
+                            <tr
+                              key={p.id}
+                              className={`group transition-colors ${selectedPolicyIds.includes(p.id)
+                                ? 'bg-[#EBF5FB]'
+                                : 'hover:bg-(--blue-sky-light)'
+                                }`}
+                            >
+                              {/* Name */}
+                              <td className="px-4 py-4 border-b border-(--gray-light-hover) rounded-l-lg">
+                                <div className="flex items-center gap-3">
+                                  <PdfIcon />
+
+                                  <span className="text-[14px] font-medium text-(--gray-darker)">
+                                    {p.title.toLowerCase().endsWith('.pdf')
+                                      ? p.title
+                                      : `${p.title}.pdf`
+                                    }
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* Owner */}
+                              <td className=" border-b border-(--gray-light-hover)">
+                                <span className="text-[14px] text-(--gray-normal) ">
+                                  {p.uploaded_by_name || 'Admin'}
                                 </span>
+                              </td>
+
+                              {/* Date Modified */}
+                              <td className=" border-b border-(--gray-light-hover)">
+                                <span className="text-[14px] text-(--gray-normal)">
+                                  {p.date_modified
+                                    ? fmtDate(p.date_modified)
+                                    : p.created_at
+                                      ? fmtDate(p.created_at)
+                                      : 'N/A'}
+                                </span>
+                              </td>
+
+                              {/* File Size */}
+                              <td className="px-4 py-4 border-b border-(--gray-light-hover)">
+                                <span className="text-[14px] text-(--gray-normal)">
+                                  {p.file_size || 'N/A'}
+                                </span>
+                              </td>
+
+                              {/* Actions */}
+                              <td className="px-4 py-4 border-b border-(--gray-light-hover) rounded-r-lg text-center">
+                                {selectedPolicyIds.includes(p.id) ? (
+                                  <button
+                                    type="button"
+                                    aria-label="Unselect file"
+                                    onClick={() => toggleSelectPolicy(p.id)}
+                                    className="p-1 rounded-md hover:bg-(--blue-dark-light) transition-colors cursor-pointer mx-auto block"
+                                  >
+                                    <img
+                                      src="/icons/square-check.svg"
+                                      alt="Selected"
+                                      className="w-5 h-5 mx-auto"
+                                    />
+                                  </button>
+                                ) : (
+                                  <div
+                                    ref={activeDropdown === p.id ? dropdownRef : null}
+                                    className="relative inline-block"
+                                  >
+                                    {/* Three dots button */}
+                                    <button
+                                      type="button"
+                                      aria-label={`Actions for ${p.title}`}
+                                      aria-expanded={activeDropdown === p.id}
+                                      onClick={() =>
+                                        setActiveDropdown(prev => prev === p.id ? null : p.id)
+                                      }
+                                      className="p-1 rounded-md hover:bg-(--blue-dark-light) transition-colors"
+                                    >
+                                      <span
+                                        className="inline-block h-6 w-6 bg-(--gray-normal)"
+                                        style={{
+                                          WebkitMaskImage: 'url(/icons/dots-menu.svg)',
+                                          maskImage: 'url(/icons/dots-menu.svg)',
+                                          WebkitMaskRepeat: 'no-repeat',
+                                          maskRepeat: 'no-repeat',
+                                          WebkitMaskPosition: 'center',
+                                          maskPosition: 'center',
+                                          WebkitMaskSize: 'contain',
+                                          maskSize: 'contain',
+                                        }}
+                                      />
+                                    </button>
+
+                                    {/* Dropdown menu */}
+                                    {activeDropdown === p.id && (
+                                      <div className="absolute right-0 top-full mt-1 w-[264px] bg-(--soft-white-light-active) border border-(--white-light-hover) rounded-lg z-50 p-3 text-left">
+                                        {isAdmin && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              toggleSelectPolicy(p.id);
+                                              setActiveDropdown(null);
+                                            }}
+                                            className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light)"
+                                          >
+                                            <img src="/icons/square-check.svg" alt="" className="w-4 h-4" />
+                                            Select
+                                          </button>
+                                        )}
+
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            previewPolicy(p);
+                                            setActiveDropdown(null);
+                                          }}
+                                          className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light) transition-colors"
+                                        >
+                                          <img src="/icons/eye.svg" alt="" className="w-4 h-4" />
+                                          Preview
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={() => downloadPolicy(p)}
+                                          className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light) transition-colors"
+                                        >
+                                          <img src="/icons/download.svg" alt="" className="w-4 h-4" />
+                                          Download
+                                        </button>
+
+                                        {isAdmin && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setActiveDropdown(null);
+                                              handleDelete(p);
+                                            }}
+                                            disabled={deletingId === p.id}
+                                            className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light)"
+                                          >
+                                            <MaskIcon src="/icons/trash-2.svg" size={16} />
+                                            {deletingId === p.id ? 'Deleting…' : 'Delete'}
+                                          </button>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td
+                              colSpan={5}
+                              className="px-4 py-10 text-center text-sm text-(--gray-normal)"
+                            >
+                              No documents found.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                ) :
+                  (
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                        gap: 16,
+                        padding: 8,
+                        borderRadius: 12,
+                      }}
+                    >
+
+                      {!activeFolder && folders.map((folder) => {
+                        const isOpen = openFolderId === folder.id;
+                        return (
+
+                          <div
+                            key={folder.id}
+                            ref={(el) => {
+                              folderDropdownRefs.current[folder.id] = el;
+                            }}
+                            onClick={() => {
+                              setActiveFolder(folder);
+                              setSearch('');
+                              setOpenFolderId(null);
+                            }}
+                            className=" relative overflow-hidden p-4  h-[284px] rounded-xl bg-(--soft-white-light) group cursor-pointer"
+
+                          >
+
+
+
+                            <div className='relative '>
+                              {/* Top 3-dot Menu Icon */}
+                              <div className="absolute right-0  flex justify-end z-50">
+                                <button
+                                  type='button'
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenFolderId(isOpen ? null : folder.id);
+                                  }}
+                                >                                  <MaskIcon src='icons/dots.svg' color='var(--soft-white-dark-active)' size={18} />
+                                </button>
                               </div>
-                            </td>
 
-                            {/* Owner */}
-                            <td className=" border-b border-(--gray-light-hover)">
-                              <span className="text-[14px] text-(--gray-normal) ">
-                                {p.uploaded_by_name || 'Admin'}
+                              {/* Folder dropdown menu */}
+                              {
+                                openFolderId === folder.id && (
+                                  <div className='absolute bg-(--soft-white-light-active) w-[264px] right-0 top-5 flex flex-col p-3 rounded-lg border border-(--white-light-hover) z-50'>
+                                    <div
+                                      role="button"
+                                      tabIndex={0}
+                                      className='p-2 rounded-lg flex gap-1 hover:bg-(--blue-dark-light) cursor-pointer'
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+
+                                        setActiveFolder(folder);
+                                        setSearch('');
+                                        setOpenFolderId(null);
+                                      }}
+                                    >
+                                      <MaskIcon src='/icons/folder-01.svg' size={20} color='var(--gray-dark-hover)' />
+                                      <span className='text-[14px] text-(--gray-dark-hover) font-medium'>
+                                        Open Folder
+                                      </span>
+                                    </div>
+
+                                    <div className='p-2 rounded-lg flex gap-1 hover:bg-(--blue-dark-light)'
+                                      onClick={() => {
+                                        // Handle open folder logic here
+                                        setOpenFolderId(null); // close dropdown on click
+                                      }}
+                                    >
+                                      <MaskIcon src='/icons/download-01.svg' size={20} color='var(--gray-dark-hover)' />
+                                      <span className='text-[14px] text-(--gray-dark-hover) font-medium'>Download all files</span>
+                                    </div>
+
+                                  </div>
+                                )
+                              }
+
+                              {/* Stacked Documents Illustration */}
+                              <div className="relative h-44 flex items-center justify-center my-1 ">
+
+                                <div
+                                  className="absolute z-[1] top-6 left-4"
+                                >
+                                  <img src="/icons/file-bg-02.svg" height={'132px'} width={'113px'} alt="File" />
+                                </div>
+                                <div className='absolute w-[125px]  z-2 flex flex-col p-3 gap-3 -rotate-5 bg-(--soft-white-light-active) top-4 left-15' style={{ boxShadow: '0px 1px 4px 0px #0000001A' }}>
+
+                                  <div className='flex flex-wrap'>
+                                    <h1 className='text-[14px] text-center font-semibold'>{folder.name}</h1>
+                                  </div>
+                                  <img src="/icons/file-bg-01.svg" height={'132px'} width={'113px'} alt="" />
+                                </div>
+                                <div className='absolute p-0   z-1 top-11 left-30' >
+                                  <img src="/icons/file-bg-03.svg" height={'132px'} width={'113px'} alt="" className='' />
+                                </div>
+
+
+
+                              </div>
+
+                              {/* Folder Container / Bottom Section */}
+                              <div className="relative  h-[148px] overflow-hidden bottom-18 z-5 flex flex-col gap-2">
+                                <img src="/icons/folder-bg.svg" alt="" height={'148px'} />
+                                <div className="absolute  top-6 left-3 right-3 bottom-2 overflow-hidden flex flex-col gap-2">
+                                  <div className="flex h-17 flex-col gap-1 min-w-0">
+                                    <h3 className="text-[14px] font-semibold text-(--neutral-normal) break-words line-clamp-2 leading-5">
+                                      {folder.name}
+                                    </h3>
+
+                                    <p className="text-[11px] text-(--gray-dark) break-words line-clamp-3 leading-4">
+                                      {folder.description || "No description provided."}
+                                    </p>
+                                  </div>
+
+                                  {/* File Count & Arrow Action Button */}
+                                  <div className="flex  items-center justify-between  w-full">
+                                    <div className="flex items-baseline gap-1.5">
+                                      <span className="text-[32px] font-extrabold text-(--neutral-dark) tracking-tight">
+                                        {
+                                          policies.filter(policy => policy.folder_path === folder.name).length
+                                        }
+                                      </span>
+                                      <span className="text-[12px] font-medium text-(--gray-normal)">Files</span>
+                                    </div>
+                                    <div className='h-7 w-7 bg-(--gray-light-hover) flex justify-center items-center rounded-full'>
+                                      <MaskIcon src='/icons/chevron-right.svg' color='var(--neutral-normal)' size={16} />
+                                    </div>
+                                  </div>
+
+
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })
+                      }
+
+
+
+                      {filteredPolicies.map(p => {
+                        const ack = ackFor(p.id);
+                        const filename = p.title.toLowerCase().endsWith('.pdf')
+                          ? p.title
+                          : `${p.title}.pdf`;
+                        const isSelected = selectedPolicyIds?.includes(p.id);
+
+                        return (
+                          <article
+                            key={p.id}
+                            style={{
+                              position: 'relative',
+                              zIndex: 0,
+                              padding: 12,
+                              background: isSelected ? '#EBF5FB' : 'var(--white-light)',
+                              border: isSelected ? '1px solid #26759F' : '1px solid #E8EAEE',
+                              borderRadius: 14,
+                              transition: 'all 0.2s ease',
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                height: 28,
+                                marginBottom: 10,
+                              }}
+                            >
+                              <PdfIcon />
+                              <span
+                                title={filename}
+                                style={{
+                                  flex: 1,
+                                  minWidth: 0,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  color: 'var(--gray-dark-active)',
+                                  fontSize: 13,
+                                  fontWeight: 500,
+                                }}
+                              >
+                                {filename}
                               </span>
-                            </td>
 
-                            {/* Date Modified */}
-                            <td className=" border-b border-(--gray-light-hover)">
-                              <span className="text-[14px] text-(--gray-normal)">
-                                {p.date_modified
-                                  ? fmtDate(p.date_modified)
-                                  : p.created_at
-                                    ? fmtDate(p.created_at)
-                                    : 'N/A'}
-                              </span>
-                            </td>
-
-                            {/* File Size */}
-                            <td className="px-4 py-4 border-b border-(--gray-light-hover)">
-                              <span className="text-[14px] text-(--gray-normal)">
-                                {p.file_size || 'N/A'}
-                              </span>
-                            </td>
-
-                            {/* Actions */}
-                            <td className="px-4 py-4 border-b border-(--gray-light-hover) rounded-r-lg text-center">
-                              {selectedPolicyIds.includes(p.id) ? (
+                              {isSelected ? (
                                 <button
                                   type="button"
                                   aria-label="Unselect file"
                                   onClick={() => toggleSelectPolicy(p.id)}
-                                  className="p-1 rounded-md hover:bg-(--blue-dark-light) transition-colors cursor-pointer mx-auto block"
+                                  style={{
+                                    width: 28,
+                                    height: 28,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    border: 0,
+                                    borderRadius: 6,
+                                    background: 'transparent',
+                                    cursor: 'pointer',
+                                  }}
                                 >
-                                  <img
-                                    src="/icons/square-check.svg"
-                                    alt="Selected"
-                                    className="w-5 h-5 mx-auto"
-                                  />
+                                  {/* <img
+                                  src="/icons/square-check.svg"
+                                  alt="Selected"
+                                  style={{ width: 20, height: 20 }}
+                                /> */}
+                                  <input type="checkbox" checked />
                                 </button>
                               ) : (
                                 <div
                                   ref={activeDropdown === p.id ? dropdownRef : null}
-                                  className="relative inline-block"
+                                  style={{ position: 'relative', flexShrink: 0 }}
                                 >
-                                  {/* Three dots button */}
                                   <button
                                     type="button"
                                     aria-label={`Actions for ${p.title}`}
                                     aria-expanded={activeDropdown === p.id}
-                                    onClick={() =>
-                                      setActiveDropdown(prev => prev === p.id ? null : p.id)
-                                    }
-                                    className="p-1 rounded-md hover:bg-(--blue-dark-light) transition-colors"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveDropdown(prev => prev === p.id ? null : p.id);
+                                    }}
+                                    style={{
+                                      width: 28,
+                                      height: 28,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      border: 0,
+                                      borderRadius: 6,
+                                      background: 'transparent',
+                                      cursor: 'pointer',
+                                    }}
                                   >
                                     <span
                                       className="inline-block h-6 w-6 bg-(--gray-normal)"
@@ -1099,10 +1566,12 @@ export default function PolicyDocuments({
                                     />
                                   </button>
 
-                                  {/* Dropdown menu */}
                                   {activeDropdown === p.id && (
-                                    <div className="absolute right-0 top-full mt-1 w-[264px] bg-(--soft-white-light-active) border border-(--white-light-hover) rounded-lg z-50 p-3 text-left">
-                                      {isAdmin && (
+                                    <div
+                                      className="absolute right-0 top-full mt-1 w-[220px] bg-(--soft-white-light-active) border border-(--white-light-hover) rounded-lg z-[100] p-2 text-left shadow-lg"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      {isAdmin && !activeFolder && (
                                         <button
                                           type="button"
                                           onClick={() => {
@@ -1111,7 +1580,7 @@ export default function PolicyDocuments({
                                           }}
                                           className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light)"
                                         >
-                                          <img src="/icons/square-check.svg" alt="" className="w-4 h-4" />
+                                          <img src="/icons/square-check.svg" alt="" className="w-5 h-5" />
                                           Select
                                         </button>
                                       )}
@@ -1122,18 +1591,18 @@ export default function PolicyDocuments({
                                           previewPolicy(p);
                                           setActiveDropdown(null);
                                         }}
-                                        className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light) transition-colors"
+                                        className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light)"
                                       >
-                                        <img src="/icons/eye.svg" alt="" className="w-4 h-4" />
+                                        <img src="/icons/eye.svg" alt="" className="w-5 h-5" />
                                         Preview
                                       </button>
 
                                       <button
                                         type="button"
                                         onClick={() => downloadPolicy(p)}
-                                        className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light) transition-colors"
+                                        className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light)"
                                       >
-                                        <img src="/icons/download.svg" alt="" className="w-4 h-4" />
+                                        <img src="/icons/download.svg" alt="" className="w-5 h-5" />
                                         Download
                                       </button>
 
@@ -1147,7 +1616,7 @@ export default function PolicyDocuments({
                                           disabled={deletingId === p.id}
                                           className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light)"
                                         >
-                                          <MaskIcon src="/icons/trash-2.svg" size={16} />
+                                          <MaskIcon src="/icons/trash-2.svg" size={20} />
                                           {deletingId === p.id ? 'Deleting…' : 'Delete'}
                                         </button>
                                       )}
@@ -1155,404 +1624,86 @@ export default function PolicyDocuments({
                                   )}
                                 </div>
                               )}
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan={5}
-                            className="px-4 py-10 text-center text-sm text-(--gray-normal)"
-                          >
-                            No documents found.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-              ) :
-                (
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-                      gap: 16,
-                      padding: 8,
-                      background: '#F1F5F9',
-                      borderRadius: 12,
-                    }}
-                  >
-
-
-
-                    {
-                      folders.map((folder) => {
-                        const isOpen = openFolderId === folder.id;
-                        return (
-
-                          <div
-                            key={folder.id}
-                            ref={(el) => {
-                              folderDropdownRefs.current[folder.id] = el;
-                            }}
-                            className=" relative overflow-hidden p-4  h-[284px] rounded-xl bg-[#FEFEFE]   group"
-                          >
-
-
-
-                            <div className='relative '>
-                              {/* Top 3-dot Menu Icon */}
-                              <div className="absolute right-0  flex justify-end z-50">
-                                <button
-                                  onClick={() => setOpenFolderId(isOpen ? null : folder.id)}
-                                >                                  <MaskIcon src='icons/dots.svg' color='#6C6E70' size={18} />
-                                </button>
-                              </div>
-
-                              {/* Folder dropdown menu */}
-                              {
-                                openFolderId === folder.id && (
-                                  <div className='absolute bg-(--soft-white-light-active) w-[264px] right-0 top-5 flex flex-col p-3 rounded-lg border border-[#E6E6E6]  z-50'>
-                                    <div className='p-2 rounded-lg flex gap-1 hover:bg-[#E9EFF4]'
-                                      onClick={() => {
-                                        // Handle open folder logic here
-                                        setOpenFolderId(null); // close dropdown on click
-                                      }}
-                                    >
-                                      <MaskIcon src='/icons/folder-01.svg' size={20} color='#3C4653' />
-                                      <span className='text-[14px] text-[#3C4653] font-medium'>Open Folder</span>
-                                    </div>
-
-                                    <div className='p-2 rounded-lg flex gap-1 hover:bg-[#E9EFF4]'
-                                      onClick={() => {
-                                        // Handle open folder logic here
-                                        setOpenFolderId(null); // close dropdown on click
-                                      }}
-                                    >
-                                      <MaskIcon src='/icons/download-01.svg' size={20} color='#3C4653' />
-                                      <span className='text-[14px] text-[#3C4653] font-medium'>Download all files</span>
-                                    </div>
-
-                                  </div>
-                                )
-                              }
-
-                              {/* Stacked Documents Illustration */}
-                              <div className="relative h-44 flex items-center justify-center my-1 ">
-
-                                <div className='absolute  z-1 top-6 left-4'>
-                                  <img src="/icons/file-bg-02.svg" height={'132px'} width={'113px'} alt="" />
-                                </div>
-                                <div className='absolute w-[125px]  z-2 flex flex-col p-3 gap-3 -rotate-5 bg-[#FBFCFD] top-4 left-15'>
-
-                                  <div className='flex flex-wrap'>
-                                    <h1 className='text-[14px] text-center font-semibold'>Employee Handbook</h1>
-                                  </div>
-                                  <img src="/icons/file-bg-01.svg" height={'132px'} width={'113px'} alt="" />
-                                </div>
-                                <div className='absolute  z-1 top-11 left-30'>
-                                  <img src="/icons/file-bg-03.svg" height={'132px'} width={'113px'} alt="" />
-                                </div>
-
-
-
-                              </div>
-
-                              {/* Folder Container / Bottom Section */}
-                              <div className="relative h-[148px] overflow-hidden  bottom-18 z-5 flex flex-col gap-3">
-                                <img src="/icons/folder-bg.svg" alt="" />
-                                <div className='absolute mt-6 mx-3 mb-2 '>
-                                  {/* Title & Description */}
-                                  <div className="  flex flex-col">
-                                    <h3 className="text-[14px] font-semibold text-[#17212B] ">
-                                      {folder.name}
-                                    </h3>
-                                    <p className="text-[11px] text-[#4B5768] ">
-                                      {folder.description || "No description provided."}
-                                    </p>
-                                  </div>
-
-                                  {/* File Count & Arrow Action Button */}
-                                  <div className="flex  items-center justify-between pt-1">
-                                    <div className="flex items-baseline gap-1.5">
-                                      <span className="text-[32px] font-extrabold text-[#111920] tracking-tight">
-                                        {folder?.fileCount ?? 0}
-                                      </span>
-                                      <span className="text-[14px] font-medium text-[#4B5768]">Files</span>
-                                    </div>
-                                    <MaskIcon src='/icons/chevron-right.svg' color='#17212B' size={16} />
-                                  </div>
-
-
-                                </div>
-                              </div>
                             </div>
-                          </div>
-                        )
-                      })
-                    }
 
-
-
-                    {filteredPolicies.map(p => {
-                      const ack = ackFor(p.id);
-                      const filename = p.title.toLowerCase().endsWith('.pdf')
-                        ? p.title
-                        : `${p.title}.pdf`;
-                      const isSelected = selectedPolicyIds?.includes(p.id);
-
-                      return (
-                        <article
-                          key={p.id}
-                          style={{
-                            position: 'relative',
-                            zIndex: 0,
-                            padding: 12,
-                            background: isSelected ? '#EBF5FB' : '#FFFFFF',
-                            border: isSelected ? '1px solid #26759F' : '1px solid #E8EAEE',
-                            borderRadius: 14,
-                            transition: 'all 0.2s ease',
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 8,
-                              height: 28,
-                              marginBottom: 10,
-                            }}
-                          >
-                            <PdfIcon />
-                            <span
-                              title={filename}
+                            <div
                               style={{
-                                flex: 1,
-                                minWidth: 0,
+                                position: 'relative',
+                                height: 218,
                                 overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                color: '#2D343F',
-                                fontSize: 13,
-                                fontWeight: 500,
+                                border: '1px solid #E7EDF3',
+                                borderRadius: 8,
+                                background: 'var(--white-light)',
                               }}
                             >
-                              {filename}
-                            </span>
-
-                            {isSelected ? (
                               <button
                                 type="button"
-                                aria-label="Unselect file"
-                                onClick={() => toggleSelectPolicy(p.id)}
+                                onClick={() => previewPolicy(p)}
+                                disabled={previewLoading}
+                                aria-label={`Preview ${p.title}`}
                                 style={{
-                                  width: 28,
-                                  height: 28,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
+                                  width: '100%',
+                                  height: '100%',
+                                  padding: 0,
                                   border: 0,
-                                  borderRadius: 6,
                                   background: 'transparent',
                                   cursor: 'pointer',
                                 }}
                               >
-                                {/* <img
-                                  src="/icons/square-check.svg"
-                                  alt="Selected"
-                                  style={{ width: 20, height: 20 }}
-                                /> */}
-                                <input type="checkbox" checked />
+                                {thumbnailUrls[p.id] ? (
+                                  <PdfThumbnail url={thumbnailUrls[p.id]} />
+                                ) : (<div className='flex justify-center items-center'> <PdfIcon /> </div>)}
                               </button>
-                            ) : (
-                              <div
-                                ref={activeDropdown === p.id ? dropdownRef : null}
-                                style={{ position: 'relative', flexShrink: 0 }}
-                              >
+
+                              {/* {isAdmin ? (
                                 <button
                                   type="button"
-                                  aria-label={`Actions for ${p.title}`}
-                                  aria-expanded={activeDropdown === p.id}
-                                  onClick={() =>
-                                    setActiveDropdown(prev => prev === p.id ? null : p.id)
-                                  }
+                                  onClick={() => togglePin(p)}
+                                  disabled={pinningId === p.id}
+                                  title={p.is_pinned ? 'Unpin' : 'Pin to top'}
                                   style={{
-                                    width: 28,
-                                    height: 28,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
+                                    position: 'absolute',
+                                    top: 8,
+                                    left: 8,
+                                    width: 26,
+                                    height: 26,
+                                    borderRadius: '50%',
                                     border: 0,
-                                    borderRadius: 6,
-                                    background: 'transparent',
+                                    background: p.is_pinned ? 'var(--color-primary)' : 'rgba(255,255,255,0.9)',
                                     cursor: 'pointer',
                                   }}
                                 >
-                                  <span
-                                    className="inline-block h-6 w-6 bg-(--gray-normal)"
-                                    style={{
-                                      WebkitMaskImage: 'url(/icons/dots-menu.svg)',
-                                      maskImage: 'url(/icons/dots-menu.svg)',
-                                      WebkitMaskRepeat: 'no-repeat',
-                                      maskRepeat: 'no-repeat',
-                                      WebkitMaskPosition: 'center',
-                                      maskPosition: 'center',
-                                      WebkitMaskSize: 'contain',
-                                      maskSize: 'contain',
-                                    }}
-                                  />
+                                  📌
                                 </button>
+                              ) : p.is_pinned ? (
+                                <span
+                                  title="Pinned"
+                                  style={{
+                                    position: 'absolute',
+                                    top: 8,
+                                    left: 8,
+                                    width: 26,
+                                    height: 26,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: '50%',
+                                    background: 'var(--color-primary)',
+                                  }}
+                                >
+                                  📌
+                                </span>
+                              ) : null} */}
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )
+              }
+            </>
 
-                                {activeDropdown === p.id && (
-                                  <div
-                                    style={{
-                                      position: 'absolute',
-                                      top: '100%',
-                                      right: 0,
-                                      zIndex: 10,
-                                      width: 220,
-                                      padding: 8,
-                                      background: '#FBFCFD',
-                                      border: '1px solid #E6E6E6',
-                                      borderRadius: 10,
-                                      boxShadow: '0 8px 24px rgba(15, 23, 42, 0.14)',
-                                    }}
-                                  >
-                                    {isAdmin && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          toggleSelectPolicy(p.id);
-                                          setActiveDropdown(null);
-                                        }}
-                                        className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light)"
-                                      >
-                                        <img src="/icons/square-check.svg" alt="" className="w-5 h-5" />
-                                        Select
-                                      </button>
-                                    )}
-
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        previewPolicy(p);
-                                        setActiveDropdown(null);
-                                      }}
-                                      className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light)"
-                                    >
-                                      <img src="/icons/eye.svg" alt="" className="w-5 h-5" />
-                                      Preview
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => downloadPolicy(p)}
-                                      className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light)"
-                                    >
-                                      <img src="/icons/download.svg" alt="" className="w-5 h-5" />
-                                      Download
-                                    </button>
-
-                                    {isAdmin && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setActiveDropdown(null);
-                                          handleDelete(p);
-                                        }}
-                                        disabled={deletingId === p.id}
-                                        className="flex items-center gap-3 w-full p-2 rounded-lg text-[14px] font-medium text-(--gray-dark-hover) hover:bg-(--blue-dark-light)"
-                                      >
-                                        <MaskIcon src="/icons/trash-2.svg" size={20} />
-                                        {deletingId === p.id ? 'Deleting…' : 'Delete'}
-                                      </button>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-
-                          <div
-                            style={{
-                              position: 'relative',
-                              height: 218,
-                              overflow: 'hidden',
-                              border: '1px solid #E7EDF3',
-                              borderRadius: 8,
-                              background: '#FFFFFF',
-                            }}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => previewPolicy(p)}
-                              disabled={previewLoading}
-                              aria-label={`Preview ${p.title}`}
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                padding: 0,
-                                border: 0,
-                                background: 'transparent',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {thumbnailUrls[p.id] ? (
-                                <PdfThumbnail url={thumbnailUrls[p.id]} />
-                              ) : (<div className='flex justify-center items-center'> <PdfIcon /> </div>)}
-                            </button>
-
-                            {isAdmin ? (
-                              <button
-                                type="button"
-                                onClick={() => togglePin(p)}
-                                disabled={pinningId === p.id}
-                                title={p.is_pinned ? 'Unpin' : 'Pin to top'}
-                                style={{
-                                  position: 'absolute',
-                                  top: 8,
-                                  left: 8,
-                                  width: 26,
-                                  height: 26,
-                                  borderRadius: '50%',
-                                  border: 0,
-                                  background: p.is_pinned ? 'var(--color-primary)' : 'rgba(255,255,255,0.9)',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                📌
-                              </button>
-                            ) : p.is_pinned ? (
-                              <span
-                                title="Pinned"
-                                style={{
-                                  position: 'absolute',
-                                  top: 8,
-                                  left: 8,
-                                  width: 26,
-                                  height: 26,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  borderRadius: '50%',
-                                  background: 'var(--color-primary)',
-                                }}
-                              >
-                                📌
-                              </span>
-                            ) : null}
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                )
-            }
-          </>
-
-        )}
+          )}
 
       </div>
 
@@ -1618,7 +1769,8 @@ export default function PolicyDocuments({
 
                 <span className='border-r border-(--soft-white-dark-hover) h-4'></span>
 
-                <Button variant='text' size='xs' leftIcon={<MaskIcon src='/icons/cross-outline.svg' size={14} />}>Cancel</Button>
+                <Button variant='text' size='xs' leftIcon={<MaskIcon src='/icons/cross-outline.svg' size={14} />} onClick={() => setSelectedPolicyIds([])}
+                >Cancel</Button>
               </div>
 
             </div>
@@ -1634,8 +1786,8 @@ export default function PolicyDocuments({
               <div className='flex flex-col gap-6 '>
                 <div className='flex justify-between items-start'>
                   <div>
-                    <h3 className='text-[20px] font-semibold text-[#111920]'>Create New Folder</h3>
-                    <p className='text-[14px] text-[#4B5768]'>Group related documents and make them easier to find.</p>
+                    <h3 className='text-[20px] font-semibold text-(--neutral-dark)'>Create New Folder</h3>
+                    <p className='text-[14px] text-(--gray-dark)'>Group related documents and make them easier to find.</p>
                   </div>
                   <button onClick={() => setShowCreateFolder(false)}>
                     <MaskIcon src='/icons/cross-outline.svg' size={20} />
@@ -1643,14 +1795,14 @@ export default function PolicyDocuments({
                 </div>
                 <div className='flex flex-col gap-3'>
                   <div className='flex flex-col gap-2'>
-                    <label className='text-[16px] font-medium text-[#2D343F]' htmlFor="folder-name">Folder Name</label>
+                    <label className='text-[16px] font-medium text-(--gray-dark-active)' htmlFor="folder-name">Folder Name</label>
                     <InputField
                       value={folderName}
                       onChange={(e) => setFolderName(e.target.value)}
                       id='folder-name' placeholder='Enter folder name' required />
                   </div>
                   <div className='flex flex-col gap-2'>
-                    <label className='text-[16px] font-medium text-[#2D343F]' htmlFor="folder-description">Folder Description</label>
+                    <label className='text-[16px] font-medium text-(--gray-dark-active)' htmlFor="folder-description">Folder Description</label>
                     <textarea
                       value={folderDescription}
                       onChange={(e) => setFolderDescription(e.target.value)}
@@ -1661,7 +1813,7 @@ export default function PolicyDocuments({
                       className='py-2 px-4 text-[16px] border
                     rounded-[5px]   border-(--soft-white-dark-hover) hover:border-(--blue-dark-normal)' required
                     />
-                    <p className='text-[12px] text-[#4B5768]'>Maximum 500 characters allowed.
+                    <p className='text-[12px] text-(--gray-dark)'>Maximum 500 characters allowed.
                       <span>{' '}({folderDescription.length}/500)</span>
                     </p>
 

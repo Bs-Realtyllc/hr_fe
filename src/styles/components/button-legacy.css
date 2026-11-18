@@ -42,6 +42,10 @@
   color: var(--color-primary);
 }
 .btn-ghost:hover { background: var(--color-primary-light); }
+/* .icon-mask has no default size of its own (see icon.css) — the Figma
+   button system sizes it for .btn-primary/.btn-secondary/.btn-text, but
+   this legacy .btn-ghost predates that and was never covered. */
+.btn-ghost .icon-mask { width: 18px; height: 18px; flex-shrink: 0; }
 
 .btn-danger {
   background: var(--color-error);

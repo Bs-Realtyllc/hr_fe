@@ -207,7 +207,9 @@ export default function ProfilePage() {
   const [savingNotificationType, setSavingNotificationType] = useState<string | null>(null);
 
   // Company info (Organization tab) — readable by every role, editable by admin only.
-  const [companyInfo, setCompanyInfo] = useState({ name: '', email: '', website: '' });
+  // work_start/work_end are the company-wide default working hours used to
+  // flag late clock-ins; null until an admin actually sets them.
+  const [companyInfo, setCompanyInfo] = useState({ name: '', email: '', website: '', work_start: '', work_end: '', late_grace_minutes: '15' });
   const [savingCompanyInfo, setSavingCompanyInfo] = useState(false);
 
   // Team Access (Organization tab, admin only)
@@ -304,8 +306,19 @@ export default function ProfilePage() {
 
   const loadCompanyInfo = async () => {
     try {
-      const data = await api.get<{ name: string | null; email: string | null; website: string | null }>('/company');
-      setCompanyInfo({ name: data.name ?? '', email: data.email ?? '', website: data.website ?? '' });
+      const data = await api.get<{
+        name: string | null; email: string | null; website: string | null;
+        work_start: string | null; work_end: string | null; late_grace_minutes: number | null;
+      }>('/company');
+      setCompanyInfo({
+        name: data.name ?? '',
+        email: data.email ?? '',
+        website: data.website ?? '',
+        // TIME columns come back as "HH:MM:SS" — <input type="time"> needs "HH:MM".
+        work_start: data.work_start?.slice(0, 5) ?? '',
+        work_end: data.work_end?.slice(0, 5) ?? '',
+        late_grace_minutes: String(data.late_grace_minutes ?? 15),
+      });
     } catch {
       /* leave fields blank if company info can't be loaded */
     }
@@ -314,7 +327,14 @@ export default function ProfilePage() {
   async function saveCompanyInfo() {
     setSavingCompanyInfo(true);
     try {
-      await api.put('/company', companyInfo);
+      await api.put('/company', {
+        name: companyInfo.name,
+        email: companyInfo.email,
+        website: companyInfo.website,
+        work_start: companyInfo.work_start || null,
+        work_end: companyInfo.work_end || null,
+        late_grace_minutes: companyInfo.late_grace_minutes ? Number(companyInfo.late_grace_minutes) : null,
+      });
       flash('Company information saved.');
     } catch {
       flash('Unable to save company information.', 'err');
@@ -887,6 +907,62 @@ export default function ProfilePage() {
                   <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_website')?.focus()}>Edit</Button>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* divider */}
+      <div className='border border-(--neutral-light-hover)'></div>
+
+      <div className='flex flex-col gap-7 w-full'>
+        <div>
+          <h1 className='text-(--neutral-normal) text-[16px] font-semibold'>Working Hours</h1>
+          <p className='text-(--soft-white-dark-active) text-[14px] font-medium'>
+            Company-wide default shift, used to flag late clock-ins. Leave blank if you don&apos;t want lateness tracked.
+          </p>
+        </div>
+        <div className='flex justify-between'>
+          <div className='flex flex-col justify-between'>
+            <label htmlFor="work_start" className='text-[14px] font-medium'>Start Time</label>
+            <label htmlFor="work_end" className='text-[14px] font-medium'>End Time</label>
+            <label htmlFor="late_grace_minutes" className='text-[14px] font-medium flex items-center gap-1'>
+              Grace Period (minutes)
+              <NotificationInfo text="Minutes after Start Time an employee can still clock in without being marked late. E.g. a 9:00 AM start with a 15-minute grace period only flags clock-ins after 9:15 AM." />
+            </label>
+          </div>
+          <div className='flex flex-col gap-4'>
+            <div className='flex gap-6 items-center'>
+              <InputField
+                id='work_start'
+                type='time'
+                className='profile-text-field'
+                value={companyInfo.work_start}
+                onChange={(e) => setCompanyInfo((prev) => ({ ...prev, work_start: e.target.value }))}
+                disabled={!isAdmin}
+              />
+            </div>
+            <div className='flex gap-6 items-center'>
+              <InputField
+                id='work_end'
+                type='time'
+                className='profile-text-field'
+                value={companyInfo.work_end}
+                onChange={(e) => setCompanyInfo((prev) => ({ ...prev, work_end: e.target.value }))}
+                disabled={!isAdmin}
+              />
+            </div>
+            <div className='flex gap-6 items-center'>
+              <InputField
+                id='late_grace_minutes'
+                type='number'
+                min={0}
+                max={120}
+                className='profile-text-field'
+                value={companyInfo.late_grace_minutes}
+                onChange={(e) => setCompanyInfo((prev) => ({ ...prev, late_grace_minutes: e.target.value }))}
+                disabled={!isAdmin || !companyInfo.work_start}
+              />
             </div>
           </div>
         </div>

@@ -6,11 +6,9 @@ import {
   RadialBarChart, RadialBar, PolarAngleAxis,
 } from 'recharts';
 import { api } from '@/lib/api';
-import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import KpiCard from '@/components/KpiCard';
-import ClockInPopup from '@/components/ClockInPopup';
 //redux
 import { useAppDispatch, useAppSelector } from '@/store/hook';
 
@@ -19,7 +17,6 @@ import { useAppDispatch, useAppSelector } from '@/store/hook';
 // import { toggleSidebar } from '@/store/sidebarSlice';
 // import { toast } from 'react-toastify';
 import { showToast } from '@/lib/toast';
-import Clock from '@/components/clock';
 import PageHeader from '@/components/PageHeader';
 
 /* ─────────────────────────────── helpers ──────────────────────────────── */
@@ -285,7 +282,6 @@ interface RecentEmployee {
 /* ─────────────────────────────── page ─────────────────────────────────── */
 
 export default function DashboardPage() {
-  const { user } = useAuth();
   const router = useRouter();
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -347,12 +343,9 @@ export default function DashboardPage() {
 
   return (
     <div  >
-      <ClockInPopup />
-
       <div >
         {/* page header */}
         <div className=' '> <PageHeader title={'Dashboard'} discription={'View and manage your enrolled courses, track your progress, and continue learning where you left off.'}>
-          <Clock />
         </PageHeader></div>
         <div className='my-6'>
 
