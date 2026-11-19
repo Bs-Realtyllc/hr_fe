@@ -1,0 +1,124 @@
+/* ── Org chart ── */
+.org-canvas {
+  height: calc(100vh - 220px);
+  min-height: 420px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.org-canvas--state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+.org-canvas .react-flow__edge-path {
+  stroke: var(--color-border);
+  stroke-width: 1.5;
+}
+
+/* Edge anchors are structural only; keep them invisible. */
+.org-handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.org-card {
+  width: 240px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.org-card--me {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+.org-card__avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.org-card__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.org-card__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.org-card__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-h3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.org-card__meta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.org-card__me {
+  flex-shrink: 0;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.org-page__header {
+  gap: 16px;
+}
+
+/* Teams view: company and department boxes */
+.org-card--team,
+.org-card--company {
+  background: var(--color-bg);
+}
+
+.org-card--company {
+  border-color: var(--color-primary);
+}
+
+.org-card__avatar--icon {
+  border-radius: var(--radius-md);
+}

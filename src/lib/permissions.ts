@@ -43,6 +43,7 @@ export const ROUTE_ROLES: Record<string, readonly Role[]> = {
   '/': ALL_ROLES,
   // People
   '/employees': ['admin', 'lead', 'intern'],
+  '/org-chart': ALL_ROLES,
   '/active': ALL_ROLES,
   '/tracker': ['lead', 'employee', 'intern'], // same rule as tracksAttendance()
   '/onboarding': ['admin', 'lead'],

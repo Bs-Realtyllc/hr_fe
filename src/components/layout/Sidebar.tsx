@@ -30,6 +30,7 @@ const allNav: { section: string; items: NavItem[] }[] = [
     section: 'People',
     items: [
       { href: '/employees', label: 'Team Directory', icon: 'user-02.svg' },
+      { href: '/org-chart', label: 'Org Chart', icon: 'users.svg' },
       { href: '/active', label: 'Active Employees', icon: 'shield.svg' },
       { href: '/tracker', label: 'Time Tracker', icon: 'clock.svg' },
       { href: '/onboarding', label: 'Onboarding', icon: 'user-plus-02.svg' },
