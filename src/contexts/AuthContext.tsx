@@ -1,5 +1,6 @@
 'use client';
 import { createContext, useContext, useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { getUser, getToken, setAuth, clearAuth } from '@/lib/auth';
 import type { AuthUser } from '@/types';
 
@@ -24,13 +25,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
   }, []);
 
+  const queryClient = useQueryClient();
+
+  // Cached server data belongs to whoever was signed in; drop it whenever the
+  // user changes so one person's data is never shown to the next.
+  // (An expired session is handled by lib/api's full-page redirect, which
+  // discards the cache anyway.)
   function login(tok: string, u: AuthUser) {
+    queryClient.clear();
     setAuth(tok, u);
     setToken(tok);
     setUser(u);
   }
 
   function logout() {
+    queryClient.clear();
     clearAuth();
     setToken(null);
     setUser(null);

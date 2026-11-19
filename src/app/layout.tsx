@@ -4,6 +4,7 @@ import '@/styles/global.css';
 import '@bsrealtyllc/design-system/style.css';
 import StoreProvider from '@/store/StoreProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
+import QueryProvider from '@/providers/QueryProvider';
 import { ToastContainer } from 'react-toastify';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -43,7 +44,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Providers only. The signed-in shell (sidebar, clock, auth guard)
             lives in app/(app)/layout.tsx; (auth) and (public) pages render bare. */}
         <StoreProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <QueryProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </QueryProvider>
         </StoreProvider>
       </body>
     </html>
