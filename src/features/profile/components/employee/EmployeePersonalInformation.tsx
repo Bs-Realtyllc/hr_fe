@@ -1,7 +1,7 @@
 "use client";
 
-import Button from "@/components/Button/Button";
-import InputField from "@/components/InputField/InputField";
+import Button from "@/components/ui/Button/Button";
+import InputField from "@/components/ui/InputField/InputField";
 import { useEffect, useState } from "react";
 import { profileService } from "@/features/profile/api/profileService";
 import type { Gender, Profile } from "@/types";

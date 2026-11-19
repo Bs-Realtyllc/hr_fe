@@ -6,7 +6,7 @@ import { BACKEND_URL } from '@/config/env';
 import React, { useEffect, useState } from 'react'
 import { getToken } from "@/lib/auth"
 import { profileService } from '@/features/profile/api/profileService'
-import Button from '@/components/Button/Button'
+import Button from '@/components/ui/Button/Button'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 

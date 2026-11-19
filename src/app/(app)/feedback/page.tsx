@@ -4,8 +4,8 @@ import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeSummary as Employee } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import PillTabs from '@/components/PillTabs';
-import Button from '@/components/Button/Button';
+import PillTabs from '@/components/ui/PillTabs';
+import Button from '@/components/ui/Button/Button';
 import { showToast } from '@/lib/toast';
 
 interface FeedbackNote {

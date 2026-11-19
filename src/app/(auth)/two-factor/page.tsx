@@ -1,8 +1,8 @@
 'use client'
-import Button from '@/components/Button/Button'
+import Button from '@/components/ui/Button/Button'
 import { api, errorMessage } from '@/lib/api';
-import InputField from '@/components/InputField/InputField'
-import OtpInput from '@/components/OtpInput'
+import InputField from '@/components/ui/InputField/InputField'
+import OtpInput from '@/components/ui/OtpInput'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'

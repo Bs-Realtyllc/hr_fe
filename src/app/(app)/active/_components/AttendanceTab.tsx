@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import type { EmployeeName as Employee } from '@/types';
 import { api } from "@/lib/api";
 import { formatTimeNepal } from "@/lib/datetime";
-import LocationLink from "@/components/LocationLink";
+import LocationLink from "@/components/ui/LocationLink";
 
 
 interface PauseRecord {

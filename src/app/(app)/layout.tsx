@@ -1,4 +1,4 @@
-import AppShell from '@/components/AppShell';
+import AppShell from '@/components/layout/AppShell';
 
 // Every route in the (app) group requires a signed-in user and renders inside
 // the shell (sidebar, mobile top bar, clock widget). Pages that must work

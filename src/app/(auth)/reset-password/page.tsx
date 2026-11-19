@@ -2,9 +2,9 @@
 import { useState, useEffect, Suspense } from 'react';
 import { api, errorMessage } from '@/lib/api';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Button from '@/components/Button/Button';
-import InputField from '@/components/InputField/InputField';
-import ConfettiAnimation from '@/components/ConfettiAnimation';
+import Button from '@/components/ui/Button/Button';
+import InputField from '@/components/ui/InputField/InputField';
+import ConfettiAnimation from '@/components/ui/ConfettiAnimation';
 
 function ResetPasswordForm() {
   const router = useRouter();

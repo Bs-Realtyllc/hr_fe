@@ -1,9 +1,9 @@
 'use client';
 import { useState } from 'react';
 import { isAdmin as isAdminUser } from '@/lib/permissions';
-import Button from '@/components/Button/Button';
-import PageHeader from '@/components/PageHeader';
-import ErrorPage from '@/components/ErrorPage';
+import Button from '@/components/ui/Button/Button';
+import PageHeader from '@/components/layout/PageHeader';
+import ErrorPage from '@/components/ui/ErrorPage';
 import { BSRealtyTabs } from '@bsrealtyllc/design-system';
 import type { EmployeeTab, Tab } from '../types';
 // Hooks: one per concern; all called here so state survives tab switches.

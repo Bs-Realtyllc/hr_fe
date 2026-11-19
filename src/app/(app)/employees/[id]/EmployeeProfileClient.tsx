@@ -7,7 +7,7 @@ import { BACKEND_URL } from '@/config/env';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { showToast } from '@/lib/toast';
-import Button from '@/components/Button/Button';
+import Button from '@/components/ui/Button/Button';
 
 
 interface Project {

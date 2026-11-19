@@ -5,8 +5,8 @@ import { BSRealtyAvatar } from "@bsrealtyllc/design-system";
 import { buildFillDetailsMailto } from "@/template/fillDetailsMailTemplate";
 import { api } from "@/lib/api";
 import { showToast } from "@/lib/toast";
-import Button from "@/components/Button/Button";
-import PillTabs from "@/components/PillTabs";
+import Button from "@/components/ui/Button/Button";
+import PillTabs from "@/components/ui/PillTabs";
 
 interface EducationInfoEntry {
   education_level: string;

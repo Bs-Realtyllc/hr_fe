@@ -1,6 +1,6 @@
 'use client';
 
-import ConfettiAnimation from "@/components/ConfettiAnimation";
+import ConfettiAnimation from "@/components/ui/ConfettiAnimation";
 
 const SuccessPage = () => {
     return (

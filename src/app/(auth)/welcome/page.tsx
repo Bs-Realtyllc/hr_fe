@@ -1,6 +1,6 @@
 'use client'
 
-import Button from "@/components/Button/Button"
+import Button from "@/components/ui/Button/Button"
 import type { Profile as FullProfile } from '@/types';
 import { BACKEND_URL } from '@/config/env';
 import { profileService } from '@/features/profile/api/profileService';

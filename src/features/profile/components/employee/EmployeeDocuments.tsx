@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { BACKEND_URL } from '@/config/env';
-import Button from '@/components/Button/Button';
-import FileUpload from '@/components/FileUpload/FileUpload';
+import Button from '@/components/ui/Button/Button';
+import FileUpload from '@/components/ui/FileUpload/FileUpload';
 import { profileService } from '@/features/profile/api/profileService';
 import { api } from '@/lib/api';
 

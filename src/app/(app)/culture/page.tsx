@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeSummary as Employee } from '@/types';
 import { api } from '@/lib/api';
-import Button from '@/components/Button/Button';
+import Button from '@/components/ui/Button/Button';
 import { showToast } from '@/lib/toast';
 
 interface CultureEvent {

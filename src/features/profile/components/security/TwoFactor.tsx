@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
-import Button from '@/components/Button/Button';
-import InputField from '@/components/InputField/InputField';
+import Button from '@/components/ui/Button/Button';
+import InputField from '@/components/ui/InputField/InputField';
 
 export interface TwoFactorSetupData {
     secret: string;

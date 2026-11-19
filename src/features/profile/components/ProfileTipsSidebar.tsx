@@ -1,4 +1,4 @@
-import Button from '@/components/Button/Button';
+import Button from '@/components/ui/Button/Button';
 
 /** Static tips column shown beside the employee tabs. */
 export default function ProfileTipsSidebar() {

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 import { api, errorMessage, saveBlob } from '@/lib/api';
-import Button from '@/components/Button/Button';
+import Button from '@/components/ui/Button/Button';
 import { showToast } from '@/lib/toast';
 
 

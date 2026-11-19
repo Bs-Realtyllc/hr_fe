@@ -2,10 +2,10 @@
 import { useState } from 'react';
 import { api, errorMessage } from '@/lib/api';
 import Link from 'next/link';
-import Button from '@/components/Button/Button';
-import InputField from '@/components/InputField/InputField';
+import Button from '@/components/ui/Button/Button';
+import InputField from '@/components/ui/InputField/InputField';
 import { useRouter } from 'next/navigation';
-import ConfettiAnimation from '@/components/ConfettiAnimation';
+import ConfettiAnimation from '@/components/ui/ConfettiAnimation';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');

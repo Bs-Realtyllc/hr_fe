@@ -3,8 +3,8 @@
 import { useId, useState, type FormEvent } from 'react'
 import { api, ApiError } from '@/lib/api';
 import { useRouter } from 'next/navigation'
-import Button from '@/components/Button/Button'
-import FileUpload from '@/components/FileUpload/FileUpload'
+import Button from '@/components/ui/Button/Button'
+import FileUpload from '@/components/ui/FileUpload/FileUpload'
 import { useOnboarding, useOnboardingStep, type ContractDocumentKey } from '../../OnboardingContext'
 import { buildOnboardFormData, MAX_OTHER_DOCUMENTS } from '../../onboardSubmission'
 

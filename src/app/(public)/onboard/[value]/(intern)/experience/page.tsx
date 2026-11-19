@@ -1,8 +1,8 @@
 "use client";
 
-import Button from "@/components/Button/Button";
-import FileUpload from "@/components/FileUpload/FileUpload";
-import InputField from "@/components/InputField/InputField";
+import Button from "@/components/ui/Button/Button";
+import FileUpload from "@/components/ui/FileUpload/FileUpload";
+import InputField from "@/components/ui/InputField/InputField";
 import { BSRealtyDropdown } from "@bsrealtyllc/design-system";
 import React, { useState } from "react";
 import { MAX_ENTRIES } from "../../onboardSubmission";

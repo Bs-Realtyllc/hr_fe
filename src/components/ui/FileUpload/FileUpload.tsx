@@ -5,7 +5,7 @@ import {
     type ChangeEvent, type DragEvent, type KeyboardEvent, type ReactNode,
 } from "react"
 import Button from "../Button/Button"
-import DocumentPreview from "../DocumentPreview"
+import DocumentPreview from "./DocumentPreview"
 
 const ACCEPTED_MIME_TYPES = [
     "image/png",

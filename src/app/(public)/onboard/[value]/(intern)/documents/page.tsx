@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
-import Button from '@/components/Button/Button'
-import FileUpload from '@/components/FileUpload/FileUpload'
+import Button from '@/components/ui/Button/Button'
+import FileUpload from '@/components/ui/FileUpload/FileUpload'
 import { useOnboarding, useOnboardingStep, type OnboardingDocumentKey } from '../../OnboardingContext'
 
 /* ---------- Document config ---------- */

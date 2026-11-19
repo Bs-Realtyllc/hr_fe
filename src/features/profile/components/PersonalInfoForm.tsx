@@ -1,7 +1,7 @@
 'use client';
 import { BSRealtyAvatar } from '@bsrealtyllc/design-system';
-import Button from '@/components/Button/Button';
-import InputField from '@/components/InputField/InputField';
+import Button from '@/components/ui/Button/Button';
+import InputField from '@/components/ui/InputField/InputField';
 import type { Profile } from '@/types';
 import { ACCESS_ROLE_LABELS } from '../utils';
 import type { MyProfileState } from '../hooks/useMyProfile';

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { api } from '@/lib/api';
-import Button from '@/components/Button/Button';
+import Button from '@/components/ui/Button/Button';
 
 interface Project {
   id: number;

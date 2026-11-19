@@ -4,8 +4,8 @@ import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeSummary as Employee } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import Button from '@/components/Button/Button';
-import PageHeader from '@/components/PageHeader';
+import Button from '@/components/ui/Button/Button';
+import PageHeader from '@/components/layout/PageHeader';
 import { showToast } from '@/lib/toast';
 import { BSRealtyTabs } from '@bsrealtyllc/design-system';
 

@@ -1,5 +1,5 @@
 'use client';
-import PolicyDocuments from '@/components/PolicyDocuments';
+import PolicyDocuments from '@/features/policies/components/PolicyDocuments';
 
 export default function DocumentsPage() {
   return (

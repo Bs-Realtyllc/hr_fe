@@ -8,7 +8,7 @@ import {
 import { api } from '@/lib/api';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import KpiCard from '@/components/KpiCard';
+import KpiCard from '@/components/ui/KpiCard';
 //redux
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
@@ -17,7 +17,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 // import { toggleSidebar } from '@/store/sidebarSlice';
 // import { toast } from 'react-toastify';
 import { showToast } from '@/lib/toast';
-import PageHeader from '@/components/PageHeader';
+import PageHeader from '@/components/layout/PageHeader';
 
 /* ─────────────────────────────── helpers ──────────────────────────────── */
 

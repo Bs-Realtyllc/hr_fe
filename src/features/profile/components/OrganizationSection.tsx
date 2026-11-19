@@ -1,6 +1,6 @@
 'use client';
-import Button from '@/components/Button/Button';
-import InputField from '@/components/InputField/InputField';
+import Button from '@/components/ui/Button/Button';
+import InputField from '@/components/ui/InputField/InputField';
 import type { Profile } from '@/types';
 import NotificationInfo from './NotificationInfo';
 import { ACCESS_ROLE_LABELS, formatJoinDate } from '../utils';

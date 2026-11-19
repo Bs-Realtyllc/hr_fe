@@ -1,6 +1,6 @@
 'use client';
 import { BSRealtyDropdown } from '@bsrealtyllc/design-system';
-import Button from '@/components/Button/Button';
+import Button from '@/components/ui/Button/Button';
 import { ACCESS_ROLE_OPTIONS } from '../utils';
 import type { TeamAccessState } from '../hooks/useTeamAccess';
 

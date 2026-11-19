@@ -1,7 +1,7 @@
 "use client";
 
-import Button from "@/components/Button/Button";
-import InputField from "@/components/InputField/InputField";
+import Button from "@/components/ui/Button/Button";
+import InputField from "@/components/ui/InputField/InputField";
 import { BSRealtyDropdown } from "@bsrealtyllc/design-system";
 import { useParams, useRouter } from "next/navigation";
 import React, { useState } from "react";

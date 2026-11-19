@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { api } from '@/lib/api';
-import PillTabs from '@/components/PillTabs';
+import PillTabs from '@/components/ui/PillTabs';
 import { showToast } from '@/lib/toast';
 
 interface PayrollRow {

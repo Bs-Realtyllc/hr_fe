@@ -4,9 +4,9 @@ import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeName } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import PillTabs from '@/components/PillTabs';
-import Button from '@/components/Button/Button';
-import MultiSelect from '@/components/MultiSelect';
+import PillTabs from '@/components/ui/PillTabs';
+import Button from '@/components/ui/Button/Button';
+import MultiSelect from '@/components/ui/MultiSelect';
 import { showToast } from '@/lib/toast';
 
 interface Leave {

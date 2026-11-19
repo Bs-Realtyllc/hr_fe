@@ -1,7 +1,7 @@
 'use client'
 
-import Button from "@/components/Button/Button"
-import InputField from "@/components/InputField/InputField"
+import Button from "@/components/ui/Button/Button"
+import InputField from "@/components/ui/InputField/InputField"
 import { BSRealtyDropdown } from "@bsrealtyllc/design-system"
 import { useState, type ReactNode } from "react"
 import { useOnboarding, useOnboardingStep, type PersonalInfo } from "../../OnboardingContext"

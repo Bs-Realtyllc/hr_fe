@@ -1,6 +1,6 @@
 'use client';
 import { BSRealtyToggle } from '@bsrealtyllc/design-system';
-import Button from '@/components/Button/Button';
+import Button from '@/components/ui/Button/Button';
 import type { TwoFactorState } from '../hooks/useTwoFactor';
 import type { LoginHistoryState } from '../hooks/useLoginHistory';
 import type { TrustedDevicesState } from '../hooks/useTrustedDevices';

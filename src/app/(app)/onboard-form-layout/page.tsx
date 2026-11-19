@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import Button from "@/components/Button/Button";
-import PillTabs from "@/components/PillTabs";
+import Button from "@/components/ui/Button/Button";
+import PillTabs from "@/components/ui/PillTabs";
 import { showToast } from "@/lib/toast";
 
 /** One entry in a forms_layout row's `data` column. */

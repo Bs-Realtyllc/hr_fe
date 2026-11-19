@@ -4,8 +4,8 @@ import { useRouter } from 'next/navigation';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { AuthUser } from '@/types';
-import Button from '@/components/Button/Button'
-import InputField from '@/components/InputField/InputField';
+import Button from '@/components/ui/Button/Button'
+import InputField from '@/components/ui/InputField/InputField';
 import { validateEmail } from '@/lib/validation';
 import { saveTwoFactorChallenge } from '@/lib/twoFactor';
 

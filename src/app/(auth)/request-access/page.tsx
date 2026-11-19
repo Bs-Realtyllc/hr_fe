@@ -1,8 +1,8 @@
 'use client';
 
-import Button from "@/components/Button/Button";
-import ConfettiAnimation from "@/components/ConfettiAnimation";
-import InputField from "@/components/InputField/InputField";
+import Button from "@/components/ui/Button/Button";
+import ConfettiAnimation from "@/components/ui/ConfettiAnimation";
+import InputField from "@/components/ui/InputField/InputField";
 import { api } from "@/lib/api";
 import { BSRealtyDropdown } from "@bsrealtyllc/design-system";
 import { useRouter } from "next/navigation";

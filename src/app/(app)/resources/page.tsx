@@ -1,6 +1,6 @@
 'use client';
-import PageHeader from '@/components/PageHeader';
-import PolicyDocuments from '@/components/PolicyDocuments';
+import PageHeader from '@/components/layout/PageHeader';
+import PolicyDocuments from '@/features/policies/components/PolicyDocuments';
 
 
 export default function ResourcesPage() {

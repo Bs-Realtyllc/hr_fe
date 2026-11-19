@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { formatTimeNepal, nepalTodayString } from "@/lib/datetime";
-import LocationLink from "@/components/LocationLink";
+import LocationLink from "@/components/ui/LocationLink";
 
 interface PauseRecord {
   pause: string;

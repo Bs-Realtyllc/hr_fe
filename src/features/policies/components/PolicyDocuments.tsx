@@ -5,7 +5,7 @@ import { BACKEND_URL } from '@/config/env';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 import PdfThumbnail from './PdfThumbnail';
-import Button from './Button/Button';
+import Button from '@/components/ui/Button/Button';
 
 interface Policy {
   id: number;

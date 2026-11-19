@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import Button from '@/components/Button/Button';
+import Button from '@/components/ui/Button/Button';
 import { showToast } from '@/lib/toast';
 
 interface Review {
