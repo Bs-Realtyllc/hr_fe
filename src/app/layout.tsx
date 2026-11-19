@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans, IBM_Plex_Sans } from 'next/font/google';
-import '../styles/global.css';
+import '@/styles/global.css';
 import '@bsrealtyllc/design-system/style.css';
-import AppShell from '@/components/AppShell';
 import StoreProvider from '@/store/StoreProvider';
+import { AuthProvider } from '@/contexts/AuthContext';
 import { ToastContainer } from 'react-toastify';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -40,8 +40,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           draggable
           theme="light"
         />
+        {/* Providers only. The signed-in shell (sidebar, clock, auth guard)
+            lives in app/(app)/layout.tsx; (auth) and (public) pages render bare. */}
         <StoreProvider>
-          <AppShell>{children}</AppShell>
+          <AuthProvider>{children}</AuthProvider>
         </StoreProvider>
       </body>
     </html>

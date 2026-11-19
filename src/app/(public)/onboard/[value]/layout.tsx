@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import '../../../styles/global.css';
+import '@/styles/global.css';
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { OnboardingProvider } from "./OnboardingContext";
 

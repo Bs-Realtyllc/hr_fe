@@ -1,7 +1,7 @@
 'use client';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import Sidebar from '@/components/Sidebar';
 import Clock from '@/components/Clock';
 import ClockInPopup from '@/components/ClockInPopup';
@@ -10,31 +10,27 @@ import { setSidebarOpen } from '@/store/slices/sidebarSlice';
 import { RxHamburgerMenu } from 'react-icons/rx';
 
 
-function Shell({ children }: { children: React.ReactNode }) {
+/**
+ * The signed-in shell, used by app/(app)/layout.tsx. Every page rendered
+ * here requires a user: signed-out visitors are sent to /login.
+ */
+export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading } = useAuth();
   const dispatch = useAppDispatch();
 
-
-  const PUBLIC_PATHS = ['/login', '/logout', '/forgot-password', '/reset-password', '/onboard/', '/request-access', '/welcome', '/two-factor'];
-  const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p));
-
   useEffect(() => {
-    if (!loading && !user && !isPublic) {
+    if (!loading && !user) {
       router.replace('/login');
     }
-  }, [user, loading, pathname, router]);
+  }, [user, loading, router]);
 
   // Route changes close the mobile drawer; harmless on desktop, where the
   // sidebar's layout doesn't depend on this flag at all.
   useEffect(() => {
     dispatch(setSidebarOpen(false));
   }, [pathname, dispatch]);
-
-  if (isPublic) {
-    return <>{children}</>;
-  }
 
   if (loading || !user) return null;
 
@@ -71,14 +67,5 @@ function Shell({ children }: { children: React.ReactNode }) {
         </div>
       )}
     </div>
-  );
-}
-
-export default function AppShell({ children }: { children: React.ReactNode }) {
-  return (
-    <AuthProvider>
-      <Shell>
-        {children}</Shell>
-    </AuthProvider >
   );
 }
