@@ -15,12 +15,12 @@ import {
 import { FcCancel } from "react-icons/fc";
 import { CgAdd } from "react-icons/cg";
 import Popup from "reactjs-popup";
-import AddWorkItem from "../_components/addWorkItem";
-import Stats from "../_components/stats";
-import CustomInsights from "../_components/cutsomInsight";
-import Graph from "../_components/graph";
-import TaskCard from "../_components/taskCard";
-import { BarComponent, AreaComponent } from "../_components/adminAnalytics";
+import AddWorkItem from "../_components/AddWorkItem";
+import Stats from "../_components/Stats";
+import CustomInsights from "../_components/CustomInsight";
+import Graph from "../_components/Graph";
+import TaskCard from "../_components/TaskCard";
+import { BarComponent, AreaComponent } from "../_components/AdminAnalytics";
 
 interface PlaneWorkItem {
   id: string;
@@ -220,7 +220,7 @@ function AnalyticsPanel({
   );
 }
 
-export default function ProjectpageClient() {
+export default function ProjectPageClient() {
   const { p_id } = useParams<{ p_id: string }>();
 
   const [items, setItems] = useState<PlaneWorkItem[]>([]);

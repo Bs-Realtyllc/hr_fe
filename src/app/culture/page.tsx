@@ -117,9 +117,7 @@ function FullEventsModal({ events, onClose }: FullEventsModalProps) {
             leftIcon={<span
               className="icon-mask"
               style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/x.svg)', maskImage: 'url(/icons/x.svg)' }}
-            />}
-            children={false}>
-          </Button>
+            />}>{false}</Button>
         </div>
         <div className="drawer-body">
           {events.length === 0 ? (
@@ -289,9 +287,7 @@ export default function CulturePage() {
                 leftIcon={<span
                   className="icon-mask"
                   style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/x.svg)', maskImage: 'url(/icons/x.svg)' }}
-                />}
-                children={false}>
-              </Button>
+                />}>{false}</Button>
             </div>
             <form onSubmit={submit}>
               <div className="form-group">

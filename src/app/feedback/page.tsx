@@ -248,9 +248,7 @@ export default function FeedbackPage() {
                 leftIcon={<span
                   className="icon-mask"
                   style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/x.svg)', maskImage: 'url(/icons/x.svg)' }}
-                />}
-                children={false}>
-              </Button>
+                />}>{false}</Button>
             </div>
             <form onSubmit={submitCreate}>
               <div className="form-group">

@@ -84,7 +84,7 @@ export default function FinancialReportPage() {
         <span style={{ fontSize: 16 }}>ℹ️</span>
         <span className="text-muted text-sm">
           This is a monthly report — overtime pay and deductions reflect what was approved for {MONTHS[month - 1]} {year}.
-          Year-end leave bonuses are a separate one-time payout and aren't included here — see the Overtime & Adjustments tab.
+          Year-end leave bonuses are a separate one-time payout and aren&apos;t included here — see the Overtime & Adjustments tab.
         </span>
       </div>
 

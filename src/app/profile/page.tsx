@@ -7,7 +7,7 @@ import Button from '@/components/Button/Button';
 import PageHeader from '@/components/PageHeader';
 import { BSRealtyAvatar, BSRealtyDropdown, BSRealtyTabs, BSRealtyToggle, BSRealtyTooltip } from '@bsrealtyllc/design-system';
 import InputField from '@/components/InputField/InputField';
-import LoginHistoryModal, { type LoginHistory } from '@/components/profile/LoginHistoryModel';
+import LoginHistoryModal, { type LoginHistory } from '@/components/profile/LoginHistoryModal';
 import TrustedDevicesModal, { type TrustedDevice } from '@/components/profile/TrustedDevicesModal';
 import {
   TwoFactorModal,

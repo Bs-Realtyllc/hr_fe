@@ -127,7 +127,7 @@ export default function ResourcesPage() {
               <img src="/images/documents-01.svg" alt="doc" height={'141px'} width={'160px'} />
               <div className='flex flex-col py-4 px-2 text-center gap-1'>
                 <h1 className='text-[20px] text-(--neutral-dark) font-semibold'>No resources available yet</h1>
-                <p className='text-[16px] text-(--gray-normal-active) font-medium'>Company policies, handbooks, and helpful resources will appear here once they're added.</p>
+                <p className='text-[16px] text-(--gray-normal-active) font-medium'>Company policies, handbooks, and helpful resources will appear here once they&apos;re added.</p>
 
               </div>
             </div>

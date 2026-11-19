@@ -5,19 +5,19 @@ import { io, Socket } from 'socket.io-client';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
-import { VoiceRoom } from './components/VoiceRoom';
-import { CreateChannelModal } from './components/CreateChannelModal';
-import { NewDmModal } from './components/NewDmModal';
-import { StatusSelector } from './components/StatusSelector';
-import { MessageContextMenu, type ContextAction } from './components/MessageContextMenu';
-import { ProfilePopover } from './components/ProfilePopover';
-import { ReplyPreview, type ReplyTarget } from './components/ReplyPreview';
-import { ForwardModal } from './components/ForwardModal';
-import { PinnedMessagesPanel } from './components/PinnedMessagesPanel';
-import { SavedMessagesPanel } from './components/SavedMessagesPanel';
-import { MentionAutocomplete, getMentionQuery, applyMention } from './components/MentionAutocomplete';
-import { NotificationToastStack, type ToastNotification } from './components/NotificationToast';
-import { AudioRecorder } from './components/AudioRecorder';
+import { VoiceRoom } from './_components/VoiceRoom';
+import { CreateChannelModal } from './_components/CreateChannelModal';
+import { NewDmModal } from './_components/NewDmModal';
+import { StatusSelector } from './_components/StatusSelector';
+import { MessageContextMenu, type ContextAction } from './_components/MessageContextMenu';
+import { ProfilePopover } from './_components/ProfilePopover';
+import { ReplyPreview, type ReplyTarget } from './_components/ReplyPreview';
+import { ForwardModal } from './_components/ForwardModal';
+import { PinnedMessagesPanel } from './_components/PinnedMessagesPanel';
+import { SavedMessagesPanel } from './_components/SavedMessagesPanel';
+import { MentionAutocomplete, getMentionQuery, applyMention } from './_components/MentionAutocomplete';
+import { NotificationToastStack, type ToastNotification } from './_components/NotificationToast';
+import { AudioRecorder } from './_components/AudioRecorder';
 
 /* ─────────────────────────── Types ───────────────────────── */
 
@@ -1185,7 +1185,7 @@ function PreJoinModal({ channelName, onJoin, onCancel }: {
             border: '1px solid rgba(239,68,68,0.2)',
             borderRadius: 8, padding: '10px 14px', lineHeight: 1.5,
           }}>
-            <strong>To fix:</strong> click the 🔒 lock icon in your browser's address bar,
+            <strong>To fix:</strong> click the 🔒 lock icon in your browser&apos;s address bar,
             find <em>Microphone</em>, set it to <em>Allow</em>, then reload the page.
           </div>
         )}

@@ -47,7 +47,7 @@ export default function TrustedDevicesModal({
                 </div>
 
                 <p className="mb-4 text-[14px] text-(--soft-white-dark-active)">
-                    These devices skip the authenticator code for 30 days after "Remember this device" was checked at login. Revoke any you don't recognize.
+                    These devices skip the authenticator code for 30 days after &quot;Remember this device&quot; was checked at login. Revoke any you don&apos;t recognize.
                 </p>
 
                 <ul className="flex-1 space-y-3 overflow-y-auto">

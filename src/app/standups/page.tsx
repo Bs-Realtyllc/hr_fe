@@ -141,7 +141,7 @@ export default function StandupsPage() {
         <div className="flex justify-between items-center">
           <div>
             <h1>Async Standups</h1>
-            <p>Team daily updates — what we did, what's next, any blockers</p>
+            <p>Team daily updates — what we did, what&apos;s next, any blockers</p>
           </div>
           <div className="flex gap-2">
 
@@ -443,7 +443,7 @@ export default function StandupsPage() {
                 />
               </div>
               <div className="form-group">
-          <label className="form-label">What is still in progress? (unfinished work — reply "none" if nothing)</label>
+          <label className="form-label">What is still in progress? (unfinished work — reply &quot;none&quot; if nothing)</label>
                 <textarea
             className="form-textarea !min-h-[48px]"
             rows={2}
@@ -463,7 +463,7 @@ export default function StandupsPage() {
           />
         </div>
         <div className="form-group">
-          <label className="form-label">Any problems or blockers? (technical, project, or resource-related — reply "none" if none)</label>
+          <label className="form-label">Any problems or blockers? (technical, project, or resource-related — reply &quot;none&quot; if none)</label>
           <textarea
             className="form-textarea !min-h-[40px]"
             rows={1}
@@ -473,7 +473,7 @@ export default function StandupsPage() {
                 />
               </div>
         <div className="form-group">
-          <label className="form-label"> Any relevant links, PRs, commits, or screenshots? (paste a link and/or attach an image, or reply "none")</label>
+          <label className="form-label"> Any relevant links, PRs, commits, or screenshots? (paste a link and/or attach an image, or reply &quot;none&quot;)</label>
           <textarea
             className="form-textarea !min-h-[40px]"
             rows={1}

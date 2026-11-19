@@ -410,7 +410,7 @@ function EmployeeView({
             className="icon-mask empty-state-icon"
             style={{ WebkitMaskImage: 'url(/icons/folder.svg)', maskImage: 'url(/icons/folder.svg)' }}
           />
-          <p>You haven't submitted any reports yet.</p>
+          <p>You haven&apos;t submitted any reports yet.</p>
         </div>
       )}
 
@@ -649,9 +649,7 @@ export default function ReportsPage() {
                 leftIcon={<span
                   className="icon-mask"
                   style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/x.svg)', maskImage: 'url(/icons/x.svg)' }}
-                />}
-                children={false}>
-              </Button>
+                />}>{false}</Button>
             </div>
             <form onSubmit={submit}>
               <div className="form-group">

@@ -457,7 +457,7 @@ export default function PerformancePage() {
               <Button variant='text' size='small' onClick={() => setAckReview(null)}>X</Button>
             </div>
             <p className="text-muted text-sm" style={{ marginBottom: 16 }}>
-              Confirm you've read this review for period {ackReview.review_period}. You may optionally add your own comments.
+              Confirm you&apos;ve read this review for period {ackReview.review_period}. You may optionally add your own comments.
             </p>
             <div className="form-group">
               <label className="form-label">Your Comments (optional)</label>

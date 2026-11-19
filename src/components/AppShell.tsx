@@ -3,9 +3,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import Sidebar from '@/components/Sidebar';
-import Clock from '@/components/clock';
+import Clock from '@/components/Clock';
 import ClockInPopup from '@/components/ClockInPopup';
-import { useAppDispatch } from '@/store/hook';
+import { useAppDispatch } from '@/store/hooks';
 import { setSidebarOpen } from '@/store/slices/sidebarSlice';
 import { RxHamburgerMenu } from 'react-icons/rx';
 
@@ -17,7 +17,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const dispatch = useAppDispatch();
 
 
-  const PUBLIC_PATHS = ['/login', '/logout', '/forgot-password', '/reset-password', '/onboard/', '/request-access', '/welcome', '/twoFactorAuth', '/setup-twoFactorAuth'];
+  const PUBLIC_PATHS = ['/login', '/logout', '/forgot-password', '/reset-password', '/onboard/', '/request-access', '/welcome', '/two-factor'];
   const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p));
 
   useEffect(() => {

@@ -421,7 +421,7 @@ export default function PayrollPage() {
           <div className="card" style={{ marginBottom: 20, padding: '12px 16px', display: 'flex', gap: 8, alignItems: 'center' }}>
             <span style={{ fontSize: 18 }}>ℹ️</span>
             <span className="text-muted text-sm">
-              Tax figures are a simplified <strong>estimate</strong> based on Nepal's individual income tax slabs and annual salary — for planning purposes only, not a substitute for a certified tax filing.
+              Tax figures are a simplified <strong>estimate</strong> based on Nepal&apos;s individual income tax slabs and annual salary — for planning purposes only, not a substitute for a certified tax filing.
             </span>
           </div>
 
@@ -661,7 +661,7 @@ export default function PayrollPage() {
                 <div className="card" style={{ padding: 16, marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                   <div>
                     <div style={{ fontWeight: 600 }}>Year-End Leave Bonus</div>
-                    <div className="text-muted text-sm">Pays out each employee's unused leave balance at their daily rate. Safe to run more than once — already-paid employees are skipped.</div>
+                    <div className="text-muted text-sm">Pays out each employee&apos;s unused leave balance at their daily rate. Safe to run more than once — already-paid employees are skipped.</div>
                   </div>
                   <button className="btn btn-primary" disabled={bonusRunning} onClick={runYearEndBonus}>
                     {bonusRunning ? 'Running…' : `Run Year-End Bonus (${new Date().getFullYear()})`}

@@ -215,7 +215,7 @@ function TaskCard({
     if (activitiesLoaded) return;
     setLoadingActivities(true);
     try {
-      const res = await fetch(`/apis/plane/work-item/activities?id=${encodeURIComponent(item.id)}`, {
+      const res = await fetch(`/apis/plane/work-item/activities?id=${encodeURIComponent(item.id)}&projectId=${encodeURIComponent(p_id)}`, {
         method: "GET",
       });
       const data = await res.json();

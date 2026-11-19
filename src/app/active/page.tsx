@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import ActiveTab from "./_components/ActiveTab";
-import AttendenceTab from "./_components/AttendenceTab";
+import AttendanceTab from "./_components/AttendanceTab";
 
 type Tab = "active" | "attendence";
 
@@ -63,7 +63,7 @@ export default function DefaultPage() {
       </div>
 
       {tab === "active" && <ActiveTab />}
-      {tab === "attendence" && canViewAll && <AttendenceTab />}
+      {tab === "attendence" && canViewAll && <AttendanceTab />}
     </div>
   );
 }

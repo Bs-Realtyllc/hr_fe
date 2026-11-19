@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 //redux
-import { useAppSelector, useAppDispatch } from '@/store/hook';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { BSRealtyAvatar } from '@bsrealtyllc/design-system';
 import { setSidebarOpen } from '@/store/slices/sidebarSlice'
 import { useEffect, useRef, useState } from 'react';

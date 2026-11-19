@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import KpiCard from '@/components/KpiCard';
 //redux
-import { useAppDispatch, useAppSelector } from '@/store/hook';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
 //icon
 // import { RxHamburgerMenu } from "react-icons/rx";
@@ -376,7 +376,7 @@ export default function DashboardPage() {
                   className="text-muted"
                   style={{ fontSize: 14, marginBottom: 24 }}
                 >
-                  It's the end of the week! Please take a moment to fill in your
+                  It&apos;s the end of the week! Please take a moment to fill in your
                   weekly update form so the team stays aligned.
                 </p>
                 <div className="flex gap-3 justify-center">
@@ -424,7 +424,7 @@ export default function DashboardPage() {
                   className="text-muted"
                   style={{ fontSize: 14, marginBottom: 24 }}
                 >
-                  It's Sunday — please submit this week's work update (PPT or PDF)
+                  It&apos;s Sunday — please submit this week&apos;s work update (PPT or PDF)
                   so the team stays aligned.
                 </p>
                 <div className="flex gap-3 justify-center">
@@ -531,7 +531,7 @@ export default function DashboardPage() {
             <div className="card">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="card-title" style={{ marginBottom: 0 }}>
-                  Today's Standups
+                  Today&apos;s Standups
                 </h2>
                 <Link href="/standups" className="card-link">
                   See all

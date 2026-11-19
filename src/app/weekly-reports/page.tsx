@@ -352,7 +352,7 @@ function EmployeeView({
             className="icon-mask empty-state-icon"
             style={{ WebkitMaskImage: 'url(/icons/folder.svg)', maskImage: 'url(/icons/folder.svg)' }}
           />
-          <p>You haven't submitted any weekly updates yet.</p>
+          <p>You haven&apos;t submitted any weekly updates yet.</p>
         </div>
       )}
 
@@ -580,7 +580,7 @@ export default function WeeklyReportsPage() {
             style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
           />}>
 
-            Submit This Week's Update
+            Submit This Week&apos;s Update
           </Button>
         </div>
       </div>
@@ -606,9 +606,7 @@ export default function WeeklyReportsPage() {
                 leftIcon={<span
                   className="icon-mask"
                   style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/x.svg)', maskImage: 'url(/icons/x.svg)' }}
-                />}
-                children={false}>
-              </Button>
+                />}>{false}</Button>
             </div>
             <form onSubmit={submit}>
               <div className="form-group">
@@ -688,7 +686,7 @@ export default function WeeklyReportsPage() {
                     className="icon-mask empty-state-icon"
                     style={{ WebkitMaskImage: 'url(/icons/alert-triangle.svg)', maskImage: 'url(/icons/alert-triangle.svg)' }}
                   />
-                  <p>Couldn't load the preview.</p>
+                  <p>Couldn&apos;t load the preview.</p>
                 </div>
               ) : previewUrl ? (
                 <iframe
@@ -703,7 +701,7 @@ export default function WeeklyReportsPage() {
                   className="icon-mask empty-state-icon"
                   style={{ WebkitMaskImage: 'url(/icons/file-text.svg)', maskImage: 'url(/icons/file-text.svg)' }}
                 />
-                <p style={{ marginBottom: 16 }}>Inline preview isn't available for PowerPoint files.</p>
+                <p style={{ marginBottom: 16 }}>Inline preview isn&apos;t available for PowerPoint files.</p>
                 <button className="btn btn-primary" onClick={() => download(previewReport.id)}>
                   <span
                     className="icon-mask"

@@ -31,14 +31,10 @@ export async function GET() {
       planeFetch(`/users/me`, apiKey),
       planeFetch(`/workspaces/${workspaceSlug}/members/`, apiKey),
     ]);
-    // const meData = await me.json();
-    // const membersData = await members.json();
-    const {role} = members.find((m:any)=> m.id = me.id)
+    const memberList = members.results ?? members;
+    const role = memberList.find((m: any) => (m.id ?? m.member_id) === me.id)?.role;
 
-    const updatedMe = {...me, role}
-    
-
-    return NextResponse.json({me: updatedMe})
+    return NextResponse.json({ me: { ...me, role } });
   } catch (err) {
     return NextResponse.json(
       { error: (err as Error).message },

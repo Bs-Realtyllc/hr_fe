@@ -45,7 +45,7 @@ export default function LoginPage() {
   async function finishLogin(token: string, user: AuthUser) {
     login(token, user);
     const twoFactorEnabled = await isTwoFactorEnabled(token);
-    router.replace(twoFactorEnabled ? '/welcome' : '/setup-twoFactorAuth');
+    router.replace(twoFactorEnabled ? '/welcome' : '/two-factor/setup');
   }
 
   // Validation
@@ -103,7 +103,7 @@ export default function LoginPage() {
           data.requiresOtp || data.requires2FA || data.requiresTwoFactor || data.twoFactorRequired;
         if (needsTwoFactor && data.tempToken) {
           saveTwoFactorChallenge({ tempToken: data.tempToken, email });
-          router.push('/twoFactorAuth');
+          router.push('/two-factor');
           return;
         }
         // if (await isTwoFactorEnabled(data.token)) {

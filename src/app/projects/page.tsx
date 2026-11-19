@@ -646,11 +646,7 @@ export default function ProjectsPage() {
                     width: 16,
                     WebkitMaskImage: 'url(/icons/x.svg)', maskImage: 'url(/icons/x.svg)'
                   }}
-                />}
-                children={false}
-              >
-
-              </Button>
+                />}>{false}</Button>
             </div>
             <form onSubmit={submitAssign}>
               <div className="form-group">
@@ -710,11 +706,7 @@ export default function ProjectsPage() {
                     width: 16,
                     WebkitMaskImage: 'url(/icons/x.svg)', maskImage: 'url(/icons/x.svg)'
                   }}
-                />}
-                children={false}
-              >
-
-              </Button>
+                />}>{false}</Button>
             </div>
             <form onSubmit={submitMilestone}>
               <div className="form-group">

@@ -3,7 +3,7 @@ import { Plus_Jakarta_Sans, IBM_Plex_Sans } from 'next/font/google';
 import '../styles/global.css';
 import '@bsrealtyllc/design-system/style.css';
 import AppShell from '@/components/AppShell';
-import StoreProvider from '@/store/storeProvider';
+import StoreProvider from '@/store/StoreProvider';
 import { ToastContainer } from 'react-toastify';
 
 const plusJakartaSans = Plus_Jakarta_Sans({

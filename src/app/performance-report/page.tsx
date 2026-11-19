@@ -194,7 +194,7 @@ const Projects = () => {
                 {project.is_member && (
                   <span className="flex items-center gap-1 text-[11px] text-green-600 mt-2">
                     <ShieldCheck size={12} />
-                    You're a member
+                    You&apos;re a member
                   </span>
                 )}
               </div>

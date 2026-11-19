@@ -1,4 +1,4 @@
-import ProjectpageClient from './ProjectpageClient';
+import ProjectPageClient from './ProjectPageClient';
 
 export async function generateStaticParams() {
   const planeBaseUrl = process.env.PLANE_BASE_URL;
@@ -21,5 +21,5 @@ export async function generateStaticParams() {
 }
 
 export default function Page() {
-  return <ProjectpageClient />;
+  return <ProjectPageClient />;
 }
