@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { BACKEND_URL } from '@/config/env';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
@@ -23,7 +24,6 @@ import EmployeeBank from '@/components/profile/employee/EmployeeBank';
 import EmployeeDocuments from '@/components/profile/employee/EmployeeDocuments';
 import ErrorPage from '@/components/ErrorPage';
 
-const BACKEND = process.env.NEXT_PUBLIC_API_URL!.replace('/api', '');
 
 interface Profile {
   id: number;
@@ -108,7 +108,7 @@ const PERSONAL_FIELDS = ['name', 'email', 'phone'] as const;
 
 function avatarUrl(filename: string | null) {
   if (!filename) return null;
-  return `${BACKEND}/uploads/profile/photo/${filename}`;
+  return `${BACKEND_URL}/uploads/profile/photo/${filename}`;
 }
 
 // Adds a version query so the browser shows the new photo even if the
@@ -120,7 +120,7 @@ function freshAvatarUrl(filename: string | null) {
 
 function docUrl(filename: string | null) {
   if (!filename) return null;
-  return `${BACKEND}/uploads/docs/${filename}`;
+  return `${BACKEND_URL}/uploads/docs/${filename}`;
 }
 
 // The backend may answer in camelCase or snake_case; accept both.
@@ -146,7 +146,7 @@ function extractBackupCodes(data: any): string[] {
 // DELETE with a JSON body (the shared api helper may not send a body on DELETE).
 async function apiDelete(path: string, body?: unknown) {
   const token = getToken();
-  const res = await fetch(`${BACKEND}/api${path}`, {
+  const res = await fetch(`${BACKEND_URL}/api${path}`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json',
@@ -665,7 +665,7 @@ export default function ProfilePage() {
   // first by trying to log in with the user's email + old password.
   // Returns true if the password is correct, false if it's wrong.
   async function verifyOldPassword(password: string): Promise<boolean> {
-    const res = await fetch(`${BACKEND}/api/auth/login`, {
+    const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -741,7 +741,7 @@ export default function ProfilePage() {
     fd.append(isPhoto ? 'photo' : 'doc', file);
     setUploading(u => ({ ...u, [field]: true }));
     try {
-      const res = await fetch(`${BACKEND}/api${endpoint}`, {
+      const res = await fetch(`${BACKEND_URL}/api${endpoint}`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: fd,

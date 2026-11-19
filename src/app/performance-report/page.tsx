@@ -53,7 +53,6 @@ const Projects = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<UserType>();
-  // const planeBaseURL = process.env.PLANE_BASE_URL;
 
   const fetchProjects = async () => {
     try {

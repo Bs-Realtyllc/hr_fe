@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { LEARNING_URL } from '@/config/env';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 //redux
@@ -18,7 +19,6 @@ interface NavItem {
   external?: boolean;
 }
 
-const LEARNING_URL = process.env.NEXT_PUBLIC_LEARNING_URL ?? '';
 
 const allNav: { section: string; items: NavItem[] }[] = [
   {

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState, useMemo } from 'react';
+import { API_URL } from '@/config/env';
 import { createPortal } from 'react-dom';
 import DatePicker from 'react-datepicker';
 import { flip, shift } from '@floating-ui/dom';
@@ -10,7 +11,6 @@ import { getToken } from '@/lib/auth';
 import Button from '@/components/Button/Button';
 import { showToast } from '@/lib/toast';
 
-const BASE = process.env.NEXT_PUBLIC_API_URL;
 
 interface Report {
   id: number;
@@ -73,7 +73,7 @@ function fmtDate(iso: string) {
 
 function download(id: number) {
   const token = getToken();
-  fetch(`${BASE}/reports/${id}/download`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  fetch(`${API_URL}/reports/${id}/download`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
     .then(r => r.blob())
     .then(blob => {
       const a = document.createElement('a');
@@ -535,7 +535,7 @@ export default function ReportsPage() {
       params.set('toMonth', String(range.to.getMonth() + 1));
     }
     const token = getToken();
-    fetch(`${BASE}/reports?${params}`, {
+    fetch(`${API_URL}/reports?${params}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then(r => {
@@ -571,7 +571,7 @@ export default function ReportsPage() {
 
     try {
       const token = getToken();
-      const res = await fetch(`${BASE}/reports`, {
+      const res = await fetch(`${API_URL}/reports`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: fd,

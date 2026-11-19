@@ -10,6 +10,7 @@ import {
     type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
+import { API_URL } from '@/config/env';
 import {
     DEFAULT_LAYOUT,
     isStepVisible,
@@ -207,7 +208,7 @@ export function OnboardingProvider({
         (async () => {
             try {
                 const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL}/form-layout?type=${role}`,
+                    `${API_URL}/form-layout?type=${role}`,
                 );
                 if (!res.ok) throw new Error(`form-layout ${res.status}`);
                 const resolved = resolveLayout(await res.json(), role);

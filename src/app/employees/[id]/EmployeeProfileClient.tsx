@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { BACKEND_URL } from '@/config/env';
 
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
@@ -43,7 +44,6 @@ interface Acknowledgement {
   submitted_at: string;
 }
 
-const BACKEND = process.env.NEXT_PUBLIC_API_URL!.replace('/api', '');
 
 function initials(name: string) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -205,7 +205,7 @@ export default function EmployeeProfileClient() {
                     style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
                     onClick={() => setPreviewFor({
                       title: `${employee.name} — ${ack.policy_title}`,
-                      url: `${BACKEND}/uploads/policy-acks/${ack.signed_file_path}`,
+                      url: `${BACKEND_URL}/uploads/policy-acks/${ack.signed_file_path}`,
                     })}
                     title="Preview signed copy"
                   >
@@ -218,7 +218,7 @@ export default function EmployeeProfileClient() {
 
                   <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
                     <a
-                      href={`${BACKEND}/uploads/policy-acks/${ack.signed_file_path}`}
+                      href={`${BACKEND_URL}/uploads/policy-acks/${ack.signed_file_path}`}
                       target="_blank"
                       rel="noreferrer"
                       className="btn btn-ghost btn-sm"

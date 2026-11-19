@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const planeBaseUrl = process.env.PLANE_BASE_URL;
-const workspaceSlug = process.env.PLANE_WORKSPACE_SLUG;
-// const projectId = process.env.PLANE_PROJECT_ID;
+import {
+  PLANE_BASE_URL as planeBaseUrl,
+  PLANE_WORKSPACE_SLUG as workspaceSlug,
+  getPlaneApiKey,
+} from "@/config/plane";
 
 async function planeFetch(path: string, apiKey: string) {
   const res = await fetch(`${planeBaseUrl}${path}`, {
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
   const projectId = searchParams.get("projectId");
   // console.log('planeID', projectId)
 
-  const apiKey = process.env.PLANE_API_KEY;
+  const apiKey = getPlaneApiKey();
 
   if (!apiKey) {
     return NextResponse.json(
@@ -152,7 +153,7 @@ export async function POST(request: Request) {
   const { searchParams } = new URL(request.url);
   const projectId = searchParams.get("projectId");
 
-  const apiKey = process.env.PLANE_API_KEY;
+  const apiKey = getPlaneApiKey();
 
   if (!apiKey) {
     return NextResponse.json(

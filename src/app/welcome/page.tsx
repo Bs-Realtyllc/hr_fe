@@ -1,6 +1,7 @@
 'use client'
 
 import Button from "@/components/Button/Button"
+import { BACKEND_URL } from '@/config/env';
 import { api } from '@/lib/api';
 import { getToken } from "@/lib/auth"
 import { BSRealtyAvatar } from "@bsrealtyllc/design-system"
@@ -123,9 +124,6 @@ interface Profile {
     profile_picture?: string | null;
 }
 
-const BACKEND = (
-    process.env.NEXT_PUBLIC_API_URL || 'http://localhost:6002/api'
-).replace(/\/api\/?$/, '');
 
 
 export default function WelcomePage() {
@@ -173,7 +171,7 @@ export default function WelcomePage() {
     const email = user.email.trim();
     const role = user.role ? user.role.replace(/_/g, ' ') : '';
     const profileImage = profile?.profile_picture
-        ? `${BACKEND}/uploads/profile/photo/${profile.profile_picture}` : undefined;
+        ? `${BACKEND_URL}/uploads/profile/photo/${profile.profile_picture}` : undefined;
 
     return (
         <div className="relative min-h-screen w-full overflow-hidden">

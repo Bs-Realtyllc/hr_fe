@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-
-const planeBaseUrl = process.env.PLANE_BASE_URL;
-const workspaceSlug = process.env.PLANE_WORKSPACE_SLUG;
+import {
+  PLANE_BASE_URL as planeBaseUrl,
+  PLANE_WORKSPACE_SLUG as workspaceSlug,
+  getPlaneApiKey,
+} from "@/config/plane";
 
 async function planeFetch(path: string, apiKey: string) {
   const res = await fetch(`${planeBaseUrl}${path}`, {
@@ -16,7 +18,7 @@ async function planeFetch(path: string, apiKey: string) {
 }
 
 export async function GET() {
-  const apiKey = process.env.PLANE_API_KEY;
+  const apiKey = getPlaneApiKey();
 
   if (!apiKey) {
     return NextResponse.json(

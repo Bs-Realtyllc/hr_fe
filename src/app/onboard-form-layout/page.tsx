@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { API_URL } from '@/config/env';
 import { api } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import Button from "@/components/Button/Button";
@@ -306,7 +307,7 @@ const Page = () => {
       const body = new FormData();
       body.append("file", templateFile, templateFile.name);
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/form-layout/template?type=${layoutType}`,
+        `${API_URL}/form-layout/template?type=${layoutType}`,
         {
           method: "POST",
           headers: { Authorization: `Bearer ${getToken()}` },
@@ -330,7 +331,7 @@ const Page = () => {
     setTemplateBusy(true);
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/form-layout/template?type=${layoutType}`,
+        `${API_URL}/form-layout/template?type=${layoutType}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${getToken()}` },

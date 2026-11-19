@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { API_URL, BACKEND_URL } from '@/config/env';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
@@ -70,7 +71,6 @@ function dateDivLabel(d: Date) {
 }
 function grouped(a: ChatMessage, b: ChatMessage) { return a.userId === b.userId && b.timestamp.getTime() - a.timestamp.getTime() < 5 * 60 * 1000; }
 
-const BACKEND_BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api').replace(/\/api$/, '');
 
 /* The audio URL's signed token expires after an hour. If playback is attempted after that
    (e.g. a tab left open), fetch a fresh token for the same object key and retry once before
@@ -85,7 +85,7 @@ function AudioMessage({ src: initialSrc, duration }: { src: string; duration: nu
     retriedRef.current = true;
     try {
       const key = new URL(src).pathname.split('/').pop();
-      const res = await fetch(`${BACKEND_BASE}/api/inbox/audio/${key}/refresh-url`, {
+      const res = await fetch(`${BACKEND_URL}/api/inbox/audio/${key}/refresh-url`, {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (!res.ok) throw new Error('refresh failed');
@@ -120,7 +120,7 @@ function renderContent(content: string, me: string) {
     if (rawSrc.startsWith('http')) {
       audioSrc = rawSrc; // backend audio proxy URL, carrying its own short-lived token, hydrated at read time
     } else if (rawSrc.startsWith('/uploads/')) {
-      audioSrc = `${BACKEND_BASE}${rawSrc}`; // legacy local disk
+      audioSrc = `${BACKEND_URL}${rawSrc}`; // legacy local disk
     } else {
       audioSrc = rawSrc; // object key — should be hydrated server-side before reaching here
     }
@@ -296,7 +296,7 @@ export default function InboxClient() {
   useEffect(() => {
     const token = getToken();
     if (!token) return;
-    const wsUrl = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api').replace(/\/api$/, '');
+    const wsUrl = BACKEND_URL;
     const socket = io(wsUrl, { path: '/ws/inbox', auth: { token }, transports: ['websocket'] });
     socketRef.current = socket;
 
@@ -461,7 +461,7 @@ export default function InboxClient() {
       const form = new FormData();
       form.append('audio', blob, `voice-${Date.now()}.webm`);
       const token = getToken();
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, '') ?? 'http://localhost:6002'}/api/inbox/dms/audio`, {
+      const res = await fetch(`${API_URL}/inbox/dms/audio`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: form,

@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { API_URL } from '@/config/env';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import type { AuthUser } from '@/lib/auth';
@@ -12,7 +13,7 @@ import { saveTwoFactorChallenge } from '@/lib/twoFactor';
 async function isTwoFactorEnabled(token: string | undefined): Promise<boolean> {
   if (!token) return false;
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/2fa/status`, {
+    const res = await fetch(`${API_URL}/auth/2fa/status`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return false;
@@ -69,7 +70,7 @@ export default function LoginPage() {
 
     try {
       if (requiresOtp) {
-        const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/verify-otp`;
+        const url = `${API_URL}/auth/verify-otp`;
         console.log('[AUTH] POST', url, { code: otp });
         const res = await fetch(url, {
           method: 'POST',
@@ -84,7 +85,7 @@ export default function LoginPage() {
         }
         await finishLogin(data.token as string, data.user as AuthUser);
       } else {
-        const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/login`;
+        const url = `${API_URL}/auth/login`;
         console.log('[AUTH] POST', url, { email });
         const res = await fetch(url, {
           method: 'POST',

@@ -1,12 +1,12 @@
 'use client';
 import { useEffect, useRef, useState, useMemo } from 'react';
+import { API_URL } from '@/config/env';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 import Button from '@/components/Button/Button';
 import { showToast } from '@/lib/toast';
 
-const BASE = process.env.NEXT_PUBLIC_API_URL;
 
 interface Report {
   id: number;
@@ -85,7 +85,7 @@ function weekLabel(weekStartIso: string) {
 
 function download(id: number) {
   const token = getToken();
-  fetch(`${BASE}/weekly-reports/${id}/download`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+  fetch(`${API_URL}/weekly-reports/${id}/download`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
     .then(r => r.blob())
     .then(blob => {
       const a = document.createElement('a');
@@ -477,7 +477,7 @@ export default function WeeklyReportsPage() {
   const load = () => {
     setLoading(true);
     const token = getToken();
-    fetch(`${BASE}/weekly-reports`, {
+    fetch(`${API_URL}/weekly-reports`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then(r => {
@@ -511,7 +511,7 @@ export default function WeeklyReportsPage() {
 
     try {
       const token = getToken();
-      const res = await fetch(`${BASE}/weekly-reports`, {
+      const res = await fetch(`${API_URL}/weekly-reports`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: fd,
@@ -546,7 +546,7 @@ export default function WeeklyReportsPage() {
 
     setPreviewLoading(true);
     const token = getToken();
-    fetch(`${BASE}/weekly-reports/${report.id}/download`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    fetch(`${API_URL}/weekly-reports/${report.id}/download`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
       .then(r => {
         if (!r.ok) throw new Error();
         return r.blob();

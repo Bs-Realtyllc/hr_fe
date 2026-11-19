@@ -1,6 +1,7 @@
 'use client'
 
 import { useId, useState, type FormEvent } from 'react'
+import { API_URL } from '@/config/env';
 import { useRouter } from 'next/navigation'
 import Button from '@/components/Button/Button'
 import FileUpload from '@/components/FileUpload/FileUpload'
@@ -90,7 +91,7 @@ const Page = () => {
         try {
             setIsSubmitting(true)
             // multipart/form-data: let the browser set the Content-Type boundary.
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/onboard`, {
+            const res = await fetch(`${API_URL}/onboard`, {
                 method: 'POST',
                 body: buildOnboardFormData(data, role, layout),
             })

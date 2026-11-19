@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
+import { API_URL } from '@/config/env';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Button from '@/components/Button/Button';
 import InputField from '@/components/InputField/InputField';
@@ -53,7 +54,7 @@ function ResetPasswordForm() {
     }
     setError(''); setLoading(true);
     try {
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/reset-password`;
+      const url = `${API_URL}/auth/reset-password`;
       console.log('[AUTH] POST', url);
       const res = await fetch(url, {
         method: 'POST',

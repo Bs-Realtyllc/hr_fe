@@ -1,12 +1,12 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { BACKEND_URL } from '@/config/env';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import PdfThumbnail from './PdfThumbnail';
 import Button from './Button/Button';
 
-const BACKEND = process.env.NEXT_PUBLIC_API_URL!.replace('/api', '');
 interface Policy {
   id: number;
   type: string;
@@ -223,7 +223,7 @@ export default function PolicyDocuments({
         fd.append('folder_path', folderPath);
 
         try {
-          const res = await fetch(`${BACKEND}/api/policies`, {
+          const res = await fetch(`${BACKEND_URL}/api/policies`, {
             method: 'POST',
             headers: {
               Authorization: `Bearer ${token}`,
@@ -271,7 +271,7 @@ export default function PolicyDocuments({
     }
 
     const response = await fetch(
-      `${BACKEND}/uploads/${folder}/${encodeURIComponent(filePath)}`,
+      `${BACKEND_URL}/uploads/${folder}/${encodeURIComponent(filePath)}`,
       {
         method: 'GET',
         headers: {
@@ -386,7 +386,7 @@ export default function PolicyDocuments({
 
   //     title: `${sub.employee_name} — ${policyTitle}`,
 
-  //     url: `${BACKEND}/uploads/policy-acks/${sub.signed_file_path}`,
+  //     url: `${BACKEND_URL}/uploads/policy-acks/${sub.signed_file_path}`,
 
   //   });
 
@@ -443,7 +443,7 @@ export default function PolicyDocuments({
       const token = getToken();
       const fd = new FormData();
       fd.append('file', picked);
-      const res = await fetch(`${BACKEND}/api/policies/${policy.id}/acknowledgements`, {
+      const res = await fetch(`${BACKEND_URL}/api/policies/${policy.id}/acknowledgements`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: fd,
@@ -1438,7 +1438,7 @@ export default function PolicyDocuments({
                         <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
 
                           <a
-                            href={`${BACKEND}/uploads/policy-acks/${sub.signed_file_path}`}
+                            href={`${BACKEND_URL}/uploads/policy-acks/${sub.signed_file_path}`}
                             target="_blank"
                             rel="noreferrer"
                             className="btn btn-ghost btn-sm"

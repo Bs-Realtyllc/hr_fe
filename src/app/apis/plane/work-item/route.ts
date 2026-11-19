@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-
-const planeBaseUrl = process.env.PLANE_BASE_URL;
-const workspaceSlug = process.env.PLANE_WORKSPACE_SLUG;
+import {
+  PLANE_BASE_URL as planeBaseUrl,
+  PLANE_WORKSPACE_SLUG as workspaceSlug,
+  getPlaneApiKey,
+} from "@/config/plane";
 
 // PATCH /apis/plane/work-item?id=<workItemId>&projectId=<projectId>
 // Updates a single work item's fields (state, priority, assignees, labels,
@@ -12,7 +14,7 @@ export async function PATCH(request: Request) {
   const id = searchParams.get("id");
   const projectId = searchParams.get("projectId");
 
-  const apiKey = process.env.PLANE_API_KEY;
+  const apiKey = getPlaneApiKey();
   if (!apiKey) {
     return NextResponse.json(
       { error: "Missing PLANE_API_KEY on server" },

@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { BACKEND_URL } from '@/config/env';
 import Button from '@/components/Button/Button';
 import FileUpload from '@/components/FileUpload/FileUpload';
 import { profileService } from '@/lib/profileService';
 import { getToken } from '@/lib/auth';
 
-const BACKEND = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/api\/?$/, '');
 
 /* ---------- Document Configuration ---------- */
 
@@ -118,7 +118,7 @@ async function loadIdPreview(filename: string): Promise<File | null> {
     try {
         const token = getToken();
         const response = await fetch(
-            `${BACKEND}/uploads/profile/id/${encodeURIComponent(filename)}`,
+            `${BACKEND_URL}/uploads/profile/id/${encodeURIComponent(filename)}`,
             { headers: token ? { Authorization: `Bearer ${token}` } : {} },
         );
         if (!response.ok) return null;

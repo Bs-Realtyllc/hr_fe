@@ -1,5 +1,6 @@
 'use client'
 import Button from '@/components/Button/Button'
+import { API_URL } from '@/config/env';
 import InputField from '@/components/InputField/InputField'
 import OtpInput from '@/components/OtpInput'
 import { useEffect, useState } from 'react'
@@ -10,7 +11,6 @@ import { clearTwoFactorChallenge, readTwoFactorChallenge, type TwoFactorChalleng
 
 // Where to send people with no pending 2FA login (direct visit, expired token).
 const LOGIN_ROUTE = '/login'
-const API = process.env.NEXT_PUBLIC_API_URL
 
 // app    -> code from the authenticator app (POST /auth/2fa/verify)
 // backup -> one-time backup code            (POST /auth/2fa/backup/verify)
@@ -44,7 +44,7 @@ const VERIFY_PATH: Record<Mode, string> = {
 async function postJson(path: string, body: unknown, fallbackError = 'Verification failed') {
     let res: Response
     try {
-        res = await fetch(`${API}${path}`, {
+        res = await fetch(`${API_URL}${path}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',

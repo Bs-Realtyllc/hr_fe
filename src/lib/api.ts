@@ -1,6 +1,6 @@
 import { clearAuth, getToken } from "@/lib/auth";
+import { API_URL } from '@/config/env';
 
-const BASE = process.env.NEXT_PUBLIC_API_URL;
 
 async function req<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getToken();
@@ -12,7 +12,7 @@ async function req<T>(path: string, options?: RequestInit): Promise<T> {
   }
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${API_URL}${path}`, {
     headers,
     ...options,
   });

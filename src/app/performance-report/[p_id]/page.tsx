@@ -1,9 +1,10 @@
 import ProjectPageClient from './ProjectPageClient';
+import { PLANE_BASE_URL, PLANE_WORKSPACE_SLUG, getPlaneApiKey } from '@/config/plane';
 
 export async function generateStaticParams() {
-  const planeBaseUrl = process.env.PLANE_BASE_URL;
-  const workspaceSlug = process.env.PLANE_WORKSPACE_SLUG;
-  const apiKey = process.env.PLANE_API_KEY;
+  const planeBaseUrl = PLANE_BASE_URL;
+  const workspaceSlug = PLANE_WORKSPACE_SLUG;
+  const apiKey = getPlaneApiKey();
 
   if (!planeBaseUrl || !workspaceSlug || !apiKey) return [{ p_id: '0' }];
 

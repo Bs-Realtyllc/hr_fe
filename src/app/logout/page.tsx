@@ -1,6 +1,7 @@
 'use client'
 
 import { BSRealtyAvatar } from '@bsrealtyllc/design-system'
+import { BACKEND_URL } from '@/config/env';
 import React, { useEffect, useState } from 'react'
 import { getToken } from "@/lib/auth"
 import { api } from '@/lib/api'
@@ -41,7 +42,6 @@ interface Profile {
     profile_picture?: string | null;
 }
 
-const BACKEND = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/api\/?$/, '');
 
 const LogoutPage = () => {
     const { logout } = useAuth();
@@ -66,7 +66,7 @@ const LogoutPage = () => {
     }, []);
 
     const profileImage = profile?.profile_picture
-        ? `${BACKEND}/uploads/profile/photo/${profile.profile_picture}`
+        ? `${BACKEND_URL}/uploads/profile/photo/${profile.profile_picture}`
         : undefined;
 
 

@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { API_URL } from '@/config/env';
 import Link from 'next/link';
 import Button from '@/components/Button/Button';
 import InputField from '@/components/InputField/InputField';
@@ -18,7 +19,7 @@ export default function ForgotPasswordPage() {
     setError('');
     setLoading(true);
     try {
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/forgot-password`;
+      const url = `${API_URL}/auth/forgot-password`;
       console.log('[AUTH] POST', url, { email });
       const res = await fetch(url, {
         method: 'POST',
