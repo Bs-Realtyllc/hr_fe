@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { employeesApi } from '@/lib/queries/employees';
 import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeSummary as Employee } from '@/types';
 import { api } from '@/lib/api';
@@ -176,7 +177,7 @@ export default function CulturePage() {
 
   useEffect(() => {
     load();
-    api.get<Employee[]>('/employees').then(setEmployees).catch(() => { });
+    employeesApi.list<Employee>().then(setEmployees).catch(() => { });
   }, []);
 
   const submit = async (e: React.FormEvent) => {

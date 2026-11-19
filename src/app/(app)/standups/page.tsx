@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { employeesApi } from '@/lib/queries/employees';
 import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeName as Employee } from '@/types';
 import { api } from "@/lib/api";
@@ -55,8 +56,8 @@ export default function StandupsPage() {
 
   useEffect(() => {
     if (isPrivileged) {
-      api
-        .get<Employee[]>("/employees/names")
+      employeesApi
+        .names<Employee>()
         .then(setEmployees)
         .catch(() => {showToast('error', 'Failed to load employee data')});
     }

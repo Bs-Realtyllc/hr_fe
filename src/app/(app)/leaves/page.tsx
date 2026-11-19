@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { employeesApi } from '@/lib/queries/employees';
 import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeName } from '@/types';
 import { api } from '@/lib/api';
@@ -108,7 +109,7 @@ export default function LeavesPage() {
   const [form, setForm] = useState<LeaveForm>(BLANK_FORM);
 
   useEffect(() => {
-    api.get<EmployeeData[]>('/employees/names')
+    employeesApi.names<EmployeeData>()
       .then(setEmployeeNames)
       .catch(() => { showToast('error', 'Failed to load employee names'); });
   }, []);

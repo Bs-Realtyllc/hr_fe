@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { employeesApi } from '@/lib/queries/employees';
 import { getQueryClient } from "@/providers/getQueryClient";
 import type { Profile, ProfileUpdate } from "@/types";
 import { profileKeys } from "./keys";
@@ -30,6 +31,7 @@ export const profileService = {
   updateProfile: async (data: ProfileUpdate) => {
     const result = await api.put<Profile>("/profile", data);
     await profileService.invalidateProfile();
+    await employeesApi.invalidate(); // name/designation/department show in rosters
     return result;
   },
 

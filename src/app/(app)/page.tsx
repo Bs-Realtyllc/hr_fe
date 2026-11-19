@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { employeesApi } from '@/lib/queries/employees';
 import {
   ResponsiveContainer, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -306,7 +307,7 @@ export default function DashboardPage() {
       .then(setStandups)
       .catch((err) => showToast('error', 'Could not load standups'));
 
-    api.get<RecentEmployee[]>('/employees')
+    employeesApi.list<RecentEmployee>()
       .then(list => setRecentEmployees(
         [...list]
           .filter(e => e.status !== 'terminated')

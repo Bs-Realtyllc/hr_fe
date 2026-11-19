@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { employeesApi } from '@/lib/queries/employees';
 import { BSRealtyAvatar } from "@bsrealtyllc/design-system";
 import { buildFillDetailsMailto } from "@/template/fillDetailsMailTemplate";
 import { api } from "@/lib/api";
@@ -191,6 +192,7 @@ const Page = () => {
     setActionState((prev) => ({ ...prev, [id]: "loading" }));
     try {
       await api.patch(`/onboard/${id}/${decision}`, {});
+      await employeesApi.invalidate(); // approval/rejection changes the roster
       showToast(
         "success",
         decision === "approve"

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { employeesApi } from '@/lib/queries/employees';
 import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeSummary as Employee } from '@/types';
 import { api } from '@/lib/api';
@@ -104,7 +105,7 @@ export default function GoalsPage() {
   });
 
   useEffect(() => {
-    if (isPrivileged) api.get<Employee[]>('/employees').then(setEmployees).catch(() => { showToast('error', "Failed to load employee data") });
+    if (isPrivileged) employeesApi.list<Employee>().then(setEmployees).catch(() => { showToast('error', "Failed to load employee data") });
   }, [isPrivileged]);
 
   const load = () => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { employeesApi } from '@/lib/queries/employees';
 import { BACKEND_URL } from '@/config/env';
 import type { Role } from '@/types';
 import { io, Socket } from 'socket.io-client';
@@ -257,7 +258,7 @@ export default function InboxClient() {
 
   /* ─ Fetch employees ─ */
   useEffect(() => {
-    api.get<any[]>('/employees').then(d => {
+    employeesApi.list<any>().then(d => {
       setAllEmployees(d);
       setMembers(d.map((e: any) => ({ id: String(e.id), name: e.name, designation: e.designation ?? '', status: 'offline' as UserStatus })));
     }).catch(() => {});

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { employeesApi } from '@/lib/queries/employees';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { isAdmin as isAdminUser } from '@/lib/permissions';
@@ -45,6 +46,7 @@ export function useTeamAccess(profile: Profile | null, flash: Flash) {
     setSavingRole(true);
     try {
       await api.put(`/employees/${roleChangeTarget.id}`, { role: newRoleValue });
+      await employeesApi.invalidate(); // role shows in every roster
       setTeamAccessMembers((prev) =>
         prev.map((m) => (m.id === roleChangeTarget.id ? { ...m, role: newRoleValue } : m)),
       );

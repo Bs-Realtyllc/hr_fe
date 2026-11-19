@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { employeesApi } from '@/lib/queries/employees';
 import { api, errorMessage } from '@/lib/api';
 import type { Profile } from '@/types';
 import { profileService } from '../api/profileService';
@@ -94,6 +95,7 @@ export function useMyProfile(flash: Flash, clearFlash: () => void) {
     clearFlash();
     try {
       await api.put('/profile', payload);
+      await employeesApi.invalidate(); // name/email/phone show in rosters
       await load({ fresh: true }); // refresh the header card and form from the saved data
       flash('Profile updated successfully.');
     } catch (err) {

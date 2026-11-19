@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { employeesApi } from '@/lib/queries/employees';
 import type { EmployeeName as Employee } from '@/types';
 import { api } from "@/lib/api";
 import { formatTimeNepal } from "@/lib/datetime";
@@ -72,7 +73,7 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(false);
 
   const fetchEmployee = async () => {
-    api.get(`/employees/names`).then((res: any) => setEmployees(res));
+    employeesApi.names().then((res: any) => setEmployees(res));
   };
   useEffect(() => {
     fetchEmployee();

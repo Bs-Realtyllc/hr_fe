@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { employeesApi } from '@/lib/queries/employees';
 import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeSummary as Employee } from '@/types';
 import { api } from '@/lib/api';
@@ -79,7 +80,7 @@ export default function FeedbackPage() {
   });
 
   useEffect(() => {
-    api.get<Employee[]>('/employees').then(setEmployees).catch(() => {showToast('error', 'Failed to load employees')});
+    employeesApi.list<Employee>().then(setEmployees).catch(() => {showToast('error', 'Failed to load employees')});
     if (isPrivileged) api.get<FeedbackSummaryRow[]>('/feedback/summary').then(setSummary).catch(() => {showToast('error', 'Failed to load feedbacks')});
   }, [isPrivileged]);
 

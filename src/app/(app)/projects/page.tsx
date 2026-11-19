@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { employeesApi } from '@/lib/queries/employees';
 import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeSummary as Employee } from '@/types';
 import { api } from '@/lib/api';
@@ -174,7 +175,7 @@ export default function ProjectsPage() {
       setProjects(list);
       if (list.length > 0) selectProject(list[0]);
     }).catch(() => { });
-    api.get<Employee[]>('/employees').then(setEmployees).catch(() => {showToast('error', "Failed to load employee data")});
+    employeesApi.list<Employee>().then(setEmployees).catch(() => {showToast('error', "Failed to load employee data")});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
