@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeSummary as Employee } from '@/types';
 import {
   ResponsiveContainer, LineChart, Line,
@@ -78,7 +79,7 @@ const EMPTY_CATEGORY_FORM = { technical: '3', communication: '3', teamwork: '3',
 
 export default function PerformancePage() {
   const { user } = useAuth();
-  const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
+  const { isPrivileged } = usePermissions();
 
   const [reviews, setReviews] = useState<Review[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);

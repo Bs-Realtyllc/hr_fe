@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import { api } from '@/lib/api';
-import { useAuth } from '@/contexts/AuthContext';
 import Button from '@/components/Button/Button';
 
 interface Project {
@@ -368,10 +368,9 @@ function ProjectCard({ project, isAdmin }: { project: Project; isAdmin: boolean 
 }
 
 export default function ProjectsTab() {
-  const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const isAdmin = user?.role === 'admin';
+  const { isAdmin } = usePermissions();
 
   useEffect(() => {
     api.get<Project[]>('/projects')

@@ -1,14 +1,13 @@
 'use client';
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from '@/hooks/usePermissions';
 import ActiveTab from "./_components/ActiveTab";
 import AttendanceTab from "./_components/AttendanceTab";
 
 type Tab = "active" | "attendence";
 
 export default function DefaultPage() {
-  const { user } = useAuth();
-  const canViewAll = user?.role === "admin" || user?.role === "lead";
+  const { isPrivileged: canViewAll } = usePermissions();
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "active", label: "Today" },

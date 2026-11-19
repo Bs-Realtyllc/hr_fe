@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState, useMemo } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import { createPortal } from 'react-dom';
 import DatePicker from 'react-datepicker';
 import { flip, shift } from '@floating-ui/dom';
@@ -233,7 +234,7 @@ function AdminView({
   now: Date;
 }) {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const { isAdmin } = usePermissions();
 
   const groups = useMemo<MonthGroup[]>(() => {
     const map = new Map<string, MonthGroup>();
@@ -500,7 +501,7 @@ export default function ReportsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const now = new Date();
 
-  const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
+  const { isPrivileged } = usePermissions();
 
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(false);

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { nepalTodayString, formatTimeNepal } from '@/lib/datetime';
@@ -123,8 +124,7 @@ const BLANK_EDIT_FORM = {
 
 export default function OvertimePage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
-  const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
+  const { isAdmin, isPrivileged } = usePermissions();
   const today = nepalTodayString();
 
   const [requests, setRequests] = useState<OvertimeRequest[]>([]);

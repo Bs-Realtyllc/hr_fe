@@ -1,10 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeSummary as Employee } from '@/types';
 import { api } from '@/lib/api';
 import Button from '@/components/Button/Button';
 import { showToast } from '@/lib/toast';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface CultureEvent {
   id: number;
@@ -169,8 +169,7 @@ export default function CulturePage() {
   const [showModal, setShowModal] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [form, setForm] = useState({ title: '', event_type: 'team_event', event_date: '', description: '', employee_id: '' });
-  const { user } = useAuth();
-  const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
+  const { isPrivileged } = usePermissions();
 
 
   const load = () => api.get<CultureEvent[]>('/events').then(setEvents).catch((err:any) => {showToast('error', 'Failed to load Events')});

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeSummary as Employee } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -144,7 +145,7 @@ function MultiUrlField({
 
 export default function ProjectsPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin' || user?.role === 'lead';
+  const { isPrivileged } = usePermissions();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [selected, setSelected] = useState<Project | null>(null);
@@ -297,7 +298,7 @@ export default function ProjectsPage() {
             <h1>Projects</h1>
             <p>Assignments, milestones, and project timelines</p>
           </div>
-          {isAdmin && (
+          {isPrivileged && (
 
             <Button variant='primary' size='small' onClick={() => setShowModal(true)}
               leftIcon={<span
@@ -414,7 +415,7 @@ export default function ProjectsPage() {
                   );
                 })()}
               </div>
-              {isAdmin && (
+              {isPrivileged && (
                 <button
                   className="btn btn-secondary btn-xs btn-danger"
                   style={{ flexShrink: 0 }}
@@ -430,7 +431,7 @@ export default function ProjectsPage() {
               <div className="card">
                 <div className="flex justify-between items-center mb-3">
                   <div className="card-title" style={{ marginBottom: 0 }}>Team</div>
-                  {isAdmin && (
+                  {isPrivileged && (
 
                     <Button
                       variant='primary'
@@ -454,7 +455,7 @@ export default function ProjectsPage() {
                         <div className="text-muted" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.designation}</div>
                       </div>
                       <span className="badge badge-accent" style={{ flexShrink: 0 }}>{a.role.replace(/_/g, ' ')}</span>
-                      {isAdmin && (
+                      {isPrivileged && (
                         <button onClick={() => removeAssignment(a.employee_id)} style={{
                           background: 'none', border: 'none', color: 'var(--color-error)',
                           cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0,
@@ -469,7 +470,7 @@ export default function ProjectsPage() {
               <div className="card">
                 <div className="flex justify-between items-center mb-3">
                   <div className="card-title" style={{ marginBottom: 0 }}>Milestones</div>
-                  {isAdmin && (
+                  {isPrivileged && (
 
                     <Button
                       variant='primary'
@@ -491,7 +492,7 @@ export default function ProjectsPage() {
                         <div className="font-semibold text-sm" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title}</div>
                         <div className="text-muted">{new Date(m.due_date).toLocaleDateString()}</div>
                       </div>
-                      {isAdmin ? (
+                      {isPrivileged ? (
                         <select
                           value={m.status}
                           onChange={e => updateMsStatus(m, e.target.value)}
@@ -520,11 +521,11 @@ export default function ProjectsPage() {
                   return (
                     <div
                       key={svc.key}
-                      onClick={() => isAdmin && toggleService(svc.key)}
+                      onClick={() => isPrivileged && toggleService(svc.key)}
                       title={svc.name}
                       style={{
                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                        cursor: isAdmin ? 'pointer' : 'default', width: 64,
+                        cursor: isPrivileged ? 'pointer' : 'default', width: 64,
                         opacity: active ? 1 : 0.35,
                         transition: 'opacity 0.15s',
                       }}
@@ -546,7 +547,7 @@ export default function ProjectsPage() {
                   );
                 })}
               </div>
-              {isAdmin && (
+              {isPrivileged && (
                 <p className="text-muted" style={{ fontSize: 11, marginTop: 12 }}>Click a service to toggle assignment</p>
               )}
             </div>

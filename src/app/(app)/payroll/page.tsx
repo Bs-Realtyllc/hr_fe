@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import { api } from '@/lib/api';
-import { useAuth } from '@/contexts/AuthContext';
 import PillTabs from '@/components/PillTabs';
 import { showToast } from '@/lib/toast';
 
@@ -62,9 +62,7 @@ const MONTH_LABELS = [
 ];
 
 export default function PayrollPage() {
-  const { user } = useAuth();
-  const isAdmin      = user?.role === 'admin';
-  const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
+  const { isAdmin, isPrivileged } = usePermissions();
 
   const [tab, setTab] = useState<'salaries' | 'taxes' | 'adjustments'>('salaries');
 

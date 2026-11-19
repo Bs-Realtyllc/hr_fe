@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { isAdmin as isAdminUser } from '@/lib/permissions';
 import { BACKEND_URL } from '@/config/env';
 import { useRouter } from 'next/navigation';
 import { api, ApiError, errorMessage } from '@/lib/api';
@@ -350,7 +351,7 @@ export default function ProfilePage() {
 
   // Team Access is admin-only server-side — only fetch once we know the role.
   useEffect(() => {
-    if (profile?.role === 'admin') loadTeamAccess();
+    if (isAdminUser(profile)) loadTeamAccess();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.role]);
 
@@ -761,7 +762,7 @@ export default function ProfilePage() {
     );
   }
 
-  const isAdmin = profile.role === 'admin';
+  const isAdmin = isAdminUser(profile);
   const isDirty = PERSONAL_FIELDS.some(
     (key) => form[key].trim() !== (profile[key] ?? '').trim()
   );

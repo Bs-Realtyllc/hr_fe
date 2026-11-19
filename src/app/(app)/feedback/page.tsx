@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeSummary as Employee } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -63,7 +64,7 @@ function fmtDate(d: string) {
 
 export default function FeedbackPage() {
   const { user } = useAuth();
-  const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
+  const { isPrivileged } = usePermissions();
 
   const [scope, setScope] = useState<'public' | 'received' | 'sent'>('public');
   const [notes, setNotes] = useState<FeedbackNote[]>([]);

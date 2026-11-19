@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,7 +28,7 @@ const PREV_MONTH_LABEL = new Date(now.getFullYear(), now.getMonth() - 1, 1).toLo
 export default function LeaveReportPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const isAdmin = user?.role === 'admin';
+  const { isAdmin } = usePermissions();
 
   const [rows, setRows] = useState<LeaveReportRow[]>([]);
   const [loading, setLoading] = useState(true);

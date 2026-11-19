@@ -1,5 +1,6 @@
 'use client';
 import { usePathname, useRouter } from 'next/navigation';
+import { tracksAttendance } from '@/lib/permissions';
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Sidebar from '@/components/Sidebar';
@@ -40,7 +41,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // Tracker page itself, which already shows the full live timer — pause/
   // resume/clock-out there don't broadcast to this compact widget the way
   // clock-in does, so showing both risks two clocks disagreeing.
-  const showClock = user.role !== 'admin' && !pathname.startsWith('/tracker');
+  const showClock = tracksAttendance(user) && !pathname.startsWith('/tracker');
 
   return (
     <div className="app-shell">

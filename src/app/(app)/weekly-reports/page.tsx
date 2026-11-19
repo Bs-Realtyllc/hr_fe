@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState, useMemo } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 import { api, errorMessage, saveBlob } from '@/lib/api';
 import Button from '@/components/Button/Button';
@@ -197,7 +198,7 @@ function AdminView({
   currentWeekKey: string;
 }) {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const { isAdmin } = usePermissions();
 
   const groups = useMemo<WeekGroup[]>(() => {
     const map = new Map<string, WeekGroup>();
@@ -448,7 +449,7 @@ export default function WeeklyReportsPage() {
   const currentWeekStart = mondayOf(now);
   const currentWeekKey = isoDate(currentWeekStart);
 
-  const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
+  const { isPrivileged } = usePermissions();
 
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(false);

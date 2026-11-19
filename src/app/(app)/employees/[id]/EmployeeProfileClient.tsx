@@ -1,11 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import type { Employee } from '@/types';
 import { BACKEND_URL } from '@/config/env';
 
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { useAuth } from '@/contexts/AuthContext';
 import { showToast } from '@/lib/toast';
 import Button from '@/components/Button/Button';
 
@@ -69,8 +69,7 @@ const ackBadge: Record<string, string> = {
 export default function EmployeeProfileClient() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const { isAdmin } = usePermissions();
 
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);

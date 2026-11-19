@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import { api } from '@/lib/api';
-import { useAuth } from '@/contexts/AuthContext';
 import { showToast } from '@/lib/toast';
 
 interface FinancialReportRow {
@@ -27,8 +27,7 @@ function initials(name: string) {
 }
 
 export default function FinancialReportPage() {
-  const { user } = useAuth();
-  const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
+  const { isPrivileged } = usePermissions();
 
   const now = new Date();
   const [year, setYear]   = useState(now.getFullYear());

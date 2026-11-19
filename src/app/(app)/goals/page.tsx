@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeSummary as Employee } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -78,7 +79,7 @@ function isOverdue(g: Goal) {
 
 export default function GoalsPage() {
   const { user } = useAuth();
-  const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
+  const { isPrivileged } = usePermissions();
 
   const [goals, setGoals] = useState<Goal[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeName as Employee } from '@/types';
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -42,7 +43,7 @@ function fmtDate(d: string) {
 
 export default function StandupsPage() {
   const { user } = useAuth();
-  const isPrivileged = ["admin", "lead"].includes(user?.role ?? "");
+  const { isPrivileged } = usePermissions();
 
   const [standups, setStandups] = useState<Standup[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);

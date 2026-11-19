@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeName } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -88,8 +89,7 @@ function toDateInput(iso: string) {
 
 export default function LeavesPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
-  const isPrivileged = user?.role === 'admin' || user?.role === 'lead';
+  const { isPrivileged, canApprove } = usePermissions();
 
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [filter, setFilter] = useState('all');
@@ -242,7 +242,7 @@ export default function LeavesPage() {
 
                 // Actions only allowed while leave dates are still in the future
                 const canApproveReject = l.status === 'pending' && !expired &&
-                  (isAdmin || (user?.role === 'lead' && !isOwn));
+                  canApprove(l.employee_id);
                 const canEditCancel = l.status === 'pending' && !expired && isOwn;
 
                 return (
@@ -314,7 +314,7 @@ export default function LeavesPage() {
             const expired = ds === 'expired';
 
             const canApproveReject = l.status === 'pending' && !expired &&
-              (isAdmin || (user?.role === 'lead' && !isOwn));
+              canApprove(l.employee_id);
             const canEditCancel = l.status === 'pending' && !expired && isOwn;
 
             return (

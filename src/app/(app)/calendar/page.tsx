@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import { api } from '@/lib/api';
-import { getUser } from '@/lib/auth';
 import Button from '@/components/Button/Button';
 import { showToast } from '@/lib/toast';
 
@@ -438,8 +438,7 @@ function DayEventsDrawer({ dateStr, dayEvents, onClose, onAddMeeting }: DayEvent
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function CalendarPage() {
   const today = new Date();
-  const user = getUser();
-  const isAdmin = user?.role === 'admin';
+  const { isAdmin } = usePermissions();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
   const [year, setYear] = useState(today.getFullYear());

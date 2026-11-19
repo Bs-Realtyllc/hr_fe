@@ -1,9 +1,9 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { usePermissions } from '@/hooks/usePermissions';
 import { BACKEND_URL } from '@/config/env';
 import { api } from '@/lib/api';
 import { getToken } from '@/lib/auth';
-import { useAuth } from '@/contexts/AuthContext';
 import PdfThumbnail from './PdfThumbnail';
 import Button from './Button/Button';
 
@@ -78,8 +78,7 @@ export default function PolicyDocuments({
   emptyMessage,
   requiresSignature = true,
 }: PolicyDocumentsProps) {
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const { isAdmin } = usePermissions();
   const [expandedFolder, setExpandedFolder] = useState<string | null>(null);
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<number, string>>({});

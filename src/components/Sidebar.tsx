@@ -9,13 +9,12 @@ import { BSRealtyAvatar } from '@bsrealtyllc/design-system';
 import { setSidebarOpen } from '@/store/slices/sidebarSlice'
 import { useEffect, useRef, useState } from 'react';
 
-import type { Role } from '@/types';
+import { canAccessRoute } from '@/lib/permissions';
 
 interface NavItem {
   href: string;
   label: string;
   icon: string;
-  roles: Role[];
   external?: boolean;
 }
 
@@ -24,78 +23,78 @@ const allNav: { section: string; items: NavItem[] }[] = [
   {
     section: 'Overview',
     items: [
-      { href: '/', label: 'Dashboard', icon: 'dashboard.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
+      { href: '/', label: 'Dashboard', icon: 'dashboard.svg' },
     ],
   },
   {
     section: 'People',
     items: [
-      { href: '/employees', label: 'Team Directory', icon: 'user-02.svg', roles: ['admin', 'lead', 'intern'] as Role[] },
-      { href: '/active', label: 'Active Employees', icon: 'shield.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
-      { href: '/tracker', label: 'Time Tracker', icon: 'clock.svg', roles: ['lead', 'employee', 'intern'] as Role[] },
-      { href: '/onboarding', label: 'Onboarding', icon: 'user-plus-02.svg', roles: ['admin', 'lead'] as Role[] },
-      { href: '/onboard-form-layout', label: 'Change Form Layout', icon: 'edit.svg', roles: ['admin', 'lead'] as Role[] },
-      { href: '/leaves', label: 'Leave Requests', icon: 'calendar.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
-      { href: '/overtime', label: 'Overtime Requests', icon: 'clock-01.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
-      { href: '/documents', label: 'Documents & Signature', icon: 'document.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
-      { href: '/resources', label: 'Resources', icon: 'book-open.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
-      { href: '/standups', label: 'Standups', icon: 'message-square-01.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
+      { href: '/employees', label: 'Team Directory', icon: 'user-02.svg' },
+      { href: '/active', label: 'Active Employees', icon: 'shield.svg' },
+      { href: '/tracker', label: 'Time Tracker', icon: 'clock.svg' },
+      { href: '/onboarding', label: 'Onboarding', icon: 'user-plus-02.svg' },
+      { href: '/onboard-form-layout', label: 'Change Form Layout', icon: 'edit.svg' },
+      { href: '/leaves', label: 'Leave Requests', icon: 'calendar.svg' },
+      { href: '/overtime', label: 'Overtime Requests', icon: 'clock-01.svg' },
+      { href: '/documents', label: 'Documents & Signature', icon: 'document.svg' },
+      { href: '/resources', label: 'Resources', icon: 'book-open.svg' },
+      { href: '/standups', label: 'Standups', icon: 'message-square-01.svg' },
     ],
   },
   {
     section: 'Finance',
     items: [
-      { href: '/payroll', label: 'Payroll & Taxes', icon: 'dollar.svg', roles: ['admin'] as Role[] },
+      { href: '/payroll', label: 'Payroll & Taxes', icon: 'dollar.svg' },
     ],
   },
   {
     section: 'Work',
     items: [
-      { href: '/projects', label: 'Projects', icon: 'briefcase-02.svg', roles: ['admin', 'lead', 'intern'] as Role[] },
-      { href: '/servers', label: 'Services & Access', icon: 'server-01.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
-      { href: '/calendar', label: 'Calendar', icon: 'calendar.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
+      { href: '/projects', label: 'Projects', icon: 'briefcase-02.svg' },
+      { href: '/servers', label: 'Services & Access', icon: 'server-01.svg' },
+      { href: '/calendar', label: 'Calendar', icon: 'calendar.svg' },
     ],
   },
   {
     section: 'Growth',
     items: [
-      { href: '/goals', label: 'Goals & KPIs', icon: 'si_target-line.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
-      { href: '/performance', label: 'Performance', icon: 'trend-up.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
-      { href: '/feedback', label: 'Feedback', icon: 'message-circle-02.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
+      { href: '/goals', label: 'Goals & KPIs', icon: 'si_target-line.svg' },
+      { href: '/performance', label: 'Performance', icon: 'trend-up.svg' },
+      { href: '/feedback', label: 'Feedback', icon: 'message-circle-02.svg' },
     ],
   },
   {
     section: 'Culture',
     items: [
-      { href: '/culture', label: 'Events & Milestones', icon: 'award-03.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
+      { href: '/culture', label: 'Events & Milestones', icon: 'award-03.svg' },
     ],
   },
   {
     section: 'Communication',
     items: [
-      { href: '/inbox', label: 'Inbox', icon: 'inbox.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
+      { href: '/inbox', label: 'Inbox', icon: 'inbox.svg' },
     ],
   },
   {
     section: 'Learning',
     items: [
-      { href: LEARNING_URL, label: 'Learning', icon: 'layout-down.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[], external: true },
+      { href: LEARNING_URL, label: 'Learning', icon: 'layout-down.svg', external: true },
     ],
   },
   {
     section: 'Reports',
     items: [
-      { href: '/reports', label: 'Monthly Reports', icon: 'bar.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/weekly-reports', label: 'Weekly Reports', icon: 'poll.svg', roles: ['admin', 'lead', 'employee'] as Role[] },
-      { href: '/leave-report', label: 'Leave Report', icon: 'clipboard.svg', roles: ['admin'] as Role[] },
-      { href: '/financial-report', label: 'Financial Report', icon: 'pie-chart-01.svg', roles: ['admin'] as Role[] },
-      { href: '/performance-report', label: 'Performance Reports', icon: 'list-checks.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] }
+      { href: '/reports', label: 'Monthly Reports', icon: 'bar.svg' },
+      { href: '/weekly-reports', label: 'Weekly Reports', icon: 'poll.svg' },
+      { href: '/leave-report', label: 'Leave Report', icon: 'clipboard.svg' },
+      { href: '/financial-report', label: 'Financial Report', icon: 'pie-chart-01.svg' },
+      { href: '/performance-report', label: 'Performance Reports', icon: 'list-checks.svg' }
     ],
   },
   {
     section: 'Account',
     items: [
-      { href: '/profile', label: 'My Profile', icon: 'user.svg', roles: ['admin', 'lead', 'employee', 'intern'] as Role[] },
+      { href: '/profile', label: 'My Profile', icon: 'user.svg' },
     ],
   },
 ];
@@ -133,13 +132,12 @@ export default function Sidebar() {
     };
   }, []);
 
-  //Sidebartoogle State:
-  const role: Role = user?.role ?? 'employee';
 
   const nav = allNav
     .map(group => ({
       ...group,
-      items: group.items.filter(item => item.roles.includes(role) && item.href),
+      // External links (Learning) are open to every role; internal ones follow ROUTE_ROLES.
+      items: group.items.filter(item => item.href && (item.external || canAccessRoute(user, item.href))),
     }))
     .filter(group => group.items.length > 0);
 

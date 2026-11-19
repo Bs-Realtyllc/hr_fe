@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { usePermissions } from '@/hooks/usePermissions';
 import type { Employee } from '@/types';
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -58,7 +59,7 @@ function groupByDepartment(list: Employee[]): [string, Employee[]][] {
 export default function EmployeesPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const isAdmin = user?.role === "admin" || user?.role === "lead";
+  const { isPrivileged } = usePermissions();
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [search, setSearch] = useState("");
@@ -243,7 +244,7 @@ export default function EmployeesPage() {
             </p>
           </div>
           <div className="flex gap-4">
-            {isAdmin && (
+            {isPrivileged && (
               <Button
                 variant="primary"
                 size="small"
@@ -253,7 +254,7 @@ export default function EmployeesPage() {
               </Button>
             )}
 
-            {isAdmin && (
+            {isPrivileged && (
               <Button
                 variant="primary"
                 size="small"
