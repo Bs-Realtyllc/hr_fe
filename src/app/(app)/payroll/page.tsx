@@ -160,7 +160,7 @@ export default function PayrollPage() {
         ? { ...r, salary: parseFloat(editSalary) || null, pay_frequency: editFreq as PayrollRow['pay_frequency'] }
         : r));
       setEditId(null);
-      showToast('success',"sucessfully updated salary")
+      showToast('success',"successfully updated salary")
     }catch(err){
       showToast('error','Failed to update salary')
     }
@@ -198,7 +198,7 @@ export default function PayrollPage() {
       });
       setTaxEdit(null);
       loadTaxes();
-      showToast('success', "Tax profile updated sucessfully")
+      showToast('success', "Tax profile updated successfully")
     }catch(err:any){
       //does not show error from backend -- "This employee has no panNo on file — set one before recording a tax profile"
       showToast('error', "Failed to update tax profile")

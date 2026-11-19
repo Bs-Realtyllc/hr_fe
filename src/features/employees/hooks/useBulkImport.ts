@@ -6,7 +6,7 @@ import { showToast } from '@/lib/toast';
 import type { Employee } from '@/types';
 
 /** Bulk import from an Excel file: read, validate, preview, then POST /employees/bulkAdd. */
-export function useBulkImport(reloadEmployees: () => void, onImported: () => void) {
+export function useBulkImport(reloadEmployees: () => void) {
   const [errors, setErrors] = useState<string[]>([]);
   const [employeesToAdd, setEmployeesToAdd] = useState<Employee[]>([]);
   const [showBulkModal, setShowBulkModal] = useState<boolean>(false);
@@ -104,8 +104,12 @@ export function useBulkImport(reloadEmployees: () => void, onImported: () => voi
       await api.post("/employees/bulkAdd", {
         employeesToAdd,
       });
-      onImported();
-      showToast("success", "Sucessfully added employee");
+      // Close and clear, so reopening the modal can't import the same file twice.
+      setShowBulkModal(false);
+      setSelectedFile(null);
+      setEmployeesToAdd([]);
+      setErrors([]);
+      showToast("success", "Successfully added employee");
     } catch (err) {
       showToast("error", "Failed to add employee");
     } finally {

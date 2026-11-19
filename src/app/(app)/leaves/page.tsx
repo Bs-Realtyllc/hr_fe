@@ -153,7 +153,7 @@ export default function LeavesPage() {
       });
       setShowLeaveModal(false);
       load();
-      showToast('success', 'Leave request added sucessfully');
+      showToast('success', 'Leave request added successfully');
     } catch (err) {
       showToast('error', 'Failed to add leave request');
     }

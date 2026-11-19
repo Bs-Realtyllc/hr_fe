@@ -165,7 +165,7 @@ export default function PerformancePage() {
     try{
     await api.put(`/performance/${id}/submit`, {});
     load();
-      showToast('success', "Review submitted sucessfully")
+      showToast('success', "Review submitted successfully")
     }catch(err){
       showToast('error', "Failed to submit review")
     }

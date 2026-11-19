@@ -13,6 +13,7 @@ export const roleColors: Record<string, string> = {
   admin: "badge-error",
   lead: "badge-accent",
   employee: "badge-neutral",
+  intern: "badge-warning",
 };
 
 export const UNASSIGNED_DEPARTMENT = "Unassigned";

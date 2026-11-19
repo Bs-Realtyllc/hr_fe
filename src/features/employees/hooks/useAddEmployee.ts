@@ -25,7 +25,7 @@ export function useAddEmployee(reloadEmployees: () => void) {
         manager_id: form.manager_id ? parseInt(form.manager_id) : null,
       });
       setShowModal(false);
-      showToast("success", "Sucessfully added employee");
+      showToast("success", "Successfully added employee");
     } catch (err) {
       showToast("error", "Failed to add employee");
     } finally {

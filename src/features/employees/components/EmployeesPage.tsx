@@ -18,9 +18,7 @@ export default function EmployeesPage() {
   const { employees, search, setSearch, myTeamOnly, setMyTeamOnly, filtered, sections, departmentCount, reloadEmployees } = directory;
   const add = useAddEmployee(reloadEmployees);
   const { setShowModal } = add;
-  // Existing behaviour, kept as-is: a successful bulk import closes the single
-  // "Add Employee" modal rather than the bulk one, so the bulk modal stays open.
-  const bulk = useBulkImport(reloadEmployees, () => setShowModal(false));
+  const bulk = useBulkImport(reloadEmployees);
   const { setShowBulkModal } = bulk;
 
   return (

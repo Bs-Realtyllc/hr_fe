@@ -106,7 +106,7 @@ export default function FeedbackPage() {
       setShowCreate(false);
       load();
       if (isPrivileged) api.get<FeedbackSummaryRow[]>('/feedback/summary').then(setSummary).catch(() => { });
-      showToast('success', 'Feedback send sucessfully')
+      showToast('success', 'Feedback sent successfully')
     } catch (err) {
       showToast('error', "Failed to send feedback");
       // alert(err instanceof Error ? err.message : 'Failed to send feedback');

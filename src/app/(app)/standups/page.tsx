@@ -95,7 +95,7 @@ export default function StandupsPage() {
     setShowModal(false);
       setForm({ workedOn: "", completed: "", inProgress: "", nextUp:'', blockers:'', links:'' });
     load();
-      showToast('success','Standup posted sucessfully')
+      showToast('success','Standup posted successfully')
     }catch(err){
       showToast('error', 'Failed to post standup')
     }

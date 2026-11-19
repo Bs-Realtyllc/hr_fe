@@ -215,7 +215,7 @@ export default function ProjectsPage() {
     setShowModal(false);
     setForm({ name: '', description: '', status: 'active', repo_url: [], docs_url: [], start_date: '', expected_end_date: '' });
     api.get<Project[]>('/projects').then(setProjects).catch(() => { });
-      showToast('success', "Project created sucessfully");
+      showToast('success', "Project created successfully");
     }catch(err){
       showToast('error', "Failed to create project")
 
@@ -234,7 +234,7 @@ export default function ProjectsPage() {
       setAssignForm({ employee_id: '', role: '' });
     const as = await api.get<Assignment[]>(`/projects/${selected.id}/assignments`).catch(() => []);
     setAssignments(as);
-      showToast('success', 'Sucessfully added to the team')
+      showToast('success', 'Successfully added to the team')
     }catch(err){
       showToast('error', 'Failed to assign to the team')
     }
@@ -285,7 +285,7 @@ export default function ProjectsPage() {
         setProjectServices([]);
       }
     }
-      showToast('success', "Sucessfully deleted project")
+      showToast('success', "Successfully deleted project")
     }catch(err){
       showToast('error', "Failed to delete project");
     }
