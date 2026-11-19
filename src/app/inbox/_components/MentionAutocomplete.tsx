@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 
-interface Employee {
+// A channel member that can be @-mentioned (string ids come from the inbox service).
+interface MentionMember {
   id: string;
   name: string;
   designation?: string;
@@ -10,7 +11,7 @@ interface Employee {
 
 interface MentionAutocompleteProps {
   query: string;
-  employees: Employee[];
+  employees: MentionMember[];
   onSelect: (name: string) => void;
   onClose: () => void;
   anchorEl: HTMLTextAreaElement | null;

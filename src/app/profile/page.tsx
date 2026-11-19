@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { BACKEND_URL } from '@/config/env';
 import { useRouter } from 'next/navigation';
 import { api, ApiError, errorMessage } from '@/lib/api';
+import type { Profile } from '@/types';
 import Button from '@/components/Button/Button';
 import PageHeader from '@/components/PageHeader';
 import { BSRealtyAvatar, BSRealtyDropdown, BSRealtyTabs, BSRealtyToggle, BSRealtyTooltip } from '@bsrealtyllc/design-system';
@@ -24,21 +25,6 @@ import EmployeeDocuments from '@/components/profile/employee/EmployeeDocuments';
 import ErrorPage from '@/components/ErrorPage';
 
 
-interface Profile {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  designation: string;
-  department: string;
-  dob: string;
-  address: string;
-  profile_picture: string;
-  citizenship_front: string;
-  citizenship_back: string;
-  role: string;
-  start_date: string;
-}
 
 // Steps of the 2FA modal:
 //  intro   -> "Set up two-factor authentication" screen (TwoFactorSetup)
@@ -115,11 +101,6 @@ function avatarUrl(filename: string | null) {
 function freshAvatarUrl(filename: string | null) {
   const url = avatarUrl(filename);
   return url ? `${url}?v=${Date.now()}` : null;
-}
-
-function docUrl(filename: string | null) {
-  if (!filename) return null;
-  return `${BACKEND_URL}/uploads/docs/${filename}`;
 }
 
 // The backend may answer in camelCase or snake_case; accept both.
@@ -216,11 +197,9 @@ export default function ProfilePage() {
   const [pwSaving, setPwSaving] = useState(false);
   const [pwError, setPwError] = useState('');
 
-  // File upload ref (photo only — citizenship refs live inside DocUploadCard)
+  // Profile photo upload (ID documents are handled by EmployeeDocuments)
   const photoRef = useRef<HTMLInputElement>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [, setFrontPreview] = useState<string | null>(null);
-  const [, setBackPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
 
 
@@ -238,8 +217,6 @@ export default function ProfilePage() {
         role: p.role || '',
       });
       setPhotoPreview(freshAvatarUrl(p.profile_picture));
-      setFrontPreview(docUrl(p.citizenship_front));
-      setBackPreview(docUrl(p.citizenship_back));
     } catch (err) {
       // 401s are still handled by api.ts; anything else is shown with a retry button.
       setLoadError(err instanceof Error && err.message ? err.message : 'Unable to load your profile.');
@@ -714,23 +691,20 @@ export default function ProfilePage() {
     } catch { /* keep current preview */ }
   }
 
-  async function uploadFile(field: 'photo' | 'front' | 'back', file: File) {
+  async function uploadPhoto(file: File) {
     const fd = new FormData();
-    const isPhoto = field === 'photo';
-    const endpoint = isPhoto ? '/profile/photo' : `/profile/citizenship/${field}`;
-
-    fd.append(isPhoto ? 'photo' : 'doc', file);
-    setUploading(u => ({ ...u, [field]: true }));
+    fd.append('photo', file);
+    setUploading(u => ({ ...u, photo: true }));
     try {
-      await api.postForm(endpoint, fd);
-      flash(isPhoto ? 'Profile photo updated.' : 'Document uploaded.');
-      if (isPhoto) await refreshPhoto();
+      await api.postForm('/profile/photo', fd);
+      flash('Profile photo updated.');
+      await refreshPhoto();
     } catch (err) {
       flash(errorMessage(err, 'Upload failed. Max 5 MB, images only.'), 'err');
       // Put the old photo back, since the new one wasn't saved.
-      if (isPhoto) setPhotoPreview(freshAvatarUrl(profile?.profile_picture ?? null));
+      setPhotoPreview(freshAvatarUrl(profile?.profile_picture ?? null));
     } finally {
-      setUploading(u => ({ ...u, [field]: false }));
+      setUploading(u => ({ ...u, photo: false }));
     }
   }
 
@@ -750,7 +724,7 @@ export default function ProfilePage() {
     }
   }
 
-  function handleFileChange(field: 'photo' | 'front' | 'back') {
+  function handlePhotoChange() {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       // Reset the input so choosing the same file again still triggers onChange.
@@ -768,11 +742,8 @@ export default function ProfilePage() {
       }
 
       // Show the new image right away, then upload it.
-      const preview = URL.createObjectURL(file);
-      if (field === 'photo') setPhotoPreview(preview);
-      if (field === 'front') setFrontPreview(preview);
-      if (field === 'back') setBackPreview(preview);
-      uploadFile(field, file);
+      setPhotoPreview(URL.createObjectURL(file));
+      uploadPhoto(file);
     };
   }
 
@@ -1206,7 +1177,7 @@ export default function ProfilePage() {
                     )}
                   </button>
                   <input ref={photoRef} type="file" accept="image/*" style={{ display: 'none' }}
-                    onChange={handleFileChange('photo')} />
+                    onChange={handlePhotoChange()} />
                 </div>
               </div>
               {/* Identity */}
@@ -1647,52 +1618,6 @@ export default function ProfilePage() {
           )}
         </TwoFactorModal>
       )}
-    </div>
-  );
-}
-
-// ── Sub-component ─────────────────────────────────────────────────────────────
-
-interface DocUploadCardProps {
-  label: string;
-  preview: string | null;
-  loading: boolean;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function DocUploadCard({ label, preview, loading, onChange }: DocUploadCardProps) {
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  return (
-    <div style={{
-      border: '2px dashed var(--color-border)', borderRadius: 12,
-      overflow: 'hidden', background: '#fafafa',
-    }}>
-      {preview ? (
-        <img src={preview} alt={label}
-          style={{ width: '100%', height: 200, objectFit: 'cover', display: 'block' }} />
-      ) : (
-        <div style={{
-          height: 200, display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          color: 'var(--color-text-muted)',
-        }}>
-          <div style={{ fontSize: 36, marginBottom: 8 }}>🪪</div>
-          <div style={{ fontSize: 13 }}>No document uploaded</div>
-        </div>
-      )}
-      <div style={{ padding: '12px 16px', background: '#fff', borderTop: '1px solid var(--color-border)' }}>
-        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>{label}</div>
-        <Button className="outline" variant='text' size='xs'
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={loading}
-          style={{ width: '100%' }}
-        >
-          {loading ? 'Uploading…' : preview ? 'Replace' : 'Upload'}
-        </Button>
-        <input ref={node => { inputRef.current = node; }} type="file" accept="image/*" style={{ display: 'none' }} onChange={onChange} />
-      </div>
     </div>
   );
 }

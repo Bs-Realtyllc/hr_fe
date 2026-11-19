@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import type { Employee } from '@/types';
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,18 +9,6 @@ import * as XLSX from "xlsx";
 import Button from "@/components/Button/Button";
 import { showToast } from "@/lib/toast";
 
-interface Employee {
-  id: number;
-  name: string;
-  email: string;
-  designation?: string;
-  department?: string;
-  manager_id?: number;
-  manager_name?: string;
-  start_date: string;
-  role: string;
-  status: string;
-}
 
 function initials(name: string) {
   return name
@@ -755,7 +744,7 @@ export default function EmployeesPage() {
 
                                 <td className="whitespace-nowrap border-b px-4 py-3">
                                   <span
-                                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${employee.status === "Active"
+                                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${employee.status === "active"
                                       ? "bg-green-100 text-green-700"
                                       : "bg-gray-100 text-gray-600"
                                       }`}

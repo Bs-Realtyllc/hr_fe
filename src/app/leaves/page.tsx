@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import type { EmployeeName } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import PillTabs from '@/components/PillTabs';
@@ -51,11 +52,7 @@ interface EmailSettings {
   default_bcc: string;
 }
 
-interface EmployeeData {
-  id: number;
-  name: string;
-  role: 'intern' | 'employee' | 'admin' | 'lead';
-}
+type EmployeeData = EmployeeName;
 
 interface LeaveForm {
   leave_type: string;

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiError, errorMessage } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import type { AuthUser } from '@/lib/auth';
+import type { AuthUser } from '@/types';
 import Button from '@/components/Button/Button'
 import InputField from '@/components/InputField/InputField';
 import { validateEmail } from '@/lib/validation';

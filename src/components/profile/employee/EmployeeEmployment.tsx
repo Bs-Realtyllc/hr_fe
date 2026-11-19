@@ -3,7 +3,8 @@
 import Button from "@/components/Button/Button"
 import InputField from "@/components/InputField/InputField"
 import { useEffect, useState } from "react"
-import { profileService, Profile } from "@/lib/profileService"
+import { profileService } from "@/lib/profileService"
+import type { Profile } from "@/types"
 import { BSRealtyDropdown } from "@bsrealtyllc/design-system"
 import { api } from "@/lib/api"
 

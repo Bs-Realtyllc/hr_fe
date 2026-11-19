@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import type { EmployeeSummary as Employee } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Button from '@/components/Button/Button';
@@ -31,11 +32,6 @@ interface Assignment {
   role: string;
 }
 
-interface Employee {
-  id: number;
-  name: string;
-  designation: string;
-}
 
 interface ServiceDef {
   key: string;

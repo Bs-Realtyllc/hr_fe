@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import type { EmployeeSummary as Employee } from '@/types';
 import {
   ResponsiveContainer, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -30,7 +31,6 @@ interface Review {
   created_at: string;
 }
 
-interface Employee { id: number; name: string; designation: string; }
 interface TrendPoint { review_period: string; overall_rating: number | string; }
 
 const CATEGORY_LABELS: Record<string, string> = {

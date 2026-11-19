@@ -6,7 +6,7 @@ import OtpInput from '@/components/OtpInput'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import type { AuthUser } from '@/lib/auth'
+import type { AuthUser } from '@/types'
 import { clearTwoFactorChallenge, readTwoFactorChallenge, type TwoFactorChallenge } from '@/lib/twoFactor'
 
 // Where to send people with no pending 2FA login (direct visit, expired token).

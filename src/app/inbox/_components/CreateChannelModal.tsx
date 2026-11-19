@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import type { Role } from '@/types';
 
 interface Category {
   id: number;
@@ -15,7 +16,7 @@ interface CreateChannelModalProps {
     name: string;
     type: 'text' | 'voice' | 'announcement';
     description: string;
-    required_role: 'admin' | 'lead' | 'employee' | 'intern';
+    required_role: Role;
     category_id?: number;
     is_private?: boolean;
   }) => Promise<void>;
@@ -32,7 +33,7 @@ export function CreateChannelModal({ categories, onClose, onCreate }: CreateChan
   const [name, setName]               = useState('');
   const [type, setType]               = useState<'text' | 'voice' | 'announcement'>('text');
   const [description, setDescription] = useState('');
-  const [requiredRole, setRequiredRole] = useState<'admin' | 'lead' | 'employee' | 'intern'>('intern');
+  const [requiredRole, setRequiredRole] = useState<Role>('intern');
   const [categoryId, setCategoryId]   = useState<number | undefined>(categories[0]?.id);
   const [isPrivate, setIsPrivate]     = useState(false);
   const [loading, setLoading]         = useState(false);

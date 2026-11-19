@@ -1,6 +1,7 @@
 'use client'
 
 import { BSRealtyAvatar } from '@bsrealtyllc/design-system'
+import type { Profile as FullProfile } from '@/types';
 import { BACKEND_URL } from '@/config/env';
 import React, { useEffect, useState } from 'react'
 import { getToken } from "@/lib/auth"
@@ -38,9 +39,7 @@ function getUserFromToken(token: string | null | undefined): TokenUser {
     }
 }
 
-interface Profile {
-    profile_picture?: string | null;
-}
+type Profile = Pick<FullProfile, 'profile_picture'>;
 
 
 const LogoutPage = () => {

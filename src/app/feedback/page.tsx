@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import type { EmployeeSummary as Employee } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import PillTabs from '@/components/PillTabs';
@@ -22,7 +23,6 @@ interface FeedbackNote {
   created_at: string;
 }
 
-interface Employee { id: number; name: string; designation: string; }
 
 interface FeedbackSummaryRow {
   employee_id: number;

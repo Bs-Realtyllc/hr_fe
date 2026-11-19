@@ -1,6 +1,7 @@
 'use client'
 
 import Button from "@/components/Button/Button"
+import type { Profile as FullProfile } from '@/types';
 import { BACKEND_URL } from '@/config/env';
 import { api } from '@/lib/api';
 import { getToken } from "@/lib/auth"
@@ -120,9 +121,7 @@ function getUserFromToken(token: string | null | undefined): TokenUser {
     }
 }
 
-interface Profile {
-    profile_picture?: string | null;
-}
+type Profile = Pick<FullProfile, 'profile_picture'>;
 
 
 

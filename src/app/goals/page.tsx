@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import type { EmployeeSummary as Employee } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Button from '@/components/Button/Button';
@@ -27,11 +28,6 @@ interface Goal {
   created_at: string;
 }
 
-interface Employee {
-  id: number;
-  name: string;
-  designation: string;
-}
 
 const STATUS_COLUMNS: { key: Goal['status']; label: string; color: string }[] = [
   { key: 'at_risk', label: 'At Risk', color: 'var(--color-error)' },

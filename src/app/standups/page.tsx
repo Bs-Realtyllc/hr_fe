@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import type { EmployeeName as Employee } from '@/types';
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import * as XLSX from "xlsx";
@@ -21,11 +22,6 @@ interface Standup {
   created_at: string;
 }
 
-interface Employee {
-  id: number;
-  name: string;
-  designation: string;
-}
 
 function initials(name: string) {
   return name

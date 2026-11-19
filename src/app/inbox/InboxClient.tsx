@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { BACKEND_URL } from '@/config/env';
+import type { Role } from '@/types';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
@@ -24,7 +25,7 @@ import { AudioRecorder } from './_components/AudioRecorder';
 
 type ChannelType = 'text' | 'voice' | 'announcement';
 type UserStatus  = 'online' | 'away' | 'dnd' | 'offline';
-type UserRole    = 'admin' | 'lead' | 'employee' | 'intern';
+type UserRole    = Role;
 type MemberRole  = 'admin' | 'member' | 'readonly';
 
 interface Category    { id: number; name: string; position: number; }

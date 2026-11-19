@@ -3,7 +3,8 @@
 import Button from "@/components/Button/Button";
 import InputField from "@/components/InputField/InputField";
 import { useEffect, useState } from "react";
-import { profileService, Profile } from "@/lib/profileService";
+import { profileService } from "@/lib/profileService";
+import type { Gender, Profile } from "@/types";
 import { BSRealtyDropdown } from "@bsrealtyllc/design-system";
 import { api } from "@/lib/api";
 
@@ -84,7 +85,7 @@ const EmployeePersonalInformation = () => {
       await profileService.updateProfile({
         name: personalInfo.name,
         dob: personalInfo.dob,
-        gender: personalInfo.gender,
+        gender: personalInfo.gender as Gender,
         nationality: personalInfo.nationality,
       });
       console.log("Updated Personal Info:", personalInfo);

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import type { EmployeeSummary as Employee } from '@/types';
 import { api } from '@/lib/api';
 import Button from '@/components/Button/Button';
 import { showToast } from '@/lib/toast';
@@ -14,7 +15,6 @@ interface CultureEvent {
   employee_name?: string;
 }
 
-interface Employee { id: number; name: string; designation: string; }
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 interface IconProps { size?: number; color: string }

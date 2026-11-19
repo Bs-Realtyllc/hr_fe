@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import type { Employee } from '@/types';
 import { BACKEND_URL } from '@/config/env';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -8,18 +9,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { showToast } from '@/lib/toast';
 import Button from '@/components/Button/Button';
 
-interface Employee {
-  id: number;
-  name: string;
-  email: string;
-  designation: string;
-  department: string;
-  manager_id?: number;
-  manager_name?: string;
-  start_date: string;
-  role: string;
-  status: string;
-}
 
 interface Project {
   id: number;

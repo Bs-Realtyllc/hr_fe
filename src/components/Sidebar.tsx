@@ -9,7 +9,7 @@ import { BSRealtyAvatar } from '@bsrealtyllc/design-system';
 import { setSidebarOpen } from '@/store/slices/sidebarSlice'
 import { useEffect, useRef, useState } from 'react';
 
-type Role = 'admin' | 'lead' | 'employee' | 'intern';
+import type { Role } from '@/types';
 
 interface NavItem {
   href: string;

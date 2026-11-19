@@ -1,13 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import type { EmployeeSummary as Employee } from '@/types';
 
-interface Employee {
-  id: number;
-  name: string;
-  designation?: string;
-  status?: string;
-}
 
 interface NewDmModalProps {
   employees: Employee[];
