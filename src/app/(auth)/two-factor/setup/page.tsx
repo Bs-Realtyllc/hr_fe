@@ -7,7 +7,7 @@ import {
     TwoFactorBackupCodes,
     TwoFactorVerify,
     type TwoFactorSetupData,
-} from '@/components/profile/TwoFactor';
+} from '@/features/profile/components/security/TwoFactor';
 import { api } from '@/lib/api';
 
 type SetupStep = 'intro' | 'scan' | 'backup' | 'complete';
