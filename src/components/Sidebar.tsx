@@ -7,6 +7,7 @@ import { useAppSelector, useAppDispatch } from '@/store/hook';
 import { BSRealtyAvatar } from '@bsrealtyllc/design-system';
 import { setSidebarOpen } from '@/store/slices/sidebarSlice'
 import { useEffect, useRef, useState } from 'react';
+import { api } from '@/lib/api';
 
 type Role = 'admin' | 'lead' | 'employee' | 'intern';
 
@@ -153,6 +154,21 @@ export default function Sidebar() {
     dispatch(setSidebarOpen(false));
   }
 
+  // Profile picture
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.get<{ profile_picture: string | null }>('/profile')
+      .then(({ profile_picture }) => {
+        if (profile_picture) {
+          const backend = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api')
+            .replace('/api', '');
+          setPhotoUrl(`${backend}/uploads/profile/${encodeURIComponent(profile_picture)}`);
+        }
+      })
+      .catch(() => { });
+  }, []);
+
   return (
     <>
       <div
@@ -217,7 +233,7 @@ export default function Sidebar() {
             onClick={() => setShowProfileToogle(prev => !prev)}
           >
 
-            <BSRealtyAvatar size='md' name={user ? initials(user.name) : '?'} />
+            <BSRealtyAvatar size='md' src={photoUrl || undefined} name={user ? initials(user.name) : '?'} />
             <div className="flex flex-col min-w-0 w-full">
               <div className='flex  items-center justify-between'>
                 <span className="text-[14px] font-medium leading-5 text-(--neutral-normal) truncate">{user?.name ?? ''}</span>

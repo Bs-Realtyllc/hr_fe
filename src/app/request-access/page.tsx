@@ -1,12 +1,11 @@
 'use client';
 
 import Button from "@/components/Button/Button";
-import ConfettiAnimation from "@/components/ConfettiAnimation";
 import InputField from "@/components/InputField/InputField";
 import { api } from "@/lib/api";
 import { BSRealtyDropdown } from "@bsrealtyllc/design-system";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 type FormErrors = {
     name?: string;
@@ -94,19 +93,23 @@ export default function RequestAccessPage() {
         }
     };
 
-
-
     return (
         <div className="relative flex min-h-screen w-full items-center justify-center overflow-y-auto bg-(--soft-white-light) px-4 py-20">
             <div className=' absolute top-7.5 left-4 lg:left-20  '>
-                <img className='h-4 w-22 lg:h-5 lg:w-28' src="/logos/gitgi-hr-logo.svg" alt="" />
+                <img className='h-4 w-22 lg:h-5 lg:w-28' src="/logos/gitgi-hr-logo.svg" alt="GITGI" />
             </div >
 
             {isSubmitted ? (
                 // Success View
                 <div className=" flex flex-col w-full md:w-[501px] lg:w-[501px] items-center justify-center gap-3 lg:gap-4 text-center p-5 lg:px-6 lg:py-7">
-                    <ConfettiAnimation />
-                    <img src="/icons/Request-sent.svg" alt="Success" className="h-16 w-15 lg:h-16 lg:w-16" />
+
+                    <img
+                        src="/images/Request-sent.webp"
+                        alt="Success"
+                        width={64}
+                        height={64}
+                    />
+
                     <p className=" text-[16px] lg:text-[18px] font-medium leading-7 text-(--neutral-normal)">
                         Your access request has been sent to the HR administrator. You will receive an email once your access is approved.
                     </p>

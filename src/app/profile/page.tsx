@@ -805,13 +805,13 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className=" " style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>
+      <div>
         {loadError ? (
-          <div className="flex flex-col items-center gap-3">
-            {/* <p>{loadError}</p>
-            <Button variant="primary" size="small" type="button" onClick={load}>Retry</Button> */}
+
+          <div className=" fixed h-screen top-0 right-0 left-[265px] flex justify-center items-center" >
             <ErrorPage />
           </div>
+
         ) : 'Loading profile…'}
       </div>
     );
@@ -849,7 +849,7 @@ export default function ProfilePage() {
   // Shared across roles — everyone can see company info, only admin can edit
   // it, and Team Access management stays admin-only.
   const organizationSection = (
-    <div className='flex flex-col w-[929px] gap-11'>
+    <div className='flex flex-col max-w-[929px] gap-11'>
       <div className='flex flex-col gap-7 w-full'>
         <div>
           <h1 className='text-(--neutral-normal) text-[16px] font-semibold'>Company Information</h1>
@@ -1497,9 +1497,9 @@ export default function ProfilePage() {
             <div className="flex-1 min-w-0 bg-(--soft-white-light) border border-(--soft-white-normal) rounded-lg px-6 p-b-6" style={{ overflow: 'hidden' }}>
 
               <div className='flex justify-between py-6'>
-                <div className='min-w-0 max-w-full overflow-x-auto'>
+                <div className='w-full max-w-[830px] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
                   <BSRealtyTabs
-                    className='flex-nowrap whitespace-nowrap m-1'
+                    className='w-max flex-nowrap whitespace-nowrap m-1'
                     defaultValue='personal'
                     value={employeeTab}
                     onChange={(newTab) => setEmployeeTab(newTab as EmployeeTab)}
@@ -1520,7 +1520,7 @@ export default function ProfilePage() {
               {employeeTab === 'bank' && <EmployeeBank />}
               {employeeTab === 'documents' && <EmployeeDocuments />}
               {employeeTab === 'organization' && (
-                <div className='pt-2'>
+                <div className='pt-2 max-w-[830px]'>
                   {organizationSection}
                 </div>
               )}
@@ -1555,7 +1555,9 @@ export default function ProfilePage() {
                   <h1 className='text-[16px] font-semibold text-(--gray-darker)'>Keep your profile up to date</h1>
                   <p className='text-[14px] text-(--gray-dark-hover) font-medium'>Review your personal details and emergency contact informationto keep your employee record accurate</p>
                 </div>
-                <Button size='small'>Explore Resources</Button>
+                <Button size='small' onClick={() => router.push('/resources')}>
+                  Explore Resources
+                </Button>
               </div>
             </div>
           </div>
