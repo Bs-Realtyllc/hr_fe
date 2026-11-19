@@ -1,6 +1,6 @@
 'use client'
 import Button from '@/components/Button/Button'
-import { API_URL } from '@/config/env';
+import { api, errorMessage } from '@/lib/api';
 import InputField from '@/components/InputField/InputField'
 import OtpInput from '@/components/OtpInput'
 import { useEffect, useState } from 'react'
@@ -41,21 +41,13 @@ const VERIFY_PATH: Record<Mode, string> = {
     email: '/auth/2fa/email-otp/verify',
 }
 
-async function postJson(path: string, body: unknown, fallbackError = 'Verification failed') {
-    let res: Response
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function postJson(path: string, body: unknown, fallbackError = 'Verification failed'): Promise<any> {
     try {
-        res = await fetch(`${API_URL}${path}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify(body),
-        })
-    } catch {
-        throw new Error('Can’t reach the server. Check your connection and try again.')
+        return await api.public.post(path, body, { credentials: 'include' })
+    } catch (err) {
+        throw new Error(errorMessage(err, fallbackError))
     }
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data.error ?? data.message ?? fallbackError)
-    return data
 }
 
 const TwoFactorAuthPage = () => {

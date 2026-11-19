@@ -223,25 +223,7 @@ export default function PolicyDocuments({
         fd.append('folder_path', folderPath);
 
         try {
-          const res = await fetch(`${BACKEND_URL}/api/policies`, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-            body: fd,
-          });
-
-          if (!res.ok) {
-            const responseText = await res.text();
-
-            console.error(
-              `Upload failed for ${picked.name}:`,
-              res.status,
-              responseText
-            );
-
-            failedFiles.push(picked.name);
-          }
+          await api.postForm('/policies', fd);
         } catch (error) {
           console.error(`Upload error for ${picked.name}:`, error);
           failedFiles.push(picked.name);
@@ -270,21 +252,10 @@ export default function PolicyDocuments({
       throw new Error('Authentication token not found');
     }
 
-    const response = await fetch(
-      `${BACKEND_URL}/uploads/${folder}/${encodeURIComponent(filePath)}`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+    // Uploaded files are served from the backend origin, outside /api.
+    const blob = await api.download(
+      `${BACKEND_URL}/uploads/${folder}/${encodeURIComponent(filePath)}`
     );
-
-    if (!response.ok) {
-      throw new Error(`Unable to fetch PDF: ${response.status}`);
-    }
-
-    const blob = await response.blob();
 
     if (!blob.size) {
       throw new Error('Empty PDF file');
@@ -440,15 +411,9 @@ export default function PolicyDocuments({
     setSigningId(policy.id);
     setError('');
     try {
-      const token = getToken();
       const fd = new FormData();
       fd.append('file', picked);
-      const res = await fetch(`${BACKEND_URL}/api/policies/${policy.id}/acknowledgements`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: fd,
-      });
-      if (!res.ok) throw new Error();
+      await api.postForm(`/policies/${policy.id}/acknowledgements`, fd);
       await loadMyAcks();
     } catch {
 

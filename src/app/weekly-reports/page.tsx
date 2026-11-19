@@ -1,9 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { API_URL } from '@/config/env';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api';
-import { getToken } from '@/lib/auth';
+import { api, errorMessage, saveBlob } from '@/lib/api';
 import Button from '@/components/Button/Button';
 import { showToast } from '@/lib/toast';
 
@@ -83,16 +81,10 @@ function weekLabel(weekStartIso: string) {
 
 // ── Shared helpers ─────────────────────────────────────────────────────────
 
-function download(id: number) {
-  const token = getToken();
-  fetch(`${API_URL}/weekly-reports/${id}/download`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-    .then(r => r.blob())
-    .then(blob => {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.click();
-      URL.revokeObjectURL(a.href);
-    });
+function download(report: Report) {
+  api.download(`/weekly-reports/${report.id}/download`)
+    .then(blob => saveBlob(blob, report.file_name))
+    .catch(err => showToast('error', errorMessage(err, 'Download failed')));
 }
 
 // ── Report card (shared between both views) ───────────────────────────────
@@ -172,7 +164,7 @@ function ReportCard({
           Preview
         </Button>
         <Button className="outline" variant='text' size='xs'
-          onClick={() => download(report.id)}
+          onClick={() => download(report)}
           title="Download file"
         >
           <span
@@ -427,7 +419,7 @@ function EmployeeView({
                         />
                         Preview
                       </button>
-                      <button className="btn btn-sm btn-ghost" onClick={() => download(r.id)}>
+                      <button className="btn btn-sm btn-ghost" onClick={() => download(r)}>
                         <span
                           className="icon-mask"
                           style={{ WebkitMaskImage: 'url(/icons/download.svg)', maskImage: 'url(/icons/download.svg)' }}
@@ -476,14 +468,7 @@ export default function WeeklyReportsPage() {
 
   const load = () => {
     setLoading(true);
-    const token = getToken();
-    fetch(`${API_URL}/weekly-reports`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then(r => {
-        if (r.status === 401) { window.location.href = '/login'; return []; }
-        return r.json();
-      })
+    api.get<Report[]>('/weekly-reports')
       .then(data => setReports(Array.isArray(data) ? data : []))
       .catch(() => {showToast('error', 'Failed to load weekly report')})
       .finally(() => setLoading(false));
@@ -510,20 +495,11 @@ export default function WeeklyReportsPage() {
     fd.append('notes', form.notes);
 
     try {
-      const token = getToken();
-      const res = await fetch(`${API_URL}/weekly-reports`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: fd,
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `Error ${res.status}`);
-      }
+      await api.postForm('/weekly-reports', fd);
       setShowModal(false);
       load();
     } catch (err: unknown) {
-      setSubmitMsg(err instanceof Error ? err.message : 'Upload failed');
+      setSubmitMsg(errorMessage(err, 'Upload failed'));
     } finally {
       setSubmitting(false);
     }
@@ -545,12 +521,7 @@ export default function WeeklyReportsPage() {
     if (ext !== 'pdf') return; // PPT/PPTX have no in-browser renderer — modal shows a download prompt instead
 
     setPreviewLoading(true);
-    const token = getToken();
-    fetch(`${API_URL}/weekly-reports/${report.id}/download`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-      .then(r => {
-        if (!r.ok) throw new Error();
-        return r.blob();
-      })
+    api.download(`/weekly-reports/${report.id}/download`)
       .then(blob => setPreviewUrl(URL.createObjectURL(blob)))
       .catch(() => setPreviewError(true))
       .finally(() => setPreviewLoading(false));
@@ -702,7 +673,7 @@ export default function WeeklyReportsPage() {
                   style={{ WebkitMaskImage: 'url(/icons/file-text.svg)', maskImage: 'url(/icons/file-text.svg)' }}
                 />
                 <p style={{ marginBottom: 16 }}>Inline preview isn&apos;t available for PowerPoint files.</p>
-                <button className="btn btn-primary" onClick={() => download(previewReport.id)}>
+                <button className="btn btn-primary" onClick={() => download(previewReport)}>
                   <span
                     className="icon-mask"
                     style={{ WebkitMaskImage: 'url(/icons/download.svg)', maskImage: 'url(/icons/download.svg)' }}

@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { API_URL } from '@/config/env';
 import { api } from "@/lib/api";
-import { getToken } from "@/lib/auth";
 import Button from "@/components/Button/Button";
 import PillTabs from "@/components/PillTabs";
 import { showToast } from "@/lib/toast";
@@ -306,15 +304,7 @@ const Page = () => {
     try {
       const body = new FormData();
       body.append("file", templateFile, templateFile.name);
-      const res = await fetch(
-        `${API_URL}/form-layout/template?type=${layoutType}`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${getToken()}` },
-          body,
-        },
-      );
-      if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+      await api.postForm(`/form-layout/template?type=${layoutType}`, body);
 
       setCurrentTemplate({ filename: "", originalName: templateFile.name });
       setTemplateFile(null);
@@ -330,14 +320,7 @@ const Page = () => {
   const handleRemoveTemplate = async () => {
     setTemplateBusy(true);
     try {
-      const res = await fetch(
-        `${API_URL}/form-layout/template?type=${layoutType}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${getToken()}` },
-        },
-      );
-      if (!res.ok) throw new Error(`Remove failed (${res.status})`);
+      await api.delete(`/form-layout/template?type=${layoutType}`);
       setCurrentTemplate(null);
       showToast("success", "Reverted to the default template.");
     } catch {

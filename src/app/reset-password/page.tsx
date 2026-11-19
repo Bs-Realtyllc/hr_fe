@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
-import { API_URL } from '@/config/env';
+import { api, errorMessage } from '@/lib/api';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Button from '@/components/Button/Button';
 import InputField from '@/components/InputField/InputField';
@@ -54,21 +54,11 @@ function ResetPasswordForm() {
     }
     setError(''); setLoading(true);
     try {
-      const url = `${API_URL}/auth/reset-password`;
-      console.log('[AUTH] POST', url);
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, new_password: form.new_password }),
-      });
-      const data = await res.json().catch(() => ({}));
-      console.log('[AUTH] reset-password response', res.status, data);
-      if (!res.ok) throw new Error(data.error || 'Reset failed');
+      await api.public.post('/auth/reset-password', { token, new_password: form.new_password });
       setDone(true);
-      // setTimeout(() => router.replace('/login'), 10000);
     } catch (err: unknown) {
-      console.error('[AUTH] fetch error', err);
-      setError(err instanceof Error ? err.message : 'Reset failed');
+      console.error('[AUTH] reset-password failed', err);
+      setError(errorMessage(err, 'Reset failed'));
     } finally {
       setLoading(false);
     }

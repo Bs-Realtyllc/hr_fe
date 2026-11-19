@@ -1,13 +1,11 @@
 'use client';
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { API_URL } from '@/config/env';
 import { createPortal } from 'react-dom';
 import DatePicker from 'react-datepicker';
 import { flip, shift } from '@floating-ui/dom';
 import 'react-datepicker/dist/react-datepicker.css';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api';
-import { getToken } from '@/lib/auth';
+import { api, errorMessage, saveBlob } from '@/lib/api';
 import Button from '@/components/Button/Button';
 import { showToast } from '@/lib/toast';
 
@@ -71,16 +69,10 @@ function fmtDate(iso: string) {
 
 // ── Shared helpers ─────────────────────────────────────────────────────────
 
-function download(id: number) {
-  const token = getToken();
-  fetch(`${API_URL}/reports/${id}/download`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-    .then(r => r.blob())
-    .then(blob => {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.click();
-      URL.revokeObjectURL(a.href);
-    });
+function download(report: Report) {
+  api.download(`/reports/${report.id}/download`)
+    .then(blob => saveBlob(blob, report.file_name))
+    .catch(err => showToast('error', errorMessage(err, 'Download failed')));
 }
 
 // ── Report card (shared between both views) ───────────────────────────────
@@ -152,7 +144,7 @@ function ReportCard({
           className='outline'
           variant='text'
           size='xs'
-          onClick={() => download(report.id)}
+          onClick={() => download(report)}
           title="Download file"
           leftIcon={<span
             className="icon-mask"
@@ -482,7 +474,7 @@ function EmployeeView({
                   </div>
 
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                    <button className="btn btn-sm btn-ghost" onClick={() => download(r.id)}>
+                    <button className="btn btn-sm btn-ghost" onClick={() => download(r)}>
                       <span
                         className="icon-mask"
                         style={{ WebkitMaskImage: 'url(/icons/download.svg)', maskImage: 'url(/icons/download.svg)' }}
@@ -534,14 +526,7 @@ export default function ReportsPage() {
       params.set('toYear', String(range.to.getFullYear()));
       params.set('toMonth', String(range.to.getMonth() + 1));
     }
-    const token = getToken();
-    fetch(`${API_URL}/reports?${params}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then(r => {
-        if (r.status === 401) { window.location.href = '/login'; return []; }
-        return r.json();
-      })
+    api.get<Report[]>(`/reports?${params}`)
       .then(data => setReports(Array.isArray(data) ? data : []))
       .catch(() => {showToast('error', "Failed to load reports")})
       .finally(() => setLoading(false));
@@ -570,20 +555,11 @@ export default function ReportsPage() {
     fd.append('notes', form.notes);
 
     try {
-      const token = getToken();
-      const res = await fetch(`${API_URL}/reports`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: fd,
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `Error ${res.status}`);
-      }
+      await api.postForm('/reports', fd);
       setShowModal(false);
       load();
     } catch (err: unknown) {
-      setSubmitMsg(err instanceof Error ? err.message : 'Upload failed');
+      setSubmitMsg(errorMessage(err, 'Upload failed'));
     } finally {
       setSubmitting(false);
     }

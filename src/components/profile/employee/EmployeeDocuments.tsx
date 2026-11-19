@@ -5,7 +5,7 @@ import { BACKEND_URL } from '@/config/env';
 import Button from '@/components/Button/Button';
 import FileUpload from '@/components/FileUpload/FileUpload';
 import { profileService } from '@/lib/profileService';
-import { getToken } from '@/lib/auth';
+import { api } from '@/lib/api';
 
 
 /* ---------- Document Configuration ---------- */
@@ -116,14 +116,9 @@ const isIdKey = (key: FieldKey): key is 'idFront' | 'idBack' =>
 // Downloads a saved ID image so FileUpload can show it as a preview.
 async function loadIdPreview(filename: string): Promise<File | null> {
     try {
-        const token = getToken();
-        const response = await fetch(
+        const blob = await api.download(
             `${BACKEND_URL}/uploads/profile/id/${encodeURIComponent(filename)}`,
-            { headers: token ? { Authorization: `Bearer ${token}` } : {} },
         );
-        if (!response.ok) return null;
-
-        const blob = await response.blob();
         const extension = filename.split('.').pop()?.toLowerCase();
         const mimeType = blob.type || (
             extension === 'png' ? 'image/png' :

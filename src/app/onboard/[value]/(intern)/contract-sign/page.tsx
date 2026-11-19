@@ -1,7 +1,7 @@
 'use client'
 
 import { useId, useState, type FormEvent } from 'react'
-import { API_URL } from '@/config/env';
+import { api, ApiError } from '@/lib/api';
 import { useRouter } from 'next/navigation'
 import Button from '@/components/Button/Button'
 import FileUpload from '@/components/FileUpload/FileUpload'
@@ -90,24 +90,16 @@ const Page = () => {
 
         try {
             setIsSubmitting(true)
-            // multipart/form-data: let the browser set the Content-Type boundary.
-            const res = await fetch(`${API_URL}/onboard`, {
-                method: 'POST',
-                body: buildOnboardFormData(data, role, layout),
-            })
-            if (!res.ok) {
-                const body = await res.json().catch(() => null)
-                throw new Error(body?.error ?? body?.message ?? `Submit failed (${res.status})`)
-            }
+            // Public endpoint: the candidate isn't logged in.
+            await api.public.postForm('/onboard', buildOnboardFormData(data, role, layout))
 
             reset()
             router.push(`/onboard/${role}/success`)
         } catch (err) {
-            setSubmitError(
-                err instanceof Error && !err.message.startsWith('Submit failed') && err.message !== 'Failed to fetch'
-                    ? err.message
-                    : "Your information couldn't be submitted. Check your connection and try again."
-            )
+            // Show the backend's own validation message when it sent one;
+            // otherwise (network error, bare status) a generic retry hint.
+            const message = err instanceof ApiError ? err.serverMessage : err instanceof Error ? err.message : undefined
+            setSubmitError(message || "Your information couldn't be submitted. Check your connection and try again.")
         } finally {
             setIsSubmitting(false)
         }

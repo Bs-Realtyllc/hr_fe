@@ -10,7 +10,7 @@ import {
     type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { API_URL } from '@/config/env';
+import { api } from '@/lib/api';
 import {
     DEFAULT_LAYOUT,
     isStepVisible,
@@ -207,11 +207,8 @@ export function OnboardingProvider({
         let cancelled = false;
         (async () => {
             try {
-                const res = await fetch(
-                    `${API_URL}/form-layout?type=${role}`,
-                );
-                if (!res.ok) throw new Error(`form-layout ${res.status}`);
-                const resolved = resolveLayout(await res.json(), role);
+                const raw = await api.public.get<Parameters<typeof resolveLayout>[0]>(`/form-layout?type=${role}`);
+                const resolved = resolveLayout(raw, role);
                 if (cancelled) return;
                 setLayout(resolved.layout);
                 setLayoutFallback(false);

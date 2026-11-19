@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { API_URL } from '@/config/env';
+import { api, errorMessage } from '@/lib/api';
 import Link from 'next/link';
 import Button from '@/components/Button/Button';
 import InputField from '@/components/InputField/InputField';
@@ -19,22 +19,11 @@ export default function ForgotPasswordPage() {
     setError('');
     setLoading(true);
     try {
-      const url = `${API_URL}/auth/forgot-password`;
-      console.log('[AUTH] POST', url, { email });
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      console.log('[AUTH] forgot-password response', res.status);
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Something went wrong');
-      }
+      await api.public.post('/auth/forgot-password', { email });
       setSent(true);
     } catch (err: unknown) {
-      console.error('[AUTH] fetch error', err);
-      setError(err instanceof Error ? err.message : 'Request failed');
+      console.error('[AUTH] forgot-password failed', err);
+      setError(errorMessage(err, 'Something went wrong'));
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { API_URL, BACKEND_URL } from '@/config/env';
+import { BACKEND_URL } from '@/config/env';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
@@ -85,11 +85,7 @@ function AudioMessage({ src: initialSrc, duration }: { src: string; duration: nu
     retriedRef.current = true;
     try {
       const key = new URL(src).pathname.split('/').pop();
-      const res = await fetch(`${BACKEND_URL}/api/inbox/audio/${key}/refresh-url`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
-      if (!res.ok) throw new Error('refresh failed');
-      const { url } = await res.json() as { url: string };
+      const { url } = await api.get<{ url: string }>(`/inbox/audio/${key}/refresh-url`);
       setSrc(url);
     } catch {
       setFailed(true);
@@ -460,14 +456,7 @@ export default function InboxClient() {
     try {
       const form = new FormData();
       form.append('audio', blob, `voice-${Date.now()}.webm`);
-      const token = getToken();
-      const res = await fetch(`${API_URL}/inbox/dms/audio`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: form,
-      });
-      if (!res.ok) throw new Error('Upload failed');
-      const { key, presignedUrl } = await res.json() as { key: string; presignedUrl: string };
+      const { key, presignedUrl } = await api.postForm<{ key: string; presignedUrl: string }>('/inbox/dms/audio', form);
 
       // Swap blob URL → presigned URL and clear sending state
       setMessages(prev => prev.map(m =>

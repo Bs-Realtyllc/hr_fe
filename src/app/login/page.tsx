@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
-import { API_URL } from '@/config/env';
 import { useRouter } from 'next/navigation';
+import { api, ApiError, errorMessage } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { AuthUser } from '@/lib/auth';
 import Button from '@/components/Button/Button'
@@ -9,15 +9,22 @@ import InputField from '@/components/InputField/InputField';
 import { validateEmail } from '@/lib/validation';
 import { saveTwoFactorChallenge } from '@/lib/twoFactor';
 
+interface LoginResponse {
+  token?: string;
+  user?: AuthUser;
+  tempToken?: string;
+  requiresOtp?: boolean;
+  requires2FA?: boolean;
+  requiresTwoFactor?: boolean;
+  twoFactorRequired?: boolean;
+}
+
 // get /auth/2fa/status
 async function isTwoFactorEnabled(token: string | undefined): Promise<boolean> {
   if (!token) return false;
   try {
-    const res = await fetch(`${API_URL}/auth/2fa/status`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return false;
-    const status = await res.json();
+    // Explicit token: the user isn't stored as logged in yet at this point.
+    const status = await api.get<Record<string, unknown>>('/auth/2fa/status', { token });
     return Boolean(status?.enabled ?? status?.twoFactorEnabled ?? status?.two_factor_enabled ?? status?.is_enabled);
   } catch {
     return false;
@@ -70,34 +77,27 @@ export default function LoginPage() {
 
     try {
       if (requiresOtp) {
-        const url = `${API_URL}/auth/verify-otp`;
-        console.log('[AUTH] POST', url, { code: otp });
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: otp, tempToken }),
-        });
-        const data = await res.json();
-        console.log('[AUTH] verify-otp response', res.status, data);
-        if (!res.ok) {
-          setError(data.error ?? 'Verification failed');
+        let data: LoginResponse;
+        try {
+          data = await api.public.post<LoginResponse>('/auth/verify-otp', { code: otp, tempToken });
+        } catch (err) {
+          if (!(err instanceof ApiError) || err.isNetworkError) throw err;
+          setError(errorMessage(err, 'Verification failed'));
           return;
         }
         await finishLogin(data.token as string, data.user as AuthUser);
       } else {
-        const url = `${API_URL}/auth/login`;
-        console.log('[AUTH] POST', url, { email });
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ email, password }),
-        });
-        const data = await res.json();
-        console.log('[AUTH] login response', res.status, data);
-        if (!res.ok) {
-          setErrorType(res.status === 403 ? 'org' : 'default');
-          setError(data.error ?? 'Login failed');
+        let data: LoginResponse;
+        try {
+          data = await api.public.post<LoginResponse>(
+            '/auth/login',
+            { email, password },
+            { credentials: 'include' },
+          );
+        } catch (err) {
+          if (!(err instanceof ApiError) || err.isNetworkError) throw err;
+          setErrorType(err.status === 403 ? 'org' : 'default');
+          setError(errorMessage(err, 'Login failed'));
           return;
         }
         const needsTwoFactor =
@@ -115,7 +115,7 @@ export default function LoginPage() {
 
         if (data.requiresOtp) {
           setRequiresOtp(true);
-          setTempToken(data.tempToken);
+          setTempToken(data.tempToken ?? '');
           setOtp('');
           return;
         }

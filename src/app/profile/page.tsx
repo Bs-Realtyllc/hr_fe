@@ -2,8 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BACKEND_URL } from '@/config/env';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
-import { getToken } from '@/lib/auth';
+import { api, ApiError, errorMessage } from '@/lib/api';
 import Button from '@/components/Button/Button';
 import PageHeader from '@/components/PageHeader';
 import { BSRealtyAvatar, BSRealtyDropdown, BSRealtyTabs, BSRealtyToggle, BSRealtyTooltip } from '@bsrealtyllc/design-system';
@@ -142,25 +141,6 @@ function extractBackupCodes(data: any): string[] {
   return Array.isArray(codes) ? codes.map(String) : [];
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
-
-// DELETE with a JSON body (the shared api helper may not send a body on DELETE).
-async function apiDelete(path: string, body?: unknown) {
-  const token = getToken();
-  const res = await fetch(`${BACKEND_URL}/api${path}`, {
-    method: 'DELETE',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok) {
-    // Surface the backend's own message (e.g. "Invalid code", "password is required").
-    const data = await res.json().catch(() => null);
-    throw new Error(data?.message || data?.error || `Request failed (${res.status})`);
-  }
-  return res.status === 204 ? null : res.json().catch(() => null);
-}
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -454,7 +434,7 @@ export default function ProfilePage() {
   async function revokeTrustedDevice(deviceId: number) {
     setRevokingDeviceId(deviceId);
     try {
-      await apiDelete(`/auth/2fa/trusted-devices/${deviceId}`);
+      await api.delete(`/auth/2fa/trusted-devices/${deviceId}`);
       setTrustedDevices((prev) => prev.filter((d) => d.id !== deviceId));
       flash('Device revoked.');
     } catch {
@@ -467,7 +447,7 @@ export default function ProfilePage() {
   async function revokeAllTrustedDevices() {
     setTrustedDevicesLoading(true);
     try {
-      await apiDelete('/auth/2fa/trusted-devices');
+      await api.delete('/auth/2fa/trusted-devices');
       setTrustedDevices([]);
       flash('All devices revoked.');
     } catch {
@@ -575,7 +555,7 @@ export default function ProfilePage() {
     setTwoFactorError('');
 
     try {
-      await apiDelete('/auth/2fa/disable', { password: disablePassword, code: otp });
+      await api.delete('/auth/2fa/disable', { password: disablePassword, code: otp });
       setTwoFactorEnabled(false);
       setShowTwoFactorSetup(false);
       setOtp('');
@@ -665,16 +645,18 @@ export default function ProfilePage() {
   // first by trying to log in with the user's email + old password.
   // Returns true if the password is correct, false if it's wrong.
   async function verifyOldPassword(password: string): Promise<boolean> {
-    const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ email: profile?.email, password }),
-    });
-    if (res.status === 400 || res.status === 401 || res.status === 403) return false;
-    if (!res.ok) throw new Error('Unable to verify your old password. Please try again.');
-    // 200 = correct password (including "2FA code required" responses).
-    return true;
+    try {
+      await api.public.post(
+        '/auth/login',
+        { email: profile?.email, password },
+        { credentials: 'include' },
+      );
+      // 200 = correct password (including "2FA code required" responses).
+      return true;
+    } catch (err) {
+      if (err instanceof ApiError && [400, 401, 403].includes(err.status)) return false;
+      throw new Error('Unable to verify your old password. Please try again.');
+    }
   }
 
   async function changePassword() {
@@ -733,7 +715,6 @@ export default function ProfilePage() {
   }
 
   async function uploadFile(field: 'photo' | 'front' | 'back', file: File) {
-    const token = getToken();
     const fd = new FormData();
     const isPhoto = field === 'photo';
     const endpoint = isPhoto ? '/profile/photo' : `/profile/citizenship/${field}`;
@@ -741,19 +722,11 @@ export default function ProfilePage() {
     fd.append(isPhoto ? 'photo' : 'doc', file);
     setUploading(u => ({ ...u, [field]: true }));
     try {
-      const res = await fetch(`${BACKEND_URL}/api${endpoint}`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: fd,
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.message || data?.error || 'Upload failed.');
-      }
+      await api.postForm(endpoint, fd);
       flash(isPhoto ? 'Profile photo updated.' : 'Document uploaded.');
       if (isPhoto) await refreshPhoto();
     } catch (err) {
-      flash(err instanceof Error && err.message ? err.message : 'Upload failed. Max 5 MB, images only.', 'err');
+      flash(errorMessage(err, 'Upload failed. Max 5 MB, images only.'), 'err');
       // Put the old photo back, since the new one wasn't saved.
       if (isPhoto) setPhotoPreview(freshAvatarUrl(profile?.profile_picture ?? null));
     } finally {
@@ -766,7 +739,7 @@ export default function ProfilePage() {
     if (!profile?.profile_picture || uploading.photo) return;
     setUploading(u => ({ ...u, photo: true }));
     try {
-      await apiDelete('/profile/photo');
+      await api.delete('/profile/photo');
       setProfile(prev => (prev ? { ...prev, profile_picture: '' } : prev));
       setPhotoPreview(null);
       flash('Profile photo removed.');
