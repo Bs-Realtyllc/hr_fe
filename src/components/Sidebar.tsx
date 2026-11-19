@@ -163,7 +163,7 @@ export default function Sidebar() {
         if (profile_picture) {
           const backend = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api')
             .replace('/api', '');
-          setPhotoUrl(`${backend}/uploads/profile/${encodeURIComponent(profile_picture)}`);
+          setPhotoUrl(`${backend}/uploads/profile/photo/${encodeURIComponent(profile_picture)}`);
         }
       })
       .catch(() => { });
