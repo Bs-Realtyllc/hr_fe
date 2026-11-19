@@ -5,7 +5,7 @@ import type { Profile as FullProfile } from '@/types';
 import { BACKEND_URL } from '@/config/env';
 import React, { useEffect, useState } from 'react'
 import { getToken } from "@/lib/auth"
-import { api } from '@/lib/api'
+import { profileService } from '@/features/profile/api/profileService'
 import Button from '@/components/Button/Button'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -55,7 +55,7 @@ const LogoutPage = () => {
         async function loadProfile() {
             try {
                 // Only used for the profile picture
-                const data = await api.get<Profile>('/profile');
+                const data = await profileService.getProfile();
                 setProfile(data ?? null);
             } catch {
                 // Fall back to the initials avatar

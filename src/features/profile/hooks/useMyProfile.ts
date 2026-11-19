@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, errorMessage } from '@/lib/api';
 import type { Profile } from '@/types';
+import { profileService } from '../api/profileService';
 import { PERSONAL_FIELDS, freshAvatarUrl } from '../utils';
 import type { Flash } from './useFlash';
 
@@ -27,10 +28,11 @@ export function useMyProfile(flash: Flash, clearFlash: () => void) {
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
 
   // ── Show profile ───────────────────────────────────────────────────────────
-  const load = async () => {
+  // fresh: bypass the cache (after a save); otherwise reuse a recent read.
+  const load = async ({ fresh = false }: { fresh?: boolean } = {}) => {
     setLoadError('');
     try {
-      const p = await api.get<Profile>('/profile');
+      const p = fresh ? await profileService.refreshProfile() : await profileService.getProfile();
 
       setProfile(p);
       setForm({
@@ -92,7 +94,7 @@ export function useMyProfile(flash: Flash, clearFlash: () => void) {
     clearFlash();
     try {
       await api.put('/profile', payload);
-      await load(); // refresh the header card and form from the saved data
+      await load({ fresh: true }); // refresh the header card and form from the saved data
       flash('Profile updated successfully.');
     } catch (err) {
       console.error('Profile update failed:', err);
@@ -106,7 +108,7 @@ export function useMyProfile(flash: Flash, clearFlash: () => void) {
   // Refresh only the photo, so unsaved edits in the name/email fields are kept.
   async function refreshPhoto() {
     try {
-      const p = await api.get<Profile>('/profile');
+      const p = await profileService.refreshProfile();
       setProfile(prev => (prev ? { ...prev, profile_picture: p.profile_picture } : p));
       setPhotoPreview(freshAvatarUrl(p.profile_picture));
     } catch { /* keep current preview */ }
@@ -136,6 +138,7 @@ export function useMyProfile(flash: Flash, clearFlash: () => void) {
     try {
       await api.delete('/profile/photo');
       setProfile(prev => (prev ? { ...prev, profile_picture: '' } : prev));
+      await profileService.invalidateProfile();
       setPhotoPreview(null);
       flash('Profile photo removed.');
     } catch (err) {

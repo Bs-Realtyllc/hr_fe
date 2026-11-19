@@ -3,7 +3,7 @@
 import Button from "@/components/Button/Button"
 import type { Profile as FullProfile } from '@/types';
 import { BACKEND_URL } from '@/config/env';
-import { api } from '@/lib/api';
+import { profileService } from '@/features/profile/api/profileService';
 import { getToken } from "@/lib/auth"
 import { BSRealtyAvatar } from "@bsrealtyllc/design-system"
 import { useRouter } from "next/navigation"
@@ -139,7 +139,7 @@ export default function WelcomePage() {
         async function loadProfile() {
             try {
                 // Only used for the profile picture
-                const data = await api.get<Profile>('/profile');
+                const data = await profileService.getProfile();
                 setProfile(data ?? null);
             } catch (error) {
                 // Page still renders without the picture
