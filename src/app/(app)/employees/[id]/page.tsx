@@ -1,4 +1,4 @@
-import EmployeeProfileClient from './EmployeeProfileClient';
+import EmployeeDetailPage from '@/features/employees/components/EmployeeDetailPage';
 import { API_URL } from '@/config/env';
 
 export async function generateStaticParams() {
@@ -13,5 +13,5 @@ export async function generateStaticParams() {
 }
 
 export default function Page() {
-  return <EmployeeProfileClient />;
+  return <EmployeeDetailPage />;
 }

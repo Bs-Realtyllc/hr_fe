@@ -8,65 +8,11 @@ import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { showToast } from '@/lib/toast';
 import Button from '@/components/ui/Button/Button';
+import type { Acknowledgement, Project } from '../types';
+import { ackBadge, fmtDate, initials, msBadge, roleColors, statusBadge } from '../utils';
 
 
-interface Project {
-  id: number;
-  name: string;
-  description: string;
-  status: string;
-  start_date?: string;
-  expected_end_date?: string;
-  assigned_role: string;
-  milestones: { id: number; title: string; due_date: string; status: string }[];
-  repo_url: string[];
-  docs_url: string[];
-}
-
-interface Acknowledgement {
-  id: number;
-  policy_id: number;
-  policy_title: string;
-  signed_file_path: string;
-  status: 'pending' | 'approved' | 'rejected';
-  rejection_reason: string | null;
-  submitted_at: string;
-}
-
-
-function initials(name: string) {
-  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-}
-
-function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-const roleColors: Record<string, string> = {
-  admin: 'badge-error',
-  lead: 'badge-accent',
-  employee: 'badge-neutral',
-};
-
-const statusBadge: Record<string, string> = {
-  active: 'badge-success',
-  archived: 'badge-neutral',
-  on_hold: 'badge-warning',
-};
-
-const msBadge: Record<string, string> = {
-  completed: 'badge-success',
-  in_progress: 'badge-info',
-  pending: 'badge-neutral',
-};
-
-const ackBadge: Record<string, string> = {
-  approved: 'badge-success',
-  rejected: 'badge-error',
-  pending: 'badge-warning',
-};
-
-export default function EmployeeProfileClient() {
+export default function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { isAdmin } = usePermissions();
