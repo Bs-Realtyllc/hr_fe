@@ -31,7 +31,19 @@ export interface Profile {
   emergency_contact_address: string;
   emergency_contact_email: string;
   emergency_contact_phone: string;
-  
+}
+
+export interface DocsType {
+  id: number;
+  empId: number;
+  url: string;
+  name: string;
+  filename: string;
+}
+
+interface DocsResponseType {
+  status: string;
+  files: DocsType[];
 }
 
 export const profileService = {
@@ -44,6 +56,10 @@ export const profileService = {
   updateProfile: async (data: Partial<Profile>) => {
     return api.put<Profile>("/profile", data);
   },
+  //get Documents url for profile Documents section
+  getDocuments: async () => {
+    return api.get<DocsResponseType>("/profile/employee-docs");
+  },
 
   // Upload documents to one of the PATCH /profile/docs/* endpoints, e.g.
   // uploadDocuments("/profile/docs/id", formData) with fields idFront / idBack.
@@ -53,5 +69,4 @@ export const profileService = {
       formData,
     );
   },
-
 };

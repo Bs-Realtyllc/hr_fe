@@ -22,6 +22,7 @@ import EmployeeEmployment from '@/components/profile/employee/EmployeeEmployment
 import EmployeeBank from '@/components/profile/employee/EmployeeBank';
 import EmployeeDocuments from '@/components/profile/employee/EmployeeDocuments';
 import ErrorPage from '@/components/ErrorPage';
+import Tabs from '@/components/profile/Tabs';
 
 const BACKEND = process.env.NEXT_PUBLIC_API_URL!.replace('/api', '');
 
@@ -209,7 +210,17 @@ export default function ProfilePage() {
   // Company info (Organization tab) — readable by every role, editable by admin only.
   // work_start/work_end are the company-wide default working hours used to
   // flag late clock-ins; null until an admin actually sets them.
-  const [companyInfo, setCompanyInfo] = useState({ name: '', email: '', website: '', work_start: '', work_end: '', late_grace_minutes: '15' });
+  const [companyInfo, setCompanyInfo] = useState({
+    name: '', email: '', website: '', work_start: '', work_end: '', late_grace_minutes: '15'
+  });
+  const [savedCompanyInfo, setSavedCompanyInfo] = useState({
+    name: '',
+    email: '',
+    website: '',
+    work_start: '',
+    work_end: '',
+    late_grace_minutes: '15',
+  });
   const [savingCompanyInfo, setSavingCompanyInfo] = useState(false);
 
   // Team Access (Organization tab, admin only)
@@ -230,6 +241,10 @@ export default function ProfilePage() {
   const [isNameEdit, setIsNameEdit] = useState(false)
   const [isEmailEdit, setIsEmailEdit] = useState(false)
   const [isPhoneEdit, setIsPhoneEdit] = useState(false)
+
+  const [isCompanyNameEdit, setIsCompanyNameEdit] = useState(false)
+  const [isCompanyEmailEdit, setIsCompanyEmailEdit] = useState(false)
+  const [isCompanyWebEdit, setIsCompanyWebEdit] = useState(false)
 
   // Security
   const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm: '' });
@@ -319,10 +334,22 @@ export default function ProfilePage() {
         work_end: data.work_end?.slice(0, 5) ?? '',
         late_grace_minutes: String(data.late_grace_minutes ?? 15),
       });
+      const loadedCompanyInfo = {
+        name: data.name ?? '',
+        email: data.email ?? '',
+        website: data.website ?? '',
+        work_start: data.work_start?.slice(0, 5) ?? '',
+        work_end: data.work_end?.slice(0, 5) ?? '',
+        late_grace_minutes: String(data.late_grace_minutes ?? 15),
+      };
+
+      setCompanyInfo(loadedCompanyInfo);
+      setSavedCompanyInfo(loadedCompanyInfo);
     } catch {
       /* leave fields blank if company info can't be loaded */
     }
   };
+
 
   async function saveCompanyInfo() {
     setSavingCompanyInfo(true);
@@ -333,8 +360,16 @@ export default function ProfilePage() {
         website: companyInfo.website,
         work_start: companyInfo.work_start || null,
         work_end: companyInfo.work_end || null,
-        late_grace_minutes: companyInfo.late_grace_minutes ? Number(companyInfo.late_grace_minutes) : null,
+        late_grace_minutes: companyInfo.late_grace_minutes
+          ? Number(companyInfo.late_grace_minutes)
+          : null,
       });
+      setSavedCompanyInfo({ ...companyInfo });
+      // Disable all Company Information fields after successful save
+      setIsCompanyNameEdit(false);
+      setIsCompanyEmailEdit(false);
+      setIsCompanyWebEdit(false);
+
       flash('Company information saved.');
     } catch {
       flash('Unable to save company information.', 'err');
@@ -649,7 +684,11 @@ export default function ProfilePage() {
     setMsg('');
     try {
       await api.put('/profile', payload);
-      await load(); // refresh the header card and form from the saved data
+      await load();
+      // Disable all Personal Info fields after successful save
+      setIsNameEdit(false);
+      setIsEmailEdit(false);
+      setIsPhoneEdit(false);
       flash('Profile updated successfully.');
     } catch (err) {
       console.error('Profile update failed:', err);
@@ -821,6 +860,8 @@ export default function ProfilePage() {
   const isDirty = PERSONAL_FIELDS.some(
     (key) => form[key].trim() !== (profile[key] ?? '').trim()
   );
+  const isCompanyDirty =
+    JSON.stringify(companyInfo) !== JSON.stringify(savedCompanyInfo);
 
   // The password fields have their own button; Save Changes submits the personal form.
   // Other tabs have no save API yet and say so instead of silently failing.
@@ -873,10 +914,16 @@ export default function ProfilePage() {
                   className='profile-text-field'
                   value={companyInfo.name}
                   onChange={(e) => setCompanyInfo((prev) => ({ ...prev, name: e.target.value }))}
-                  disabled={!isAdmin}
+                  disabled={!isAdmin || !isCompanyNameEdit}
                 />
+
                 {isAdmin && (
-                  <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_name')?.focus()}>Edit</Button>
+                  <Button type='button' variant='primary' size='medium' onClick={() => {
+                    setIsCompanyNameEdit(true);
+                    setTimeout(() => {
+                      document.getElementById('company_name')?.focus()
+                    }, 0)
+                  }}>Edit</Button>
                 )}
               </div>
               <div className='flex gap-6 items-center'>
@@ -887,10 +934,15 @@ export default function ProfilePage() {
                   className='profile-text-field'
                   value={companyInfo.email}
                   onChange={(e) => setCompanyInfo((prev) => ({ ...prev, email: e.target.value }))}
-                  disabled={!isAdmin}
+                  disabled={!isAdmin || !isCompanyEmailEdit}
                 />
                 {isAdmin && (
-                  <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_email')?.focus()}>Edit</Button>
+                  <Button type='button' variant='primary' size='medium' onClick={() => {
+                    setIsCompanyEmailEdit(true);
+                    setTimeout(() => {
+                      document.getElementById('company_email')?.focus()
+                    }, 0)
+                  }}>Edit</Button>
                 )}
               </div>
               <div className='flex gap-6 items-center'>
@@ -901,10 +953,15 @@ export default function ProfilePage() {
                   className='profile-text-field'
                   value={companyInfo.website}
                   onChange={(e) => setCompanyInfo((prev) => ({ ...prev, website: e.target.value }))}
-                  disabled={!isAdmin}
+                  disabled={!isAdmin || !isCompanyWebEdit}
                 />
                 {isAdmin && (
-                  <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_website')?.focus()}>Edit</Button>
+                  <Button type='button' variant='primary' size='medium' onClick={() => {
+                    setIsCompanyWebEdit(true);
+                    setTimeout(() => {
+                      document.getElementById('company_website')?.focus()
+                    }, 0)
+                  }}>Edit</Button>
                 )}
               </div>
             </div>
@@ -1269,14 +1326,13 @@ export default function ProfilePage() {
 
         {/* ── Tabs ────────────────────────────────────────────────────────────── */}
         {isAdmin ? (
-          <div className="bg-(--soft-white-light) border border-(--soft-white-normal) rounded-lg" style={{ padding: 24, overflow: 'hidden' }}>
+          <div className="bg-(--soft-white-light) border border-(--soft-white-normal) rounded-lg px-6" style={{ overflow: 'hidden' }}>
 
             <div className='flex justify-between py-6'>
               <div className='min-w-0 max-w-full overflow-x-auto'>
-                <BSRealtyTabs
-                  className='flex-nowrap whitespace-nowrap m-1'
-                  defaultValue='personal'
-                  value={tab}
+
+                <Tabs
+                  activeTab={tab}
                   onChange={(newTab) => setTab(newTab as Tab)}
                   tabs={[
                     { label: 'Personal Info', value: 'personal' },
@@ -1286,17 +1342,22 @@ export default function ProfilePage() {
                   ]}
                 />
               </div>
-              <div className="flex justify-end shrink-0">
-                <Button
-                  variant='primary'
-                  size='small'
-                  type="button"
-                  disabled={saving || savingCompanyInfo || (tab === 'personal' && !isDirty)}
-                  onClick={handleSaveChanges}
-                >
-                  {saving || savingCompanyInfo ? 'Saving…' : 'Save Changes'}
-                </Button>
-              </div>
+              {(tab === 'personal' || tab === 'organization') && (
+                <div className="flex justify-end shrink-0">
+                  <Button
+                    variant="primary"
+                    size="small"
+                    type="button"
+                    disabled={
+                      tab === 'personal' ? saving || !isDirty : savingCompanyInfo ||
+                        !isCompanyDirty
+                    }
+                    onClick={handleSaveChanges}
+                  >
+                    {saving || savingCompanyInfo ? 'Saving…' : 'Save Changes'}
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* ── PERSONAL INFO ─────────────────────────────────────────────── */}
@@ -1358,7 +1419,13 @@ export default function ProfilePage() {
                             onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
                             disabled={!isNameEdit}
                           />
-                          <Button type='button' variant='primary' size='small' onClick={() => setIsNameEdit(prev => !prev)} >Edit</Button>
+                          {/* document.getElementById('company_name')?.focus() */}
+                          <Button type='button' variant='primary' size='small' onClick={() => {
+                            setIsNameEdit(true);
+                            setTimeout(() => {
+                              document.getElementById('name')?.focus();
+                            }, 0);
+                          }} >Edit</Button>
                         </div>
 
                         <div className='flex gap-6'>
@@ -1371,7 +1438,12 @@ export default function ProfilePage() {
                             onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
                             disabled={!isEmailEdit}
                           />
-                          <Button type='button' variant='primary' size='small' onClick={() => setIsEmailEdit(prev => !prev)}>Edit</Button>
+                          <Button type='button' variant='primary' size='small' onClick={() => {
+                            setIsEmailEdit(true);
+                            setTimeout(() => {
+                              document.getElementById('email')?.focus();
+                            }, 0);
+                          }}>Edit</Button>
                         </div>
 
                         <div className='flex gap-6'>
@@ -1385,7 +1457,12 @@ export default function ProfilePage() {
                             disabled={!isPhoneEdit}
                           />
 
-                          <Button type='button' variant='primary' size='small' onClick={() => setIsPhoneEdit(prev => !prev)}>Edit</Button>
+                          <Button type='button' variant='primary' size='small' onClick={() => {
+                            setIsPhoneEdit(true);
+                            setTimeout(() => {
+                              document.getElementById('phone')?.focus();
+                            }, 0);
+                          }}>Edit</Button>
 
                         </div>
 
@@ -1493,52 +1570,54 @@ export default function ProfilePage() {
             )}
           </div>
         ) : (
-          <div className='flex w-full gap-5'>
+          <div className='flex w-full gap-5  '>
             <div className="flex-1 min-w-0 bg-(--soft-white-light) border border-(--soft-white-normal) rounded-lg px-6 p-b-6" style={{ overflow: 'hidden' }}>
 
               <div className='flex justify-between py-6'>
-                <div className='w-full max-w-[830px] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
-                  <BSRealtyTabs
-                    className='w-max flex-nowrap whitespace-nowrap m-1'
-                    defaultValue='personal'
-                    value={employeeTab}
+                <div className='w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+
+                  <Tabs
+                    className="m-1"
+                    activeTab={employeeTab}
                     onChange={(newTab) => setEmployeeTab(newTab as EmployeeTab)}
                     tabs={[
-                      { label: 'Personal Info', value: 'personal' },
+                      { label: 'Personal Details', value: 'personal' },
                       { label: 'Employment Details', value: 'employment' },
                       { label: 'Bank Details', value: 'bank' },
                       { label: 'Documents', value: 'documents' },
-                      { label: 'Organization', value: 'organization' },
+                      // { label: 'Organization', value: 'organization' },
                       { label: 'Security', value: 'security' },
                       { label: 'Notification', value: 'notification' },
                     ]}
                   />
                 </div>
               </div>
-              {employeeTab === 'personal' && <EmployeePersonalInformation />}
-              {employeeTab === 'employment' && <EmployeeEmployment />}
-              {employeeTab === 'bank' && <EmployeeBank />}
-              {employeeTab === 'documents' && <EmployeeDocuments />}
-              {employeeTab === 'organization' && (
-                <div className='pt-2 max-w-[830px]'>
-                  {organizationSection}
-                </div>
-              )}
-              {employeeTab === 'security' && (
-                <div className='max-w-[929px] flex flex-col gap-11 pt-2'>
-                  {loginSecuritySection}
+              <div className=' max-w-[824px]'>
+                {employeeTab === 'personal' && <EmployeePersonalInformation />}
+                {employeeTab === 'employment' && <EmployeeEmployment />}
+                {employeeTab === 'bank' && <EmployeeBank />}
+                {employeeTab === 'documents' && <EmployeeDocuments />}
+                {/* {employeeTab === 'organization' && (
+                  <div className='pt-2 max-w-[830px]'>
+                    {organizationSection}
+                  </div>
+                )} */}
+                {employeeTab === 'security' && (
+                  <div className='max-w-[929px] flex flex-col gap-11 pt-2'>
+                    {loginSecuritySection}
 
-                  {/* divider */}
-                  <div className='border border-(--neutral-light-hover)'></div>
+                    {/* divider */}
+                    <div className='border border-(--neutral-light-hover)'></div>
 
-                  {securityNotificationsSection}
-                </div>
-              )}
-              {employeeTab === 'notification' && (
-                <div className='max-w-[532px] flex flex-col gap-11 pt-2'>
-                  {notificationSection}
-                </div>
-              )}
+                    {securityNotificationsSection}
+                  </div>
+                )}
+                {employeeTab === 'notification' && (
+                  <div className='max-w-[532px] flex flex-col gap-11 pt-2'>
+                    {notificationSection}
+                  </div>
+                )}
+              </div>
             </div>
             <div className='w-[285px] shrink-0 flex flex-col gap-5'>
               <div className='p-4 flex flex-col gap-3 bg-(--success-light-hover)  rounded-lg'>
@@ -1566,117 +1645,125 @@ export default function ProfilePage() {
       </div>
 
       {/* ── Login history modal ─────────────────────────────────────────── */}
-      {showLoginHistory && (
-        <LoginHistoryModal
-          history={loginHistory}
-          loading={loginHistoryLoading}
-          isAdmin={isAdmin && loginHistoryView === 'all'}
-          canViewAll={isAdmin}
-          view={loginHistoryView}
-          onViewChange={fetchLoginHistory}
-          onClose={() => setShowLoginHistory(false)}
-        />
-      )}
+      {
+        showLoginHistory && (
+          <LoginHistoryModal
+            history={loginHistory}
+            loading={loginHistoryLoading}
+            isAdmin={isAdmin && loginHistoryView === 'all'}
+            canViewAll={isAdmin}
+            view={loginHistoryView}
+            onViewChange={fetchLoginHistory}
+            onClose={() => setShowLoginHistory(false)}
+          />
+        )
+      }
 
       {/* ── Trusted devices modal ───────────────────────────────────────── */}
-      {showTrustedDevices && (
-        <TrustedDevicesModal
-          devices={trustedDevices}
-          loading={trustedDevicesLoading}
-          revokingId={revokingDeviceId}
-          onRevoke={revokeTrustedDevice}
-          onRevokeAll={revokeAllTrustedDevices}
-          onClose={() => setShowTrustedDevices(false)}
-        />
-      )}
+      {
+        showTrustedDevices && (
+          <TrustedDevicesModal
+            devices={trustedDevices}
+            loading={trustedDevicesLoading}
+            revokingId={revokingDeviceId}
+            onRevoke={revokeTrustedDevice}
+            onRevokeAll={revokeAllTrustedDevices}
+            onClose={() => setShowTrustedDevices(false)}
+          />
+        )
+      }
 
       {/* ── Edit role modal (Team Access) ───────────────────────────────── */}
-      {roleChangeTarget && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4" onClick={() => setRoleChangeTarget(null)}>
-          <div
-            className="flex w-full max-w-[420px] flex-col gap-4 rounded-2xl bg-(--soft-white-light) p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-[18px] font-semibold text-(--neutral-normal)">Edit Role</h2>
-            <p className="text-[14px] text-(--soft-white-dark-active)">
-              Change the access role for <strong>{roleChangeTarget.name}</strong>.
-            </p>
-            <BSRealtyDropdown
-              options={ACCESS_ROLE_OPTIONS}
-              value={newRoleValue}
-              onChange={setNewRoleValue}
-              aria-label="New role"
-            />
-            {newRoleValue === 'admin' && (
-              <p className="text-[13px] text-(--error-normal)">
-                This grants full admin access to every feature on the platform.
+      {
+        roleChangeTarget && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4" onClick={() => setRoleChangeTarget(null)}>
+            <div
+              className="flex w-full max-w-[420px] flex-col gap-4 rounded-2xl bg-(--soft-white-light) p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="text-[18px] font-semibold text-(--neutral-normal)">Edit Role</h2>
+              <p className="text-[14px] text-(--soft-white-dark-active)">
+                Change the access role for <strong>{roleChangeTarget.name}</strong>.
               </p>
-            )}
-            <div className="mt-2 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setRoleChangeTarget(null)}
-                className="rounded-xl border-2 border-(--neutral-light-hover) px-4 py-2 text-[14px] text-(--gray-darker)"
-              >
-                Cancel
-              </button>
-              <Button
-                type="button"
-                variant="primary"
-                size="medium"
-                disabled={savingRole || newRoleValue === roleChangeTarget.role}
-                onClick={confirmRoleChange}
-              >
-                {savingRole ? 'Saving…' : 'Save'}
-              </Button>
+              <BSRealtyDropdown
+                options={ACCESS_ROLE_OPTIONS}
+                value={newRoleValue}
+                onChange={setNewRoleValue}
+                aria-label="New role"
+              />
+              {newRoleValue === 'admin' && (
+                <p className="text-[13px] text-(--error-normal)">
+                  This grants full admin access to every feature on the platform.
+                </p>
+              )}
+              <div className="mt-2 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRoleChangeTarget(null)}
+                  className="rounded-xl border-2 border-(--neutral-light-hover) px-4 py-2 text-[14px] text-(--gray-darker)"
+                >
+                  Cancel
+                </button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="medium"
+                  disabled={savingRole || newRoleValue === roleChangeTarget.role}
+                  onClick={confirmRoleChange}
+                >
+                  {savingRole ? 'Saving…' : 'Save'}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* ── 2FA modal ─────────────────────────────────────────────────────── */}
-      {showTwoFactorSetup && (
-        <TwoFactorModal onClose={closeTwoFactorModal} dismissible={twoFactorStep !== 'backup'}>
-          {twoFactorStep === 'intro' && (
-            <TwoFactorSetup
-              loading={twoFactorLoading}
-              error={twoFactorError}
-              onSetup={startTwoFactorSetup}
-              onLater={closeTwoFactorModal}
-            />
-          )}
+      {
+        showTwoFactorSetup && (
+          <TwoFactorModal onClose={closeTwoFactorModal} dismissible={twoFactorStep !== 'backup'}>
+            {twoFactorStep === 'intro' && (
+              <TwoFactorSetup
+                loading={twoFactorLoading}
+                error={twoFactorError}
+                onSetup={startTwoFactorSetup}
+                onLater={closeTwoFactorModal}
+              />
+            )}
 
-          {twoFactorStep === 'scan' && setupData && (
-            <TwoFactorVerify
-              setupData={setupData}
-              otp={otp}
-              onOtpChange={(v) => { setOtp(v); setTwoFactorError(''); }}
-              loading={twoFactorLoading}
-              error={twoFactorError}
-              onConfirm={confirmTwoFactorSetup}
-              onCancel={closeTwoFactorModal}
-            />
-          )}
+            {twoFactorStep === 'scan' && setupData && (
+              <TwoFactorVerify
+                setupData={setupData}
+                otp={otp}
+                onOtpChange={(v) => { setOtp(v); setTwoFactorError(''); }}
+                loading={twoFactorLoading}
+                error={twoFactorError}
+                onConfirm={confirmTwoFactorSetup}
+                onCancel={closeTwoFactorModal}
+              />
+            )}
 
-          {twoFactorStep === 'backup' && (
-            <TwoFactorBackupCodes codes={backupCodes} onDone={closeTwoFactorModal} />
-          )}
+            {twoFactorStep === 'backup' && (
+              <TwoFactorBackupCodes codes={backupCodes} onDone={closeTwoFactorModal} />
+            )}
 
-          {twoFactorStep === 'disable' && (
-            <TwoFactorDisable
-              password={disablePassword}
-              onPasswordChange={(v) => { setDisablePassword(v); setTwoFactorError(''); }}
-              otp={otp}
-              onOtpChange={(v) => { setOtp(v); setTwoFactorError(''); }}
-              loading={twoFactorLoading}
-              error={twoFactorError}
-              onConfirm={confirmDisableTwoFactor}
-              onCancel={closeTwoFactorModal}
-            />
-          )}
-        </TwoFactorModal>
-      )}
-    </div>
+            {twoFactorStep === 'disable' && (
+              <TwoFactorDisable
+                password={disablePassword}
+                onPasswordChange={(v) => { setDisablePassword(v); setTwoFactorError(''); }}
+                otp={otp}
+                onOtpChange={(v) => { setOtp(v); setTwoFactorError(''); }}
+                loading={twoFactorLoading}
+                error={twoFactorError}
+                onConfirm={confirmDisableTwoFactor}
+                onCancel={closeTwoFactorModal}
+              />
+            )}
+          </TwoFactorModal>
+        )
+      }
+    </div >
   );
 }
 

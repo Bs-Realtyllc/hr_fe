@@ -144,7 +144,7 @@ function ResetPasswordForm() {
                   </div>
 
 
-                  <InputField placeholder='Conform password' type='password' showPasswordToggle={true} autoComplete="new-password"
+                  <InputField placeholder='Confirm password' type='password' showPasswordToggle={true} autoComplete="new-password"
                     required
                     value={form.confirm}
                     onChange={e => setForm(f => ({ ...f, confirm: e.target.value }))} />

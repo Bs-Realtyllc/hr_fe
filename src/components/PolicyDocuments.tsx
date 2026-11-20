@@ -121,6 +121,7 @@ export default function PolicyDocuments({
 
   const [rejectReason, setRejectReason] = useState('');
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
+  const [dropdownDirection, setDropdownDirection] = useState<'up' | 'down'>('down');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const sortMenuRef = useRef<HTMLDivElement>(null);
   const [fileView, setFileView] = useState<'list' | 'grid'>('list');
@@ -1219,9 +1220,18 @@ export default function PolicyDocuments({
                                       type="button"
                                       aria-label={`Actions for ${p.title}`}
                                       aria-expanded={activeDropdown === p.id}
-                                      onClick={() =>
-                                        setActiveDropdown(prev => prev === p.id ? null : p.id)
-                                      }
+                                      onClick={(e) => {
+                                        const rect = e.currentTarget.getBoundingClientRect();
+
+                                        const spaceBelow = window.innerHeight - rect.bottom;
+                                        const dropdownHeight = 190;
+
+                                        setDropdownDirection(
+                                          spaceBelow < dropdownHeight ? 'up' : 'down'
+                                        );
+
+                                        setActiveDropdown(prev => prev === p.id ? null : p.id);
+                                      }}
                                       className="p-1 rounded-md hover:bg-(--blue-dark-light) transition-colors"
                                     >
                                       <span
@@ -1241,7 +1251,10 @@ export default function PolicyDocuments({
 
                                     {/* Dropdown menu */}
                                     {activeDropdown === p.id && (
-                                      <div className="absolute right-0 top-full mt-1 w-[264px] bg-(--soft-white-light-active) border border-(--white-light-hover) rounded-lg z-50 p-3 text-left">
+                                      <div className={`absolute right-0 w-[264px] bg-(--soft-white-light-active) border border-(--white-light-hover) rounded-lg z-[100] p-3 text-left shadow-lg ${dropdownDirection === 'up'
+                                        ? 'bottom-full mb-1'
+                                        : 'top-full mt-1'
+                                        }`}>
                                         {isAdmin && (
                                           <button
                                             type="button"
