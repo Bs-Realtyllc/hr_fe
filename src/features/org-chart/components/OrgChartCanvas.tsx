@@ -12,7 +12,6 @@ import {
   type NodeTypes,
   type ReactFlowInstance,
 } from '@xyflow/react';
-import { LocateFixed } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import type { OrgChartMember, OrgChartViewMode, OrgTree, RevealRequest } from '../types';
 
@@ -44,11 +43,11 @@ import PersonNode from './PersonNode';
 const nodeTypes: NodeTypes = { person: PersonNode, orgGroup: GroupNode };
 
 /** Below this zoom, cards are too small to read. */
-const MIN_READABLE_ZOOM = 0.5;
+const MIN_READABLE_ZOOM = 0.7;
 const FIT_PADDING = 0.2;
 const FOCUS_ZOOM = 0.9;
 const HIGHLIGHT_MS = 2500;
-/** Space for the search / Find me toolbar above the top row. */
+/** Space for the search box above the top row. */
 const TOOLBAR_CLEARANCE = 72;
 
 const prefersReducedMotion = () =>
@@ -232,8 +231,6 @@ function CanvasInner({
     () => [...tree.byId.values()].map((n) => n.member),
     [tree],
   );
-  const meId = currentUserId != null ? personId(currentUserId) : null;
-  const canFindMe = meId != null && parents.has(meId);
 
   // Show the whole chart if it fits at a readable size; otherwise start at
   // the top of the tree at a readable zoom and let the user pan from there.
@@ -293,18 +290,6 @@ function CanvasInner({
           <Panel position="top-left">
             <OrgChartSearch members={members} onSelect={(m) => reveal(personId(m.id))} />
           </Panel>
-          {canFindMe && (
-            <Panel position="top-right">
-              <button
-                type="button"
-                className="org-findme nodrag nopan"
-                onClick={() => reveal(meId)}
-              >
-                <LocateFixed size={16} aria-hidden="true" />
-                Find me
-              </button>
-            </Panel>
-          )}
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
           <Controls
             showInteractive={false}

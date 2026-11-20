@@ -1,12 +1,5 @@
 'use client';
-import {
-  Building2,
-  ChevronRight,
-  ChevronsDownUp,
-  ChevronsUpDown,
-  LocateFixed,
-  Users,
-} from 'lucide-react';
+import { Building2, ChevronRight, ChevronsDownUp, ChevronsUpDown, Users } from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -125,16 +118,14 @@ export default function OrgChartOutline({
     [parents, collapsed, onCollapsedChange, moveTo],
   );
 
-  // Reveal on request without taking focus away from where the user is.
+  // Reveal on request; only take focus when asked ("Find me"), not for panel links.
   const revealRef = useRef(reveal);
   revealRef.current = reveal;
   useEffect(() => {
-    if (revealRequest) revealRef.current(revealRequest.id, false);
+    if (revealRequest) revealRef.current(revealRequest.id, revealRequest.focus ?? false);
   }, [revealRequest]);
 
   const members = useMemo(() => [...tree.byId.values()].map((n) => n.member), [tree]);
-  const meId = currentUserId != null ? personId(currentUserId) : null;
-  const canFindMe = meId != null && parents.has(meId);
 
   const onKeyDown = (e: KeyboardEvent<HTMLLIElement>, row: OutlineRow, index: number) => {
     const id = row.item.id;
@@ -200,17 +191,6 @@ export default function OrgChartOutline({
             <ChevronsDownUp size={16} aria-hidden="true" />
             <span className="org-btn-label">Collapse all</span>
           </button>
-          {canFindMe && (
-            <button
-              type="button"
-              className="org-findme"
-              title="Find me"
-              onClick={() => reveal(meId)}
-            >
-              <LocateFixed size={16} aria-hidden="true" />
-              <span className="org-btn-label">Find me</span>
-            </button>
-          )}
         </div>
       </div>
 

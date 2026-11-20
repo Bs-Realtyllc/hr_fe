@@ -15,7 +15,7 @@ function Harness({
   rows: OrgChartMember[];
   me?: number | null;
   onOpenPerson?: (id: number) => void;
-  revealRequest?: { id: string; seq: number } | null;
+  revealRequest?: { id: string; seq: number; focus?: boolean } | null;
 }) {
   const [collapsed, setCollapsed] = useState<Set<string> | null>(null);
   return (
@@ -134,7 +134,6 @@ describe('OrgChartOutline', () => {
     ]);
     expect(item('Chief Executive').getAttribute('aria-expanded')).toBe('true');
     expect(item('HR Head').getAttribute('aria-expanded')).toBe('false');
-    expect(screen.queryByRole('button', { name: 'Find me' })).toBeNull();
   });
 
   it('search reveals, focuses and briefly highlights a hidden person', () => {
@@ -151,10 +150,11 @@ describe('OrgChartOutline', () => {
     expect(row.className).not.toContain('is-highlight');
   });
 
-  it('Find me opens the way to the signed-in user', () => {
-    render(<Harness rows={largeCompany()} me={10} />);
+  it('reveals and focuses a row when the request asks for focus (Find me)', () => {
+    const rows = largeCompany();
+    const { rerender } = render(<Harness rows={rows} me={10} />);
     expect(names()).not.toContain('Employee 1.2.2');
-    fireEvent.click(screen.getByRole('button', { name: 'Find me' }));
+    rerender(<Harness rows={rows} me={10} revealRequest={{ id: '10', seq: 1, focus: true }} />);
     expect(document.activeElement).toBe(item('Employee 1.2.2'));
   });
 

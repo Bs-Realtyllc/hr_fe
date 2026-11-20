@@ -79,4 +79,6 @@ export type TeamChartNode =
 export interface RevealRequest {
   id: string;
   seq: number;
+  /** Outline: also move keyboard focus to the row (e.g. "Find me"). */
+  focus?: boolean;
 }

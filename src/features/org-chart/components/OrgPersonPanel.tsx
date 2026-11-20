@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
-import { X } from 'lucide-react';
-import { useEffect, useId, useRef } from 'react';
+import { Check, Link2, X } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { OrgNode, OrgTree } from '../types';
 import { visibleDepartment } from '../utils/department';
 import PersonAvatar from './PersonAvatar';
@@ -22,6 +22,8 @@ export interface OrgPersonPanelProps {
   /** Open another person (manager or report) in the panel. */
   onSelect: (employeeId: number) => void;
   onClose: () => void;
+  /** Absolute link that opens the chart on this person; omit to hide "Copy link". */
+  shareUrl?: string;
 }
 
 /**
@@ -36,6 +38,7 @@ export default function OrgPersonPanel({
   profileHref,
   onSelect,
   onClose,
+  shareUrl,
 }: OrgPersonPanelProps) {
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -45,6 +48,24 @@ export default function OrgPersonPanel({
   const status = STATUS_LABELS[member.status];
 
   const headingRef = useRef<HTMLHeadingElement>(null);
+
+  // ── Copy link ──
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const copyTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(copyTimer.current), []);
+  useEffect(() => setCopyState('idle'), [member.id]);
+  const copyLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopyState('copied');
+    } catch {
+      // Clipboard blocked (insecure origin, permissions): say so, don't fail silently.
+      setCopyState('failed');
+    }
+    clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopyState('idle'), 2000);
+  };
 
   // Focus moves into the panel when it opens and goes back when it closes.
   useEffect(() => {
@@ -135,11 +156,34 @@ export default function OrgPersonPanel({
         </section>
       </div>
 
-      {profileHref && (
+      {(profileHref || shareUrl) && (
         <div className="org-panel__footer">
-          <Link href={profileHref} className="org-panel__profile">
-            {isMe ? 'Open my profile' : 'View full profile'}
-          </Link>
+          {shareUrl && (
+            <button type="button" className="org-panel__copy" onClick={copyLink}>
+              {copyState === 'copied' ? (
+                <Check size={16} aria-hidden="true" />
+              ) : (
+                <Link2 size={16} aria-hidden="true" />
+              )}
+              {copyState === 'copied'
+                ? 'Copied'
+                : copyState === 'failed'
+                  ? "Couldn't copy"
+                  : 'Copy link'}
+            </button>
+          )}
+          {profileHref && (
+            <Link href={profileHref} className="org-panel__profile">
+              {isMe ? 'Open my profile' : 'View full profile'}
+            </Link>
+          )}
+          <span className="org-sr-only" role="status" aria-live="polite">
+            {copyState === 'copied'
+              ? 'Link copied'
+              : copyState === 'failed'
+                ? 'Could not copy the link'
+                : ''}
+          </span>
         </div>
       )}
     </aside>

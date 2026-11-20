@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { member, smallTeam } from '../fixtures';
 import { buildOrgTree } from '../utils/buildOrgTree';
@@ -91,5 +91,28 @@ describe('OrgPersonPanel', () => {
     const { rerender, props } = setup();
     rerender(<OrgPersonPanel {...props} person={tree.byId.get(1)!} />);
     expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Sita Karki' }));
+  });
+
+  it('copies a link to this person', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    setup({ shareUrl: 'https://hr.example.com/org-chart?person=2' });
+    fireEvent.click(screen.getByRole('button', { name: 'Copy link' }));
+    expect(writeText).toHaveBeenCalledWith('https://hr.example.com/org-chart?person=2');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Copied' })).toBeTruthy());
+    expect(screen.getByRole('status').textContent).toBe('Link copied');
+  });
+
+  it('says so when the clipboard is blocked', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('denied'));
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    setup({ shareUrl: 'https://x/org-chart?person=2' });
+    fireEvent.click(screen.getByRole('button', { name: 'Copy link' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: "Couldn't copy" })).toBeTruthy());
+  });
+
+  it('hides Copy link without a share URL', () => {
+    setup();
+    expect(screen.queryByRole('button', { name: 'Copy link' })).toBeNull();
   });
 });

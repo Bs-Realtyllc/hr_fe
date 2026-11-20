@@ -96,6 +96,38 @@ describe('OrgChartView', () => {
     );
   });
 
+  it('has one Find me in the header that reveals and focuses you', () => {
+    render(<OrgChartView {...props({ view: 'outline', currentUserId: 6 })} />);
+    // Ram Gurung (6) is shown; collapse his branch first so Find me must reopen it.
+    fireEvent.click(
+      screen
+        .getByRole('treeitem', { name: /^Aarav Sharma/ })
+        .querySelector('.org-outline__chevron')!,
+    );
+    expect(screen.queryByRole('treeitem', { name: /^Ram Gurung/ })).toBeNull();
+    const buttons = screen.getAllByRole('button', { name: 'Find me' });
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].closest('.page-header')).not.toBeNull();
+    fireEvent.click(buttons[0]);
+    expect(document.activeElement).toBe(screen.getByRole('treeitem', { name: /^Ram Gurung/ }));
+  });
+
+  it('does not jump back to you after Find me when switching views', () => {
+    const { rerender } = render(<OrgChartView {...props({ view: 'outline', currentUserId: 6 })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Find me' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Teams' }));
+    rerender(<OrgChartView {...props({ view: 'teams', currentUserId: 6 })} />);
+    rerender(<OrgChartView {...props({ view: 'outline', currentUserId: 6 })} />);
+    expect(screen.getByRole('treeitem', { name: /^Ram Gurung/ }).className).not.toContain(
+      'is-highlight',
+    );
+  });
+
+  it('hides Find me when you are not on the chart', () => {
+    render(<OrgChartView {...props({ currentUserId: 999 })} />);
+    expect(screen.queryByRole('button', { name: 'Find me' })).toBeNull();
+  });
+
   it('uses singular words for one of each', () => {
     render(<OrgChartView {...props({ tree: buildOrgTree([smallTeam[0]]) })} />);
     expect(screen.getByText('1 person · 1 level · 1 department')).toBeTruthy();
