@@ -1,9 +1,9 @@
 import Button from '@/components/ui/Button/Button';
 
-/** Static tips column shown beside the employee tabs. */
+/** Static tips column beside the employee tabs (below them at ≤1120px). */
 export default function ProfileTipsSidebar() {
   return (
-    <div className='w-[285px] shrink-0 flex flex-col gap-5'>
+    <div className='w-[285px] shrink-0 flex flex-col gap-5 max-[1120px]:w-full'>
       <div className='p-4 flex flex-col gap-3 bg-(--success-light-hover)  rounded-lg'>
         <h1 className='text-[12px] font-semibold text-(--success-normal)'>PROFILE & SECURITY</h1>
         <div className='flex flex-col gap-1'>

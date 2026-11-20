@@ -95,6 +95,19 @@ export default function ProfilePage() {
     flash('Saving this section is not available yet.', 'err');
   };
 
+  // Admin Save Changes: one element, shown beside the tabs (≥768px) or after the form (<768px).
+  const saveButton = (
+    <Button
+      variant='primary'
+      size='small'
+      type="button"
+      disabled={saving || savingCompanyInfo || (tab === 'personal' && !isDirty)}
+      onClick={handleSaveChanges}
+    >
+      {saving || savingCompanyInfo ? 'Saving…' : 'Save Changes'}
+    </Button>
+  );
+
   return (
     <div>
       {/* Page Header */}
@@ -127,17 +140,8 @@ export default function ProfilePage() {
                   ]}
                 />
               </div>
-              <div className="flex justify-end shrink-0">
-                <Button
-                  variant='primary'
-                  size='small'
-                  type="button"
-                  disabled={saving || savingCompanyInfo || (tab === 'personal' && !isDirty)}
-                  onClick={handleSaveChanges}
-                >
-                  {saving || savingCompanyInfo ? 'Saving…' : 'Save Changes'}
-                </Button>
-              </div>
+              {/* ≥768px: beside the tabs. Below that it moves to the end of the form (see below). */}
+              <div className="shrink-0 max-md:hidden">{saveButton}</div>
             </div>
 
             {/* ── PERSONAL INFO ─────────────────────────────────────────────── */}
@@ -165,9 +169,13 @@ export default function ProfilePage() {
                 <EmailNotificationsSection notifications={notifications} />
               </div>
             )}
+
+            {/* <768px: Save sits at the end of the form, after the fields it saves. */}
+            <div className="mt-8 md:hidden">{saveButton}</div>
           </div>
         ) : (
-          <div className='flex w-full gap-5'>
+          <div className='flex w-full gap-5 max-[1120px]:flex-col'>
+            {/* ≤1120px the tips drop below the profile instead of taking 285px beside it. */}
             <div className="flex-1 min-w-0 bg-(--soft-white-light) border border-(--soft-white-normal) rounded-lg px-6 p-b-6" style={{ overflow: 'hidden' }}>
 
               <div className='flex justify-between py-6'>

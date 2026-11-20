@@ -139,7 +139,7 @@ function TodoRow({
               {done && <span style={{ color: '#fff', fontSize: 10, fontWeight: 700 }}>✓</span>}
             </span>
           )}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
             <div style={{
               fontWeight: 500, fontSize: 14,
               textDecoration: done ? 'line-through' : 'none',
@@ -226,8 +226,9 @@ function ProjectCard({ project, isAdmin }: { project: Project; isAdmin: boolean 
           borderBottom: expanded ? '1px solid var(--color-border)' : 'none',
         }}
       >
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* minWidth 0 + overflowWrap: long links in the name/description wrap instead of widening the card. */}
+        <div style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 600, fontSize: 15 }}>{project.name}</span>
             <span style={{
               fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em',

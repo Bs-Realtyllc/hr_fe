@@ -2111,6 +2111,7 @@
   position: absolute;
   top: 56px; right: 0;
   width: 340px;
+  max-width: 100%; /* never wider than a small phone */
   height: calc(100% - 56px);
   background: var(--color-surface);
   border-left: 1px solid var(--color-border);
@@ -2475,18 +2476,80 @@
 @media (max-width: 900px) {
   .inbox-members { display: none; }
   .inbox-channels { width: 200px; }
+
+  /* 👥 in the header opens the members list as an overlay below the header
+     (InboxClient toggles .members-open); tapping 👥 again closes it. */
+  .inbox-shell.members-open .inbox-members,
+  .inbox-shell.members-open .inbox-members.hidden {
+    display: flex;
+    position: absolute;
+    top: 48px; /* keep the channel header, and its 👥 toggle, visible */
+    right: 0;
+    bottom: 0;
+    width: min(280px, 100%);
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 35; /* above the pins/saved panel (30), below the phone channel list (40) */
+    box-shadow: -4px 0 16px rgba(0, 0, 0, .1);
+  }
 }
 
+/* Phone channel-list toggle: hidden above 640px. */
+.inbox-nav-btn { display: none; }
+
+/* Phones: the channel list is a full-screen panel (names visible) opened by the
+   ☰ button in the chat header; picking a channel/DM closes it (InboxClient). */
 @media (max-width: 640px) {
-  .inbox-channels { width: 56px; }
-  .inbox-ch-item-name,
-  .inbox-category-header span,
-  .inbox-dm-name,
-  .inbox-user-footer-info,
-  .inbox-ws-header span { display: none; }
-  .inbox-ws-header { padding: 0 8px; justify-content: center; }
-  .inbox-ch-item { justify-content: center; padding: 8px; }
-  .inbox-voice-ch-item { justify-content: center; padding: 8px; }
-  .inbox-dm-item { justify-content: center; padding: 8px; }
-  .inbox-user-footer { padding: 0 8px; justify-content: center; }
+  .inbox-channels {
+    display: none;
+    position: absolute;
+    inset: 0;
+    width: auto;
+    z-index: 40; /* above the pins/saved side panel (30) */
+  }
+  .inbox-shell.nav-open .inbox-channels { display: flex; }
+
+  .inbox-nav-btn { display: flex; }
+  .inbox-ch-header > .inbox-nav-btn { margin-right: 8px; flex-shrink: 0; }
+
+  .inbox-ws-header { justify-content: flex-start; gap: 8px; }
+  .inbox-nav-close {
+    margin-left: auto;
+    width: 32px;
+    height: 32px;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+  }
+  .inbox-nav-close .icon {
+    width: 18px;
+    height: 18px;
+    background-color: currentColor;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+  }
+}
+
+/* Touch screens: long-press on a message opens our menu (InboxClient), so turn
+   off the browser's own text-selection / callout menu on message rows. "Copy
+   Text" is in our menu. Inputs (inline edit) stay selectable. */
+@media (pointer: coarse) {
+  .inbox-msg-group {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .inbox-msg-group textarea,
+  .inbox-msg-group input {
+    -webkit-user-select: text;
+    user-select: text;
+  }
 }

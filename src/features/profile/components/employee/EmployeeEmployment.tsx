@@ -181,7 +181,7 @@ const EmployeeEmployment = () => {
 
           <form onSubmit={handleSaveEmployment}>
             {/* Employment ID */}
-            <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
               <label
                 htmlFor="emp-id"
                 className="text-[14px] font-medium text-(--gray-darker)"
@@ -189,7 +189,7 @@ const EmployeeEmployment = () => {
                 Employment ID
               </label>
               {isEditingEmployment ? (
-                <div className="w-60">
+                <div className="w-60 max-sm:w-full">
                   <InputField
                     className="h-9! text-end!"
                     id="emp-id"
@@ -211,7 +211,7 @@ const EmployeeEmployment = () => {
             </div>
 
             {/* Job Title */}
-            <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
               <label
                 htmlFor="job-title"
                 className="text-[14px] font-medium text-(--gray-darker)"
@@ -219,7 +219,7 @@ const EmployeeEmployment = () => {
                 Job Title
               </label>
               {isEditingEmployment ? (
-                <div className="w-60">
+                <div className="w-60 max-sm:w-full">
                   <BSRealtyDropdown
                     className="w-full!"
                     options={designationOption}
@@ -244,7 +244,7 @@ const EmployeeEmployment = () => {
             </div>
 
             {/* Department */}
-            <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
               <label
                 htmlFor="department"
                 className="text-[14px] font-medium text-(--gray-darker)"
@@ -252,7 +252,7 @@ const EmployeeEmployment = () => {
                 Department
               </label>
               {isEditingEmployment ? (
-                <div className="w-60">
+                <div className="w-60 max-sm:w-full">
                   <BSRealtyDropdown
                     className="w-full!"
                     options={departmentOption}
@@ -277,7 +277,7 @@ const EmployeeEmployment = () => {
             </div>
 
             {/* Start Date */}
-            <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
               <label
                 htmlFor="start-date"
                 className="text-[14px] font-medium text-(--gray-darker)"
@@ -285,7 +285,7 @@ const EmployeeEmployment = () => {
                 Start Date
               </label>
               {isEditingEmployment ? (
-                <div className="w-60">
+                <div className="w-60 max-sm:w-full">
                   <InputField
                     className="h-9! text-end!"
                     id="start-date"
@@ -308,7 +308,7 @@ const EmployeeEmployment = () => {
             </div>
 
             {/* Employee Type */}
-            <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
               <label
                 htmlFor="emp-type"
                 className="text-[14px] font-medium text-(--gray-darker)"
@@ -316,9 +316,9 @@ const EmployeeEmployment = () => {
                 Work hours
               </label>
               {isEditingEmployment ? (
-                <div className="w-60 pb-1">
+                <div className="w-60 max-sm:w-full pb-1">
                   <InputField
-                    className="w-60! text-end!"
+                    className="w-60! max-sm:w-full! text-end!"
                     value={employmentDetails.workHours}
                     onChange={(e) =>
                       setEmploymentDetails({
@@ -373,7 +373,7 @@ const EmployeeEmployment = () => {
 
           <form onSubmit={handleSaveOrg}>
             {/* Reporting Manager */}
-            <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
               <label
                 htmlFor="reporting-manager"
                 className="text-[14px] font-medium text-(--gray-darker)"
@@ -381,7 +381,7 @@ const EmployeeEmployment = () => {
                 Reporting Manager
               </label>
               {isEditingOrg ? (
-                <div className="w-60">
+                <div className="w-60 max-sm:w-full">
                   {/* <InputField
                     className="h-9! text-end!"
                     id="reporting-manager"
@@ -415,7 +415,7 @@ const EmployeeEmployment = () => {
             </div>
 
             {/* Work Location */}
-            <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
               <label
                 htmlFor="work-location"
                 className="text-[14px] font-medium text-(--gray-darker)"
@@ -424,7 +424,7 @@ const EmployeeEmployment = () => {
                 <span className="text-(--gray-normal)">(optional)</span>
               </label>
               {isEditingOrg ? (
-                <div className="w-60">
+                <div className="w-60 max-sm:w-full">
                   <BSRealtyDropdown
                     className="w-full!"
                     options={[{value:"onsite", label:"Onsite"},{value:"remote", label:"Remote"},{value:"hybrid", label:"Hybrid"}]}

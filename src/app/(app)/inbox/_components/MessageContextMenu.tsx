@@ -39,8 +39,13 @@ export function MessageContextMenu({ x, y, actions, onClose }: MessageContextMen
   /* Keep menu inside viewport */
   const menuW = 200;
   const menuH = actions.length * 36 + 8;
-  const left  = x + menuW  > window.innerWidth  ? x - menuW  : x;
-  const top   = y + menuH  > window.innerHeight ? y - menuH  : y;
+  // Flip left/up when it would overflow, then clamp so it never starts off-screen
+  // (on a phone a long-press mid-screen can't fit the menu above or below).
+  const margin = 8;
+  const flippedLeft = x + menuW > window.innerWidth  ? x - menuW : x;
+  const flippedTop  = y + menuH > window.innerHeight ? y - menuH : y;
+  const left = Math.max(margin, Math.min(flippedLeft, window.innerWidth  - menuW - margin));
+  const top  = Math.max(margin, Math.min(flippedTop,  window.innerHeight - menuH - margin));
 
   return (
     <div

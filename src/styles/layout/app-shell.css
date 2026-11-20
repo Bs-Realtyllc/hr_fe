@@ -12,6 +12,10 @@
 
 .main-content {
   flex: 1;
+  /* Flex items default to min-width: auto, i.e. never narrower than their
+     widest content. Without this, one fixed-width child (e.g. a 532px input)
+     widens the whole page past the screen instead of shrinking to fit. */
+  min-width: 0;
   margin-left: var(--sidebar-width);
   padding: 24px;
   min-height: 100vh;
@@ -238,7 +242,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px;
-  height: 89px;
+  min-height: 89px;
   background: var(--soft-white-light);
 }
 

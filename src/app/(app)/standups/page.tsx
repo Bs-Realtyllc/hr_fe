@@ -141,7 +141,7 @@ export default function StandupsPage() {
             <h1>Async Standups</h1>
             <p>Team daily updates — what we did, what&apos;s next, any blockers</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
 
             <Button variant="secondary"
               size="small"
@@ -177,18 +177,14 @@ export default function StandupsPage() {
       <div className="card mb-4" style={{ padding: "14px 20px" }}>
         <div className="flex items-center gap-3" style={{ flexWrap: "wrap" }}>
           {isPrivileged && (
-            <div className="flex items-center gap-2">
-              <label
-                className="form-label"
-                style={{ margin: 0, whiteSpace: "nowrap" }}
-              >
+            <div className="standup-filter">
+              <label className="form-label">
                 Employee
               </label>
               <select
                 className="form-select"
                 value={selectedEmployee}
                 onChange={(e) => setSelectedEmployee(e.target.value)}
-                style={{ width: 200 }}
               >
                 <option value="">All employees</option>
                 {employees.map((e) => (
@@ -200,11 +196,8 @@ export default function StandupsPage() {
             </div>
           )}
 
-          <div className="flex items-center gap-2">
-            <label
-              className="form-label"
-              style={{ margin: 0, whiteSpace: "nowrap" }}
-            >
+          <div className="standup-filter">
+            <label className="form-label">
               From
             </label>
             <input
@@ -212,15 +205,11 @@ export default function StandupsPage() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              style={{ width: 160 }}
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <label
-              className="form-label"
-              style={{ margin: 0, whiteSpace: "nowrap" }}
-            >
+          <div className="standup-filter">
+            <label className="form-label">
               To
             </label>
             <input
@@ -229,7 +218,6 @@ export default function StandupsPage() {
               value={endDate}
               min={startDate || undefined}
               onChange={(e) => setEndDate(e.target.value)}
-              style={{ width: 160 }}
             />
           </div>
 
@@ -286,8 +274,9 @@ export default function StandupsPage() {
                       <div className="text-muted">{s.designation}</div>
                     </div>
                   </div>
-                  <div className="flex flex-row justify-start gap-10">
-                    <div className="flex flex-col gap-4">
+                  {/* Two equal columns from 640px; one column on phones. Long words/links wrap. */}
+                  <div className="grid grid-cols-1 gap-[16px] break-words sm:grid-cols-2 sm:gap-10">
+                    <div className="flex min-w-0 flex-col gap-4">
                       <div>
                         <div
                           style={{
@@ -341,7 +330,7 @@ export default function StandupsPage() {
                         </div>
                       )}
                     </div>
-                    <div className="mr-10 flex flex-col gap-8">
+                    <div className="flex min-w-0 flex-col gap-[16px] sm:gap-8">
                       <div>
                         <div
                           style={{

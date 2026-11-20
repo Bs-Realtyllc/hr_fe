@@ -23,6 +23,7 @@ import { reportsLabel } from '../utils/person';
 import OrgChartSearch from './OrgChartSearch';
 import PersonAvatar from './PersonAvatar';
 import PersonFooter from './PersonFooter';
+import { coveringPanelRect, visibleCentreOffset } from '../utils/visibleArea';
 
 const HIGHLIGHT_MS = 2500;
 
@@ -77,8 +78,15 @@ export default function OrgChartOutline({
     if (!el) return;
     pendingFocus.current = null;
     if (pending.focus) el.focus({ preventScroll: true });
-    if (pending.scroll) el.scrollIntoView?.({ block: 'center' });
-    else el.scrollIntoView?.({ block: 'nearest' });
+    if (pending.scroll) {
+      el.scrollIntoView?.({ block: 'center' });
+      // With the details panel open as a bottom sheet, lift the row above it.
+      const list = el.closest('.org-outline__tree');
+      if (list) {
+        const { dy } = visibleCentreOffset(list.getBoundingClientRect(), coveringPanelRect());
+        if (dy) list.scrollBy?.(0, -dy);
+      }
+    } else el.scrollIntoView?.({ block: 'nearest' });
   }, [rows, activeId]);
 
   const moveTo = useCallback((id: string, scroll = false, focus = true) => {

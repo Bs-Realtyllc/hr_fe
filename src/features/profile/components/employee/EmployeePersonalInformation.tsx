@@ -180,7 +180,7 @@ const EmployeePersonalInformation = () => {
 
         <form onSubmit={handleSavePersonal}>
           {/* Full Name */}
-          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
             <label
               htmlFor="name"
               className="text-[14px] font-medium text-(--gray-darker)"
@@ -188,7 +188,7 @@ const EmployeePersonalInformation = () => {
               Full Name
             </label>
             {isEditingPersonal ? (
-              <div className="w-60">
+              <div className="w-60 max-sm:w-full">
                 <InputField
                   className="h-9! text-end!"
                   id="name"
@@ -207,7 +207,7 @@ const EmployeePersonalInformation = () => {
           </div>
 
           {/* DOB */}
-          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
             <label
               htmlFor="dob"
               className="text-[14px] font-medium text-(--gray-darker)"
@@ -215,7 +215,7 @@ const EmployeePersonalInformation = () => {
               Date of Birth
             </label>
             {isEditingPersonal ? (
-              <div className="w-60">
+              <div className="w-60 max-sm:w-full">
                 <InputField
                   className="h-9! text-end!"
                   id="dob"
@@ -234,7 +234,7 @@ const EmployeePersonalInformation = () => {
           </div>
 
           {/* Gender */}
-          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
             <label
               htmlFor="gender"
               className="text-[14px] font-medium text-(--gray-darker)"
@@ -242,9 +242,9 @@ const EmployeePersonalInformation = () => {
               Gender
             </label>
             {isEditingPersonal ? (
-              <div className="w-60 pb-1">
+              <div className="w-60 max-sm:w-full pb-1">
                 <BSRealtyDropdown
-                  className="w-60! [&_.bsr-dropdown\_input-wrapper]:h-9! [&_.bsr-dropdown\_input]:h-full! "
+                  className="w-60! max-sm:w-full! [&_.bsr-dropdown\_input-wrapper]:h-9! [&_.bsr-dropdown\_input]:h-full! "
                   value={personalInfo.gender}
                   onChange={(val: string) =>
                     setPersonalInfo({ ...personalInfo, gender: val })
@@ -264,7 +264,7 @@ const EmployeePersonalInformation = () => {
           </div>
 
           {/* Nationality */}
-          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
             <label
               htmlFor="nationality"
               className="text-[14px] font-medium text-(--gray-darker)"
@@ -272,7 +272,7 @@ const EmployeePersonalInformation = () => {
               Nationality
             </label>
             {isEditingPersonal ? (
-              <div className="w-60">
+              <div className="w-60 max-sm:w-full">
                 <InputField
                   className="h-9! text-end!"
                   id="nationality"
@@ -327,7 +327,7 @@ const EmployeePersonalInformation = () => {
         </div>
 
         <form onSubmit={handleSaveContact}>
-          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
             <label
               htmlFor="comp-email"
               className="text-[14px] font-medium text-(--gray-darker)"
@@ -335,7 +335,7 @@ const EmployeePersonalInformation = () => {
               Company email
             </label>
             {isEditingContact ? (
-              <div className="w-60">
+              <div className="w-60 max-sm:w-full">
                 <InputField
                   className="h-9! text-end!"
                   id="comp-email"
@@ -355,7 +355,7 @@ const EmployeePersonalInformation = () => {
               </p>
             )}
           </div>
-          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
             <label
               htmlFor="email"
               className="text-[14px] font-medium text-(--gray-darker)"
@@ -363,7 +363,7 @@ const EmployeePersonalInformation = () => {
               Personal email
             </label>
             {isEditingContact ? (
-              <div className="w-60">
+              <div className="w-60 max-sm:w-full">
                 <InputField
                   className="h-9! text-end!"
                   id="email"
@@ -383,7 +383,7 @@ const EmployeePersonalInformation = () => {
               </p>
             )}
           </div>
-          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
             <label
               htmlFor="phone"
               className="text-[14px] font-medium text-(--gray-darker)"
@@ -391,7 +391,7 @@ const EmployeePersonalInformation = () => {
               Phone Number
             </label>
             {isEditingContact ? (
-              <div className="w-60">
+              <div className="w-60 max-sm:w-full">
                 <InputField
                   className="h-9! text-end!"
                   id="phone"
@@ -408,7 +408,7 @@ const EmployeePersonalInformation = () => {
               </p>
             )}
           </div>
-          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
             <label
               htmlFor="current-add"
               className="text-[14px] font-medium text-(--gray-darker)"
@@ -416,7 +416,7 @@ const EmployeePersonalInformation = () => {
               Current Address
             </label>
             {isEditingContact ? (
-              <div className="w-60">
+              <div className="w-60 max-sm:w-full">
                 <InputField
                   className="h-9! text-end!"
                   id="current-add"
@@ -436,7 +436,7 @@ const EmployeePersonalInformation = () => {
               </p>
             )}
           </div>
-          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
             <label
               htmlFor="permanent-add"
               className="text-[14px] font-medium text-(--gray-darker)"
@@ -444,7 +444,7 @@ const EmployeePersonalInformation = () => {
               Permanent Address
             </label>
             {isEditingContact ? (
-              <div className="w-60">
+              <div className="w-60 max-sm:w-full">
                 <InputField
                   className="h-9! text-end!"
                   id="permanent-add"
@@ -499,7 +499,7 @@ const EmployeePersonalInformation = () => {
         </div>
 
         <form onSubmit={handleSaveEmergency}>
-          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
             <label
               htmlFor="rel-name"
               className="text-[14px] font-medium text-(--gray-darker)"
@@ -507,7 +507,7 @@ const EmployeePersonalInformation = () => {
               Full Name
             </label>
             {isEditingEmergency ? (
-              <div className="w-60">
+              <div className="w-60 max-sm:w-full">
                 <InputField
                   className="h-9! text-end!"
                   id="rel-name"
@@ -524,7 +524,7 @@ const EmployeePersonalInformation = () => {
               </p>
             )}
           </div>
-          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
             <label
               htmlFor="relationship"
               className="text-[14px] font-medium text-(--gray-darker)"
@@ -532,7 +532,7 @@ const EmployeePersonalInformation = () => {
               Relationship
             </label>
             {isEditingEmergency ? (
-              <div className="w-60">
+              <div className="w-60 max-sm:w-full">
                 <InputField
                   className="h-9! text-end!"
                   id="relationship"
@@ -552,7 +552,7 @@ const EmployeePersonalInformation = () => {
               </p>
             )}
           </div>
-          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
             <label
               htmlFor="rel-email"
               className="text-[14px] font-medium text-(--gray-darker)"
@@ -560,7 +560,7 @@ const EmployeePersonalInformation = () => {
               Email
             </label>
             {isEditingEmergency ? (
-              <div className="w-60">
+              <div className="w-60 max-sm:w-full">
                 <InputField
                   className="h-9! text-end!"
                   id="rel-email"
@@ -580,7 +580,7 @@ const EmployeePersonalInformation = () => {
               </p>
             )}
           </div>
-          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
             <label
               htmlFor="rel-phone"
               className="text-[14px] font-medium text-(--gray-darker)"
@@ -588,7 +588,7 @@ const EmployeePersonalInformation = () => {
               Phone Number
             </label>
             {isEditingEmergency ? (
-              <div className="w-60">
+              <div className="w-60 max-sm:w-full">
                 <InputField
                   className="h-9! text-end!"
                   id="rel-phone"
@@ -608,7 +608,7 @@ const EmployeePersonalInformation = () => {
               </p>
             )}
           </div>
-          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
             <label
               htmlFor="rel-phone"
               className="text-[14px] font-medium text-(--gray-darker)"
@@ -616,7 +616,7 @@ const EmployeePersonalInformation = () => {
               Address
             </label>
             {isEditingEmergency ? (
-              <div className="w-60">
+              <div className="w-60 max-sm:w-full">
                 <InputField
                   className="h-9! text-end!"
                   id="rel-address"

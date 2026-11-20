@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { employeesApi } from '@/lib/queries/employees';
 import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeSummary as Employee } from '@/types';
@@ -179,8 +179,28 @@ export default function ProjectsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ≤1120px the list and detail stack (see .projects-layout in grid.css): opening
+  // a project replaces the list, so start the detail at the top, and on "Back"
+  // return to the card the user came from.
+  const isStacked = () =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 1120px)').matches;
+  const returnToId = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (selected || returnToId.current == null) return;
+    const id = returnToId.current;
+    returnToId.current = null;
+    document.querySelector(`[data-project-id="${id}"]`)?.scrollIntoView({ block: 'center' });
+  }, [selected]);
+
+  const backToList = () => {
+    returnToId.current = selected?.id ?? null;
+    setSelected(null);
+  };
+
   const selectProject = async (p: Project) => {
     setSelected(p);
+    if (isStacked()) window.scrollTo({ top: 0 });
     const [ms, as, svcs] = await Promise.all([
       api.get<Milestone[]>(`/projects/${p.id}/milestones`).catch(() => []),
       api.get<Assignment[]>(`/projects/${p.id}/assignments`).catch(() => []),
@@ -332,6 +352,7 @@ export default function ProjectsPage() {
             return (
               <div
                 key={p.id}
+                data-project-id={p.id}
                 className="card"
                 style={{
                   cursor: 'pointer',
@@ -375,12 +396,12 @@ export default function ProjectsPage() {
 
         {/* Detail panel */}
         {selected ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="projects-detail" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Mobile-only: the list is hidden here (see .projects-layout.has-detail), so this is the way back */}
             <button
               type="button"
               className="btn btn-text btn-xs projects-back-btn"
-              onClick={() => setSelected(null)}
+              onClick={backToList}
             >
               <span
                 className="icon-mask"
@@ -427,7 +448,7 @@ export default function ProjectsPage() {
               )}
             </div>
 
-            <div className="grid-2" style={{ gap: 16, alignItems: 'start' }}>
+            <div className="grid-2 projects-detail-split" style={{ gap: 16, alignItems: 'start' }}>
               {/* Team */}
               <div className="card">
                 <div className="flex justify-between items-center mb-3">

@@ -325,7 +325,13 @@ export default function LeavesPage() {
                     <div className="cell-title">{l.employee_name}</div>
                     <div className="cell-subtitle">{l.designation}</div>
                   </div>
-                  <div className="row-card-meta">{new Date(l.start_date).toLocaleDateString()}</div>
+                  {/* Same range as the table's Dates column; one date for a single-day leave. */}
+                  <div className="row-card-meta">
+                    {new Date(l.start_date).toLocaleDateString()}
+                    {l.end_date && l.end_date !== l.start_date && (
+                      <> – {new Date(l.end_date).toLocaleDateString()}</>
+                    )}
+                  </div>
                 </div>
 
                 <div className="row-card-line">
@@ -335,7 +341,8 @@ export default function LeavesPage() {
                 </div>
 
                 {l.reason && (
-                  <div className="row-card-line truncate text-sm text-muted">{l.reason}</div>
+                  // Up to 3 lines: no hover on touch screens to reveal a one-line truncation.
+                  <div className="row-card-line line-clamp-3 break-words text-sm text-muted">{l.reason}</div>
                 )}
 
                 <div className="row-card-line" style={{

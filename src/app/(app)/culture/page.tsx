@@ -158,6 +158,46 @@ function FullEventsModal({ events, onClose }: FullEventsModalProps) {
               </table>
             </div>
           )}
+
+          {/* Small-screen replacement for the table above (.table-wrap is hidden ≤1120px, see table.css). */}
+          {events.length > 0 && (
+            <div className="row-cards">
+              {events.map(e => {
+                const isPast = e.event_date.split('T')[0] < todayStr;
+                const cfg = TYPE_CONFIG[e.event_type];
+                const Icon = cfg.Icon;
+                return (
+                  <div key={e.id} className="row-card" style={{ opacity: isPast ? 0.5 : 1 }}>
+                    <div className="row-card-top">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                        <div style={{
+                          width: 32, height: 32, borderRadius: 8, background: cfg.bg, flexShrink: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <Icon size={16} color={cfg.color} />
+                        </div>
+                        <div style={{ fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>{e.title}</div>
+                      </div>
+                      <div className="row-card-meta">
+                        {new Date(e.event_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        {isPast && ' (past)'}
+                      </div>
+                    </div>
+                    <div className="row-card-line" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px',
+                        background: cfg.bg, color: cfg.color, borderRadius: 20, padding: '3px 10px',
+                      }}>
+                        <Icon size={11} color={cfg.color} /> {cfg.label}
+                      </span>
+                      {e.employee_name && <span className="text-muted" style={{ fontSize: 13 }}>{e.employee_name}</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

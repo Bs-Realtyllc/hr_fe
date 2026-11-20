@@ -4,14 +4,14 @@ import { usePermissions } from '@/hooks/usePermissions';
 import ActiveTab from "./_components/ActiveTab";
 import AttendanceTab from "./_components/AttendanceTab";
 
-type Tab = "active" | "attendence";
+type Tab = "active" | "attendance";
 
 export default function DefaultPage() {
   const { isPrivileged: canViewAll } = usePermissions();
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "active", label: "Today" },
-    ...(canViewAll ? [{ id: "attendence" as Tab, label: "Attendence" }] : []),
+    ...(canViewAll ? [{ id: "attendance" as Tab, label: "Attendance" }] : []),
   ];
 
   const [tab, setTab] = useState<Tab>("active");
@@ -20,10 +20,10 @@ export default function DefaultPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Today & Attendence</h1>
+          <h1>Today & Attendance</h1>
           <p>
             {canViewAll
-              ? "View today's roster and manage attendence"
+              ? "View today's roster and manage attendance"
               : "See who's working, on a break, or done for the day"}
           </p>
         </div>
@@ -62,7 +62,7 @@ export default function DefaultPage() {
       </div>
 
       {tab === "active" && <ActiveTab />}
-      {tab === "attendence" && canViewAll && <AttendanceTab />}
+      {tab === "attendance" && canViewAll && <AttendanceTab />}
     </div>
   );
 }

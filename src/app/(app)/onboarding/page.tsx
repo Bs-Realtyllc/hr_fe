@@ -333,10 +333,14 @@ function ApplicationCard({
   ];
 
   return (
-    <article className="card flex h-[calc(100vh-6rem)] min-h-[560px] flex-col p-0!">
+    // Desktop: fixed-height card with its own scroll. Tablet/phone: grows with its
+    // content so swiping scrolls the page, not a box inside it.
+    <article className="card flex h-[calc(100vh-6rem)] min-h-[560px] flex-col p-0! max-[1120px]:h-auto max-[1120px]:min-h-0">
       {/* Header — stays put while the details scroll */}
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-(--color-border) px-5 py-4">
-        <div className="flex min-w-0 items-center gap-3">
+        {/* Avatar | name+email | badges. On phones the badges drop to a second
+            row under the name, so the name and email keep the full width. */}
+        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 max-sm:grid-cols-[auto_minmax(0,1fr)]">
           <BSRealtyAvatar size="md" name={initials(user.name)} />
           <div className="min-w-0">
             <h2 className="truncate text-base font-semibold text-(--color-text-h2)">
@@ -346,7 +350,7 @@ function ApplicationCard({
               {user.email}
             </p>
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5 max-sm:col-start-2">
             <span className="badge badge-accent">{user.role}</span>
             {user.source && user.source !== "manual" && (
               <span className="badge badge-info">
@@ -387,7 +391,7 @@ function ApplicationCard({
         </div>
       </header>
 
-      <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
+      <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5 max-[1120px]:overflow-visible">
         <Section title="Personal Information">
           <DetailGrid>
             <Detail label="Date of Birth" value={formatDate(user.dob)} />

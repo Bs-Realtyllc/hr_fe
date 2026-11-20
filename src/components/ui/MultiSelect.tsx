@@ -35,6 +35,13 @@ export default function MultiSelect({
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
 
+  // The list sits in the normal flow (not absolute), so inside a scrolling
+  // modal it pushes content down instead of being clipped; bring it into view.
+  const listRef = useRef<HTMLUListElement>(null);
+  useEffect(() => {
+    if (open) listRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [open]);
+
   const available = options.filter((o) => !excludeIds.includes(o.id));
   const selected = options.filter((o) => value.includes(o.id));
 
@@ -55,7 +62,7 @@ export default function MultiSelect({
       </button>
 
       {open && (
-        <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-[var(--color-border)] bg-white py-1 shadow-lg">
+        <ul ref={listRef} className="mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-[var(--color-border)] bg-white py-1 shadow-lg">
           {available.length === 0 && (
             <li className="px-3 py-2 text-sm text-[var(--color-text-muted)]">No people available</li>
           )}

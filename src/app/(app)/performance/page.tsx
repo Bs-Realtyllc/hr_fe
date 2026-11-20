@@ -227,7 +227,7 @@ export default function PerformancePage() {
             Acknowledged ({reviews.filter(r => r.status === 'acknowledged').length})
           </button>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3" style={{ flexWrap: 'wrap' }}>
           <span className="text-muted text-sm" style={{ whiteSpace: 'nowrap' }}>
             Avg. rating: <strong style={{ color: 'var(--color-text-h3)' }}>{avgRating || '—'} / 5</strong>
           </span>
@@ -350,13 +350,14 @@ export default function PerformancePage() {
                   )}
                 </div>
 
-                <div className="flex justify-between items-center mt-4" style={{ borderTop: '1px solid var(--color-border)', paddingTop: 12 }}>
+                {/* Wraps on phones: the buttons drop below the status text instead of overflowing. */}
+                <div className="flex justify-between items-center mt-4" style={{ borderTop: '1px solid var(--color-border)', paddingTop: 12, flexWrap: 'wrap', gap: 8 }}>
                   <span className="text-muted text-sm">
                     {r.status === 'draft' && 'Not yet submitted'}
                     {r.status === 'submitted' && r.submitted_at && `Submitted ${fmtDateTime(r.submitted_at)}`}
                     {r.status === 'acknowledged' && r.acknowledged_at && `Acknowledged ${fmtDateTime(r.acknowledged_at)}`}
                   </span>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
                     {isPrivileged && r.status === 'draft' && (
                       <>
                         <Button className='outline' variant='text' size='small' onClick={() => submitReview(r.id)}>Submit to Employee</Button>

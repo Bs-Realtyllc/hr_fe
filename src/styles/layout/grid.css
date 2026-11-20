@@ -20,7 +20,9 @@
   margin-bottom: var(--space-24);
 }
 
-@media (max-width: 1100px) {
+/* 1200px, not 1100: the full row needs ~884px, and with the sidebar open
+   (until 1120px) a 1121–1195px screen leaves only ~810–880px. */
+@media (max-width: 1200px) {
   .kpi-grid { grid-template-columns: repeat(2, minmax(150px, 1fr)); }
   .kpi-grid > .kpi-grid-wide { grid-column: 1 / -1; }
 }
@@ -41,6 +43,19 @@
 }
 .projects-layout.has-detail {
   grid-template-columns: minmax(280px, 340px) 1fr;
+}
+
+/* Team + Milestones go side by side only when the detail panel itself is
+   wide enough (~300px each). Keyed to the panel, not the viewport: with the
+   sidebar and project list open, a 1280px screen leaves the panel ~470px. */
+.projects-detail {
+  container-type: inline-size;
+  min-width: 0;
+}
+@container (max-width: 640px) {
+  .projects-detail-split {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Back button that returns to the project list on mobile — desktop always
@@ -71,6 +86,20 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+/* Desktop: tiles left, credential form right (sticky, so it stays beside the
+   tiles). ≤1120px it stays one column and page.tsx scrolls the form into view. */
+@media (min-width: 1121px) {
+  .servers-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    align-items: start;
+  }
+  .servers-cred-panel {
+    position: sticky;
+    top: 24px;
+  }
 }
 
 @media (max-width: 1120px) {

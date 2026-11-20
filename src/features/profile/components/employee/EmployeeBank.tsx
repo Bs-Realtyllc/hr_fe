@@ -108,12 +108,12 @@ const EmployeeBank = () => {
 
                 <form onSubmit={handleSaveBank}>
                     {/* Account Holder Name */}
-                    <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
                         <label htmlFor="acc-holder" className="text-[14px] font-medium text-(--gray-darker)">
                             Account Holder Name
                         </label>
                         {isEditingBank ? (
-                            <div className="w-60">
+                            <div className="w-60 max-sm:w-full">
                                 <InputField
                                     className="h-9! text-end!"
                                     id="acc-holder"
@@ -128,12 +128,12 @@ const EmployeeBank = () => {
                     </div>
 
                     {/* Account Number */}
-                    <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
                         <label htmlFor="acc-num" className="text-[14px] font-medium text-(--gray-darker)">
                             Account Number
                         </label>
                         {isEditingBank ? (
-                            <div className="w-60">
+                            <div className="w-60 max-sm:w-full">
                                 <InputField
                                     className="h-9! text-end!"
                                     id="acc-num"
@@ -148,12 +148,12 @@ const EmployeeBank = () => {
                     </div>
 
                     {/* Bank Name */}
-                    <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
                         <label htmlFor="branch" className="text-[14px] font-medium text-(--gray-darker)">
                             Bank Name
                         </label>
                         {isEditingBank ? (
-                            <div className="w-60">
+                            <div className="w-60 max-sm:w-full">
                                 <InputField
                                     className="h-9! text-end!"
                                     id="bank"
@@ -168,12 +168,12 @@ const EmployeeBank = () => {
                     </div>
 
                     {/* Branch Name */}
-                    <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
                         <label htmlFor="branch" className="text-[14px] font-medium text-(--gray-darker)">
                             Branch Name
                         </label>
                         {isEditingBank ? (
-                            <div className="w-60">
+                            <div className="w-60 max-sm:w-full">
                                 <InputField
                                     className="h-9! text-end!"
                                     id="branch"
@@ -188,14 +188,14 @@ const EmployeeBank = () => {
                     </div>
 
                     {/* Account Type */}
-                    <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+                    <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
                         <label htmlFor="acc-type" className="text-[14px] font-medium text-(--gray-darker)">
                             Account Type
                         </label>
                         {isEditingBank ? (
-                            <div className="w-60 pb-1">
+                            <div className="w-60 max-sm:w-full pb-1">
                                 <BSRealtyDropdown
-                                    className="w-60! text-end!"
+                                    className="w-60! max-sm:w-full! text-end!"
                                     value={bankInfo.accountType}
                                     onChange={(val: string) => setBankInfo({ ...bankInfo, accountType: val })}
                                     options={[

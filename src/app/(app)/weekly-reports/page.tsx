@@ -123,7 +123,7 @@ function ReportCard({
       <div style={{ flex: '1 1 180px', minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{report.title}</div>
         <div style={{ fontSize: 12, color: 'var(--color-text-muted)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ color }}>{report.file_name}</span>
+          <span style={{ color, overflowWrap: 'anywhere', minWidth: 0 }}>{report.file_name}</span>
           {report.file_size > 0 && <span>· {fmtSize(report.file_size)}</span>}
           <span>· {fmtDate(report.submitted_at)}</span>
         </div>
@@ -153,7 +153,7 @@ function ReportCard({
       )}
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
         <Button className="outline" variant='text' size='xs'
           onClick={() => onPreview(report)}
           title="Preview file"
@@ -257,6 +257,7 @@ function AdminView({
                 onClick={() => toggle(group.key)}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                  flexWrap: 'wrap', rowGap: 6,
                   padding: '14px 20px',
                   background: isOpen ? 'var(--color-primary-light, #eef2ff)' : 'var(--color-surface)',
                   border: 'none', cursor: 'pointer', textAlign: 'left',
@@ -271,7 +272,7 @@ function AdminView({
                     WebkitMaskImage: 'url(/icons/folder.svg)', maskImage: 'url(/icons/folder.svg)',
                   }}
                 />
-                <span style={{ fontWeight: 700, fontSize: 15, flex: 1 }}>{group.label}</span>
+                <span style={{ fontWeight: 700, fontSize: 15, flex: '1 1 160px', minWidth: 0 }}>{group.label}</span>
 
                 {isCurrentWeek && (
                   <span style={{
@@ -401,7 +402,7 @@ function EmployeeView({
                     <div style={{ flex: '1 1 160px', minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{r.title}</div>
                       <div style={{ fontSize: 12, color: 'var(--color-text-muted)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{ color: fileIcon(r.file_name).color }}>{r.file_name}</span>
+                        <span style={{ color: fileIcon(r.file_name).color, overflowWrap: 'anywhere', minWidth: 0 }}>{r.file_name}</span>
                         {r.file_size > 0 && <span>· {fmtSize(r.file_size)}</span>}
                         <span>· {fmtDate(r.submitted_at)}</span>
                       </div>
@@ -412,7 +413,7 @@ function EmployeeView({
                       )}
                     </div>
 
-                    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
                       <button className="btn btn-sm btn-ghost" onClick={() => onPreview(r)}>
                         <span
                           className="icon-mask"
@@ -643,9 +644,26 @@ export default function WeeklyReportsPage() {
               <h2 style={{ fontSize: 16 }}>{previewReport.title}</h2>
               <button className="modal-close" onClick={closePreview}>×</button>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '-8px 0 12px' }}>
+            <div style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '-8px 0 12px', overflowWrap: 'anywhere' }}>
               {previewReport.file_name}
             </div>
+
+            {/* Phone browsers often can't render a PDF inside an iframe (Android Chrome shows
+                nothing), so always offer opening it in the browser's own viewer or downloading. */}
+            {previewUrl && !previewLoading && !previewError && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                <a className="btn btn-ghost btn-sm" href={previewUrl} target="_blank" rel="noreferrer">
+                  Open in new tab
+                </a>
+                <button className="btn btn-ghost btn-sm" onClick={() => download(previewReport)}>
+                  <span
+                    className="icon-mask"
+                    style={{ WebkitMaskImage: 'url(/icons/download.svg)', maskImage: 'url(/icons/download.svg)' }}
+                  />
+                  Download
+                </button>
+              </div>
+            )}
 
             {previewReport.file_name?.split('.').pop()?.toLowerCase() === 'pdf' ? (
               previewLoading ? (

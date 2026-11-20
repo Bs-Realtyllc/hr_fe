@@ -423,7 +423,7 @@ export default function PayrollPage() {
             </span>
           </div>
 
-          <div className="flex gap-2 items-center" style={{ marginBottom: 20 }}>
+          <div className="flex flex-wrap gap-2 items-center" style={{ marginBottom: 20 }}>
             <select className="form-select" style={{ width: 160 }} value={taxMonth} onChange={e => setTaxMonth(Number(e.target.value))}>
               {MONTH_LABELS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
             </select>
@@ -591,6 +591,8 @@ export default function PayrollPage() {
                       <div style={{
                         marginTop: 20, padding: 16, borderRadius: 'var(--radius-md)',
                         background: 'var(--color-primary-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        // Phones: "This Month" drops below the annual figure instead of squashing it.
+                        flexWrap: 'wrap', gap: 12,
                       }}>
                         <div>
                           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-primary)', textTransform: 'uppercase' }}>Estimated Annual Tax</div>

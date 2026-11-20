@@ -24,8 +24,8 @@ export default function EmployeesPage() {
   return (
     <div>
       <div className="page-header">
-        <div className="flex justify-between  items-center">
-          <div>
+        <div className="flex justify-between items-center gap-6">
+          <div className="min-w-0">
             <h1>Team Directory</h1>
             <p>
               {filtered.length} {filtered.length === 1 ? "person" : "people"}{" "}
@@ -35,7 +35,7 @@ export default function EmployeesPage() {
               marketing and operations
             </p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-4 shrink-0 whitespace-nowrap">
             {isPrivileged && (
               <Button
                 variant="primary"

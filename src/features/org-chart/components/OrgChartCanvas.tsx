@@ -33,6 +33,7 @@ import {
   topAnchoredViewport,
   type ChartFlowNode,
 } from '../utils/layout';
+import { coveringPanelRect, visibleCentreOffset } from '../utils/visibleArea';
 import GroupNode from './GroupNode';
 import { OrgChartContext, type OrgChartContextValue } from './OrgChartContext';
 import OrgChartSearch from './OrgChartSearch';
@@ -157,10 +158,17 @@ function CanvasInner({
     (id: string) => {
       const node = nodesRef.current.find((n) => n.id === id);
       if (!node) return;
-      void rf.setCenter(node.position.x + NODE_WIDTH / 2, node.position.y + NODE_HEIGHT / 2, {
-        zoom: Math.max(rf.getZoom(), FOCUS_ZOOM),
-        duration: prefersReducedMotion() ? 0 : 400,
-      });
+      const zoom = Math.max(rf.getZoom(), FOCUS_ZOOM);
+      // With the details panel open, centre in the part of the chart it leaves visible.
+      const box = containerRef.current?.getBoundingClientRect();
+      const { dx, dy } = box
+        ? visibleCentreOffset(box, coveringPanelRect())
+        : { dx: 0, dy: 0 };
+      void rf.setCenter(
+        node.position.x + NODE_WIDTH / 2 - dx / zoom,
+        node.position.y + NODE_HEIGHT / 2 - dy / zoom,
+        { zoom, duration: prefersReducedMotion() ? 0 : 400 },
+      );
       setHighlightedId(id);
       clearTimeout(highlightTimer.current);
       highlightTimer.current = setTimeout(() => setHighlightedId(null), HIGHLIGHT_MS);

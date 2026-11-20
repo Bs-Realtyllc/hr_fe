@@ -56,6 +56,52 @@ function formatDate(clockDate: string) {
 
 const PAGE_SIZE = 20;
 
+// Shared by the desktop table and the small-screen cards.
+function ClockIn({ r }: { r: AttendanceRecord }) {
+  return (
+    <>
+      {formatTimeNepal(r.clockIn)}
+      {r.isLate && <span className="badge badge-error attendance-late-badge">Late</span>}
+      <LocationLink lat={r.clockInLat} lng={r.clockInLng} label="clock-in" />
+    </>
+  );
+}
+
+function ClockOut({ r }: { r: AttendanceRecord }) {
+  return (
+    <>
+      {r.clockOut ? formatTimeNepal(r.clockOut) : "still running"}
+      {r.clockOutEstimated && (
+        <span
+          title="This clock-out was auto-estimated by the system, not actually reported by the employee."
+          className="attendance-muted"
+          style={{ fontStyle: "italic", marginLeft: 4 }}
+        >
+          (estimated)
+        </span>
+      )}
+      <LocationLink lat={r.clockOutLat} lng={r.clockOutLng} label="clock-out" />
+    </>
+  );
+}
+
+function Pauses({ r }: { r: AttendanceRecord }) {
+  if (r.pauses.length === 0) return <span className="attendance-muted">—</span>;
+  return (
+    <div className="attendance-pause-list">
+      {r.pauses.map((p, pi) => (
+        <div key={pi} className="attendance-pause-chip">
+          <span className="attendance-pause-chip-reason">{p.reason ?? "Pause"}</span>
+          <span className="attendance-muted">
+            {" · "}{formatTimeNepal(p.pause)} – {p.resume ? formatTimeNepal(p.resume) : "ongoing"}
+            {" · "}{p.pauseDuration != null ? formatDuration(p.pauseDuration) : "—"}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AttendancePage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
@@ -163,7 +209,8 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      <div className="card table-wrap">
+      <div className="card">
+        <div className="table-wrap">
         <table className="attendance-table">
           <thead>
             <tr>
@@ -188,46 +235,41 @@ export default function AttendancePage() {
               <tr key={r.clockId}>
                 <td className="attendance-name-cell">{r.name}</td>
                 <td>{formatDate(r.clockDate)}</td>
-                <td>
-                  {formatTimeNepal(r.clockIn)}
-                  {r.isLate && <span className="badge badge-error attendance-late-badge">Late</span>}
-                  <LocationLink lat={r.clockInLat} lng={r.clockInLng} label="clock-in" />
-                </td>
-                <td>
-                  {r.clockOut ? formatTimeNepal(r.clockOut) : "still running"}
-                  {r.clockOutEstimated && (
-                    <span
-                      title="This clock-out was auto-estimated by the system, not actually reported by the employee."
-                      className="attendance-muted"
-                      style={{ fontStyle: "italic", marginLeft: 4 }}
-                    >
-                      (estimated)
-                    </span>
-                  )}
-                  <LocationLink lat={r.clockOutLat} lng={r.clockOutLng} label="clock-out" />
-                </td>
-                <td>
-                  {r.pauses.length > 0 ? (
-                    <div className="attendance-pause-list">
-                      {r.pauses.map((p, pi) => (
-                        <div key={pi} className="attendance-pause-chip">
-                          <span className="attendance-pause-chip-reason">{p.reason ?? "Pause"}</span>
-                          <span className="attendance-muted">
-                            {" · "}{formatTimeNepal(p.pause)} – {p.resume ? formatTimeNepal(p.resume) : "ongoing"}
-                            {" · "}{p.pauseDuration != null ? formatDuration(p.pauseDuration) : "—"}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="attendance-muted">—</span>
-                  )}
-                </td>
+                <td><ClockIn r={r} /></td>
+                <td><ClockOut r={r} /></td>
+                <td><Pauses r={r} /></td>
                 <td className="attendance-total-cell">{formatDuration(r.totalClockInDuration)}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
+
+        {/* Small-screen replacement for the table above (see .row-cards in table.css). */}
+        <div className="row-cards">
+          {loading && <div className="attendance-empty">Loading…</div>}
+          {!loading && records.length === 0 && (
+            <div className="attendance-empty">No attendance records match these filters.</div>
+          )}
+          {!loading && records.map((r) => (
+            <div key={r.clockId} className="row-card attendance-card">
+              <div className="row-card-top">
+                <div className="attendance-name-cell">{r.name}</div>
+                <div className="row-card-meta">{formatDate(r.clockDate)}</div>
+              </div>
+              <dl className="attendance-card-fields">
+                <dt>In</dt>
+                <dd><ClockIn r={r} /></dd>
+                <dt>Out</dt>
+                <dd><ClockOut r={r} /></dd>
+                <dt>Pauses</dt>
+                <dd><Pauses r={r} /></dd>
+                <dt>Total</dt>
+                <dd className="attendance-total-cell">{formatDuration(r.totalClockInDuration)}</dd>
+              </dl>
+            </div>
+          ))}
+        </div>
 
         {!loading && records.length > 0 && (
           <div className="attendance-pagination">

@@ -148,7 +148,8 @@ export default function LeaveReportPage() {
         />
       </div>
 
-      <div className="card table-wrap">
+      <div className="card">
+        <div className="table-wrap">
         <table>
           <thead>
             <tr>
@@ -187,6 +188,39 @@ export default function LeaveReportPage() {
             )}
           </tbody>
         </table>
+        </div>
+
+        {/* Small-screen replacement for the table above (.table-wrap is hidden ≤1120px, see table.css). */}
+        <div className="row-cards">
+          {!filtered.length && (
+            <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: 24 }}>No employees found.</div>
+          )}
+          {filtered.map(r => (
+            <div key={r.employee_id} className="row-card">
+              <div className="row-card-top">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                  <div className="avatar avatar-sm">{initials(r.employee_name)}</div>
+                  <div style={{ fontWeight: 600, fontSize: 14, overflowWrap: 'anywhere' }}>{r.employee_name}</div>
+                </div>
+                <span className={`badge ${remainingBadgeClass(r.remaining_leaves)}`} style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
+                  {r.remaining_leaves} left
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, fontSize: 13 }}>
+                {[
+                  ['Total', r.total_leaves],
+                  [`Taken (${PREV_MONTH_LABEL})`, r.taken_previous_month],
+                  [`Taken (${THIS_MONTH_LABEL})`, r.taken_this_month],
+                ].map(([label, value]) => (
+                  <div key={String(label)} style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{label}</div>
+                    <div style={{ fontWeight: 600 }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

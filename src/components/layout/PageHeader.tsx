@@ -51,12 +51,14 @@ export default function PageHeader({
         return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
     }
     return (
-        <div className="page-header">
-            <div>
+        // Wraps on phones: the title keeps ≥280px, else the action buttons drop to
+        // their own row (kept right-aligned by marginLeft: auto).
+        <div className="page-header" style={{ flexWrap: 'wrap', rowGap: 12, columnGap: 16 }}>
+            <div style={{ flex: '1 1 280px', minWidth: 0 }}>
                 <h1>{title}</h1>
                 <p>{discription}</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3" style={{ marginLeft: 'auto' }}>
                 {children}
                 <button className="topbar-icon-btn" title="Toggle theme">
                     <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/moon.svg)', maskImage: 'url(/icons/moon.svg)' }} />

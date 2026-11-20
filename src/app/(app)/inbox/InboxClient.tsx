@@ -173,6 +173,18 @@ export default function InboxClient() {
   const [forwardMsg, setForwardMsg]     = useState<ChatMessage | null>(null);
   const [showPins, setShowPins]         = useState(false);
   const [showSaved, setShowSaved]       = useState(false);
+  // Phones (≤640px): the channel list is a full-screen panel opened from the chat header.
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // ≤900px the members column is hidden; the 👥 button opens it as an overlay instead.
+  const [narrow, setNarrow] = useState(false);
+  const [membersOverlay, setMembersOverlay] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 900px)');
+    const update = () => { setNarrow(mq.matches); if (!mq.matches) setMembersOverlay(false); };
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [toasts, setToasts]             = useState<ToastNotification[]>([]);
 
@@ -587,7 +599,7 @@ export default function InboxClient() {
 
   /* ─── RENDER ─── */
   return (
-    <div className="inbox-shell">
+    <div className={`inbox-shell${mobileNavOpen ? ' nav-open' : ''}${membersOverlay ? ' members-open' : ''}`}>
 
       {/* Toasts */}
       <NotificationToastStack notifications={toasts} onDismiss={id => setToasts(prev => prev.filter(t => t.id !== id))} onOpen={n => { if (n.dmUserId) selDm(n.dmUserId); else if (n.channelId) selChannel(n.channelId); }} />
@@ -624,10 +636,19 @@ export default function InboxClient() {
       )}
 
       {/* ── Sidebar ── */}
-      <div className="inbox-channels">
+      {/* Picking any channel / DM / voice channel / Saved closes the phone panel. */}
+      <div
+        className="inbox-channels"
+        onClick={e => {
+          if ((e.target as HTMLElement).closest('.inbox-ch-item, .inbox-dm-item, .inbox-voice-ch-item')) setMobileNavOpen(false);
+        }}
+      >
         <div className="inbox-ws-header">
           <span>HR Platform</span>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: socketConnected ? '#23a55a' : '#80848e', flexShrink: 0 }} title={socketConnected ? 'Connected' : 'Reconnecting…'} />
+          <button type="button" className="inbox-nav-btn inbox-nav-close" aria-label="Close channel list" onClick={() => setMobileNavOpen(false)}>
+            <span className="icon" style={{ WebkitMaskImage: 'url(/icons/x.svg)', maskImage: 'url(/icons/x.svg)' }} />
+          </button>
         </div>
 
         {/* Saved messages shortcut */}
@@ -730,6 +751,9 @@ export default function InboxClient() {
       <div className="inbox-main">
         {/* Header */}
         <div className="inbox-ch-header">
+          <button type="button" className="inbox-ch-header-btn inbox-nav-btn" title="Channels" aria-label="Open channel list" onClick={() => setMobileNavOpen(true)}>
+            <span className="icon" style={{ WebkitMaskImage: 'url(/icons/menu.svg)', maskImage: 'url(/icons/menu.svg)' }} />
+          </button>
           {activeDm ? (
             <><div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 8, flexShrink: 0, cursor: 'pointer' }} onClick={e => openProfile(activeDm.userId, e, activeDm.userName, activeDm.userDesignation)}>{initials(activeDm.userName)}</div><span className="inbox-ch-header-name" style={{ cursor: 'pointer' }} onClick={e => openProfile(activeDm.userId, e, activeDm.userName, activeDm.userDesignation)}>{activeDm.userName}</span><span className="inbox-ch-header-divider" /><span className="inbox-ch-header-desc">{activeDm.userDesignation}</span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: STATUS_COLOR[activeDm.status], marginLeft: 6, flexShrink: 0 }} /></>
           ) : showSaved ? (
@@ -748,7 +772,7 @@ export default function InboxClient() {
                 {selCh && !selectedDmId && <button className={`inbox-ch-header-btn${showPins ? ' active' : ''}`} title="Pinned" onClick={() => { setShowPins(p => !p); setShowSaved(false); }}>📌</button>}
               </>
             )}
-            <button className={`inbox-ch-header-btn${showMembers ? ' active' : ''}`} title="Members" onClick={() => setShowMembers(p => !p)}><span className="icon" style={{ WebkitMaskImage: 'url(/icons/users.svg)', maskImage: 'url(/icons/users.svg)' }} /></button>
+            <button className={`inbox-ch-header-btn${(narrow ? membersOverlay : showMembers) ? ' active' : ''}`} title="Members" onClick={() => narrow ? setMembersOverlay(o => !o) : setShowMembers(p => !p)}><span className="icon" style={{ WebkitMaskImage: 'url(/icons/users.svg)', maskImage: 'url(/icons/users.svg)' }} /></button>
           </div>
         </div>
 
@@ -871,6 +895,25 @@ interface MsgListProps {
 }
 
 function MessageList({ messages, myId, myName, editingId, editValue, onEditChange, onEditSubmit, onEditCancel, onReaction, onDelete, onStartEdit, onCtxMenu, onReply, onForward, onOpenProfile }: MsgListProps) {
+  // Touch long-press (500ms, finger held still) opens the same menu as right-click.
+  // iOS Safari never fires `contextmenu`, and hover-only toolbars don't exist on touch.
+  const pressRef = useRef<{ timer: ReturnType<typeof setTimeout>; x: number; y: number } | null>(null);
+  const cancelPress = () => {
+    if (pressRef.current) { clearTimeout(pressRef.current.timer); pressRef.current = null; }
+  };
+  useEffect(() => cancelPress, []);
+  const startPress = (msg: ChatMessage, e: React.TouchEvent) => {
+    cancelPress();
+    if (e.touches.length !== 1) return;
+    const { clientX: x, clientY: y } = e.touches[0];
+    pressRef.current = { x, y, timer: setTimeout(() => { pressRef.current = null; onCtxMenu(msg, x, y); }, 500) };
+  };
+  const movePress = (e: React.TouchEvent) => {
+    const p = pressRef.current;
+    const t = e.touches[0];
+    if (p && t && (Math.abs(t.clientX - p.x) > 10 || Math.abs(t.clientY - p.y) > 10)) cancelPress(); // scrolling
+  };
+
   if (messages.length === 0) return (
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: 14 }}>No messages yet. Say hello! 👋</div>
   );
@@ -899,7 +942,11 @@ function MessageList({ messages, myId, myName, editingId, editValue, onEditChang
         return (
           <div key={msg.id} id={`msg-${msg.id}`}
             className={`inbox-msg-group${isFirst ? ' first-in-group' : ''}${msg.isPinned ? ' pinned' : ''}${msg.isLocal ? ' local-msg' : ''}`}
-            onContextMenu={e => { e.preventDefault(); onCtxMenu(msg, e.clientX, e.clientY); }}>
+            onContextMenu={e => { e.preventDefault(); onCtxMenu(msg, e.clientX, e.clientY); }}
+            onTouchStart={isEd ? undefined : e => startPress(msg, e)}
+            onTouchMove={movePress}
+            onTouchEnd={cancelPress}
+            onTouchCancel={cancelPress}>
             <div className="inbox-msg-avatar-col">
               {isFirst ? <div className="inbox-msg-avatar" onClick={e => onOpenProfile(msg.userId, e, msg.userName, msg.userDesignation)}>{initials(msg.userName)}</div> : <span className="inbox-msg-time-compact">{fmtTime(msg.timestamp)}</span>}
             </div>

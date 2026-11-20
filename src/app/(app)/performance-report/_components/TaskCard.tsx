@@ -302,7 +302,7 @@ function TaskCard({
     >
       {/* @ts-expect-error reactjs-popup children-as-function typing */}
       {(close: () => void) => (
-        <div className="bg-white rounded-xl shadow-2xl p-8 max-w-2xl w-[92vw] sm:w-[650px] max-h-[88vh] overflow-y-auto">
+        <div className="bg-white rounded-xl shadow-2xl p-5 sm:p-8 max-w-2xl w-[92vw] sm:w-[650px] max-h-[88vh] overflow-y-auto">
           <div className="flex items-start justify-between gap-3 mb-2">
             <span className="text-sm text-gray-400 font-medium">
               Task #{item.sequence_id}

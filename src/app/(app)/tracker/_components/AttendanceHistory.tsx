@@ -56,6 +56,51 @@ function formatDay(clockDate: string) {
 // Records already come back ordered by clock-in, so shifts for the same
 // day are adjacent — this just folds them under one date group instead of
 // repeating the date label once per shift.
+// Shift cells shared by the desktop table and the small-screen cards.
+function ShiftClockIn({ shift }: { shift: AttendanceRecord }) {
+  return (
+    <>
+      {formatTimeNepal(shift.clockIn)}
+      <LocationLink lat={shift.clockInLat} lng={shift.clockInLng} label="clock-in" />
+    </>
+  );
+}
+
+function ShiftClockOut({ shift }: { shift: AttendanceRecord }) {
+  return (
+    <>
+      {shift.clockOut ? formatTimeNepal(shift.clockOut) : "still running"}
+      {shift.clockOutEstimated && (
+        <span
+          title="This clock-out was auto-estimated by the system, not actually reported by you."
+          className="tracker-table-muted"
+          style={{ fontStyle: "italic", marginLeft: 4 }}
+        >
+          (estimated)
+        </span>
+      )}
+      <LocationLink lat={shift.clockOutLat} lng={shift.clockOutLng} label="clock-out" />
+    </>
+  );
+}
+
+function ShiftPauses({ shift }: { shift: AttendanceRecord }) {
+  if (shift.pauses.length === 0) return <span className="tracker-table-muted">—</span>;
+  return (
+    <div className="tracker-pause-list">
+      {shift.pauses.map((p, pi) => (
+        <div key={pi} className="tracker-pause-chip">
+          <span className="tracker-pause-chip-reason">{p.reason ?? "Pause"}</span>
+          <span className="tracker-table-muted">
+            {" · "}{formatTimeNepal(p.pause)} – {p.resume ? formatTimeNepal(p.resume) : "ongoing"}
+            {" · "}{p.pauseDuration != null ? formatDuration(p.pauseDuration) : "—"}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function groupByDate(records: AttendanceRecord[]): DateGroup[] {
   const groups: DateGroup[] = [];
   for (const r of records) {
@@ -180,45 +225,32 @@ export default function AttendanceHistory() {
                 <tbody>
                   {group.shifts.map((shift) => (
                     <tr key={shift.clockId}>
-                      <td>
-                        {formatTimeNepal(shift.clockIn)}
-                        <LocationLink lat={shift.clockInLat} lng={shift.clockInLng} label="clock-in" />
-                      </td>
-                      <td>
-                        {shift.clockOut ? formatTimeNepal(shift.clockOut) : "still running"}
-                        {shift.clockOutEstimated && (
-                          <span
-                            title="This clock-out was auto-estimated by the system, not actually reported by you."
-                            className="tracker-table-muted"
-                            style={{ fontStyle: "italic", marginLeft: 4 }}
-                          >
-                            (estimated)
-                          </span>
-                        )}
-                        <LocationLink lat={shift.clockOutLat} lng={shift.clockOutLng} label="clock-out" />
-                      </td>
-                      <td>
-                        {shift.pauses.length > 0 ? (
-                          <div className="tracker-pause-list">
-                            {shift.pauses.map((p, pi) => (
-                              <div key={pi} className="tracker-pause-chip">
-                                <span className="tracker-pause-chip-reason">{p.reason ?? "Pause"}</span>
-                                <span className="tracker-table-muted">
-                                  {" · "}{formatTimeNepal(p.pause)} – {p.resume ? formatTimeNepal(p.resume) : "ongoing"}
-                                  {" · "}{p.pauseDuration != null ? formatDuration(p.pauseDuration) : "—"}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="tracker-table-muted">—</span>
-                        )}
-                      </td>
+                      <td><ShiftClockIn shift={shift} /></td>
+                      <td><ShiftClockOut shift={shift} /></td>
+                      <td><ShiftPauses shift={shift} /></td>
                       <td className="tracker-table-total-cell">{formatDuration(shift.totalClockInDuration)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Small-screen replacement for the table above (.table-wrap is hidden ≤1120px). */}
+            <div className="row-cards">
+              {group.shifts.map((shift) => (
+                <div key={shift.clockId} className="row-card">
+                  <dl className="tracker-card-fields">
+                    <dt>In</dt>
+                    <dd><ShiftClockIn shift={shift} /></dd>
+                    <dt>Out</dt>
+                    <dd><ShiftClockOut shift={shift} /></dd>
+                    <dt>Pauses</dt>
+                    <dd><ShiftPauses shift={shift} /></dd>
+                    <dt>Total</dt>
+                    <dd className="tracker-table-total-cell">{formatDuration(shift.totalClockInDuration)}</dd>
+                  </dl>
+                </div>
+              ))}
             </div>
           </div>
         );

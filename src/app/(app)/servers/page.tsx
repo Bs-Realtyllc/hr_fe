@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import ProjectsTab from './ProjectsTab';
@@ -73,6 +73,17 @@ function ServiceTile({ svc, isActive, onClick }: { svc: Service; isActive: boole
 function ServicesTab() {
   const { user } = useAuth();
   const [selected, setSelected] = useState<Service>(ALL_SERVICES[0]);
+
+  // ≤1120px the credential form sits below every tile (often off-screen on a
+  // phone), so bring it into view when a service is picked.
+  const credPanelRef = useRef<HTMLDivElement>(null);
+  const pickService = (svc: Service) => {
+    setSelected(svc);
+    if (window.matchMedia('(max-width: 1120px)').matches) {
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      credPanelRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    }
+  };
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [saving, setSaving] = useState(false);
   const [showPass, setShowPass] = useState(false);
@@ -122,7 +133,7 @@ function ServicesTab() {
           </p>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
             {INTERNAL_SERVICES.map(svc => (
-              <ServiceTile key={svc.key} svc={svc} isActive={selected.key === svc.key} onClick={() => setSelected(svc)} />
+              <ServiceTile key={svc.key} svc={svc} isActive={selected.key === svc.key} onClick={() => pickService(svc)} />
             ))}
           </div>
         </div>
@@ -135,7 +146,7 @@ function ServicesTab() {
           </p>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
             {EXTERNAL_SERVICES.map(svc => (
-              <ServiceTile key={svc.key} svc={svc} isActive={selected.key === svc.key} onClick={() => setSelected(svc)} />
+              <ServiceTile key={svc.key} svc={svc} isActive={selected.key === svc.key} onClick={() => pickService(svc)} />
             ))}
           </div>
         </div>
@@ -149,7 +160,8 @@ function ServicesTab() {
       </div>
 
       {/* Credential Panel */}
-      <div className="card servers-cred-panel">
+      {/* scroll-margin keeps the panel top clear of the fixed mobile top bar (56px). */}
+      <div ref={credPanelRef} className="card servers-cred-panel" style={{ scrollMarginTop: 72 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
           <div style={{
             width: 40, height: 40, borderRadius: 10,
@@ -276,9 +288,12 @@ export default function ServersPage() {
       </div>
 
       {/* Tab bar */}
+      {/* Narrow phones: the row scrolls sideways rather than cutting off the
+          second tab (wrapping would strand its underline on a second line). */}
       <div style={{
         display: 'flex', gap: 4, marginBottom: 24,
         borderBottom: '1px solid var(--color-border)', paddingBottom: 0,
+        overflowX: 'auto', scrollbarWidth: 'none',
       }}>
         {([
           { id: 'services', label: 'Services & Credentials' },
@@ -290,6 +305,7 @@ export default function ServersPage() {
             className="btn btn-text"
             style={{
               borderRadius: 0,
+              flexShrink: 0, whiteSpace: 'nowrap',
               borderBottom: tab === t.id ? '2px solid var(--color-primary)' : '2px solid transparent',
               paddingBottom: 10,
               fontWeight: tab === t.id ? 600 : 400,

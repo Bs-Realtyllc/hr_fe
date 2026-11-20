@@ -108,6 +108,110 @@ const TYPE_META: Record<RequestType, { label: string; color: string; bg: string 
   worked: { label: 'Worked', color: '#4b5563', bg: '#f3f4f6' },
 };
 
+// ── Cell contents shared by the desktop table and the small-screen cards ──
+
+const PILL_STYLE = {
+  display: 'inline-flex', alignItems: 'center', gap: 5,
+  padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+} as const;
+const NOTE_STYLE = { fontSize: 11, marginTop: 2 } as const;
+
+function TypeInfo({ o }: { o: OvertimeRequest }) {
+  const typeMeta = TYPE_META[o.request_type];
+  return (
+    <>
+      <span style={{ ...PILL_STYLE, background: typeMeta.bg, color: typeMeta.color }}>
+        {typeMeta.label}
+      </span>
+      {o.session_count > 0 && (
+        <div className="text-muted" style={NOTE_STYLE}>
+          from {o.session_count} clocked session{o.session_count > 1 ? 's' : ''}
+        </div>
+      )}
+    </>
+  );
+}
+
+function HoursInfo({ o }: { o: OvertimeRequest }) {
+  return (
+    <>
+      <div style={{ fontWeight: 600 }}>
+        {o.actual_hours != null ? `${o.actual_hours}h` : `${o.hours}h`}
+        {o.actual_hours != null && o.actual_hours !== o.hours && (
+          <span className="text-muted" style={{ fontWeight: 400, fontSize: 11 }}> (planned {o.hours}h)</span>
+        )}
+      </div>
+      {o.sessions.length > 0 && (
+        <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {o.sessions.map(s => (
+            <div key={s.clock_id} style={{ fontSize: 12, color: 'var(--color-text-body)' }}>
+              {formatTimeNepal(s.clock_in)} – {s.clock_out ? formatTimeNepal(s.clock_out) : 'still clocked in'}
+              {s.clock_out_estimated && (
+                <span
+                  title="This clock-out was auto-estimated by the system, not actually reported by the employee."
+                  className="text-muted"
+                  style={{ fontStyle: 'italic' }}
+                > (estimated)</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {o.clocked_seconds != null && (
+        <div className="text-muted" style={NOTE_STYLE}>
+          Clocked: {formatHoursMinutes(o.clocked_seconds)}
+          {o.clocked_seconds_estimated ? (
+            <span title="That day's clock-out was auto-estimated, not actually reported — treat this comparison as a rough guess." style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}> (estimated)</span>
+          ) : o.hours_mismatch && (
+            <span style={{ color: 'var(--color-error)', fontWeight: 600 }}> ⚠ mismatch</span>
+          )}
+        </div>
+      )}
+      {o.approved_despite_mismatch && (
+        <div className="text-muted" style={NOTE_STYLE}>Approved despite mismatch</div>
+      )}
+    </>
+  );
+}
+
+function StatusInfo({ o }: { o: OvertimeRequest }) {
+  const meta = STATUS_META[o.status];
+  return (
+    <>
+      <span style={{ ...PILL_STYLE, background: meta.bg, color: meta.color }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: meta.dot, flexShrink: 0 }} />
+        {meta.label}
+      </span>
+      {o.status !== 'pending' && o.reviewer_name && (
+        <div className="text-muted" style={NOTE_STYLE}>by {o.reviewer_name}</div>
+      )}
+      {o.reconciled_at && o.reconciler_name && (
+        <div className="text-muted" style={NOTE_STYLE}>reconciled by {o.reconciler_name}</div>
+      )}
+    </>
+  );
+}
+
+function PayInfo({ o }: { o: OvertimeRequest }) {
+  if (o.status === 'approved' && o.amount != null) {
+    return (
+      <div>
+        <div style={{ fontWeight: 700, color: 'var(--color-success)' }}>+ Rs. {Number(o.amount).toLocaleString()}</div>
+        <div className="text-muted" style={{ fontSize: 11 }}>Rs. {o.overtime_rate}/hr</div>
+      </div>
+    );
+  }
+  if (o.needs_reconciliation) {
+    return (
+      <span style={{ ...PILL_STYLE, background: '#fef3c7', color: '#b45309' }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />
+        Pending reconciliation
+      </span>
+    );
+  }
+  return <span className="text-muted" style={{ fontSize: 13 }}>—</span>;
+}
+
 const BLANK_PLANNED_FORM = {
   project_id: '',
   work_date: '',
@@ -361,6 +465,38 @@ export default function OvertimePage() {
     ? Boolean(plannedForm.work_date && plannedForm.hours && reason)
     : Boolean(selectedClockIds.size > 0 && reason && !hasZeroRoundingDate);
 
+  /** Action buttons for one request (table and cards); null when there are none. */
+  const renderActions = (o: OvertimeRequest) => {
+    const isOwn = o.employee_id === user?.id;
+    const canApproveReject = o.status === 'pending' && isPrivileged && !isOwn;
+    // 'worked' requests are always derived from sessions, so
+    // there's nothing free-typed to edit — cancel & resubmit.
+    const canEdit = o.status === 'pending' && isOwn && o.request_type === 'planned';
+    const canCancel = o.status === 'pending' && isOwn;
+    const canReconcile = o.needs_reconciliation && isPrivileged && !isOwn;
+    if (!canApproveReject && !canEdit && !canCancel && !canReconcile) return null;
+
+    return (
+      <>
+        {canApproveReject && (
+          <>
+            <button className="btn btn-sm btn-accent" onClick={() => approve(o)}>Approve</button>
+            <button className="btn btn-sm btn-danger" onClick={() => reject(o.id)}>Reject</button>
+          </>
+        )}
+        {canReconcile && (
+          <button className="btn btn-sm btn-accent" onClick={() => reconcile(o)}>Reconcile</button>
+        )}
+        {canEdit && (
+          <button className="btn btn-sm btn-secondary" onClick={() => openEditModal(o)}>Edit</button>
+        )}
+        {canCancel && (
+          <button className="btn btn-sm btn-danger" onClick={() => cancelRequest(o.id)}>Cancel</button>
+        )}
+      </>
+    );
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -421,136 +557,67 @@ export default function OvertimePage() {
                 </tr>
               </thead>
               <tbody>
-                {requests.map(o => {
-                  const isOwn = o.employee_id === user?.id;
-                  const meta = STATUS_META[o.status];
-                  const typeMeta = TYPE_META[o.request_type];
-                  const canApproveReject = o.status === 'pending' && isPrivileged && !isOwn;
-                  // 'worked' requests are always derived from sessions, so
-                  // there's nothing free-typed to edit — cancel & resubmit.
-                  const canEdit = o.status === 'pending' && isOwn && o.request_type === 'planned';
-                  const canCancel = o.status === 'pending' && isOwn;
-                  const canReconcile = o.needs_reconciliation && isPrivileged && !isOwn;
-
-                  return (
-                    <tr key={o.id}>
-                      <td>
-                        <div className="cell-title">{o.employee_name}</div>
-                        <div className="cell-subtitle">{o.designation}</div>
-                      </td>
-                      <td>
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center',
-                          padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-                          background: typeMeta.bg, color: typeMeta.color,
-                        }}>
-                          {typeMeta.label}
-                        </span>
-                        {o.session_count > 0 && (
-                          <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
-                            from {o.session_count} clocked session{o.session_count > 1 ? 's' : ''}
-                          </div>
-                        )}
-                      </td>
-                      <td className="text-sm">{o.project_name || <span className="text-muted">General duties</span>}</td>
-                      <td className="text-sm">{new Date(o.work_date).toLocaleDateString()}</td>
-                      <td>
-                        <div style={{ fontWeight: 600 }}>
-                          {o.actual_hours != null ? `${o.actual_hours}h` : `${o.hours}h`}
-                          {o.actual_hours != null && o.actual_hours !== o.hours && (
-                            <span className="text-muted" style={{ fontWeight: 400, fontSize: 11 }}> (planned {o.hours}h)</span>
-                          )}
-                        </div>
-                        {o.sessions.length > 0 && (
-                          <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            {o.sessions.map(s => (
-                              <div key={s.clock_id} style={{ fontSize: 12, color: 'var(--color-text-body)' }}>
-                                {formatTimeNepal(s.clock_in)} – {s.clock_out ? formatTimeNepal(s.clock_out) : 'still clocked in'}
-                                {s.clock_out_estimated && (
-                                  <span
-                                    title="This clock-out was auto-estimated by the system, not actually reported by the employee."
-                                    className="text-muted"
-                                    style={{ fontStyle: 'italic' }}
-                                  > (estimated)</span>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {o.clocked_seconds != null && (
-                          <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>
-                            Clocked: {formatHoursMinutes(o.clocked_seconds)}
-                            {o.clocked_seconds_estimated ? (
-                              <span title="That day's clock-out was auto-estimated, not actually reported — treat this comparison as a rough guess." style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}> (estimated)</span>
-                            ) : o.hours_mismatch && (
-                              <span style={{ color: 'var(--color-error)', fontWeight: 600 }}> ⚠ mismatch</span>
-                            )}
-                          </div>
-                        )}
-                        {o.approved_despite_mismatch && (
-                          <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>Approved despite mismatch</div>
-                        )}
-                      </td>
-                      <td style={{ maxWidth: 200 }}><div className="truncate text-sm">{o.reason}</div></td>
-                      <td>
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 5,
-                          padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-                          background: meta.bg, color: meta.color,
-                        }}>
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: meta.dot, flexShrink: 0 }} />
-                          {meta.label}
-                        </span>
-                        {o.status !== 'pending' && o.reviewer_name && (
-                          <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>by {o.reviewer_name}</div>
-                        )}
-                        {o.reconciled_at && o.reconciler_name && (
-                          <div className="text-muted" style={{ fontSize: 11, marginTop: 2 }}>reconciled by {o.reconciler_name}</div>
-                        )}
-                      </td>
-                      <td>
-                        {o.status === 'approved' && o.amount != null ? (
-                          <div>
-                            <div style={{ fontWeight: 700, color: 'var(--color-success)' }}>+ Rs. {Number(o.amount).toLocaleString()}</div>
-                            <div className="text-muted" style={{ fontSize: 11 }}>Rs. {o.overtime_rate}/hr</div>
-                          </div>
-                        ) : o.needs_reconciliation ? (
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 5,
-                            padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-                            background: '#fef3c7', color: '#b45309',
-                          }}>
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />
-                            Pending reconciliation
-                          </span>
-                        ) : (
-                          <span className="text-muted" style={{ fontSize: 13 }}>—</span>
-                        )}
-                      </td>
-                      <td>
-                        <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
-                          {canApproveReject && (
-                            <>
-                              <button className="btn btn-sm btn-accent" onClick={() => approve(o)}>Approve</button>
-                              <button className="btn btn-sm btn-danger" onClick={() => reject(o.id)}>Reject</button>
-                            </>
-                          )}
-                          {canReconcile && (
-                            <button className="btn btn-sm btn-accent" onClick={() => reconcile(o)}>Reconcile</button>
-                          )}
-                          {canEdit && (
-                            <button className="btn btn-sm btn-secondary" onClick={() => openEditModal(o)}>Edit</button>
-                          )}
-                          {canCancel && (
-                            <button className="btn btn-sm btn-danger" onClick={() => cancelRequest(o.id)}>Cancel</button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {requests.map(o => (
+                  <tr key={o.id}>
+                    <td>
+                      <div className="cell-title">{o.employee_name}</div>
+                      <div className="cell-subtitle">{o.designation}</div>
+                    </td>
+                    <td><TypeInfo o={o} /></td>
+                    <td className="text-sm">{o.project_name || <span className="text-muted">General duties</span>}</td>
+                    <td className="text-sm">{new Date(o.work_date).toLocaleDateString()}</td>
+                    <td><HoursInfo o={o} /></td>
+                    <td style={{ maxWidth: 200 }}><div className="truncate text-sm">{o.reason}</div></td>
+                    <td><StatusInfo o={o} /></td>
+                    <td><PayInfo o={o} /></td>
+                    <td>
+                      <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                        {renderActions(o)}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Small-screen replacement for the table above (see .row-cards in table.css). */}
+          <div className="row-cards">
+            {requests.map(o => {
+              const actions = renderActions(o);
+              return (
+                <div key={o.id} className="row-card">
+                  <div className="row-card-top">
+                    <div className="min-w-0">
+                      <div className="cell-title">{o.employee_name}</div>
+                      <div className="cell-subtitle">{o.designation}</div>
+                    </div>
+                    <div className="row-card-meta">{new Date(o.work_date).toLocaleDateString()}</div>
+                  </div>
+
+                  <div className="row-card-line">
+                    <TypeInfo o={o} />
+                    <div className="text-sm" style={{ marginTop: 4 }}>
+                      {o.project_name || <span className="text-muted">General duties</span>}
+                    </div>
+                  </div>
+
+                  <div className="row-card-line text-sm"><HoursInfo o={o} /></div>
+
+                  {o.reason && (
+                    // Up to 3 lines: no hover on touch screens to reveal a one-line truncation.
+                    <div className="row-card-line line-clamp-3 break-words text-sm text-muted">{o.reason}</div>
+                  )}
+
+                  <div className="row-card-line flex flex-wrap items-start justify-between gap-3">
+                    <div><StatusInfo o={o} /></div>
+                    <div className="text-sm"><PayInfo o={o} /></div>
+                  </div>
+
+                  {actions && <div className="row-card-actions">{actions}</div>}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -568,7 +635,7 @@ export default function OvertimePage() {
             <form onSubmit={submit}>
               <div className="form-group">
                 <label className="form-label">Request Type</label>
-                <div className="flex gap-2">
+                <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     className={`btn btn-sm ${requestType === 'planned' ? 'btn-primary' : 'btn-secondary'}`}
@@ -617,11 +684,18 @@ export default function OvertimePage() {
               ) : (
                 <div className="form-group">
                   <label className="form-label">Date Range to Browse</label>
+                  {/* Labelled so the start/end are clear when they stack (≤1120px). */}
                   <div className="grid-2">
-                    <input className="form-input" type="date" value={rangeStart} max={rangeEnd || today}
-                      onChange={e => setRangeStart(e.target.value)} />
-                    <input className="form-input" type="date" value={rangeEnd} min={rangeStart || undefined} max={today}
-                      onChange={e => setRangeEnd(e.target.value)} />
+                    <div>
+                      <label className="form-label" htmlFor="ot-range-start" style={{ fontSize: 12, marginBottom: 4 }}>From</label>
+                      <input id="ot-range-start" className="form-input" type="date" value={rangeStart} max={rangeEnd || today}
+                        onChange={e => setRangeStart(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="form-label" htmlFor="ot-range-end" style={{ fontSize: 12, marginBottom: 4 }}>To</label>
+                      <input id="ot-range-end" className="form-input" type="date" value={rangeEnd} min={rangeStart || undefined} max={today}
+                        onChange={e => setRangeEnd(e.target.value)} />
+                    </div>
                   </div>
 
                   {rangeStart && rangeEnd && (

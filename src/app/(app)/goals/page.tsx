@@ -205,11 +205,13 @@ export default function GoalsPage() {
   return (
     <div className='m-0 '>
 
-      <div className='page-header-fixed fixed left-(--sidebar-width) right-0 top-0 m-0 z-10 '>
+      {/* Pinned beside the sidebar on desktop. ≤1120px the sidebar collapses (and a mobile
+          top bar takes the top 56px), so the header returns to the normal flow. */}
+      <div className='page-header-fixed fixed left-(--sidebar-width) right-0 top-0 m-0 z-10 max-[1120px]:static'>
         <PageHeader title={'Goals & KPIs'} discription={isPrivileged ? 'Track individual, team, and company goals across the org' : 'Track your goals and key performance indicators'} />
       </div>
 
-      <div className='mb-6 mt-22'>
+      <div className='mb-6 mt-22 max-[1120px]:mt-0'>
         <div className=" flex items-center justify-between pt-7 pb-6" style={{ marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
           {/* <div className="pill-group">
           <button type="button" className={`pill ${statusFilter === '' ? 'pill-active' : ''}`} onClick={() => setStatusFilter('')}>
@@ -226,8 +228,9 @@ export default function GoalsPage() {
             </button>
           ))}
         </div> */}
-          <div className="pill-group">
-            <BSRealtyTabs className='text-[14px]!'
+          {/* Phones: the tab bar scrolls sideways instead of running off the screen. */}
+          <div className="pill-group min-w-0 max-w-full overflow-x-auto">
+            <BSRealtyTabs className='text-[14px]! flex-nowrap whitespace-nowrap m-1'
               value={statusFilter}
               onChange={setStatusFilter}
               tabs={[
@@ -243,7 +246,7 @@ export default function GoalsPage() {
             />
           </div>
 
-          <div className=" flex items-center gap-3">
+          <div className=" flex items-center gap-3" style={{ flexWrap: 'wrap' }}>
             <span className="text-muted text-sm" style={{ whiteSpace: 'nowrap' }}>
               Avg. progress: <strong style={{ color: 'var(--color-text-h3)' }}>{totals.avgProgress}%</strong>
             </span>
@@ -334,7 +337,7 @@ export default function GoalsPage() {
                           <div className="progress-fill" style={{ width: `${pct}%`, background: col.color }} />
                         </div>
 
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center" style={{ flexWrap: 'wrap', gap: 6 }}>
                           {g.due_date ? (
                             <span className="text-muted" style={{ fontSize: 11, color: overdue ? 'var(--color-error)' : undefined, fontWeight: overdue ? 600 : undefined }}>
                               {overdue ? '⚠ Overdue ' : 'Due '}{fmtDate(g.due_date)}

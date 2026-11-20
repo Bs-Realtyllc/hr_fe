@@ -150,8 +150,9 @@ export default function FeedbackPage() {
             {topPraised.map(s => (
               <div key={s.employee_id} className="flex items-center gap-3">
                 <div className="avatar avatar-sm">{initials(s.employee_name)}</div>
-                <div style={{ width: 140, fontSize: 13, fontWeight: 600, flexShrink: 0 }}>{s.employee_name}</div>
-                <div className="progress-bar" style={{ flex: 1 }}>
+                {/* Name prefers 140px but gives way (with "…") so the bar keeps ≥96px on phones. */}
+                <div title={s.employee_name} style={{ flex: '0 1 140px', minWidth: 0, fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.employee_name}</div>
+                <div className="progress-bar" style={{ flex: 1, minWidth: 96 }}>
                   <div className="progress-fill" style={{ width: `${(s.total_received / maxReceived) * 100}%`, background: 'var(--color-accent)' }} />
                 </div>
                 <div style={{ width: 36, textAlign: 'right', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{s.total_received}</div>
@@ -226,7 +227,7 @@ export default function FeedbackPage() {
                 </div>
               </div>
 
-              <p className="text-sm" style={{ marginBottom: 10, lineHeight: 1.6 }}>{n.message}</p>
+              <p className="text-sm" style={{ marginBottom: 10, lineHeight: 1.6, overflowWrap: 'anywhere' }}>{n.message}</p>
 
               <div className="flex justify-between items-center">
                 <span className="text-muted text-sm">{fmtDate(n.created_at)}</span>

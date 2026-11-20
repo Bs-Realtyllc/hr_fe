@@ -3,6 +3,7 @@ import Button from '@/components/ui/Button/Button';
 import InputField from '@/components/ui/InputField/InputField';
 import type { Profile } from '@/types';
 import NotificationInfo from './NotificationInfo';
+import ProfileFieldRow from './ProfileFieldRow';
 import { ACCESS_ROLE_LABELS, formatJoinDate } from '../utils';
 import type { CompanyInfoState } from '../hooks/useCompanyInfo';
 import type { TeamAccessState } from '../hooks/useTeamAccess';
@@ -13,7 +14,7 @@ export default function OrganizationSection({ isAdmin, profile, company, team }:
   const { companyInfo, setCompanyInfo } = company;
   const { teamAccessLoaded, teamAccessMembers, openMemberMenuId, setOpenMemberMenuId, viewMemberProfile, openEditRole } = team;
   return (
-    <div className='flex flex-col w-[929px] gap-11'>
+    <div className='flex flex-col w-full max-w-[929px] gap-11'>
       <div className='flex flex-col gap-7 w-full'>
         <div>
           <h1 className='text-(--neutral-normal) text-[16px] font-semibold'>Company Information</h1>
@@ -21,58 +22,50 @@ export default function OrganizationSection({ isAdmin, profile, company, team }:
             Manage your company details and hiring identity.
           </p>
         </div>
-        <div className='flex flex-col justify-between gap-4'>
-          <div className='flex justify-between'>
-            <div className='flex flex-col justify-between'>
-              <label htmlFor="company_name" className='text-[14px] font-medium'>Company Name</label>
-              <label htmlFor="company_email" className='text-[14px] font-medium'>Company Email</label>
-              <label htmlFor="company_website" className='text-[14px] font-medium'>Company Website</label>
-            </div>
-            <div className='flex flex-col gap-4'>
-              <div className='flex gap-6 items-center'>
-                <InputField
-                  id='company_name'
-                  type='text'
-                  placeholder='Enter your company name'
-                  className='profile-text-field'
-                  value={companyInfo.name}
-                  onChange={(e) => setCompanyInfo((prev) => ({ ...prev, name: e.target.value }))}
-                  disabled={!isAdmin}
-                />
-                {isAdmin && (
-                  <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_name')?.focus()}>Edit</Button>
-                )}
-              </div>
-              <div className='flex gap-6 items-center'>
-                <InputField
-                  id='company_email'
-                  type='email'
-                  placeholder='Enter your company email'
-                  className='profile-text-field'
-                  value={companyInfo.email}
-                  onChange={(e) => setCompanyInfo((prev) => ({ ...prev, email: e.target.value }))}
-                  disabled={!isAdmin}
-                />
-                {isAdmin && (
-                  <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_email')?.focus()}>Edit</Button>
-                )}
-              </div>
-              <div className='flex gap-6 items-center'>
-                <InputField
-                  id='company_website'
-                  type='text'
-                  placeholder='Enter your company website'
-                  className='profile-text-field'
-                  value={companyInfo.website}
-                  onChange={(e) => setCompanyInfo((prev) => ({ ...prev, website: e.target.value }))}
-                  disabled={!isAdmin}
-                />
-                {isAdmin && (
-                  <Button type='button' variant='primary' size='medium' onClick={() => document.getElementById('company_website')?.focus()}>Edit</Button>
-                )}
-              </div>
-            </div>
-          </div>
+        {/* One row per field (stacks below 768px). */}
+        <div className='flex flex-col gap-4'>
+          <ProfileFieldRow label='Company Name' htmlFor='company_name'>
+            <InputField
+              id='company_name'
+              type='text'
+              placeholder='Enter your company name'
+              className='profile-text-field'
+              value={companyInfo.name}
+              onChange={(e) => setCompanyInfo((prev) => ({ ...prev, name: e.target.value }))}
+              disabled={!isAdmin}
+            />
+            {isAdmin && (
+              <Button type='button' variant='primary' size='medium' className='shrink-0' onClick={() => document.getElementById('company_name')?.focus()}>Edit</Button>
+            )}
+          </ProfileFieldRow>
+          <ProfileFieldRow label='Company Email' htmlFor='company_email'>
+            <InputField
+              id='company_email'
+              type='email'
+              placeholder='Enter your company email'
+              className='profile-text-field'
+              value={companyInfo.email}
+              onChange={(e) => setCompanyInfo((prev) => ({ ...prev, email: e.target.value }))}
+              disabled={!isAdmin}
+            />
+            {isAdmin && (
+              <Button type='button' variant='primary' size='medium' className='shrink-0' onClick={() => document.getElementById('company_email')?.focus()}>Edit</Button>
+            )}
+          </ProfileFieldRow>
+          <ProfileFieldRow label='Company Website' htmlFor='company_website'>
+            <InputField
+              id='company_website'
+              type='text'
+              placeholder='Enter your company website'
+              className='profile-text-field'
+              value={companyInfo.website}
+              onChange={(e) => setCompanyInfo((prev) => ({ ...prev, website: e.target.value }))}
+              disabled={!isAdmin}
+            />
+            {isAdmin && (
+              <Button type='button' variant='primary' size='medium' className='shrink-0' onClick={() => document.getElementById('company_website')?.focus()}>Edit</Button>
+            )}
+          </ProfileFieldRow>
         </div>
       </div>
 
@@ -86,49 +79,45 @@ export default function OrganizationSection({ isAdmin, profile, company, team }:
             Company-wide default shift, used to flag late clock-ins. Leave blank if you don&apos;t want lateness tracked.
           </p>
         </div>
-        <div className='flex justify-between'>
-          <div className='flex flex-col justify-between'>
-            <label htmlFor="work_start" className='text-[14px] font-medium'>Start Time</label>
-            <label htmlFor="work_end" className='text-[14px] font-medium'>End Time</label>
-            <label htmlFor="late_grace_minutes" className='text-[14px] font-medium flex items-center gap-1'>
+        <div className='flex flex-col gap-4'>
+          <ProfileFieldRow label='Start Time' htmlFor='work_start'>
+            <InputField
+              id='work_start'
+              type='time'
+              className='profile-text-field'
+              value={companyInfo.work_start}
+              onChange={(e) => setCompanyInfo((prev) => ({ ...prev, work_start: e.target.value }))}
+              disabled={!isAdmin}
+            />
+          </ProfileFieldRow>
+          <ProfileFieldRow label='End Time' htmlFor='work_end'>
+            <InputField
+              id='work_end'
+              type='time'
+              className='profile-text-field'
+              value={companyInfo.work_end}
+              onChange={(e) => setCompanyInfo((prev) => ({ ...prev, work_end: e.target.value }))}
+              disabled={!isAdmin}
+            />
+          </ProfileFieldRow>
+          <ProfileFieldRow
+            htmlFor='late_grace_minutes'
+            label={<>
               Grace Period (minutes)
               <NotificationInfo text="Minutes after Start Time an employee can still clock in without being marked late. E.g. a 9:00 AM start with a 15-minute grace period only flags clock-ins after 9:15 AM." />
-            </label>
-          </div>
-          <div className='flex flex-col gap-4'>
-            <div className='flex gap-6 items-center'>
-              <InputField
-                id='work_start'
-                type='time'
-                className='profile-text-field'
-                value={companyInfo.work_start}
-                onChange={(e) => setCompanyInfo((prev) => ({ ...prev, work_start: e.target.value }))}
-                disabled={!isAdmin}
-              />
-            </div>
-            <div className='flex gap-6 items-center'>
-              <InputField
-                id='work_end'
-                type='time'
-                className='profile-text-field'
-                value={companyInfo.work_end}
-                onChange={(e) => setCompanyInfo((prev) => ({ ...prev, work_end: e.target.value }))}
-                disabled={!isAdmin}
-              />
-            </div>
-            <div className='flex gap-6 items-center'>
-              <InputField
-                id='late_grace_minutes'
-                type='number'
-                min={0}
-                max={120}
-                className='profile-text-field'
-                value={companyInfo.late_grace_minutes}
-                onChange={(e) => setCompanyInfo((prev) => ({ ...prev, late_grace_minutes: e.target.value }))}
-                disabled={!isAdmin || !companyInfo.work_start}
-              />
-            </div>
-          </div>
+            </>}
+          >
+            <InputField
+              id='late_grace_minutes'
+              type='number'
+              min={0}
+              max={120}
+              className='profile-text-field'
+              value={companyInfo.late_grace_minutes}
+              onChange={(e) => setCompanyInfo((prev) => ({ ...prev, late_grace_minutes: e.target.value }))}
+              disabled={!isAdmin || !companyInfo.work_start}
+            />
+          </ProfileFieldRow>
         </div>
       </div>
 

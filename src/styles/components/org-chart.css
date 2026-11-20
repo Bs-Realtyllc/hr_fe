@@ -1,11 +1,42 @@
 /* ── Org chart ── */
-.org-canvas {
+/* Height = viewport minus what sits above/below the chart (topbar, header,
+   paddings). dvh excludes mobile browser chrome; vh is the fallback. */
+.org-canvas,
+.org-outline {
   height: calc(100vh - 220px);
+  height: calc(100dvh - 220px);
   min-height: 420px;
+}
+
+.org-canvas {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
+}
+
+/* Mobile topbar (56px) + main-content top padding (76px) + header + 16px bottom padding. */
+@media (max-width: 1120px) {
+  .org-canvas,
+  .org-outline {
+    height: calc(100vh - 210px);
+    height: calc(100dvh - 210px);
+  }
+}
+
+/* The header wraps into two rows here, so reserve more; allow short phones. */
+@media (max-width: 640px) {
+  .org-canvas,
+  .org-outline {
+    height: calc(100vh - 270px);
+    height: calc(100dvh - 270px);
+    min-height: 320px;
+  }
+
+  /* Too big for a phone-sized canvas; pinch/drag replaces it. */
+  .org-canvas .react-flow__minimap {
+    display: none;
+  }
 }
 
 .org-canvas--state {
@@ -347,8 +378,6 @@
 
 /* ── Outline view ── */
 .org-outline {
-  height: calc(100vh - 220px);
-  min-height: 420px;
   display: flex;
   flex-direction: column;
   background: var(--color-surface);

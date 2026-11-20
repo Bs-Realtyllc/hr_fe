@@ -167,16 +167,17 @@ function AnalyticsPanel({
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className={`fixed inset-0 bg-black/40 z-40 transition-opacity ${
+        className={`fixed inset-0 bg-black/40 z-[210] transition-opacity ${
           open
             ? "opacity-100 pointer-events-auto"
             : "opacity-0 pointer-events-none"
         }`}
       />
 
-      {/* Slide-over panel */}
+      {/* Slide-over panel. Above the mobile top bar (z 150) and sidebar (200) so its
+          header and close button are never covered; full width ≤1120px. */}
       <div
-        className={`fixed top-0 right-0 h-full w-[52vw] bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out overflow-y-auto ${
+        className={`fixed top-0 right-0 h-full w-full min-[1121px]:w-[52vw] bg-white shadow-2xl z-[220] transform transition-transform duration-300 ease-in-out overflow-y-auto ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -312,7 +313,8 @@ export default function ProjectPageClient() {
             <h1>Performance Report</h1>
             <p>View performance</p>
           </div>
-          <div className="flex gap-2">
+          {/* Wraps on phones instead of running past the edge. */}
+          <div className="flex flex-wrap gap-2">
             {/* Sort By priority */}
             <button
               onClick={() => setSortByPriority((prev) => !prev)}

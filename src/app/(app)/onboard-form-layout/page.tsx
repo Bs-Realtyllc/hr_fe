@@ -419,11 +419,16 @@ const Page = () => {
                           key={ai}
                           className="flex items-center justify-between gap-4 rounded-md px-2 py-2 hover:bg-(--color-bg)"
                         >
-                          <label className="flex flex-1 cursor-pointer items-center gap-3">
+                          {/* Always shown and required, so both boxes are fixed (disabled) but stay fully visible. */}
+                          <label
+                            className="flex flex-1 cursor-not-allowed items-center gap-3"
+                            title="Always included and required"
+                          >
                             <input
                               type="checkbox"
-                              checked={true}
-                              className="h-4 w-4 cursor-pointer accent-(--color-primary)"
+                              checked
+                              disabled
+                              className="h-4 w-4 cursor-not-allowed accent-(--color-primary)"
                             />
                             <span className="text-sm text-(--color-text-body)">
                               {ai}
@@ -433,9 +438,11 @@ const Page = () => {
 
                           <input
                             type="checkbox"
-                            aria-label={`Name required`}
-                            checked={true}
-                            className="h-4 w-4 cursor-pointer accent-(--color-primary) disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label={`${ai} required`}
+                            title="Always included and required"
+                            checked
+                            disabled
+                            className="h-4 w-4 cursor-not-allowed accent-(--color-primary)"
                           />
                         </li>
                       ))
@@ -510,7 +517,7 @@ const Page = () => {
             type="file"
             accept=".pdf,.doc,.docx"
             onChange={(e) => setTemplateFile(e.target.files?.[0] ?? null)}
-            className="text-sm text-(--color-text-body) file:mr-3 file:rounded-md file:border-0 file:bg-(--color-primary-light) file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-(--color-primary)"
+            className="max-w-full text-sm text-(--color-text-body) file:mr-3 file:rounded-md file:border-0 file:bg-(--color-primary-light) file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-(--color-primary)"
           />
           <Button
             variant="secondary"
@@ -536,7 +543,7 @@ const Page = () => {
           {currentTemplate ? (
             <>
               Current file:{" "}
-              <span className="font-medium text-(--color-text-body)">
+              <span className="font-medium break-all text-(--color-text-body)">
                 {currentTemplate.originalName}
               </span>
             </>

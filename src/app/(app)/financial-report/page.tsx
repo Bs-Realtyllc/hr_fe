@@ -26,6 +26,26 @@ function initials(name: string) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
+/** Base / overtime / deducted / tax as a 2-column grid, for the small-screen cards. */
+function FinanceBreakdown({ base, overtime, deducted, tax }: { base: number; overtime: number; deducted: number; tax: number }) {
+  const items: { label: string; value: string; color?: string }[] = [
+    { label: 'Base Salary', value: `Rs. ${base.toLocaleString()}` },
+    { label: 'Overtime Pay', value: overtime > 0 ? `+ Rs. ${overtime.toLocaleString()}` : '—', color: overtime > 0 ? 'var(--color-success)' : undefined },
+    { label: 'Deducted', value: deducted > 0 ? `- Rs. ${deducted.toLocaleString()}` : '—', color: deducted > 0 ? 'var(--color-error)' : undefined },
+    { label: 'Tax', value: `- Rs. ${tax.toLocaleString()}`, color: 'var(--color-warning)' },
+  ];
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px 12px', fontSize: 13 }}>
+      {items.map(i => (
+        <div key={i.label} style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{i.label}</div>
+          <div style={{ fontWeight: 600, color: i.color, overflowWrap: 'anywhere' }}>{i.value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function FinancialReportPage() {
   const { isPrivileged } = usePermissions();
 
@@ -74,7 +94,13 @@ export default function FinancialReportPage() {
             {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
-        <span className="badge badge-neutral" style={{ fontSize: 11 }}>
+        <span className="max-sm:hidden">
+          <span className="badge badge-neutral" style={{ fontSize: 11 }}>
+            Total Payable = Base Salary + Overtime Pay − Deducted Amount − Tax Amount
+          </span>
+        </span>
+        {/* Phones: the long formula as plain text — a wrapped multi-line pill looks squashed. */}
+        <span className="sm:hidden" style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
           Total Payable = Base Salary + Overtime Pay − Deducted Amount − Tax Amount
         </span>
       </div>
@@ -121,7 +147,8 @@ export default function FinancialReportPage() {
             </div>
           )}
 
-          <div className="card" style={{ overflowX: 'auto' }}>
+          <div className="card">
+            <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
@@ -182,6 +209,51 @@ export default function FinancialReportPage() {
                 </tfoot>
               )}
             </table>
+            </div>
+
+            {/* Small-screen replacement for the table above (.table-wrap is hidden ≤1120px). */}
+            {rows.length > 0 && (
+              <div className="row-cards">
+                {rows.map((r, index) => (
+                  <div key={index} className="row-card">
+                    <div className="row-card-top">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                        <div className="avatar avatar-sm">{initials(r.name)}</div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 14, overflowWrap: 'anywhere' }}>{r.name}</div>
+                          <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{r.designation}</div>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Total Payable</div>
+                        <div style={{ fontWeight: 800, fontSize: 15, whiteSpace: 'nowrap' }}>Rs. {r.total_payable.toLocaleString()}</div>
+                      </div>
+                    </div>
+                    <FinanceBreakdown
+                      base={r.base_salary}
+                      overtime={r.overtime_pay}
+                      deducted={r.deducted_amount}
+                      tax={r.tax_amount}
+                    />
+                  </div>
+                ))}
+
+                {isPrivileged && (
+                  <div className="row-card" style={{ background: 'var(--color-bg)' }}>
+                    <div className="row-card-top">
+                      <div style={{ fontWeight: 700 }}>Total</div>
+                      <div style={{ fontWeight: 800, fontSize: 15, whiteSpace: 'nowrap' }}>Rs. {Math.round(totals.payable).toLocaleString()}</div>
+                    </div>
+                    <FinanceBreakdown
+                      base={Math.round(totals.base)}
+                      overtime={Math.round(totals.overtime)}
+                      deducted={Math.round(totals.deducted)}
+                      tax={Math.round(totals.tax)}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {rows.length === 0 && (

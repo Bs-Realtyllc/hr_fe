@@ -110,7 +110,7 @@ function ReportCard({
       <div style={{ flex: '1 1 180px', minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{report.title}</div>
         <div style={{ fontSize: 12, color: 'var(--color-text-muted)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ color }}>{report.file_name}</span>
+          <span style={{ color, overflowWrap: 'anywhere', minWidth: 0 }}>{report.file_name}</span>
           {report.file_size > 0 && <span>· {fmtSize(report.file_size)}</span>}
           <span>· {fmtDate(report.submitted_at)}</span>
         </div>
@@ -179,6 +179,16 @@ function RangeFilter({
 }) {
   const hasRange = !!(range.from || range.to);
 
+  // Two months side by side is ~520px — wider than a phone — so show one below 640px.
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const update = () => setNarrow(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
   // Default label shows the current month's range even before the user picks anything,
   // matching a real "from date - to date" display rather than a vague "All Time" placeholder.
   const displayFrom = range.from ?? new Date(now.getFullYear(), now.getMonth(), 1);
@@ -189,7 +199,7 @@ function RangeFilter({
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
       <DatePicker
         selectsRange
-        monthsShown={2}
+        monthsShown={narrow ? 1 : 2}
         startDate={range.from}
         endDate={range.to}
         maxDate={now}
@@ -463,7 +473,7 @@ function EmployeeView({
                   <div style={{ flex: '1 1 160px', minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{r.title}</div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-muted)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ color: fileIcon(r.file_name).color }}>{r.file_name}</span>
+                      <span style={{ color: fileIcon(r.file_name).color, overflowWrap: 'anywhere', minWidth: 0 }}>{r.file_name}</span>
                       {r.file_size > 0 && <span>· {fmtSize(r.file_size)}</span>}
                       <span>· {fmtDate(r.submitted_at)}</span>
                     </div>
