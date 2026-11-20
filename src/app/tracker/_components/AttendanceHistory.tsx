@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { formatTimeNepal, nepalTodayString } from "@/lib/datetime";
 import LocationLink from "@/components/LocationLink";
+import DiaryModal from "@/components/profile/DiaryModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PauseRecord {
   pause: string;
@@ -23,6 +25,7 @@ interface AttendanceRecord {
   clockInLng: number | null;
   clockOutLat: number | null;
   clockOutLng: number | null;
+  source: 'web' | 'desktop';
 }
 
 interface Pagination {
@@ -72,6 +75,7 @@ function groupByDate(records: AttendanceRecord[]): DateGroup[] {
 const PAGE_SIZE = 20;
 
 export default function AttendanceHistory() {
+  const { user } = useAuth();
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -84,6 +88,7 @@ export default function AttendanceHistory() {
   const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [diaryTarget, setDiaryTarget] = useState<{ date: string; clockId: number } | null>(null);
 
   const fetchAttendance = useCallback(async () => {
     setLoading(true);
@@ -174,6 +179,7 @@ export default function AttendanceHistory() {
                     <th>Clock In</th>
                     <th>Clock Out</th>
                     <th>Pauses</th>
+                    <th>Source</th>
                     <th className="tracker-table-total-header">Total</th>
                   </tr>
                 </thead>
@@ -214,6 +220,21 @@ export default function AttendanceHistory() {
                           <span className="tracker-table-muted">—</span>
                         )}
                       </td>
+                      <td>
+                        {shift.source === 'desktop' ? (
+                          <button
+                            type="button"
+                            className="badge badge-accent"
+                            style={{ cursor: 'pointer', border: 'none' }}
+                            onClick={() => setDiaryTarget({ date: shift.clockDate, clockId: shift.clockId })}
+                            title="View your screenshots and activity for this shift"
+                          >
+                            Desktop
+                          </button>
+                        ) : (
+                          <span className="badge badge-neutral">Web</span>
+                        )}
+                      </td>
                       <td className="tracker-table-total-cell">{formatDuration(shift.totalClockInDuration)}</td>
                     </tr>
                   ))}
@@ -249,6 +270,15 @@ export default function AttendanceHistory() {
             </div>
           )}
         </div>
+      )}
+
+      {diaryTarget && (
+        <DiaryModal
+          employeeName={user?.name ?? "Me"}
+          clockId={diaryTarget.clockId}
+          date={diaryTarget.date}
+          onClose={() => setDiaryTarget(null)}
+        />
       )}
     </div>
   );

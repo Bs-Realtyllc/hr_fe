@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import { formatTimeNepal } from "@/lib/datetime";
 import LocationLink from "@/components/LocationLink";
+import DiaryModal from "@/components/profile/DiaryModal";
 
 interface Employee {
   id: number;
@@ -31,6 +32,7 @@ interface AttendanceRecord {
   clockInLng: number | null;
   clockOutLat: number | null;
   clockOutLng: number | null;
+  source: 'web' | 'desktop';
 }
 
 
@@ -73,6 +75,7 @@ export default function AttendancePage() {
   const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [diaryTarget, setDiaryTarget] = useState<{ employeeId: number; name: string; date: string; clockId: number } | null>(null);
 
   const fetchEmployee = async () => {
     api.get(`/employees/names`).then((res: any) => setEmployees(res));
@@ -174,16 +177,17 @@ export default function AttendancePage() {
               <th>Clock In</th>
               <th>Clock Out</th>
               <th>Pauses</th>
+              <th>Source</th>
               <th className="attendance-total-header">Total</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={6} className="attendance-empty">Loading…</td></tr>
+              <tr><td colSpan={7} className="attendance-empty">Loading…</td></tr>
             )}
 
             {!loading && records.length === 0 && (
-              <tr><td colSpan={6} className="attendance-empty">No attendance records match these filters.</td></tr>
+              <tr><td colSpan={7} className="attendance-empty">No attendance records match these filters.</td></tr>
             )}
 
             {!loading && records.map((r) => (
@@ -225,6 +229,21 @@ export default function AttendancePage() {
                     <span className="attendance-muted">—</span>
                   )}
                 </td>
+                <td>
+                  {r.source === 'desktop' ? (
+                    <button
+                      type="button"
+                      className="badge badge-accent"
+                      style={{ cursor: 'pointer', border: 'none' }}
+                      onClick={() => setDiaryTarget({ employeeId: r.employeeId, name: r.name, date: r.clockDate, clockId: r.clockId })}
+                      title="View screenshots and activity for this shift"
+                    >
+                      Desktop
+                    </button>
+                  ) : (
+                    <span className="badge badge-neutral">Web</span>
+                  )}
+                </td>
                 <td className="attendance-total-cell">{formatDuration(r.totalClockInDuration)}</td>
               </tr>
             ))}
@@ -258,6 +277,16 @@ export default function AttendancePage() {
           </div>
         )}
       </div>
+
+      {diaryTarget && (
+        <DiaryModal
+          employeeId={diaryTarget.employeeId}
+          employeeName={diaryTarget.name}
+          clockId={diaryTarget.clockId}
+          date={diaryTarget.date}
+          onClose={() => setDiaryTarget(null)}
+        />
+      )}
     </div>
   );
 }
