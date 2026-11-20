@@ -1,8 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompanyName } from '../hooks/useCompanyName';
 import { useOrgChart } from '../hooks/useOrgChart';
+import { profileHrefFor } from '../utils/profileLink';
 import type { OrgChartViewMode } from '../types';
 import OrgChartView from './OrgChartView';
 
@@ -12,6 +13,8 @@ export default function OrgChartPage() {
   const { tree, isLoading, error, refetch } = useOrgChart();
   const companyName = useCompanyName();
   const [view, setView] = useState<OrgChartViewMode>('people');
+
+  const profileHref = useCallback((employeeId: number) => profileHrefFor(user, employeeId), [user]);
 
   return (
     <OrgChartView
@@ -23,6 +26,7 @@ export default function OrgChartPage() {
       view={view}
       onViewChange={setView}
       companyName={companyName}
+      profileHref={profileHref}
     />
   );
 }

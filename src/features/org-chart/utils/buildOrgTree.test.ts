@@ -50,6 +50,13 @@ describe('buildOrgTree', () => {
     expect(names(tree.byId.get(2)!.children)).toEqual(['Al', 'bob']);
   });
 
+  it('records the manager used in the tree', () => {
+    const tree = buildOrgTree([m(1, 'A'), m(2, 'B', 1), m(3, 'C', 99)]);
+    expect(tree.byId.get(2)!.managerId).toBe(1);
+    expect(tree.byId.get(1)!.managerId).toBeNull();
+    expect(tree.byId.get(3)!.managerId).toBeNull(); // manager not on the chart
+  });
+
   it('makes people whose manager is missing into roots', () => {
     const tree = buildOrgTree([m(1, 'A', 99), m(2, 'B', 1)]);
     expect(names(tree.roots)).toEqual(['A']);
@@ -67,6 +74,7 @@ describe('buildOrgTree', () => {
     const tree = buildOrgTree([m(1, 'A', 3), m(2, 'B', 1), m(3, 'C', 2), m(4, 'D', 2)]);
     expect(tree.roots).toHaveLength(1);
     expect(tree.roots[0].totalCount).toBe(3);
+    expect(tree.roots[0].managerId).toBeNull(); // the cut link
     // every node appears exactly once in the tree
     const seen: number[] = [];
     const walk = (n: (typeof tree.roots)[number]) => {

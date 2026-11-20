@@ -1,7 +1,10 @@
 'use client';
-import { memo, useState } from 'react';
+import { memo } from 'react';
 import type { OrgChartMember } from '../types';
-import { initials, photoUrl, reportsLabel } from '../utils/person';
+import { visibleDepartment } from '../utils/department';
+import { reportsLabel } from '../utils/person';
+import PersonAvatar from './PersonAvatar';
+import PersonFooter from './PersonFooter';
 
 export interface PersonCardProps {
   member: OrgChartMember;
@@ -9,29 +12,56 @@ export interface PersonCardProps {
   totalCount: number;
   /** Highlights the signed-in user's own card. */
   isMe?: boolean;
+  /** Briefly emphasised after search or "Find me". */
+  highlighted?: boolean;
+  /** Show "● Department" on the card (off in the Teams view, where the box above says it). */
+  showDepartment?: boolean;
+  /** Makes the card a button that opens this person's details. */
+  onOpen?: () => void;
+  /** This person's details are open. */
+  selected?: boolean;
 }
 
 /** One person on the org chart: photo or initials, name, title and report counts. */
-function PersonCard({ member, directCount, totalCount, isMe = false }: PersonCardProps) {
-  const [photoFailed, setPhotoFailed] = useState(false);
-  const src = photoFailed ? null : photoUrl(member.profile_picture);
+function PersonCard({
+  member,
+  directCount,
+  totalCount,
+  isMe = false,
+  highlighted = false,
+  showDepartment = true,
+  onOpen,
+  selected = false,
+}: PersonCardProps) {
   const reports = reportsLabel(directCount, totalCount);
+  const department = visibleDepartment(member, showDepartment);
+
+  const className = [
+    'org-card',
+    isMe && 'org-card--me',
+    highlighted && 'org-card--highlight',
+    selected && 'org-card--selected',
+    onOpen && 'org-card--button nodrag nopan',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const label = [member.name, member.designation, department, reports].filter(Boolean).join(', ');
+  const Tag = onOpen ? 'button' : 'article';
 
   return (
-    <article
-      className={`org-card${isMe ? ' org-card--me' : ''}`}
-      aria-label={[member.name, member.designation, reports].filter(Boolean).join(', ')}
+    <Tag
+      className={className}
+      aria-label={label}
+      {...(onOpen
+        ? {
+            type: 'button' as const,
+            onClick: onOpen,
+            'aria-haspopup': 'dialog' as const,
+            'aria-expanded': selected,
+          }
+        : {})}
     >
-      <span className="org-card__avatar" aria-hidden="true">
-        {src ? (
-          // Plain <img>: photos come from the backend host, not next/image's
-          // configured domains, and the app is statically exported.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={src} alt="" loading="lazy" onError={() => setPhotoFailed(true)} />
-        ) : (
-          initials(member.name)
-        )}
-      </span>
+      <PersonAvatar member={member} />
       <span className="org-card__body">
         <span className="org-card__name" title={member.name}>
           {member.name}
@@ -42,9 +72,9 @@ function PersonCard({ member, directCount, totalCount, isMe = false }: PersonCar
             {member.designation}
           </span>
         )}
-        {reports && <span className="org-card__meta">{reports}</span>}
+        <PersonFooter member={member} department={department} reports={reports} />
       </span>
-    </article>
+    </Tag>
   );
 }
 

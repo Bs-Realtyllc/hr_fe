@@ -1,71 +1,88 @@
 import dagre from '@dagrejs/dagre';
 import type { Edge, Node } from '@xyflow/react';
-import type { OrgChartMember, OrgNode, OrgTree, TeamChartNode } from '../types';
+import type { OrgTree, TeamChartNode } from '../types';
+import {
+  descendantCount,
+  orgToItems,
+  teamToItems,
+  type ChartItem,
+  type GroupItemData,
+  type PersonItemData,
+} from './chartItems';
 
 export const NODE_WIDTH = 240;
 export const NODE_HEIGHT = 72;
 const H_GAP = 32;
 const V_GAP = 56;
 
-export type PersonNodeData = {
-  member: OrgChartMember;
-  directCount: number;
-  totalCount: number;
+/** Collapse/expand state shown on a card's toggle button. */
+export type ToggleInfo = {
+  /** Number of direct children in the full tree (0 = no toggle). */
+  childCount: number;
+  collapsed: boolean;
+  /** People/boxes hidden below this card while collapsed. */
+  hiddenCount: number;
 };
-export type GroupNodeData = {
-  variant: 'company' | 'team';
-  name: string;
-  /** Second line, e.g. "7 teams · 21 people". */
-  summary: string;
-};
+export type PersonNodeData = PersonItemData & ToggleInfo;
+export type GroupNodeData = GroupItemData & ToggleInfo;
 export type PersonFlowNode = Node<PersonNodeData, 'person'>;
-export type GroupFlowNode = Node<GroupNodeData, 'orgGroup'>;
 // Not 'group': React Flow has built-in styles for that type name.
+export type GroupFlowNode = Node<GroupNodeData, 'orgGroup'>;
 export type ChartFlowNode = PersonFlowNode | GroupFlowNode;
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+const NONE: ReadonlySet<string> = new Set();
 
 /**
- * Positions any tree top-down (parent above children) with dagre and returns
- * React Flow nodes and parent → child edges. Children must already be in
- * display order; dagre keeps siblings in insertion order.
+ * Positions the visible part of a tree top-down (parent above children) with
+ * dagre and returns React Flow nodes and parent → child edges. Children of
+ * collapsed items are left out. Siblings keep their order.
  */
-function layoutTree<T extends { children: readonly T[] }>(
-  roots: readonly T[],
-  idOf: (item: T) => string,
-  toNode: (item: T) => Pick<ChartFlowNode, 'type' | 'data'>,
+export function layoutItems(
+  roots: readonly ChartItem[],
+  collapsed: ReadonlySet<string> = NONE,
 ): { nodes: ChartFlowNode[]; edges: Edge[] } {
   const g = new dagre.graphlib.Graph();
   g.setGraph({ rankdir: 'TB', nodesep: H_GAP, ranksep: V_GAP, marginx: 16, marginy: 16 });
   g.setDefaultEdgeLabel(() => ({}));
 
-  const ordered: T[] = [];
-  const stack: T[] = [...roots].reverse();
+  const visible: ChartItem[] = [];
+  const stack = [...roots].reverse();
   while (stack.length) {
     const item = stack.pop()!;
-    ordered.push(item);
-    g.setNode(idOf(item), { width: NODE_WIDTH, height: NODE_HEIGHT });
+    visible.push(item);
+    g.setNode(item.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
+    if (collapsed.has(item.id)) continue;
     for (let i = item.children.length - 1; i >= 0; i--) stack.push(item.children[i]);
   }
 
   const edges: Edge[] = [];
-  for (const item of ordered) {
-    const source = idOf(item);
+  for (const item of visible) {
+    if (collapsed.has(item.id)) continue;
     for (const child of item.children) {
-      const target = idOf(child);
-      g.setEdge(source, target);
-      edges.push({ id: `${source}->${target}`, source, target, type: 'smoothstep' });
+      g.setEdge(item.id, child.id);
+      edges.push({
+        id: `${item.id}->${child.id}`,
+        source: item.id,
+        target: child.id,
+        type: 'smoothstep',
+      });
     }
   }
 
   dagre.layout(g);
 
-  const nodes = ordered.map((item) => {
-    const id = idOf(item);
-    const { x, y } = g.node(id);
+  const nodes = visible.map((item) => {
+    const { x, y } = g.node(item.id);
+    const isCollapsed = collapsed.has(item.id) && item.children.length > 0;
     return {
-      ...toNode(item),
-      id,
+      id: item.id,
+      type: item.type,
+      data: {
+        ...item.data,
+        childCount: item.children.length,
+        collapsed: isCollapsed,
+        hiddenCount: isCollapsed ? descendantCount(item) : 0,
+      },
       // dagre gives the centre; React Flow wants the top-left corner.
       position: { x: x - NODE_WIDTH / 2, y: y - NODE_HEIGHT / 2 },
       width: NODE_WIDTH,
@@ -79,50 +96,13 @@ function layoutTree<T extends { children: readonly T[] }>(
 }
 
 /** People view: the reporting tree. */
-export function layoutOrgChart(tree: OrgTree) {
-  return layoutTree<OrgNode>(
-    tree.roots,
-    (n) => String(n.member.id),
-    ({ member, directCount, totalCount }) => ({
-      type: 'person',
-      data: { member, directCount, totalCount },
-    }),
-  );
+export function layoutOrgChart(tree: OrgTree, collapsed?: ReadonlySet<string>) {
+  return layoutItems(orgToItems(tree), collapsed);
 }
 
 /** Teams view: company → departments → people. */
-export function layoutTeamChart(root: TeamChartNode) {
-  return layoutTree<TeamChartNode>(
-    [root],
-    (n) => n.id,
-    (n) => {
-      switch (n.kind) {
-        case 'person':
-          return {
-            type: 'person',
-            data: { member: n.member, directCount: n.directCount, totalCount: n.totalCount },
-          };
-        case 'team':
-          return {
-            type: 'orgGroup',
-            data: {
-              variant: 'team',
-              name: n.name,
-              summary: plural(n.peopleCount, 'person', 'people'),
-            },
-          };
-        case 'company':
-          return {
-            type: 'orgGroup',
-            data: {
-              variant: 'company',
-              name: n.name,
-              summary: `${plural(n.teamCount, 'team', 'teams')} · ${plural(n.peopleCount, 'person', 'people')}`,
-            },
-          };
-      }
-    },
-  );
+export function layoutTeamChart(root: TeamChartNode, collapsed?: ReadonlySet<string>) {
+  return layoutItems(teamToItems(root), collapsed);
 }
 
 /**

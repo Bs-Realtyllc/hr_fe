@@ -46,7 +46,14 @@ export function buildOrgTree(members: readonly OrgChartMember[]): OrgTree {
   const byId = new Map<number, OrgNode>();
   for (const member of members) {
     if (byId.has(member.id)) continue;
-    byId.set(member.id, { member, children: [], depth: 0, directCount: 0, totalCount: 0 });
+    byId.set(member.id, {
+      member,
+      managerId: null,
+      children: [],
+      depth: 0,
+      directCount: 0,
+      totalCount: 0,
+    });
   }
 
   // Resolve each person's effective manager id (null = root).
@@ -79,7 +86,10 @@ export function buildOrgTree(members: readonly OrgChartMember[]): OrgTree {
   for (const [id, managerId] of managerOf) {
     const node = byId.get(id)!;
     if (managerId == null) roots.push(node);
-    else byId.get(managerId)!.children.push(node);
+    else {
+      node.managerId = managerId;
+      byId.get(managerId)!.children.push(node);
+    }
   }
 
   // Top-down pass: sort children, set depth, record visit order.

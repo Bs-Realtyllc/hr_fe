@@ -76,3 +76,38 @@ export function largeCompany(): OrgChartMember[] {
 }
 
 export const smallTeamTree = () => buildOrgTree(smallTeam);
+
+/** Like a fresh install: only an admin and one employee, no managers set. */
+export const twoPeopleNoManagers: OrgChartMember[] = [
+  member(1, 'Admin'),
+  member(2, 'test', null, { designation: 'senior', department_id: 1, department: 'IT' }),
+];
+
+/**
+ * A company part-way through setting managers: two people manage someone,
+ * everyone else has no manager yet.
+ */
+export const partlyManaged: OrgChartMember[] = [
+  member(1, 'Aarav Sharma', null, { designation: 'Manager', department_id: 2, department: 'IT' }),
+  member(2, 'John Doe', 1, { designation: 'Developer', department_id: 2, department: 'IT' }),
+  member(3, 'Bishal Sharma', null, {
+    designation: 'Finance Lead',
+    department_id: 3,
+    department: 'Finance',
+  }),
+  member(4, 'Maya Rai', 3, { designation: 'Accountant', department_id: 3, department: 'Finance' }),
+  member(5, 'Kiran Bhandari', null, { designation: 'Support', department_id: 2, department: 'IT' }),
+  member(6, 'Ram Thapa', null, { designation: 'Developer', department_id: 2, department: 'IT' }),
+  member(7, 'Gita Rai', null, {
+    designation: 'Executive',
+    department_id: 4,
+    department: 'Marketing',
+  }),
+  member(8, 'Rita KC', null, { designation: 'Manager', department_id: 4, department: 'Marketing' }),
+  member(9, 'Maya Adhikari', null, {
+    designation: 'Assistant',
+    department_id: 5,
+    department: 'HR',
+  }),
+  member(10, 'Dev User'),
+];

@@ -7,7 +7,11 @@ const meta = {
   component: PersonCard,
   tags: ['autodocs'],
   args: {
-    member: member(2, 'Aarav Sharma', 1, { designation: 'Engineering Manager' }),
+    member: member(2, 'Aarav Sharma', 1, {
+      designation: 'Engineering Manager',
+      department_id: 2,
+      department: 'IT',
+    }),
     directCount: 2,
     totalCount: 3,
     isMe: false,
@@ -23,8 +27,41 @@ export const CurrentUser: Story = {
   args: { isMe: true },
 };
 
+/** After search or "Find me". */
+export const Highlighted: Story = {
+  args: { highlighted: true },
+};
+
 export const NoReports: Story = {
   args: { directCount: 0, totalCount: 0 },
+};
+
+export const NoReportsWithDepartment: Story = {
+  args: {
+    member: member(6, 'Kiran Bhandari', 2, {
+      designation: 'Support',
+      department_id: 2,
+      department: 'IT',
+    }),
+    directCount: 0,
+    totalCount: 0,
+  },
+};
+
+/** A long department name is shortened with "…"; the counts are never cut. */
+export const LongDepartment: Story = {
+  args: {
+    member: member(7, 'Anita Joshi', 1, {
+      designation: 'HR Manager',
+      department_id: 9,
+      department: 'People Operations and Talent Acquisition',
+    }),
+  },
+};
+
+/** In the Teams view the department box above already names the department. */
+export const InTeamsView: Story = {
+  args: { showDepartment: false },
 };
 
 export const NoDesignation: Story = {

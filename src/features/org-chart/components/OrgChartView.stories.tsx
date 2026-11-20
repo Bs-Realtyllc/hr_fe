@@ -1,7 +1,14 @@
 import { useArgs } from '@storybook/preview-api';
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn } from '@storybook/test';
-import { largeCompany, member, multipleRoots, smallTeam } from '../fixtures';
+import {
+  largeCompany,
+  member,
+  multipleRoots,
+  partlyManaged,
+  smallTeam,
+  twoPeopleNoManagers,
+} from '../fixtures';
 import type { OrgChartViewMode } from '../types';
 import { buildOrgTree } from '../utils/buildOrgTree';
 import OrgChartView from './OrgChartView';
@@ -39,6 +46,8 @@ const meta = {
     view: 'people',
     onViewChange: fn(),
     companyName: 'Gitgi',
+    // Storybook: everyone gets a profile link (the real page checks the role).
+    profileHref: (id: number) => `/employees/${id}`,
   },
 } satisfies Meta<typeof OrgChartView>;
 
@@ -49,6 +58,16 @@ export const SmallTeam: Story = {};
 
 export const MultipleRoots: Story = {
   args: { tree: buildOrgTree(multipleRoots), currentUserId: null },
+};
+
+/** Managers only partly set: people without one are grouped by department. */
+export const PartlyManaged: Story = {
+  args: { tree: buildOrgTree(partlyManaged), currentUserId: 10 },
+};
+
+/** A fresh install: an admin and one employee, nobody has a manager yet. */
+export const NoManagersYet: Story = {
+  args: { tree: buildOrgTree(twoPeopleNoManagers), currentUserId: 1 },
 };
 
 export const LargeCompany: Story = {
@@ -65,6 +84,18 @@ export const ErrorState: Story = {
 
 export const Empty: Story = {
   args: { tree: buildOrgTree([]) },
+};
+
+export const OutlineView: Story = {
+  args: { view: 'outline' },
+};
+
+export const OutlinePartlyManaged: Story = {
+  args: { view: 'outline', tree: buildOrgTree(partlyManaged), currentUserId: 10 },
+};
+
+export const OutlineLargeCompany: Story = {
+  args: { view: 'outline', tree: buildOrgTree(largeCompany()), currentUserId: 10 },
 };
 
 export const TeamsView: Story = {

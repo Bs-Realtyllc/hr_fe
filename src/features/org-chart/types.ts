@@ -15,6 +15,12 @@ export interface OrgChartMember {
 /** A person in the built reporting tree. */
 export interface OrgNode {
   member: OrgChartMember;
+  /**
+   * The manager actually used in the tree (null = top). Can differ from
+   * member.manager_id when that manager isn't on the chart or the link was
+   * dropped to break a reporting cycle.
+   */
+  managerId: number | null;
   /** Direct reports, sorted by name. */
   children: OrgNode[];
   /** 0 for people with no manager. */
@@ -39,7 +45,7 @@ export interface OrgTree {
 }
 
 /** Which tree the chart shows. */
-export type OrgChartViewMode = 'people' | 'teams';
+export type OrgChartViewMode = 'people' | 'teams' | 'outline';
 
 /**
  * A node in the Teams view: company → departments → people. Inside a
@@ -65,3 +71,12 @@ export type TeamChartNode =
       totalCount: number;
       children: TeamChartNode[];
     };
+
+/**
+ * Ask the active view to reveal (expand to, centre and highlight) a node.
+ * `seq` changes on every request, so asking for the same id twice still works.
+ */
+export interface RevealRequest {
+  id: string;
+  seq: number;
+}

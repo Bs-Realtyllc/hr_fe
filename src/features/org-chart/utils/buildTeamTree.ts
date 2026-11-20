@@ -1,21 +1,16 @@
-import type { OrgChartMember, OrgNode, OrgTree, TeamChartNode } from '../types';
+import type { OrgNode, OrgTree, TeamChartNode } from '../types';
+import {
+  compareNames,
+  departmentKey as teamKey,
+  departmentName,
+  UNASSIGNED_KEY,
+} from './department';
 
-export const UNASSIGNED_TEAM = 'Unassigned';
-const UNASSIGNED_KEY = 'none';
+export { UNASSIGNED_TEAM } from './department';
 
 type PersonTeamNode = Extract<TeamChartNode, { kind: 'person' }>;
 type TeamNode = Extract<TeamChartNode, { kind: 'team' }>;
 export type CompanyTeamNode = Extract<TeamChartNode, { kind: 'company' }>;
-
-/** Same department ⇔ same id; rows with only a name are matched by name. */
-function teamKey(m: OrgChartMember): string {
-  if (m.department_id != null) return `id:${m.department_id}`;
-  if (m.department) return `name:${m.department.trim().toLowerCase()}`;
-  return UNASSIGNED_KEY;
-}
-
-const compareNames = (a: string, b: string) =>
-  a.localeCompare(b, undefined, { sensitivity: 'base' });
 
 const nodeName = (n: TeamChartNode) => (n.kind === 'person' ? n.member.name : n.name);
 
@@ -50,10 +45,7 @@ export function buildTeamTree(tree: OrgTree, companyName: string): CompanyTeamNo
       team = {
         kind: 'team',
         id: `team:${key}`,
-        name:
-          key === UNASSIGNED_KEY
-            ? UNASSIGNED_TEAM
-            : member.department?.trim() || `Department ${member.department_id}`,
+        name: departmentName(member),
         peopleCount: 0,
         children: [],
       };

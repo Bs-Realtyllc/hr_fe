@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { largeCompany, multipleRoots, smallTeam } from '../fixtures';
 import { buildOrgTree } from './buildOrgTree';
 import { buildTeamTree } from './buildTeamTree';
+import { defaultCollapsed, orgToItems } from './chartItems';
 import {
   layoutOrgChart,
   layoutTeamChart,
@@ -58,6 +59,36 @@ describe('layoutOrgChart', () => {
   it('marks nodes read-only', () => {
     const { nodes } = layoutOrgChart(buildOrgTree(smallTeam));
     expect(nodes.every((n) => n.draggable === false && n.connectable === false)).toBe(true);
+  });
+});
+
+describe('layoutOrgChart with collapsed boxes', () => {
+  const tree = buildOrgTree(smallTeam);
+
+  it('hides everyone below a collapsed box and its edges', () => {
+    const { nodes, edges } = layoutOrgChart(tree, new Set(['2'])); // Aarav
+    expect(nodes.map((n) => n.id).sort()).toEqual(['1', '2', '3', '7']);
+    expect(edges.some((e) => e.source === '2')).toBe(false);
+  });
+
+  it('reports toggle info on each card', () => {
+    const { nodes } = layoutOrgChart(tree, new Set(['2']));
+    const byId = new Map(nodes.map((n) => [n.id, n.data]));
+    expect(byId.get('2')).toMatchObject({ childCount: 2, collapsed: true, hiddenCount: 3 });
+    expect(byId.get('1')).toMatchObject({ childCount: 2, collapsed: false, hiddenCount: 0 });
+    expect(byId.get('7')).toMatchObject({ childCount: 0, collapsed: false });
+  });
+
+  it('ignores a collapsed id with no children', () => {
+    const { nodes } = layoutOrgChart(tree, new Set(['7']));
+    expect(nodes).toHaveLength(smallTeam.length);
+    expect(nodes.find((n) => n.id === '7')!.data.collapsed).toBe(false);
+  });
+
+  it('shows only the top three rows of a large company by default', () => {
+    const big = buildOrgTree(largeCompany());
+    const { nodes } = layoutOrgChart(big, defaultCollapsed(orgToItems(big)));
+    expect(nodes).toHaveLength(1 + 6 + 30);
   });
 });
 
