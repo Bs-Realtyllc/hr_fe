@@ -4,17 +4,19 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { formatTimeNepal } from '@/lib/datetime';
 
-interface ActivityBlock {
+interface TrackerSegment {
   windowStart: string;
   windowEnd: string;
   activeSeconds: number;
   idleSeconds: number;
-  activeMinutes?: boolean[];
   keyPresses: number;
   mouseClicks: number;
   mouseMoves: number;
   activeAppName: string | null;
   excluded: boolean;
+  // True when this segment was cut short by the idle prompt timing out
+  // with no response, rather than running its normal length.
+  idleTriggered: boolean;
 }
 
 interface Screenshot {
@@ -24,8 +26,9 @@ interface Screenshot {
 }
 
 interface DiaryEntry {
-  block: ActivityBlock;
-  screenshots: Screenshot[];
+  segment: TrackerSegment;
+  // Null when the capture failed or was never attempted for this segment.
+  screenshot: Screenshot | null;
 }
 
 interface DiaryModalProps {
@@ -38,37 +41,6 @@ interface DiaryModalProps {
   onClose: () => void;
 }
 
-// Same "active minutes out of 10" model Upwork's Work Diary uses — a row of
-// 10 segments, one per minute of the block, lit up for whichever minutes had
-// keyboard/mouse input. Falls back to an approximate left-packed count for
-// older blocks recorded before per-minute tracking existed.
-function getActiveMinutes(block: ActivityBlock): boolean[] {
-  // Empty (not a fake all-false array) means the client never sent
-  // per-minute data — only then do we fall back to an approximation.
-  if (block.activeMinutes && block.activeMinutes.length > 0) return block.activeMinutes;
-  const approxCount = Math.round((block.activeSeconds / 60));
-  return new Array(10).fill(false).map((_, i) => i < approxCount);
-}
-
-function ActivityBar({ block }: { block: ActivityBlock }) {
-  const minutes = getActiveMinutes(block);
-  const activeCount = minutes.filter(Boolean).length;
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex flex-1 gap-[2px]">
-        {minutes.map((active, i) => (
-          <span
-            key={i}
-            className="h-[6px] flex-1 rounded-sm"
-            style={{ background: active ? '#22c55e' : 'var(--neutral-light-hover)' }}
-          />
-        ))}
-      </div>
-      <span className="shrink-0 text-[12px] text-(--soft-white-dark-active)">{activeCount}/10</span>
-    </div>
-  );
-}
-
 function formatDate(date: string) {
   return new Date(`${date}T00:00:00`).toLocaleDateString('en-US', {
     weekday: 'long',
@@ -77,23 +49,41 @@ function formatDate(date: string) {
   });
 }
 
-function formatDuration(seconds: number) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+// A single bar filled proportional to how much of the segment was active —
+// same "activity level" convention Upwork/Hubstaff use, not a per-minute
+// checklist. Dots filled is proportional to activeSeconds/segment-length,
+// not "did any input happen in this specific minute."
+const ACTIVITY_DOTS = 10;
+function ActivityLevel({ segment }: { segment: TrackerSegment }) {
+  const durationSeconds = Math.max(
+    1,
+    (new Date(segment.windowEnd).getTime() - new Date(segment.windowStart).getTime()) / 1000,
+  );
+  const pct = Math.min(1, segment.activeSeconds / durationSeconds);
+  const filledDots = Math.round(pct * ACTIVITY_DOTS);
+  return (
+    <div className="flex gap-[2px]">
+      {Array.from({ length: ACTIVITY_DOTS }, (_, i) => (
+        <span
+          key={i}
+          className="h-[6px] flex-1 rounded-sm"
+          style={{ background: i < filledDots ? '#22c55e' : 'var(--neutral-light-hover)' }}
+        />
+      ))}
+    </div>
+  );
 }
 
 export default function DiaryModal({ employeeId, employeeName, clockId, date, onClose }: DiaryModalProps) {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
-  const [verifiedActiveSeconds, setVerifiedActiveSeconds] = useState(0);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // A fully deleted block (no evidence left) just disappears from the
+  // A fully deleted segment (no evidence left) just disappears from the
   // diary entirely, same as Upwork's own behavior — no ghost card, no
   // inline mention. Who deleted what and when still lives in the database
   // (excludedBy/excludedAt) for a separate audit view if one's ever needed.
-  const visibleEntries = entries.filter((e) => !e.block.excluded);
+  const visibleEntries = entries.filter((e) => !e.segment.excluded);
 
   const endpoint = employeeId
     ? `/tracker/diary?employeeId=${employeeId}&clockId=${clockId}`
@@ -106,7 +96,6 @@ export default function DiaryModal({ employeeId, employeeName, clockId, date, on
       .then((res: any) => {
         if (cancelledRef?.cancelled) return;
         setEntries(res.entries);
-        setVerifiedActiveSeconds(res.verifiedActiveSeconds);
       })
       .finally(() => !cancelledRef?.cancelled && setLoading(false));
   };
@@ -120,7 +109,7 @@ export default function DiaryModal({ employeeId, employeeName, clockId, date, on
   }, [employeeId, clockId]);
 
   const handleDelete = async (screenshotId: string) => {
-    if (!window.confirm('Delete this screenshot? If it\'s the last one for its 10-minute block, that block\'s time will no longer count as verified.')) return;
+    if (!window.confirm('Delete this screenshot? Its segment will no longer count as verified.')) return;
     setDeletingId(screenshotId);
     try {
       await api.delete(`/tracker/screenshots/${screenshotId}`);
@@ -138,7 +127,7 @@ export default function DiaryModal({ employeeId, employeeName, clockId, date, on
       >
         <div className="mb-1 flex items-center justify-between">
           <h2 className="text-[20px] font-semibold text-(--neutral-normal)">
-            Diary — {employeeName}, {formatDate(date)}
+            Diary for {employeeName}, {formatDate(date)}
           </h2>
           <button
             type="button"
@@ -149,12 +138,6 @@ export default function DiaryModal({ employeeId, employeeName, clockId, date, on
             ×
           </button>
         </div>
-
-        {!loading && entries.length > 0 && (
-          <p className="mb-4 text-[13px] text-(--soft-white-dark-active)">
-            Verified: {formatDuration(verifiedActiveSeconds)}
-          </p>
-        )}
 
         <div className="flex-1 overflow-y-auto">
           {loading && (
@@ -173,27 +156,23 @@ export default function DiaryModal({ employeeId, employeeName, clockId, date, on
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {visibleEntries.map((entry, i) => (
                 <div key={i} className="rounded-xl border border-(--neutral-light-hover) p-2">
-                  {entry.screenshots.length > 0 ? (
-                    <div className="mb-2 flex gap-1">
-                      {entry.screenshots.map((shot) => (
-                        <div key={shot.id} className="group relative flex-1">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={shot.url}
-                            alt={`Screenshot at ${formatTimeNepal(shot.capturedAt)}`}
-                            className="aspect-video w-full rounded-lg object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(shot.id)}
-                            disabled={deletingId === shot.id}
-                            title="Delete this screenshot"
-                            className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-[12px] text-white opacity-0 group-hover:opacity-100 disabled:opacity-100"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
+                  {entry.screenshot ? (
+                    <div className="group relative mb-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={entry.screenshot.url}
+                        alt={`Screenshot at ${formatTimeNepal(entry.screenshot.capturedAt)}`}
+                        className="aspect-video w-full rounded-lg object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(entry.screenshot!.id)}
+                        disabled={deletingId === entry.screenshot.id}
+                        title="Delete this screenshot"
+                        className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-[12px] text-white opacity-0 group-hover:opacity-100 disabled:opacity-100"
+                      >
+                        ×
+                      </button>
                     </div>
                   ) : (
                     <div className="mb-2 flex aspect-video w-full items-center justify-center rounded-lg bg-(--neutral-light) text-[12px] text-(--soft-white-dark-active)">
@@ -201,19 +180,29 @@ export default function DiaryModal({ employeeId, employeeName, clockId, date, on
                     </div>
                   )}
                   <div className="mb-1 flex items-center justify-between text-[13px] text-(--neutral-normal)">
-                    <span>{formatTimeNepal(entry.block.windowStart)}</span>
-                    {entry.block.activeAppName && (
+                    <span className="flex items-center gap-1.5">
+                      {formatTimeNepal(entry.segment.windowStart)}
+                      {entry.segment.idleTriggered && (
+                        <span
+                          className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700"
+                          title="This segment ended because inactivity was detected and confirmed."
+                        >
+                          Idle detected
+                        </span>
+                      )}
+                    </span>
+                    {entry.segment.activeAppName && (
                       <span
                         className="truncate text-[11px] text-(--soft-white-dark-active)"
-                        title={entry.block.activeAppName}
+                        title={entry.segment.activeAppName}
                       >
-                        {entry.block.activeAppName}
+                        {entry.segment.activeAppName}
                       </span>
                     )}
                   </div>
-                  <ActivityBar block={entry.block} />
+                  <ActivityLevel segment={entry.segment} />
                   <div className="mt-1 text-[11px] text-(--soft-white-dark-active)">
-                    {entry.block.keyPresses} keystrokes · {entry.block.mouseClicks} clicks · {entry.block.mouseMoves} moves
+                    {entry.segment.keyPresses} keystrokes · {entry.segment.mouseClicks} clicks · {entry.segment.mouseMoves} moves
                   </div>
                 </div>
               ))}
