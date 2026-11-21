@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { io, Socket } from 'socket.io-client';
 import { api } from '@/lib/api';
+import { getToken } from '@/lib/auth';
 import { showToast } from '@/lib/toast';
 import { getPosition, geolocationErrorMessage } from '@/lib/geolocation';
 
@@ -19,6 +21,12 @@ interface ClockRecord {
   totalSecondsEarlierToday: number;
   status: 'idle' | 'paused' | 'running';
   pauses: PauseType[];
+  // Ground truth for the "still working?" prompt the desktop tracker app
+  // shows — null/null means no prompt is currently active. Comes straight
+  // from GET /clock so this tab is correct even if it missed the socket
+  // nudge below (closed tab, brief disconnect, etc).
+  idlePromptStartedAt: string | null;
+  idlePromptResponseSeconds: number | null;
 }
 
 interface ClockResponse {
@@ -32,6 +40,12 @@ function formatHMS(totalSeconds: number): string {
   const m = Math.floor((totalSeconds % 3600) / 60);
   const s = totalSeconds % 60;
   return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
+}
+
+function formatMinSec(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 function diffSeconds(from: string, to: string | number): number {
@@ -69,6 +83,11 @@ export default function LiveTracker() {
   const [actionLoading, setActionLoading] = useState(false);
   const [pauseReason, setPauseReason] = useState('');
   const [reasonError, setReasonError] = useState('');
+  const [idlePromptStartedAt, setIdlePromptStartedAt] = useState<string | null>(null);
+  const [idlePromptResponseSeconds, setIdlePromptResponseSeconds] = useState<number | null>(null);
+  const [idleRemainingSeconds, setIdleRemainingSeconds] = useState(0);
+  const [idleConfirming, setIdleConfirming] = useState(false);
+  const actionLoadingRef = useRef(false);
 
   async function load() {
     const { result } = await api.get<ClockResponse>('/clock');
@@ -79,8 +98,66 @@ export default function LiveTracker() {
     load().catch(() => setStatus('idle')).finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    actionLoadingRef.current = actionLoading;
+  }, [actionLoading]);
+
+  // Keeps this tab in sync with a shift that changed state elsewhere (the
+  // desktop app, or another browser tab) — without this, clocking out on
+  // one device leaves every other open view stuck showing "Working"
+  // indefinitely, since the only other fetch is the one on mount.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (actionLoadingRef.current) return; // don't race a click already in flight
+      load().catch(() => {}); // transient error — try again next tick
+    }, 20000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Low-latency nudges — both only ever shortcuts to update sooner than the
+  // next 20s poll above would. If this socket is down or a message is
+  // missed, the regular poll still picks up the correct state straight
+  // from GET /clock.
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    const wsUrl = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api').replace(/\/api$/, '');
+    const socket: Socket = io(wsUrl, { path: '/ws/inbox', auth: { token }, transports: ['websocket'] });
+    socket.on('tracker:idle-sync', (payload: { idlePromptStartedAt: string | null; idlePromptResponseSeconds: number | null }) => {
+      setIdlePromptStartedAt(payload.idlePromptStartedAt);
+      setIdlePromptResponseSeconds(payload.idlePromptResponseSeconds);
+    });
+    // A resume/pause/clock-in/out happened — on this tab or elsewhere
+    // (the desktop app, another browser tab) — re-fetch now instead of
+    // waiting for the next poll tick.
+    socket.on('clock:sync', () => {
+      load().catch(() => {});
+    });
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  // Countdown display only — the real deadline lives on the backend (the
+  // desktop app's own local timer is what actually auto-pauses).
+  useEffect(() => {
+    if (!idlePromptStartedAt || idlePromptResponseSeconds == null) {
+      setIdleRemainingSeconds(0);
+      return;
+    }
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - new Date(idlePromptStartedAt).getTime()) / 1000);
+      setIdleRemainingSeconds(Math.max(0, idlePromptResponseSeconds - elapsed));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [idlePromptStartedAt, idlePromptResponseSeconds]);
+
   function applyRecord(result: ClockRecord) {
     setStatus(result.status);
+    setIdlePromptStartedAt(result.idlePromptStartedAt);
+    setIdlePromptResponseSeconds(result.idlePromptResponseSeconds);
     const totalPause = result.totalPauseDuration ?? 0;
     const banked = result.totalSecondsEarlierToday ?? 0;
 
@@ -182,6 +259,21 @@ export default function LiveTracker() {
     }
   };
 
+  const handleIdleConfirm = async () => {
+    setIdleConfirming(true);
+    try {
+      await api.post('/clock/idle-confirm', {});
+      // Optimistic — the server-side clear + nudge to other devices (the
+      // desktop app) is in flight; the next poll reconciles regardless.
+      setIdlePromptStartedAt(null);
+      setIdlePromptResponseSeconds(null);
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Could not confirm');
+    } finally {
+      setIdleConfirming(false);
+    }
+  };
+
   const handleClockOut = async () => {
     setActionLoading(true);
     try {
@@ -209,53 +301,69 @@ export default function LiveTracker() {
     <div className="card tracker-live-card">
       <div className="card-title">Today</div>
       <span className={STATUS_BADGE[status]}>{STATUS_LABEL[status]}</span>
-      <div className={`tracker-live-time tracker-live-time-${status}`}>{formatHMS(displaySeconds)}</div>
-      {status === 'idle' && displaySeconds > 0 && (
-        <div className="tracker-live-caption">Logged {formatHMS(displaySeconds)} earlier today — clock in again to add another shift.</div>
-      )}
 
-      <div className="tracker-live-actions">
-        {status === 'idle' && (
-          <button className="btn btn-primary" disabled={actionLoading} onClick={handleClockIn}>
-            <Icon name="play-circle" />
-            {actionLoading ? 'Clocking in…' : 'Clock In'}
-          </button>
-        )}
+      <div className="tracker-live-row">
+        <div className={`tracker-live-time tracker-live-time-${status}`}>{formatHMS(displaySeconds)}</div>
 
-        {status === 'running' && (
-          <>
-            <input
-              className="form-input tracker-pause-input"
-              placeholder="Reason for pausing…"
-              value={pauseReason}
-              onChange={(e) => setPauseReason(e.target.value)}
-            />
-            <button className="btn btn-ghost" disabled={actionLoading} onClick={handlePause}>
-              <Icon name="pause-circle" />
-              Pause
-            </button>
-            <button className="btn btn-primary" disabled={actionLoading} onClick={handleClockOut}>
-              <Icon name="stop-circle" />
-              {actionLoading ? 'Clocking out…' : 'Clock Out'}
-            </button>
-          </>
-        )}
-
-        {status === 'paused' && (
-          <>
-            <button className="btn btn-ghost" disabled={actionLoading} onClick={handleResume}>
+        <div className="tracker-live-actions">
+          {status === 'idle' && (
+            <button className="btn btn-primary" disabled={actionLoading} onClick={handleClockIn}>
               <Icon name="play-circle" />
-              Resume
+              {actionLoading ? 'Clocking in…' : 'Clock In'}
             </button>
-            <button className="btn btn-primary" disabled={actionLoading} onClick={handleClockOut}>
-              <Icon name="stop-circle" />
-              {actionLoading ? 'Clocking out…' : 'Clock Out'}
-            </button>
-          </>
-        )}
+          )}
+
+          {status === 'running' && (
+            <>
+              <input
+                className="form-input tracker-pause-input"
+                placeholder="Reason for pausing…"
+                value={pauseReason}
+                onChange={(e) => setPauseReason(e.target.value)}
+              />
+              <button className="btn btn-ghost" disabled={actionLoading} onClick={handlePause}>
+                <Icon name="pause-circle" />
+                Pause
+              </button>
+              <button className="btn btn-primary" disabled={actionLoading} onClick={handleClockOut}>
+                <Icon name="stop-circle" />
+                {actionLoading ? 'Clocking out…' : 'Clock Out'}
+              </button>
+            </>
+          )}
+
+          {status === 'paused' && (
+            <>
+              <button className="btn btn-ghost" disabled={actionLoading} onClick={handleResume}>
+                <Icon name="play-circle" />
+                Resume
+              </button>
+              <button className="btn btn-primary" disabled={actionLoading} onClick={handleClockOut}>
+                <Icon name="stop-circle" />
+                {actionLoading ? 'Clocking out…' : 'Clock Out'}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
+      {status === 'idle' && displaySeconds > 0 && (
+        <div className="tracker-live-caption">Logged {formatHMS(displaySeconds)} earlier today. Clock in again to add another shift.</div>
+      )}
       {reasonError && <div className="tracker-live-error">{reasonError}</div>}
+
+      {status === 'running' && idlePromptStartedAt && (
+        <div className="tracker-idle-banner">
+          <div className="tracker-idle-banner-text">
+            <span className="tracker-idle-banner-title">Still working?</span>
+            <span className="tracker-live-caption">No activity has been detected for a while. Let us know you're still here.</span>
+          </div>
+          <div className="tracker-idle-banner-countdown">{formatMinSec(idleRemainingSeconds)}</div>
+          <button className="btn btn-primary" disabled={idleConfirming} onClick={handleIdleConfirm}>
+            {idleConfirming ? 'Confirming…' : "Yes, I'm here"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
