@@ -8,7 +8,6 @@ import { showToast } from '@/lib/toast';
 interface Position {
   id: number;
   title: string;
-  short_name: string | null;
   rank: number | null;
   department_id: number;
   department_name: string;
@@ -30,11 +29,30 @@ interface Department {
 
 const BLANK_FORM = {
   title: '',
-  short_name: '',
   rank: '',
   department_id: '',
   reports_to_position_id: '',
 };
+
+// Same department as the one currently selected sorts first (by rank), since
+// that's almost always where the right "reports to" seat lives; everything
+// else follows, grouped by department name so related seats stay together.
+function sortReportsToOptions(positions: Position[], selectedDepartmentId: string) {
+  const deptId = selectedDepartmentId ? Number(selectedDepartmentId) : null;
+  return [...positions].sort((a, b) => {
+    const aMatch = a.department_id === deptId;
+    const bMatch = b.department_id === deptId;
+    if (aMatch !== bMatch) return aMatch ? -1 : 1;
+    if (a.department_name !== b.department_name) return a.department_name.localeCompare(b.department_name);
+    const rankDiff = (a.rank ?? 999) - (b.rank ?? 999);
+    return rankDiff !== 0 ? rankDiff : a.title.localeCompare(b.title);
+  });
+}
+
+function reportsToLabel(p: Position) {
+  const who = p.incumbent_name ?? 'Vacant';
+  return `${p.title} — ${p.department_name} (${who})`;
+}
 
 export default function PositionsPage() {
   const { user } = useAuth();
@@ -47,6 +65,8 @@ export default function PositionsPage() {
   const [form, setForm] = useState(BLANK_FORM);
   const [editingHeadFor, setEditingHeadFor] = useState<number | null>(null);
   const [headDraft, setHeadDraft] = useState('');
+  const [showDeptModal, setShowDeptModal] = useState(false);
+  const [deptName, setDeptName] = useState('');
 
   const load = () => {
     api.get<Position[]>('/positions').then(setPositions).catch(() => showToast('error', 'Failed to load positions'));
@@ -65,7 +85,6 @@ export default function PositionsPage() {
     setEditingId(p.id);
     setForm({
       title: p.title,
-      short_name: p.short_name ?? '',
       rank: p.rank ? String(p.rank) : '',
       department_id: String(p.department_id),
       reports_to_position_id: p.reports_to_position_id ? String(p.reports_to_position_id) : '',
@@ -77,7 +96,6 @@ export default function PositionsPage() {
     e.preventDefault();
     const body = {
       title: form.title,
-      short_name: form.short_name || undefined,
       rank: form.rank ? parseInt(form.rank) : undefined,
       department_id: parseInt(form.department_id),
       reports_to_position_id: form.reports_to_position_id ? parseInt(form.reports_to_position_id) : undefined,
@@ -117,9 +135,27 @@ export default function PositionsPage() {
     }
   };
 
+  const createDepartment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.post('/departments', { name: deptName });
+      showToast('success', 'Department created');
+      setShowDeptModal(false);
+      setDeptName('');
+      load();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to create department');
+    }
+  };
+
   if (!isAdmin) {
     return <p className="text-muted">You don't have access to this page.</p>;
   }
+
+  const reportsToOptions = sortReportsToOptions(
+    positions.filter((p) => p.id !== editingId),
+    form.department_id,
+  );
 
   return (
     <div>
@@ -134,8 +170,9 @@ export default function PositionsPage() {
       </div>
 
       <div className="card" style={{ marginBottom: 20 }}>
-        <div className="flex items-center gap-3" style={{ marginBottom: 12 }}>
+        <div className="flex justify-between items-center" style={{ marginBottom: 12 }}>
           <h2 style={{ fontSize: 15, fontWeight: 700 }}>Departments</h2>
+          <Button variant="text" size="small" onClick={() => setShowDeptModal(true)}>New Department</Button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
           {departments.map((d) => (
@@ -175,27 +212,19 @@ export default function PositionsPage() {
           <table>
             <thead>
               <tr>
-                <th>Title</th><th>Department</th><th>Rank</th><th>Reports To</th><th>Incumbent</th><th>Actions</th>
+                <th>Title</th><th>Department</th><th>Rank</th><th>Reports To</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {positions.length === 0 && (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 32, color: 'var(--color-text-muted)' }}>No positions yet</td></tr>
+                <tr><td colSpan={5} style={{ textAlign: 'center', padding: 32, color: 'var(--color-text-muted)' }}>No positions yet</td></tr>
               )}
               {positions.map((p) => (
                 <tr key={p.id}>
-                  <td>
-                    <div className="cell-title">{p.title}</div>
-                    {p.short_name && <div className="cell-subtitle">{p.short_name}</div>}
-                  </td>
+                  <td><div className="cell-title">{p.title}</div></td>
                   <td>{p.department_name}</td>
                   <td>{p.rank ?? '—'}</td>
                   <td>{p.reports_to_title ?? <span className="text-muted">Top of org</span>}</td>
-                  <td>
-                    {p.incumbent_name
-                      ? p.incumbent_name
-                      : <span className="badge" style={{ background: '#fef3c7', color: '#b45309' }}>Vacant</span>}
-                  </td>
                   <td>
                     <div className="flex gap-2">
                       <button className="btn btn-sm btn-ghost" onClick={() => openEdit(p)}>Edit</button>
@@ -223,8 +252,13 @@ export default function PositionsPage() {
               </div>
               <div className="grid-2">
                 <div className="form-group">
-                  <label className="form-label">Short Name</label>
-                  <input className="form-input" value={form.short_name} onChange={(e) => setForm({ ...form, short_name: e.target.value })} />
+                  <label className="form-label">Department *</label>
+                  <select className="form-select" value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })} required>
+                    <option value="">Select a department</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Rank</label>
@@ -232,26 +266,38 @@ export default function PositionsPage() {
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">Department *</label>
-                <select className="form-select" value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })} required>
-                  <option value="">Select a department</option>
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
                 <label className="form-label">Reports To</label>
                 <select className="form-select" value={form.reports_to_position_id} onChange={(e) => setForm({ ...form, reports_to_position_id: e.target.value })}>
                   <option value="">No one (top of the org)</option>
-                  {positions.filter((p) => p.id !== editingId).map((p) => (
-                    <option key={p.id} value={p.id}>{p.title} ({p.department_name})</option>
+                  {reportsToOptions.map((p) => (
+                    <option key={p.id} value={p.id}>{reportsToLabel(p)}</option>
                   ))}
                 </select>
               </div>
               <div className="flex gap-3 justify-between" style={{ marginTop: 16 }}>
                 <Button variant="text" size="small" onClick={() => setShowModal(false)}>Cancel</Button>
                 <Button variant="primary" size="small" type="submit">{editingId ? 'Save Changes' : 'Create Position'}</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showDeptModal && (
+        <div className="modal-overlay" onClick={() => setShowDeptModal(false)}>
+          <div className="modal" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>New Department</h2>
+              <button className="modal-close" onClick={() => setShowDeptModal(false)}>×</button>
+            </div>
+            <form onSubmit={createDepartment}>
+              <div className="form-group">
+                <label className="form-label">Name *</label>
+                <input className="form-input" value={deptName} onChange={(e) => setDeptName(e.target.value)} required autoFocus />
+              </div>
+              <div className="flex gap-3 justify-between" style={{ marginTop: 16 }}>
+                <Button variant="text" size="small" onClick={() => setShowDeptModal(false)}>Cancel</Button>
+                <Button variant="primary" size="small" type="submit">Create Department</Button>
               </div>
             </form>
           </div>
