@@ -174,36 +174,67 @@ export default function PositionsPage() {
           <h2 style={{ fontSize: 15, fontWeight: 700 }}>Departments</h2>
           <Button variant="text" size="small" onClick={() => setShowDeptModal(true)}>New Department</Button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-          {departments.map((d) => (
-            <div key={d.id} className="card" style={{ padding: 12 }}>
-              <div className="cell-title">{d.name}</div>
-              {editingHeadFor === d.id ? (
-                <div className="flex gap-2 items-center" style={{ marginTop: 6 }}>
-                  <select className="form-select" value={headDraft} onChange={(e) => setHeadDraft(e.target.value)}>
-                    <option value="">No head</option>
-                    {positions.filter((p) => p.department_id === d.id).map((p) => (
-                      <option key={p.id} value={p.id}>{p.title}</option>
-                    ))}
-                  </select>
-                  <button className="btn btn-sm btn-accent" onClick={() => saveHead(d.id)}>Save</button>
-                  <button className="btn btn-sm btn-ghost" onClick={() => setEditingHeadFor(null)}>Cancel</button>
-                </div>
-              ) : (
-                <div className="flex gap-2 items-center" style={{ marginTop: 6 }}>
-                  <span className="text-sm text-muted">
-                    {d.head_employee_name ? `${d.head_employee_name} (${d.head_position_title})` : 'No head'}
-                  </span>
-                  <button
-                    className="btn btn-sm btn-ghost"
-                    onClick={() => { setEditingHeadFor(d.id); setHeadDraft(d.head_position_id ? String(d.head_position_id) : ''); }}
-                  >
-                    Edit
-                  </button>
-                </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>S.N.</th><th>Department</th><th>Head</th><th>Positions</th><th>Filled</th><th>Status</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {departments.length === 0 && (
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: 32, color: 'var(--color-text-muted)' }}>No departments yet</td></tr>
               )}
-            </div>
-          ))}
+              {departments.map((d, i) => {
+                const deptPositions = positions.filter((p) => p.department_id === d.id);
+                const filledCount = deptPositions.filter((p) => p.incumbent_name).length;
+                return (
+                  <tr key={d.id}>
+                    <td>{i + 1}</td>
+                    <td><div className="cell-title">{d.name}</div></td>
+                    <td>
+                      {editingHeadFor === d.id ? (
+                        <div className="flex gap-2 items-center">
+                          <select
+                            className="form-select"
+                            value={headDraft}
+                            onChange={(e) => setHeadDraft(e.target.value)}
+                            aria-label={`Choose head position for ${d.name}`}
+                          >
+                            <option value="">— No head —</option>
+                            {deptPositions.map((p) => (
+                              <option key={p.id} value={p.id}>{p.title}{p.incumbent_name ? ` (${p.incumbent_name})` : ' (Vacant)'}</option>
+                            ))}
+                          </select>
+                          <button className="btn btn-sm btn-accent" onClick={() => saveHead(d.id)}>Save</button>
+                          <button className="btn btn-sm btn-ghost" onClick={() => setEditingHeadFor(null)}>Cancel</button>
+                        </div>
+                      ) : (
+                        <span className="text-sm">
+                          {d.head_employee_name
+                            ? `${d.head_employee_name} (${d.head_position_title})`
+                            : <span className="text-muted">No head</span>}
+                        </span>
+                      )}
+                    </td>
+                    <td>{deptPositions.length}</td>
+                    <td>{filledCount}</td>
+                    <td><span className="badge badge-accent">Active</span></td>
+                    <td>
+                      {editingHeadFor !== d.id && (
+                        <button
+                          className="btn btn-sm btn-ghost"
+                          onClick={() => { setEditingHeadFor(d.id); setHeadDraft(d.head_position_id ? String(d.head_position_id) : ''); }}
+                        >
+                          {d.head_employee_name ? 'Change Head' : 'Set Head'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
