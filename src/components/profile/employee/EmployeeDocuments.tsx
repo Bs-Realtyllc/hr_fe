@@ -5,6 +5,7 @@ import Button from '@/components/Button/Button';
 import FileUpload from '@/components/FileUpload/FileUpload';
 import { profileService } from '@/lib/profileService';
 import { getToken } from '@/lib/auth';
+import { DocsType } from '@/lib/profileService';
 
 const BACKEND = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/api\/?$/, '');
 
@@ -38,6 +39,8 @@ type DocumentSection = {
     imagesOnly: boolean; // ID and PAN accept images only
     documents: DocField[];
 };
+
+
 
 const MAX_FILES = 4;
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
@@ -156,24 +159,26 @@ const EmployeeDocuments = () => {
     const [saved, setSaved] = useState<SavedState>({});
     const [idPreviewFiles, setIdPreviewFiles] = useState<IdPreviewFiles>({});
     const [editingSection, setEditingSection] = useState<Record<string, boolean>>({});
+    const [loading, setLoading] = useState<boolean>(false)
+    const [docs, setDocs] = useState<DocsType[]>([]);
+    
 
     // Load saved documents on mount.
-    // useEffect(() => {
-    //     async function loadDocuments() {
-    //         try {
-    //             setLoading(true);
-    //             const data = await profileService.getProfile();
-
-    //             // GET /profile only returns the ID filenames for now.
-
-    //         } catch (err: any) {
-    //             setError(err.message || 'Failed to load documents');
-    //         } finally {
-    //             setLoading(false);
-    //         }
-    //     }
-    //     loadDocuments();
-    // }, []);
+    useEffect(() => {
+        async function loadDocuments() {
+            try {
+                setLoading(true)
+                const {files} = await profileService.getDocuments();
+                setDocs(files)
+            } catch (err: any) {
+                console.log("error", err)
+                setError(err.message || 'Failed to load documents');
+            } finally {
+                setLoading(false);
+            }
+        }
+        loadDocuments();
+    }, []);
 
     const setEditing = (title: string, value: boolean) =>
         setEditingSection((prev) => ({ ...prev, [title]: value }));
@@ -278,9 +283,11 @@ const EmployeeDocuments = () => {
                             {section.documents.map(({ key, label, required, optional, multiple }) => {
                                 const pickedFiles = picked[key] ?? [];
                                 const savedFiles = saved[key] ?? [];
+                                // Backend names are the key plus an optional index (educationCertificate0).
+                                const fieldDocs = docs.filter((doc) => doc.name.replace(/\d+$/, '') === key);
                                 const isId = isIdKey(key);
                                 // No ID saved yet: show the upload box right away.
-                                const showEmptyIdUpload = !isEditing && isId && !savedFiles.length;
+                                const showEmptyIdUpload = !isEditing && isId && !savedFiles.length && !fieldDocs.length;
                                 // ID saved and its image loaded: show it as a preview.
                                 const idPreview = isId ? idPreviewFiles[key] : undefined;
                                 const showIdPreview = !isEditing && !!savedFiles.length && !!idPreview;
@@ -325,7 +332,7 @@ const EmployeeDocuments = () => {
                                             />
                                         ) : (
                                             <div className="flex flex-col border-b border-(--neutral-light) py-3">
-                                                <span className="text-[14px] font-medium text-(--gray-darker)">
+                                                {/* <span className="text-[14px] font-medium text-(--gray-darker)">
                                                     {label}
                                                 </span>
                                                 {savedFiles.length ? (
@@ -344,6 +351,33 @@ const EmployeeDocuments = () => {
                                                     <p className="text-xs text-(--gray-darker) mt-1">
                                                         Preview unavailable
                                                     </p>
+                                                )} */}
+                                                <span className="text-[14px] font-medium text-(--gray-darker)">
+                                                    {label}
+                                                </span>
+                                                {fieldDocs.length ? (
+                                                    fieldDocs.map((doc) =>
+                                                        doc.filename.toLowerCase().endsWith('.pdf') ? (
+                                                            <a
+                                                                key={doc.id}
+                                                                href={doc.url}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="text-[14px] font-medium text-(--blue-dark-normal) mt-1 truncate"
+                                                            >
+                                                                {doc.filename}
+                                                            </a>
+                                                        ) : (
+                                                            <img
+                                                                key={doc.id}
+                                                                src={doc.url}
+                                                                alt={doc.filename}
+                                                                className="mt-2 max-h-40 w-full rounded object-contain"
+                                                            />
+                                                        ),
+                                                    )
+                                                ) : (
+                                                    <p className="text-[14px] font-medium text-(--white-darker) mt-1">-</p>
                                                 )}
                                             </div>
                                         )}
