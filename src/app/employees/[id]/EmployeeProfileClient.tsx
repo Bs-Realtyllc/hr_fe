@@ -15,16 +15,9 @@ interface Employee {
   department: string;
   manager_id?: number;
   manager_name?: string;
-  position_id?: number | null;
   start_date: string;
   role: string;
   status: string;
-}
-
-interface Position {
-  id: number;
-  title: string;
-  department_name: string;
 }
 
 interface Project {
@@ -93,10 +86,6 @@ export default function EmployeeProfileClient() {
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [positions, setPositions] = useState<Position[]>([]);
-  const [editingPosition, setEditingPosition] = useState(false);
-  const [positionDraft, setPositionDraft] = useState('');
-  const [savingPosition, setSavingPosition] = useState(false);
 
   const [acks, setAcks] = useState<Acknowledgement[]>([]);
   const [acksLoading, setAcksLoading] = useState(false);
@@ -116,26 +105,6 @@ export default function EmployeeProfileClient() {
       .catch(() => {showToast('error', 'Failed to load employee data')})
       .finally(() => setLoading(false));
   }, [id]);
-
-  useEffect(() => {
-    if (!isAdmin) return;
-    api.get<Position[]>('/positions').then(setPositions).catch(() => {});
-  }, [isAdmin]);
-
-  async function savePosition() {
-    setSavingPosition(true);
-    try {
-      await api.put(`/employees/${id}/position`, { position_id: positionDraft ? parseInt(positionDraft) : null });
-      const updated = await api.get<Employee>(`/employees/${id}`);
-      setEmployee(updated);
-      setEditingPosition(false);
-      showToast('success', 'Position updated');
-    } catch {
-      showToast('error', 'Failed to update position');
-    } finally {
-      setSavingPosition(false);
-    }
-  }
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -206,43 +175,6 @@ export default function EmployeeProfileClient() {
             <div className="flex gap-2 items-center">
               <span className="text-muted" style={{ width: 90, flexShrink: 0 }}>Reports to</span>
               <span className="text-sm">{employee.manager_name}</span>
-            </div>
-          )}
-          {isAdmin && (
-            <div className="flex gap-2 items-center">
-              <span className="text-muted" style={{ width: 90, flexShrink: 0 }}>Position</span>
-              {editingPosition ? (
-                <div className="flex gap-2 items-center">
-                  <select
-                    className="form-select"
-                    value={positionDraft}
-                    onChange={(e) => setPositionDraft(e.target.value)}
-                  >
-                    <option value="">No position</option>
-                    {positions.map((p) => (
-                      <option key={p.id} value={p.id}>{p.title} ({p.department_name})</option>
-                    ))}
-                  </select>
-                  <Button variant="primary" size="small" onClick={savePosition} disabled={savingPosition}>Save</Button>
-                  <Button variant="text" size="small" onClick={() => setEditingPosition(false)}>Cancel</Button>
-                </div>
-              ) : (
-                <div className="flex gap-2 items-center">
-                  <span className="text-sm">
-                    {positions.find((p) => p.id === employee.position_id)?.title ?? 'Not assigned'}
-                  </span>
-                  <Button
-                    variant="text"
-                    size="small"
-                    onClick={() => {
-                      setPositionDraft(employee.position_id ? String(employee.position_id) : '');
-                      setEditingPosition(true);
-                    }}
-                  >
-                    Edit
-                  </Button>
-                </div>
-              )}
             </div>
           )}
           {employee.start_date && (

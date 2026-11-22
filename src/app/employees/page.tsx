@@ -21,12 +21,6 @@ interface Employee {
   status: string;
 }
 
-interface Position {
-  id: number;
-  title: string;
-  department_name: string;
-}
-
 function initials(name: string) {
   return name
     .split(" ")
@@ -78,7 +72,6 @@ export default function EmployeesPage() {
   const isAdmin = user?.role === "admin" || user?.role === "lead";
 
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [positions, setPositions] = useState<Position[]>([]);
   const [search, setSearch] = useState("");
   const [myTeamOnly, setMyTeamOnly] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -87,7 +80,9 @@ export default function EmployeesPage() {
   const [form, setForm] = useState({
     name: "",
     email: "",
-    position_id: "",
+    designation: "",
+    department: "",
+    manager_id: "",
     start_date: "",
     role: "employee",
     status: "active",
@@ -103,12 +98,6 @@ export default function EmployeesPage() {
       .then(setEmployees)
       .catch(() => {
         showToast("error", "Failed to load employee");
-      });
-    api
-      .get<Position[]>("/positions")
-      .then(setPositions)
-      .catch(() => {
-        showToast("error", "Failed to load positions");
       });
   }, []);
 
@@ -132,11 +121,10 @@ export default function EmployeesPage() {
   const submit = async (ev: React.FormEvent) => {
     ev.preventDefault();
     try {
-      const { position_id, ...fields } = form;
-      const created = await api.post<{ id: number }>("/employees", fields);
-      if (position_id) {
-        await api.put(`/employees/${created.id}/position`, { position_id: parseInt(position_id) });
-      }
+      await api.post("/employees", {
+        ...form,
+        manager_id: form.manager_id ? parseInt(form.manager_id) : null,
+      });
       setShowModal(false);
       showToast("success", "Sucessfully added employee");
     } catch (err) {
@@ -489,21 +477,24 @@ export default function EmployeesPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Position</label>
-                  <select
-                    className="form-select"
-                    value={form.position_id}
+                  <label className="form-label">Designation</label>
+                  <input
+                    className="form-input"
+                    value={form.designation}
                     onChange={(e) =>
-                      setForm({ ...form, position_id: e.target.value })
+                      setForm({ ...form, designation: e.target.value })
                     }
-                  >
-                    <option value="">Assign later</option>
-                    {positions.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.title} ({p.department_name})
-                      </option>
-                    ))}
-                  </select>
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Department</label>
+                  <input
+                    className="form-input"
+                    value={form.department}
+                    onChange={(e) =>
+                      setForm({ ...form, department: e.target.value })
+                    }
+                  />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Start Date</label>
@@ -542,6 +533,23 @@ export default function EmployeesPage() {
                     <option value="onboarding">
                       Onboarding (pending approval)
                     </option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Manager</label>
+                  <select
+                    className="form-select"
+                    value={form.manager_id}
+                    onChange={(e) =>
+                      setForm({ ...form, manager_id: e.target.value })
+                    }
+                  >
+                    <option value="">No manager</option>
+                    {employees.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

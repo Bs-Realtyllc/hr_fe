@@ -5,6 +5,30 @@ import InputField from "@/components/InputField/InputField"
 import { useEffect, useState } from "react"
 import { profileService, Profile } from "@/lib/profileService"
 import { BSRealtyDropdown } from "@bsrealtyllc/design-system"
+import { api } from "@/lib/api"
+
+interface DDType {
+  id: number;
+  name: string;
+}
+interface Option {
+    value: string;
+    label:string;
+}
+interface EmployeesType{
+  id: number;
+  name: string;
+}
+
+const dropdownFormat = (arr: DDType[]) => {
+  return arr.map(({ id, name }) => ({
+    value: String(id),
+    label: name,
+  }));
+
+};
+
+
 
 const EmployeeEmployment = () => {
     const [loading, setLoading] = useState(true)
@@ -26,24 +50,46 @@ const EmployeeEmployment = () => {
         workLocation: '',
     })
     const [isEditingOrg, setIsEditingOrg] = useState(false)
+    const [designationOption, setDesignationOption] = useState<Option[]>([]);
+    const [departmentOption, setDepartmentOption] = useState<Option[]>([]);
+    const [employeesOption, setEmployeesOption] = useState<Option[]>([])
+
+
+    const getLabelFromValue = (
+      arr: Option[],
+      id: string
+    ) => {
+      return arr.find((d) => d.value === String(id))?.label ?? '';
+    };
 
     // Fetch profile data on mount
     useEffect(() => {
         async function loadProfileData() {
             try {
                 setLoading(true);
-                const data = await profileService.getProfile();
+                        const [data, designations, departments, employees] =
+                          await Promise.all([
+                            profileService.getProfile(),
+                            api.get<DDType[]>("/designations"),
+                            api.get<DDType[]>("/departments"),
+                            api.get<EmployeesType []>('/employees/names/staff')
+                          ]);
+                        setDepartmentOption(dropdownFormat(departments))
+                        setDesignationOption(dropdownFormat(designations))
+                        setEmployeesOption(dropdownFormat(employees))
+
+
 
                 setEmploymentDetails({
                     employmentId: (data as any).employee_id || (data as any).emp_id || '',
-                    jobTitle: (data as any).designation || '',
-                    department: (data as any).department || '',
+                    jobTitle: (data as any).designation_id || '',
+                    department: (data as any).department_id || '',
                     startDate: (data as any).start_date || (data as any).joining_date || '',
                     workHours: (data as any).work_hours,
                 });
 
                 setOrgInfo({
-                    reportingManager: (data as any).manager_name || '',
+                    reportingManager: (data as any).manager_id || '',
                     workLocation: (data as any).work_location || (data as any).location || '',
                 });
             } catch (err: any) {
@@ -55,15 +101,18 @@ const EmployeeEmployment = () => {
         loadProfileData();
     }, []);
 
-    // Job title, department, and reporting manager are set by HR via the
-    // employee's assigned Position, not editable here — only work hours and
-    // work location remain self-service.
+    // Handlers for saving each section
     const handleSaveEmployment = async (e: React.FormEvent) => {
         e.preventDefault()
         try {
             await profileService.updateProfile({
+                employee_id: employmentDetails.employmentId,
+                designation_id: Number(employmentDetails.jobTitle),
+                department_id: Number(employmentDetails.department),
+                // start_date: employmentDetails.startDate,
                 work_hours: employmentDetails.workHours,
             } as any);
+            console.log("Updated Employment Details:", employmentDetails)
             setIsEditingEmployment(false)
         } catch (err: any) {
             alert(err.message || "Failed to update employment details");
@@ -74,8 +123,10 @@ const EmployeeEmployment = () => {
         e.preventDefault()
         try {
             await profileService.updateProfile({
+                manager_id: Number(orgInfo.reportingManager),
                 work_location: orgInfo.workLocation,
             } as any);
+            console.log("Updated Organization Details:", orgInfo)
             setIsEditingOrg(false)
         } catch (err: any) {
             alert(err.message || "Failed to update organization details");
@@ -158,7 +209,7 @@ const EmployeeEmployment = () => {
               )}
             </div>
 
-            {/* Job Title — set via Position assignment by HR, not self-editable */}
+            {/* Job Title */}
             <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
               <label
                 htmlFor="job-title"
@@ -166,12 +217,32 @@ const EmployeeEmployment = () => {
               >
                 Job Title
               </label>
-              <p className="text-[14px] font-medium text-(--white-darker)">
-                {employmentDetails.jobTitle || "-"}
-              </p>
+              {isEditingEmployment ? (
+                <div className="w-60">
+                  <BSRealtyDropdown
+                    className="w-full!"
+                    options={designationOption}
+                    placeholder="Select Job title"
+                    value={String(employmentDetails.jobTitle)}
+                    onChange={(selected) =>
+                      setEmploymentDetails({
+                        ...employmentDetails,
+                        jobTitle: selected,
+                      })
+                    }
+                  />
+                </div>
+              ) : (
+                <p className="text-[14px] font-medium text-(--white-darker)">
+                  {getLabelFromValue(
+                    designationOption,
+                    employmentDetails.jobTitle,
+                  ) || "-"}
+                </p>
+              )}
             </div>
 
-            {/* Department — set via Position assignment by HR, not self-editable */}
+            {/* Department */}
             <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
               <label
                 htmlFor="department"
@@ -179,9 +250,29 @@ const EmployeeEmployment = () => {
               >
                 Department
               </label>
-              <p className="text-[14px] font-medium text-(--white-darker)">
-                {employmentDetails.department || "-"}
-              </p>
+              {isEditingEmployment ? (
+                <div className="w-60">
+                  <BSRealtyDropdown
+                    className="w-full!"
+                    options={departmentOption}
+                    placeholder="Select Job title"
+                    value={String(employmentDetails.department)}
+                    onChange={(selected) =>
+                      setEmploymentDetails({
+                        ...employmentDetails,
+                        department: selected,
+                      })
+                    }
+                  />
+                </div>
+              ) : (
+                <p className="text-[14px] font-medium text-(--white-darker)">
+                  {getLabelFromValue(
+                    departmentOption,
+                    employmentDetails.department,
+                  ) || "-"}
+                </p>
+              )}
             </div>
 
             {/* Start Date */}
@@ -280,7 +371,7 @@ const EmployeeEmployment = () => {
           </div>
 
           <form onSubmit={handleSaveOrg}>
-            {/* Reporting Manager — derived from Position assignment by HR, not self-editable */}
+            {/* Reporting Manager */}
             <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
               <label
                 htmlFor="reporting-manager"
@@ -288,9 +379,38 @@ const EmployeeEmployment = () => {
               >
                 Reporting Manager
               </label>
-              <p className="text-[14px] font-medium text-(--white-darker)">
-                {orgInfo.reportingManager || "-"}
-              </p>
+              {isEditingOrg ? (
+                <div className="w-60">
+                  {/* <InputField
+                    className="h-9! text-end!"
+                    id="reporting-manager"
+                    type="text"
+                    value={orgInfo.reportingManager}
+                    onChange={(e) =>
+                      setOrgInfo({
+                        ...orgInfo,
+                        reportingManager: e.target.value,
+                      })
+                    }
+                  /> */}
+                  <BSRealtyDropdown
+                    className="w-full!"
+                    options={employeesOption}
+                    placeholder="Select a manager"
+                    value={String(orgInfo.reportingManager)}
+                    onChange={(selected) =>
+                      setOrgInfo({ ...orgInfo, reportingManager: selected })
+                    }
+                  />
+                </div>
+              ) : (
+                <p className="text-[14px] font-medium text-(--white-darker)">
+                  {getLabelFromValue(
+                    employeesOption,
+                    orgInfo.reportingManager,
+                  ) || "-"}{" "}
+                </p>
+              )}
             </div>
 
             {/* Work Location */}
