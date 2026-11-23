@@ -5,7 +5,12 @@ import { useState, useEffect } from 'react';
 import Button from '@/components/Button/Button';
 import FileUpload from '@/components/FileUpload/FileUpload';
 import { profileService } from '@/lib/profileService';
-import type { DocsType } from '@/lib/profileService';
+import { getToken } from '@/lib/auth';
+import { DocsType } from '@/lib/profileService';
+
+const BACKEND = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/api\/?$/, '');
+
+/* ---------- Document Configuration ---------- */
 
 type FieldKey =
     | 'idFront'
@@ -33,6 +38,8 @@ type DocumentSection = {
     actionLabel: string;
     documents: DocField[];
 };
+
+
 
 const MAX_FILES = 4;
 

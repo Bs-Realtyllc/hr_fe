@@ -54,13 +54,9 @@ steps:
       password:
         from_secret: ghcr_token
       cache_from: "ghcr.io/bs-realtyllc/hr_fe:${DRONE_COMMIT_BRANCH}"
-      build_args_from_env:
-        - NEXT_PUBLIC_API_URL
-        - NEXT_PUBLIC_LEARNING_URL
-    environment:
-      NEXT_PUBLIC_API_URL:
-        from_secret: next_public_api_url_dev
-      NEXT_PUBLIC_LEARNING_URL: http://72.61.5.47:2345/
+      build_args:
+        - NEXT_PUBLIC_API_URL=https://dev-hr.gitgi.com/api
+        - NEXT_PUBLIC_LEARNING_URL=http://72.61.5.47:2345/
     when:
       branch:
         - dev

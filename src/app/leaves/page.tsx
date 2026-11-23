@@ -40,17 +40,6 @@ const STATUS_META: Record<DisplayStatus, { label: string; color: string; bg: str
   expired: { label: 'Expired', color: '#64748b', bg: '#f1f5f9', dot: '#94a3b8' },
 };
 
-interface EmailSettings {
-  smtp_host: string;
-  smtp_port: number;
-  smtp_user: string;
-  smtp_pass: string; // write-only — never returned by API
-  smtp_from: string;
-  default_to: string;
-  default_cc: string;
-  default_bcc: string;
-}
-
 interface EmployeeData {
   id: number;
   name: string;
@@ -62,21 +51,17 @@ interface LeaveForm {
   start_date: string;
   end_date: string;
   reason: string;
-  to: string; // employee id as string from <select>; '' = no notification
-  cc: number[];
-  bcc: number[];
+  notify: number[];
 }
-
-const BLANK_SETTINGS: EmailSettings = {
-  smtp_host: 'smtp.gmail.com', smtp_port: 587,
-  smtp_user: '', smtp_pass: '', smtp_from: '',
-  default_to: '', default_cc: '', default_bcc: '',
-};
 
 const BLANK_FORM: LeaveForm = {
   leave_type: 'sick', start_date: '', end_date: '', reason: '',
-  to: 'admin@gitgi.com', cc: [], bcc: [],
+  notify: [],
 };
+
+function todayDateInput() {
+  return new Date().toISOString().split('T')[0];
+}
 
 const LEAVE_COLORS: Record<string, string> = {
   sick: 'var(--color-warning)', bereavement: 'var(--color-error)',
@@ -97,18 +82,19 @@ export default function LeavesPage() {
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [filter, setFilter] = useState('all');
   const [showLeaveModal, setShowLeaveModal] = useState(false);
-  const [emailConfigured, setEmailConfigured] = useState(false);
   const [employeeNames, setEmployeeNames] = useState<EmployeeData[]>([]);
 
   // Edit-leave state
   const [editingLeave, setEditingLeave] = useState<Leave | null>(null);
   const [editForm, setEditForm] = useState({ leave_type: 'sick', start_date: '', end_date: '', reason: '' });
+  const [editSpan, setEditSpan] = useState<'single' | 'range'>('single');
 
-  // Email settings form
-  const [, setEmailForm] = useState<EmailSettings>(BLANK_SETTINGS);
-
-  // New-leave + recipient form
+  // New-leave + notify-recipients form
   const [form, setForm] = useState<LeaveForm>(BLANK_FORM);
+  const [span, setSpan] = useState<'single' | 'range'>('single');
+
+  // Employees can't backdate a request; admins can (e.g. recording leave agreed verbally).
+  const minDate = isAdmin ? undefined : todayDateInput();
 
   useEffect(() => {
     api.get<EmployeeData[]>('/employees/names')
@@ -125,68 +111,74 @@ export default function LeavesPage() {
 
   useEffect(() => { load(); }, [filter]);
 
-  useEffect(() => {
-    if (!user?.id) return;
-    api.get<Omit<EmailSettings, 'smtp_pass'> | null>(`/email-settings/${user.id}`)
-      .then(cfg => {
-        if (cfg) {
-          setEmailConfigured(true);
-          setEmailForm(f => ({ ...f, ...cfg, smtp_pass: '' }));
-        }
-      })
-      .catch(() => { });
-  }, [user?.id]);
-
   const openLeaveModal = () => {
     setForm(BLANK_FORM);
+    setSpan('single');
     setShowLeaveModal(true);
   };
 
   const submitLeave = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(form)
     try {
-      const { to, cc, bcc, ...leaveFields } = form;
-      console.log({
-        ...leaveFields, to: to,cc: cc.length ? cc : undefined,bcc: bcc.length ? bcc : undefined,
-      })
+      const { notify, ...leaveFields } = form;
       await api.post<{ id: number }>('/leaves', {
-        ...leaveFields, to: to, employee_id:user?.id ,cc: cc.length ? cc : undefined,bcc: bcc.length ? bcc : undefined,
+        ...leaveFields, employee_id: user?.id, notify: notify.length ? notify : undefined,
       });
       setShowLeaveModal(false);
       load();
       showToast('success', 'Leave request added sucessfully');
     } catch (err) {
-      showToast('error', 'Failed to add leave request');
+      showToast('error', err instanceof Error ? err.message : 'Failed to add leave request');
     }
   };
 
   const openEditModal = (l: Leave) => {
     setEditingLeave(l);
-    setEditForm({
-      leave_type: l.leave_type,
-      start_date: toDateInput(l.start_date),
-      end_date: toDateInput(l.end_date),
-      reason: l.reason || '',
-    });
+    const start_date = toDateInput(l.start_date);
+    const end_date = toDateInput(l.end_date);
+    setEditForm({ leave_type: l.leave_type, start_date, end_date, reason: l.reason || '' });
+    setEditSpan(start_date === end_date ? 'single' : 'range');
   };
 
   const submitEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingLeave) return;
-    await api.put(`/leaves/${editingLeave.id}`, editForm);
-    setEditingLeave(null);
-    load();
+    try {
+      await api.put(`/leaves/${editingLeave.id}`, editForm);
+      setEditingLeave(null);
+      load();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to update leave request');
+    }
   };
 
   const cancelLeave = async (id: number) => {
     if (!confirm('Cancel this leave request?')) return;
-    await api.delete(`/leaves/${id}`);
-    load();
+    try {
+      await api.delete(`/leaves/${id}`);
+      load();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to cancel leave request');
+    }
   };
 
-  const approve = async (id: number) => { await api.put(`/leaves/${id}/approve`, {}); load(); };
-  const reject = async (id: number) => { await api.put(`/leaves/${id}/reject`, {}); load(); };
+  const approve = async (id: number) => {
+    try {
+      await api.put(`/leaves/${id}/approve`, {});
+      load();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to approve leave request');
+    }
+  };
+
+  const reject = async (id: number) => {
+    try {
+      await api.put(`/leaves/${id}/reject`, {});
+      load();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to reject leave request');
+    }
+  };
 
   return (
     <div>
@@ -393,70 +385,55 @@ export default function LeavesPage() {
                   <option value="paternity">Paternity</option>
                 </select>
               </div>
-              <div className="grid-2">
-                <div className="form-group">
-                  <label className="form-label">Start Date</label>
-                  <input className="form-input" type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} required />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">End Date</label>
-                  <input className="form-input" type="date" value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })} required />
-                </div>
+              <div className="form-group">
+                <label className="form-label">Duration</label>
+                <PillTabs
+                  value={span}
+                  onChange={(v) => {
+                    setSpan(v as 'single' | 'range');
+                    if (v === 'single') setForm((f) => ({ ...f, end_date: f.start_date }));
+                  }}
+                  options={[
+                    { value: 'single', label: 'Single Day' },
+                    { value: 'range', label: 'Date Range' },
+                  ]}
+                />
               </div>
+              {span === 'single' ? (
+                <div className="form-group">
+                  <label className="form-label">Date</label>
+                  <input
+                    className="form-input" type="date" min={minDate} value={form.start_date}
+                    onChange={e => setForm({ ...form, start_date: e.target.value, end_date: e.target.value })}
+                    required
+                  />
+                </div>
+              ) : (
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label className="form-label">Start Date</label>
+                    <input className="form-input" type="date" min={minDate} value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} required />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">End Date</label>
+                    <input className="form-input" type="date" min={form.start_date || minDate} value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })} required />
+                  </div>
+                </div>
+              )}
               <div className="form-group">
                 <label className="form-label">Reason</label>
                 <textarea className="form-textarea" value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} />
               </div>
 
-              {/* Email notification */}
+              {/* Notify people */}
               <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 14, marginTop: 4 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-text-muted)' }}>
-                    Send Email Notification
-                  </span>
-                </div>
-
                 <div className="form-group">
-                  <label className="form-label">To</label>
-                  <select
-                    className="form-input"
-                    value={form.to}
-                    onChange={(e) => {
-                      const id = Number(e.target.value);
-                      // the "To" person can't also be in CC/BCC
-                      setForm((f) => ({
-                        ...f,
-                        to: e.target.value,
-                        cc: f.cc.filter((x) => x !== id),
-                        bcc: f.bcc.filter((x) => x !== id),
-                      }));
-                    }}
-                    defaultChecked
-                  >
-                    <option value="admin@gitgi.com">admin@gitgi.com</option>
-                  </select>
-                </div>
-
-                <div className="grid-2">
-                  <div className="form-group">
-                    <label className="form-label">CC</label>
-                    <MultiSelect
-                      options={employeeNames}
-                      value={form.cc}
-                      onChange={(cc) => setForm({ ...form, cc })}
-                      excludeIds={[...(form.to ? [Number(form.to)] : []), ...form.bcc]}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">BCC</label>
-                    <MultiSelect
-                      options={employeeNames}
-                      value={form.bcc}
-                      onChange={(bcc) => setForm({ ...form, bcc })}
-                      excludeIds={[...(form.to ? [Number(form.to)] : []), ...form.cc]}
-                    />
-                  </div>
+                  <label className="form-label">Notify people (optional)</label>
+                  <MultiSelect
+                    options={employeeNames}
+                    value={form.notify}
+                    onChange={(notify) => setForm({ ...form, notify })}
+                  />
                 </div>
               </div>
 
@@ -466,7 +443,7 @@ export default function LeavesPage() {
                 </Button>
 
                 <Button variant="primary" size="small" type="submit">
-                  {emailConfigured && form.to ? 'Submit & Notify' : 'Submit Request'}
+                  {form.notify.length ? 'Submit & Notify' : 'Submit Request'}
                 </Button>
               </div>
             </form>
@@ -494,16 +471,41 @@ export default function LeavesPage() {
                   <option value="paternity">Paternity</option>
                 </select>
               </div>
-              <div className="grid-2">
-                <div className="form-group">
-                  <label className="form-label">Start Date</label>
-                  <input className="form-input" type="date" value={editForm.start_date} onChange={e => setEditForm({ ...editForm, start_date: e.target.value })} required />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">End Date</label>
-                  <input className="form-input" type="date" value={editForm.end_date} onChange={e => setEditForm({ ...editForm, end_date: e.target.value })} required />
-                </div>
+              <div className="form-group">
+                <label className="form-label">Duration</label>
+                <PillTabs
+                  value={editSpan}
+                  onChange={(v) => {
+                    setEditSpan(v as 'single' | 'range');
+                    if (v === 'single') setEditForm((f) => ({ ...f, end_date: f.start_date }));
+                  }}
+                  options={[
+                    { value: 'single', label: 'Single Day' },
+                    { value: 'range', label: 'Date Range' },
+                  ]}
+                />
               </div>
+              {editSpan === 'single' ? (
+                <div className="form-group">
+                  <label className="form-label">Date</label>
+                  <input
+                    className="form-input" type="date" min={minDate} value={editForm.start_date}
+                    onChange={e => setEditForm({ ...editForm, start_date: e.target.value, end_date: e.target.value })}
+                    required
+                  />
+                </div>
+              ) : (
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label className="form-label">Start Date</label>
+                    <input className="form-input" type="date" min={minDate} value={editForm.start_date} onChange={e => setEditForm({ ...editForm, start_date: e.target.value })} required />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">End Date</label>
+                    <input className="form-input" type="date" min={editForm.start_date || minDate} value={editForm.end_date} onChange={e => setEditForm({ ...editForm, end_date: e.target.value })} required />
+                  </div>
+                </div>
+              )}
               <div className="form-group">
                 <label className="form-label">Reason</label>
                 <textarea className="form-textarea" value={editForm.reason} onChange={e => setEditForm({ ...editForm, reason: e.target.value })} />

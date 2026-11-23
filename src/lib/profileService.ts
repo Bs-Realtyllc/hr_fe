@@ -30,7 +30,7 @@ export interface Profile {
   emergency_contact_relation: string;
   emergency_contact_address: string;
   emergency_contact_email: string;
-  emergency_contact_phone: string;
+  emergency_contact_phone: string; 
 }
 
 export interface DocsType {
@@ -41,9 +41,9 @@ export interface DocsType {
   filename: string;
 }
 
-interface DocsResponseType {
-  status: string;
-  files: DocsType[];
+interface DocsResponseType{
+  status: string,
+  files: DocsType[],
 }
 
 export const profileService = {
@@ -57,8 +57,8 @@ export const profileService = {
     return api.put<Profile>("/profile", data);
   },
   //get Documents url for profile Documents section
-  getDocuments: async () => {
-    return api.get<DocsResponseType>("/profile/employee-docs");
+  getDocuments: async()=>{
+    return api.get<DocsResponseType>('/profile/employee-docs');
   },
 
   // Upload documents to one of the PATCH /profile/docs/* endpoints, e.g.
