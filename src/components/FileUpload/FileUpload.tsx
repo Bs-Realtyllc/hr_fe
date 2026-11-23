@@ -401,7 +401,7 @@ const FileUpload = ({
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    className={`relative flex flex-col w-full h-[230px] rounded-xl bg-(--soft-white-normal) p-3 border transition-colors overflow-hidden
+                    className={`relative flex flex-col w-full h-[236px] rounded-xl bg-(--soft-white-normal) p-3 border transition-colors overflow-hidden
                         ${isDragging ? "border-dashed border-(--soft-white-normal)" : "border-transparent"}`}
                 >
                     {/* Displayed File Preview Area with internal scroll enabled ONLY when viewing all */}
