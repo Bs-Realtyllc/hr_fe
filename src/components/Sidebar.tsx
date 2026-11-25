@@ -297,7 +297,7 @@ export default function Sidebar() {
                   : 'hover:bg-(--blue-sky-light)'
                   }`}
                   >
-                    <BSRealtyAvatar size='sm' name={user ? initials(user.name) : '?'} />
+                    <BSRealtyAvatar src={photoUrl || undefined} size='sm' name={user ? initials(user.name) : '?'} />
 
                     <div className="flex min-w-0 flex-col">
                       <span className="text-[14px] font-medium leading-5 text-(--neutral-normal) truncate">{user?.name ?? ''}</span>
