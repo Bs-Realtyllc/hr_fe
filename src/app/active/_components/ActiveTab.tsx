@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { io, Socket } from "socket.io-client";
 import { api } from "@/lib/api";
+import { getToken } from "@/lib/auth";
 import { formatTimeNepal } from "@/lib/datetime";
 
 type PausesType = {
@@ -76,8 +78,22 @@ export default function ActiveTab() {
     };
     fetchUsers();
     pollRef.current = setInterval(fetchUsers, REFRESH_MS);
+
+    // Instant nudge on top of the poll above — admins/leads join a shared
+    // 'role:admin-lead' room on connect (see inboxSocket.ts) specifically
+    // so a pause/resume/clock-in/out anywhere on the roster reaches this
+    // dashboard in milliseconds instead of waiting up to REFRESH_MS.
+    let socket: Socket | null = null;
+    const token = getToken();
+    if (token) {
+      const wsUrl = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6002/api').replace(/\/api$/, '');
+      socket = io(wsUrl, { path: '/ws/inbox', auth: { token }, transports: ['websocket'] });
+      socket.on('clock:sync', fetchUsers);
+    }
+
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
+      socket?.disconnect();
     };
   }, []);
 

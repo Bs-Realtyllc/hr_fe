@@ -2,10 +2,9 @@
 
 import Button from "@/components/Button/Button";
 import InputField from "@/components/InputField/InputField";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { profileService, Profile } from "@/lib/profileService";
 import { BSRealtyDropdown } from "@bsrealtyllc/design-system";
-import { api } from "@/lib/api";
 
 const EmployeePersonalInformation = () => {
   const [loading, setLoading] = useState(true);
@@ -17,6 +16,7 @@ const EmployeePersonalInformation = () => {
     dob: "",
     gender: "",
     nationality: "",
+    discord_username: ''
   });
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
 
@@ -51,6 +51,7 @@ const EmployeePersonalInformation = () => {
           dob: data.dob || "",
           gender: data.gender || "",
           nationality: data.nationality || "",
+          discord_username: data.discord_username || ""
         });
 
         setContactInfo({
@@ -77,6 +78,29 @@ const EmployeePersonalInformation = () => {
     loadProfileData();
   }, []);
 
+  // Auto focus first input field when click on edit btn
+  const personalNameRef = useRef<HTMLInputElement>(null);
+  const companyEmailRef = useRef<HTMLInputElement>(null);
+  const emergencyNameRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditingPersonal) {
+      personalNameRef.current?.focus();
+    }
+  }, [isEditingPersonal]);
+
+  useEffect(() => {
+    if (isEditingContact) {
+      companyEmailRef.current?.focus();
+    }
+  }, [isEditingContact]);
+
+  useEffect(() => {
+    if (isEditingEmergency) {
+      emergencyNameRef.current?.focus();
+    }
+  }, [isEditingEmergency]);
+
   // Handlers for saving each section
   const handleSavePersonal = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,6 +110,7 @@ const EmployeePersonalInformation = () => {
         dob: personalInfo.dob,
         gender: personalInfo.gender,
         nationality: personalInfo.nationality,
+        discord_username: personalInfo.discord_username,
       });
       console.log("Updated Personal Info:", personalInfo);
       setIsEditingPersonal(false);
@@ -130,8 +155,8 @@ const EmployeePersonalInformation = () => {
   };
 
   if (loading)
-    return <div className="p-4 text-gray-500">Loading profile data...</div>;
-  if (error) return <div className="p-4 text-red-500">Error: {error}</div>;
+    return <div className="p-4 text-(--gray-normal)">Loading profile data...</div>;
+  if (error) return <div className="p-4 text-(--error-normal)">Error: {error}</div>;
 
   // Reusable Icon Renderer
   const renderMaskIcon = (iconPath: string, size = "14px") => (
@@ -165,15 +190,24 @@ const EmployeePersonalInformation = () => {
             </h1>
           </div>
           <div>
-            <Button
-              className="text-(--blue-dark-normal)!"
-              variant="text"
-              size="xs"
-              onClick={() => setIsEditingPersonal(!isEditingPersonal)}
-              leftIcon={renderMaskIcon("/icons/edit-4.svg")}
-            >
-              {isEditingPersonal ? "Cancel" : "Edit"}
-            </Button>
+
+            {isEditingPersonal ? (
+              <div className="flex justify-end gap-2">
+                <Button type="submit" size="xs" onClick={handleSavePersonal}>
+                  Save Changes
+                </Button>
+              </div>
+            ) : (
+              <Button
+                className="text-(--blue-dark-normal)!"
+                variant="text"
+                size="xs"
+                onClick={() => setIsEditingPersonal(!isEditingPersonal)}
+                leftIcon={renderMaskIcon("/icons/edit-4.svg")}
+              >
+                Edit
+              </Button>
+            )}
           </div>
         </div>
 
@@ -186,23 +220,15 @@ const EmployeePersonalInformation = () => {
             >
               Full Name
             </label>
-            {isEditingPersonal ? (
-              <div className="w-60">
-                <InputField
-                  className="h-9! text-end!"
-                  id="name"
-                  type="text"
-                  value={personalInfo.name}
-                  onChange={(e) =>
-                    setPersonalInfo({ ...personalInfo, name: e.target.value })
-                  }
-                />
-              </div>
-            ) : (
-              <p className="text-[14px] font-medium text-(--white-darker)">
-                {personalInfo.name || "-"}
-              </p>
-            )}
+
+            <div >
+              <input ref={personalNameRef} id="name" type="text" className="outline-none w-90 ring-0 focus:border-0 focus:outline-none focus:ring-0 active:border-0 hover:border-0 text-end text-[14px] font-medium text-(--white-darker) mr-0"
+                value={personalInfo.name} onChange={(e) =>
+                  setPersonalInfo({ ...personalInfo, name: e.target.value })
+                }
+                disabled={!isEditingPersonal} />
+            </div>
+
           </div>
 
           {/* DOB */}
@@ -214,7 +240,7 @@ const EmployeePersonalInformation = () => {
               Date of Birth
             </label>
             {isEditingPersonal ? (
-              <div className="w-60">
+              <div className="w-40">
                 <InputField
                   className="h-9! text-end!"
                   id="dob"
@@ -241,9 +267,9 @@ const EmployeePersonalInformation = () => {
               Gender
             </label>
             {isEditingPersonal ? (
-              <div className="w-60 pb-1">
+              <div className="pb-1">
                 <BSRealtyDropdown
-                  className="w-60! [&_.bsr-dropdown\_input-wrapper]:h-9! [&_.bsr-dropdown\_input]:h-full! "
+                  className="w-40! [&_.bsr-dropdown\_input-wrapper]:h-9! [&_.bsr-dropdown\_input]:h-full! "
                   value={personalInfo.gender}
                   onChange={(val: string) =>
                     setPersonalInfo({ ...personalInfo, gender: val })
@@ -270,34 +296,41 @@ const EmployeePersonalInformation = () => {
             >
               Nationality
             </label>
-            {isEditingPersonal ? (
-              <div className="w-60">
-                <InputField
-                  className="h-9! text-end!"
-                  id="nationality"
-                  type="text"
-                  value={personalInfo.nationality}
-                  onChange={(e) =>
-                    setPersonalInfo({
-                      ...personalInfo,
-                      nationality: e.target.value,
-                    })
-                  }
-                />
-              </div>
-            ) : (
-              <p className="text-[14px] font-medium text-(--white-darker)">
-                {personalInfo.nationality || "-"}
-              </p>
-            )}
-          </div>
-          {isEditingPersonal && (
-            <div className="flex justify-end gap-2 mt-4">
-              <Button type="submit" size="xs">
-                Save Changes
-              </Button>
+
+            <div >
+              <input id="nationality" type="text" className="outline-none w-90 ring-0 focus:border-0 focus:outline-none focus:ring-0 active:border-0 hover:border-0 text-end text-[14px] font-medium text-(--white-darker) mr-0"
+                value={personalInfo.nationality}
+                onChange={(e) =>
+                  setPersonalInfo({
+                    ...personalInfo,
+                    nationality: e.target.value,
+                  })
+                }
+                disabled={!isEditingPersonal} />
             </div>
-          )}
+          </div>
+
+          {/* DIscord id */}
+          <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
+            <label
+              htmlFor="discord"
+              className="text-[14px] font-medium text-(--gray-darker)"
+            >
+              DIscord Username
+            </label>
+
+            <div >
+              <input id="discord" type="text" className="outline-none w-90 ring-0 focus:border-0 focus:outline-none focus:ring-0 active:border-0 hover:border-0 text-end text-[14px] font-medium text-(--white-darker) mr-0"
+                value={personalInfo.discord_username}
+                onChange={(e) =>
+                  setPersonalInfo({
+                    ...personalInfo,
+                    discord_username: e.target.value,
+                  })
+                }
+                disabled={!isEditingPersonal} />
+            </div>
+          </div>
         </form>
       </div>
 
@@ -313,15 +346,25 @@ const EmployeePersonalInformation = () => {
             </h1>
           </div>
           <div>
-            <Button
-              className="text-(--blue-dark-normal)!"
-              variant="text"
-              size="xs"
-              onClick={() => setIsEditingContact(!isEditingContact)}
-              leftIcon={renderMaskIcon("/icons/edit-4.svg")}
-            >
-              {isEditingContact ? "Cancel" : "Edit"}
-            </Button>
+
+            {isEditingContact ? (
+              <div className="flex justify-end gap-2">
+                <Button type="submit" size="xs" onClick={handleSaveContact}>
+                  Save Changes
+                </Button>
+              </div>
+            ) : (
+              <Button
+                className="text-(--blue-dark-normal)!"
+                variant="text"
+                size="xs"
+                onClick={() => setIsEditingContact(!isEditingContact)}
+                leftIcon={renderMaskIcon("/icons/edit-4.svg")}
+              >
+                Edit
+              </Button>
+            )}
+
           </div>
         </div>
 
@@ -333,26 +376,21 @@ const EmployeePersonalInformation = () => {
             >
               Company email
             </label>
-            {isEditingContact ? (
-              <div className="w-60">
-                <InputField
-                  className="h-9! text-end!"
-                  id="comp-email"
-                  type="text"
-                  value={contactInfo.companyEmail}
-                  onChange={(e) =>
-                    setContactInfo({
-                      ...contactInfo,
-                      companyEmail: e.target.value,
-                    })
-                  }
-                />
-              </div>
-            ) : (
-              <p className="text-[14px] font-medium text-(--white-darker)">
-                {contactInfo.companyEmail || "-"}
-              </p>
-            )}
+
+            <div>
+
+              <input ref={companyEmailRef} id="comp-email" type="text" className="outline-none w-90 ring-0 focus:border-0 focus:outline-none focus:ring-0 active:border-0 hover:border-0 text-end text-[14px] font-medium text-(--white-darker) mr-0"
+                value={contactInfo.companyEmail}
+                onChange={(e) =>
+                  setContactInfo({
+                    ...contactInfo,
+                    companyEmail: e.target.value,
+                  })
+                }
+                disabled={!isEditingContact} />
+
+            </div>
+
           </div>
           <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
             <label
@@ -361,26 +399,19 @@ const EmployeePersonalInformation = () => {
             >
               Personal email
             </label>
-            {isEditingContact ? (
-              <div className="w-60">
-                <InputField
-                  className="h-9! text-end!"
-                  id="email"
-                  type="text"
-                  value={contactInfo.personalEmail}
-                  onChange={(e) =>
-                    setContactInfo({
-                      ...contactInfo,
-                      personalEmail: e.target.value,
-                    })
-                  }
-                />
-              </div>
-            ) : (
-              <p className="text-[14px] font-medium text-(--white-darker)">
-                {contactInfo.personalEmail || "-"}
-              </p>
-            )}
+            <div>
+              <input id="email" type="text" className="outline-none w-90 ring-0 focus:border-0 focus:outline-none focus:ring-0 active:border-0 hover:border-0 text-end text-[14px] font-medium text-(--white-darker) mr-0"
+                value={contactInfo.personalEmail}
+                onChange={(e) =>
+                  setContactInfo({
+                    ...contactInfo,
+                    personalEmail: e.target.value,
+                  })
+                }
+                disabled={!isEditingContact} />
+
+            </div>
+
           </div>
           <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
             <label
@@ -389,23 +420,15 @@ const EmployeePersonalInformation = () => {
             >
               Phone Number
             </label>
-            {isEditingContact ? (
-              <div className="w-60">
-                <InputField
-                  className="h-9! text-end!"
-                  id="phone"
-                  type="text"
-                  value={contactInfo.phone}
-                  onChange={(e) =>
-                    setContactInfo({ ...contactInfo, phone: e.target.value })
-                  }
-                />
-              </div>
-            ) : (
-              <p className="text-[14px] font-medium text-(--white-darker)">
-                {contactInfo.phone || "-"}
-              </p>
-            )}
+            <div>
+              <input id="phone" type="text" className="outline-none w-90 ring-0 focus:border-0 focus:outline-none focus:ring-0 active:border-0 hover:border-0 text-end text-[14px] font-medium text-(--white-darker) mr-0"
+                value={contactInfo.phone}
+                onChange={(e) =>
+                  setContactInfo({ ...contactInfo, phone: e.target.value })
+                }
+                disabled={!isEditingContact} />
+
+            </div>
           </div>
           <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
             <label
@@ -414,26 +437,17 @@ const EmployeePersonalInformation = () => {
             >
               Current Address
             </label>
-            {isEditingContact ? (
-              <div className="w-60">
-                <InputField
-                  className="h-9! text-end!"
-                  id="current-add"
-                  type="text"
-                  value={contactInfo.currentAddress}
-                  onChange={(e) =>
-                    setContactInfo({
-                      ...contactInfo,
-                      currentAddress: e.target.value,
-                    })
-                  }
-                />
-              </div>
-            ) : (
-              <p className="text-[14px] font-medium text-(--white-darker)">
-                {contactInfo.currentAddress || "-"}
-              </p>
-            )}
+            <div>
+              <input id="current-add" type="text" className="outline-none w-90 ring-0 focus:border-0 focus:outline-none focus:ring-0 active:border-0 hover:border-0 text-end text-[14px] font-medium text-(--white-darker) mr-0"
+                value={contactInfo.currentAddress}
+                onChange={(e) =>
+                  setContactInfo({
+                    ...contactInfo,
+                    currentAddress: e.target.value,
+                  })
+                }
+                disabled={!isEditingContact} />
+            </div>
           </div>
           <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
             <label
@@ -442,34 +456,20 @@ const EmployeePersonalInformation = () => {
             >
               Permanent Address
             </label>
-            {isEditingContact ? (
-              <div className="w-60">
-                <InputField
-                  className="h-9! text-end!"
-                  id="permanent-add"
-                  type="text"
-                  value={contactInfo.permanentAddress}
-                  onChange={(e) =>
-                    setContactInfo({
-                      ...contactInfo,
-                      permanentAddress: e.target.value,
-                    })
-                  }
-                />
-              </div>
-            ) : (
-              <p className="text-[14px] font-medium text-(--white-darker)">
-                {contactInfo.permanentAddress || "-"}
-              </p>
-            )}
-          </div>
-          {isEditingContact && (
-            <div className="flex justify-end gap-2 mt-4">
-              <Button type="submit" size="xs">
-                Save Changes
-              </Button>
+            <div>
+              <input id="permanent-add" type="text" className="outline-none w-90 ring-0 focus:border-0 focus:outline-none focus:ring-0 active:border-0 hover:border-0 text-end text-[14px] font-medium text-(--white-darker) mr-0"
+                value={contactInfo.permanentAddress}
+                onChange={(e) =>
+                  setContactInfo({
+                    ...contactInfo,
+                    permanentAddress: e.target.value,
+                  })
+                }
+                disabled={!isEditingContact} />
             </div>
-          )}
+
+          </div>
+
         </form>
       </div>
 
@@ -485,15 +485,22 @@ const EmployeePersonalInformation = () => {
             </h1>
           </div>
           <div>
-            <Button
+            {isEditingEmergency ? (
+              <div className="flex justify-end gap-2">
+                <Button type="submit" size="xs" onClick={handleSaveEmergency}>
+                  Save Changes
+                </Button>
+              </div>
+            ) : (<Button
               className="text-(--blue-dark-normal)!"
               variant="text"
               size="xs"
               onClick={() => setIsEditingEmergency(!isEditingEmergency)}
               leftIcon={renderMaskIcon("/icons/edit-4.svg")}
             >
-              {isEditingEmergency ? "Cancel" : "Edit"}
-            </Button>
+              Edit
+            </Button>)}
+
           </div>
         </div>
 
@@ -505,23 +512,17 @@ const EmployeePersonalInformation = () => {
             >
               Full Name
             </label>
-            {isEditingEmergency ? (
-              <div className="w-60">
-                <InputField
-                  className="h-9! text-end!"
-                  id="rel-name"
-                  type="text"
-                  value={emergencyInfo.name}
-                  onChange={(e) =>
-                    setEmergencyInfo({ ...emergencyInfo, name: e.target.value })
-                  }
-                />
-              </div>
-            ) : (
-              <p className="text-[14px] font-medium text-(--white-darker)">
-                {emergencyInfo.name || "-"}
-              </p>
-            )}
+            <div>
+              <input ref={emergencyNameRef} className="outline-none w-90 ring-0 focus:border-0 focus:outline-none focus:ring-0 active:border-0 hover:border-0 text-end text-[14px] font-medium text-(--white-darker) mr-0"
+                id="rel-name"
+                type="text"
+                value={emergencyInfo.name}
+                onChange={(e) =>
+                  setEmergencyInfo({ ...emergencyInfo, name: e.target.value })
+                }
+                disabled={!isEditingEmergency} />
+            </div>
+
           </div>
           <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
             <label
@@ -530,26 +531,20 @@ const EmployeePersonalInformation = () => {
             >
               Relationship
             </label>
-            {isEditingEmergency ? (
-              <div className="w-60">
-                <InputField
-                  className="h-9! text-end!"
-                  id="relationship"
-                  type="text"
-                  value={emergencyInfo.relationship}
-                  onChange={(e) =>
-                    setEmergencyInfo({
-                      ...emergencyInfo,
-                      relationship: e.target.value,
-                    })
-                  }
-                />
-              </div>
-            ) : (
-              <p className="text-[14px] font-medium text-(--white-darker)">
-                {emergencyInfo.relationship || "-"}
-              </p>
-            )}
+            <div>
+              <input className="outline-none w-90 ring-0 focus:border-0 focus:outline-none focus:ring-0 active:border-0 hover:border-0 text-end text-[14px] font-medium text-(--white-darker) mr-0"
+                id="relationship"
+                type="text"
+                value={emergencyInfo.relationship}
+                onChange={(e) =>
+                  setEmergencyInfo({
+                    ...emergencyInfo,
+                    relationship: e.target.value,
+                  })
+                }
+                disabled={!isEditingEmergency} />
+            </div>
+
           </div>
           <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
             <label
@@ -558,26 +553,19 @@ const EmployeePersonalInformation = () => {
             >
               Email
             </label>
-            {isEditingEmergency ? (
-              <div className="w-60">
-                <InputField
-                  className="h-9! text-end!"
-                  id="rel-email"
-                  type="text"
-                  value={emergencyInfo.email}
-                  onChange={(e) =>
-                    setEmergencyInfo({
-                      ...emergencyInfo,
-                      email: e.target.value,
-                    })
-                  }
-                />
-              </div>
-            ) : (
-              <p className="text-[14px] font-medium text-(--white-darker)">
-                {emergencyInfo.email || "-"}
-              </p>
-            )}
+            <div>
+              <input className="outline-none w-90 ring-0 focus:border-0 focus:outline-none focus:ring-0 active:border-0 hover:border-0 text-end text-[14px] font-medium text-(--white-darker) mr-0"
+                id="rel-email"
+                type="text"
+                value={emergencyInfo.email}
+                onChange={(e) =>
+                  setEmergencyInfo({
+                    ...emergencyInfo,
+                    email: e.target.value,
+                  })
+                }
+                disabled={!isEditingEmergency} />
+            </div>
           </div>
           <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
             <label
@@ -586,26 +574,19 @@ const EmployeePersonalInformation = () => {
             >
               Phone Number
             </label>
-            {isEditingEmergency ? (
-              <div className="w-60">
-                <InputField
-                  className="h-9! text-end!"
-                  id="rel-phone"
-                  type="text"
-                  value={emergencyInfo.phone}
-                  onChange={(e) =>
-                    setEmergencyInfo({
-                      ...emergencyInfo,
-                      phone: e.target.value,
-                    })
-                  }
-                />
-              </div>
-            ) : (
-              <p className="text-[14px] font-medium text-(--white-darker)">
-                {emergencyInfo.phone || "-"}
-              </p>
-            )}
+            <div>
+              <input className="outline-none w-90 ring-0 focus:border-0 focus:outline-none focus:ring-0 active:border-0 hover:border-0 text-end text-[14px] font-medium text-(--white-darker) mr-0"
+                id="rel-phone"
+                type="text"
+                value={emergencyInfo.phone}
+                onChange={(e) =>
+                  setEmergencyInfo({
+                    ...emergencyInfo,
+                    phone: e.target.value,
+                  })
+                }
+                disabled={!isEditingEmergency} />
+            </div>
           </div>
           <div className="flex border-b border-(--neutral-light) justify-between py-3 items-center">
             <label
@@ -614,34 +595,21 @@ const EmployeePersonalInformation = () => {
             >
               Address
             </label>
-            {isEditingEmergency ? (
-              <div className="w-60">
-                <InputField
-                  className="h-9! text-end!"
-                  id="rel-address"
-                  type="text"
-                  value={emergencyInfo.address}
-                  onChange={(e) =>
-                    setEmergencyInfo({
-                      ...emergencyInfo,
-                      address: e.target.value,
-                    })
-                  }
-                />
-              </div>
-            ) : (
-              <p className="text-[14px] font-medium text-(--white-darker)">
-                {emergencyInfo.address || "-"}
-              </p>
-            )}
-          </div>
-          {isEditingEmergency && (
-            <div className="flex justify-end gap-2 mt-4">
-              <Button type="submit" size="xs">
-                Save Changes
-              </Button>
+            <div>
+              <input className="outline-none w-90 ring-0 focus:border-0 focus:outline-none focus:ring-0 active:border-0 hover:border-0 text-end text-[14px] font-medium text-(--white-darker) mr-0"
+                id="rel-address"
+                type="text"
+                value={emergencyInfo.address}
+                onChange={(e) =>
+                  setEmergencyInfo({
+                    ...emergencyInfo,
+                    address: e.target.value,
+                  })
+                }
+                disabled={!isEditingEmergency} />
             </div>
-          )}
+          </div>
+
         </form>
       </div>
     </div>
