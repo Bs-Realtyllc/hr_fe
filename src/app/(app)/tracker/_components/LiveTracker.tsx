@@ -356,7 +356,7 @@ export default function LiveTracker() {
         <div className="tracker-idle-banner">
           <div className="tracker-idle-banner-text">
             <span className="tracker-idle-banner-title">Still working?</span>
-            <span className="tracker-live-caption">No activity has been detected for a while. Let us know you're still here.</span>
+            <span className="tracker-live-caption">No activity has been detected for a while. Let us know you&apos;re still here.</span>
           </div>
           <div className="tracker-idle-banner-countdown">{formatMinSec(idleRemainingSeconds)}</div>
           <button className="btn btn-primary" disabled={idleConfirming} onClick={handleIdleConfirm}>

@@ -484,7 +484,7 @@ function SuccessMeetingPopup({
                     <img src="/icons/success-icon.svg" alt="" className="h-10 w-10" />
 
                     <p className="text-[12px] text-(--gray-dark-hover)">
-                        YOU'RE ALL SET
+                        YOU&apos;RE ALL SET
                     </p>
 
                     <div className="flex flex-col gap-2 items-center text-center">
@@ -1002,7 +1002,7 @@ function SuccessEventPopup({
                     />
 
                     <p className="text-[12px] text-(--gray-dark-hover)">
-                        YOU'RE ALL SET
+                        YOU&apos;RE ALL SET
                     </p>
 
                     <div className="flex flex-col gap-2 items-center text-center">
