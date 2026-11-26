@@ -127,6 +127,11 @@ export function VoiceRoom({
   const screenVideoRef = useRef<Map<string, HTMLVideoElement>>(new Map());
   const permStatusRef  = useRef<PermissionStatus | null>(null);
   const vadCleanupRef  = useRef<(() => void) | null>(null);
+  // Always mounted (visibility toggled by CSS, not conditional render) so this
+  // node already exists in the DOM the moment a screen-share track arrives —
+  // waiting for React to mount it off the `screenSharerName` state update is
+  // one tick too late for the very first TrackSubscribed/LocalTrackPublished event.
+  const screenshareContainerRef = useRef<HTMLDivElement | null>(null);
 
   const [participants, setParticipants]         = useState<VoiceParticipant[]>([]);
   const [connState, setConnState]               = useState<ConnectionState>(ConnectionState.Disconnected);
@@ -180,6 +185,28 @@ export function VoiceRoom({
     setParticipants(list);
     onParticipantsChange?.(list);
   }, [onParticipantsChange, localLevel]);
+
+  /* ── Screen share video attach/detach (local + remote) ──── */
+  function attachScreenShareVideo(track: Track, key: string) {
+    const video = document.createElement('video');
+    video.autoplay = true;
+    video.playsInline = true;
+    video.muted = true; // screen-share video carries no audio track of its own
+    video.style.width = '100%';
+    video.style.borderRadius = '8px';
+    track.attach(video);
+    video.play().catch(() => {});
+    screenVideoRef.current.set(key, video);
+    screenshareContainerRef.current?.appendChild(video);
+  }
+
+  function detachScreenShareVideo(key: string, track?: Track) {
+    const video = screenVideoRef.current.get(key);
+    if (!video) return;
+    track?.detach(video);
+    video.remove();
+    screenVideoRef.current.delete(key);
+  }
 
   /* ── Connect on mount ───────────────────────────────────── */
   useEffect(() => {
@@ -250,15 +277,7 @@ export function VoiceRoom({
             audio.play().catch(() => setAudioBlocked(true));
             audioRefs.current.set(participant.identity, audio);
           } else if (track.kind === Track.Kind.Video && track.source === Track.Source.ScreenShare) {
-            const video = document.createElement('video');
-            video.autoplay = true;
-            video.playsInline = true;
-            video.style.width = '100%';
-            video.style.borderRadius = '8px';
-            track.attach(video);
-            screenVideoRef.current.set(participant.identity, video);
-            const container = document.getElementById('inbox-screenshare-container');
-            if (container) container.appendChild(video);
+            attachScreenShareVideo(track, participant.identity);
           }
           // Camera video is rendered by <ParticipantVideo> from syncParticipants()
           syncParticipants(room);
@@ -269,8 +288,7 @@ export function VoiceRoom({
             const audio = audioRefs.current.get(participant.identity);
             if (audio) { track.detach(audio); audio.pause(); audioRefs.current.delete(participant.identity); }
           } else if (track.kind === Track.Kind.Video && track.source === Track.Source.ScreenShare) {
-            const video = screenVideoRef.current.get(participant.identity);
-            if (video) { track.detach(video); video.remove(); screenVideoRef.current.delete(participant.identity); }
+            detachScreenShareVideo(participant.identity, track);
           }
           syncParticipants(room);
         });
@@ -483,13 +501,12 @@ export function VoiceRoom({
         </button>
       )}
 
-      {/* Screen share view */}
-      {screenSharerName && (
-        <div className="inbox-screenshare-area">
-          <div className="inbox-screenshare-label">🖥️ {screenSharerName} is sharing their screen</div>
-          <div id="inbox-screenshare-container" className="inbox-screenshare-container" />
-        </div>
-      )}
+      {/* Screen share view — stays mounted (just hidden) so the container ref
+          already exists in the DOM before any screen-share track arrives */}
+      <div className="inbox-screenshare-area" style={screenSharerName ? undefined : { display: 'none' }}>
+        <div className="inbox-screenshare-label">🖥️ {screenSharerName} is sharing their screen</div>
+        <div ref={screenshareContainerRef} className="inbox-screenshare-container" />
+      </div>
 
       {/* Participants grid */}
       {participants.length > 0 && (
