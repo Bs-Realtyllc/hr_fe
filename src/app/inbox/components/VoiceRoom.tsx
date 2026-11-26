@@ -8,6 +8,7 @@ import {
   ConnectionState,
   type RemoteTrackPublication,
   type RemoteParticipant,
+  type VideoTrack,
 } from 'livekit-client';
 
 /* ── Types ─────────────────────────────────────────────────── */
@@ -20,6 +21,8 @@ export interface VoiceParticipant {
   isLocal: boolean;
   isScreenSharing?: boolean;
   audioLevel?: number; // 0-1 RMS level
+  isCameraOn?: boolean;
+  videoTrack?: VideoTrack; // camera track (not screen share)
 }
 
 interface VoiceRoomProps {
@@ -33,6 +36,9 @@ interface VoiceRoomProps {
   onDeafenedChange: (deafened: boolean) => void;
   onParticipantsChange?: (participants: VoiceParticipant[]) => void;
 }
+
+/** Set to false if you want people to join with camera off. */
+const START_WITH_CAMERA = true;
 
 /* ── Web Audio VAD ─────────────────────────────────────────── */
 
@@ -76,6 +82,33 @@ function startLocalVAD(
   };
 }
 
+/* ── Camera video element ──────────────────────────────────── */
+
+/** Attaches a LiveKit video track to a <video> and detaches on change/unmount. */
+function ParticipantVideo({ track, mirror = false }: { track: VideoTrack; mirror?: boolean }) {
+  const ref = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    track.attach(el);
+    return () => {
+      track.detach(el);
+    };
+  }, [track]);
+
+  // muted: audio is played separately through the <audio> elements
+  return (
+    <video
+      ref={ref}
+      autoPlay
+      playsInline
+      muted
+      className={`h-full w-full object-cover ${mirror ? '-scale-x-100' : ''}`}
+    />
+  );
+}
+
 /* ── Component ─────────────────────────────────────────────── */
 
 export function VoiceRoom({
@@ -107,7 +140,10 @@ export function VoiceRoom({
   const [screenSharerName, setScreenSharerName] = useState<string | null>(null);
   const [audioBlocked, setAudioBlocked]         = useState(false);
   const [micDenied, setMicDenied]               = useState(false);
+  const [cameraDenied, setCameraDenied]         = useState(false);
   const [localLevel, setLocalLevel]             = useState(0);  // 0-1 RMS
+
+  const localCameraOn = participants.find(p => p.isLocal)?.isCameraOn ?? false;
 
   /* ── Sync participants ──────────────────────────────────── */
   const syncParticipants = useCallback((room: Room, overrideLocalLevel?: number) => {
@@ -124,6 +160,8 @@ export function VoiceRoom({
       isLocal: true,
       isScreenSharing: local.isScreenShareEnabled,
       audioLevel: level,
+      isCameraOn: local.isCameraEnabled,
+      videoTrack: local.getTrackPublication(Track.Source.Camera)?.videoTrack,
     });
 
     let sharerName: string | null = null;
@@ -137,6 +175,8 @@ export function VoiceRoom({
         isLocal: false,
         isScreenSharing: p.isScreenShareEnabled,
         audioLevel: p.isSpeaking ? 0.6 : 0,
+        isCameraOn: p.isCameraEnabled,
+        videoTrack: p.getTrackPublication(Track.Source.Camera)?.videoTrack,
       });
     });
     if (local.isScreenShareEnabled) sharerName = local.name ?? local.identity;
@@ -214,7 +254,7 @@ export function VoiceRoom({
           if (pub.source === Track.Source.ScreenShare && pub.track) {
             attachScreenShareVideo(pub.track, 'local');
           }
-          syncParticipants(room);
+          syncParticipants(room); // also picks up the local camera track
         });
         room.on(RoomEvent.LocalTrackUnpublished,   (pub) => {
           if (pub.source === Track.Source.ScreenShare) {
@@ -239,6 +279,7 @@ export function VoiceRoom({
           } else if (track.kind === Track.Kind.Video && track.source === Track.Source.ScreenShare) {
             attachScreenShareVideo(track, participant.identity);
           }
+          // Camera video is rendered by <ParticipantVideo> from syncParticipants()
           syncParticipants(room);
         });
 
@@ -266,6 +307,19 @@ export function VoiceRoom({
             } else if (name === 'NotFoundError') {
               setError('No microphone found. Connect a mic and rejoin.');
             }
+          }
+        }
+
+        /* Camera is independent of the mic: a missing/denied camera must not break voice */
+        if (START_WITH_CAMERA) {
+          try {
+            await room.localParticipant.setCameraEnabled(true);
+          } catch (err: any) {
+            const name = err?.name ?? '';
+            if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+              setCameraDenied(true);
+            }
+            // NotFoundError etc.: just continue as audio-only
           }
         }
 
@@ -323,6 +377,21 @@ export function VoiceRoom({
       syncParticipants(room);
     } catch {
       /* User cancelled the picker or permission denied */
+    }
+  }
+
+  /* ── Camera toggle ──────────────────────────────────────── */
+  async function toggleCamera() {
+    const room = roomRef.current;
+    if (!room || cameraDenied) return;
+    try {
+      await room.localParticipant.setCameraEnabled(!localCameraOn);
+      syncParticipants(room);
+    } catch (err: any) {
+      const name = err?.name ?? '';
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        setCameraDenied(true);
+      }
     }
   }
 
@@ -411,6 +480,13 @@ export function VoiceRoom({
         </div>
       )}
 
+      {/* Camera permission denied banner */}
+      {cameraDenied && (
+        <div className="inbox-audio-blocked" style={{ cursor: 'default' }}>
+          📷 Camera access denied — others can&apos;t see you. Allow it in your browser&apos;s address bar, then rejoin.
+        </div>
+      )}
+
       {/* Audio playback blocked by browser autoplay policy */}
       {audioBlocked && (
         <button
@@ -439,23 +515,44 @@ export function VoiceRoom({
             const speaking = p.isSpeaking && !p.isMicMuted;
             const lvl      = p.audioLevel ?? 0;
             const scalePct = Math.round(lvl * 100);
+            const showVideo = !!p.isCameraOn && !!p.videoTrack;
             return (
               <div key={p.identity} className="inbox-voice-participant">
-                {/* Avatar with speaking ring */}
-                <div
-                  className={`inbox-voice-participant-avatar${speaking ? ' speaking' : ''}${p.isMicMuted ? ' muted' : ''}`}
-                  style={{
-                    background: `hsl(${(p.name.charCodeAt(0) * 37) % 360}, 45%, 35%)`,
-                    /* Live border glow driven by audio level */
-                    ...(speaking && p.isLocal ? {
-                      boxShadow: `0 0 0 ${2 + scalePct / 25}px rgba(45,206,137,${0.4 + lvl * 0.5}), 0 0 0 ${6 + scalePct / 12}px rgba(45,206,137,${0.1 + lvl * 0.15})`,
-                    } : {}),
-                  }}
-                >
-                  {initials(p.name)}
-                  {p.isMicMuted && <span className="inbox-voice-muted-badge" title="Muted" />}
-                  {p.isScreenSharing && <span className="inbox-voice-sharing-badge" title="Sharing screen">🖥️</span>}
-                </div>
+                {showVideo ? (
+                  /* Camera tile */
+                  <div
+                    className={`relative aspect-video w-48 overflow-hidden rounded-xl bg-black ring-2 transition-shadow ${
+                      speaking ? 'ring-emerald-400' : 'ring-transparent'
+                    }`}
+                  >
+                    <ParticipantVideo track={p.videoTrack!} mirror={p.isLocal} />
+                    {p.isMicMuted && (
+                      <span
+                        className="absolute bottom-1.5 left-1.5 h-2.5 w-2.5 rounded-full bg-red-500"
+                        title="Muted"
+                      />
+                    )}
+                    {p.isScreenSharing && (
+                      <span className="absolute right-1.5 top-1.5 text-sm" title="Sharing screen">🖥️</span>
+                    )}
+                  </div>
+                ) : (
+                  /* Avatar fallback (camera off) with speaking ring */
+                  <div
+                    className={`inbox-voice-participant-avatar${speaking ? ' speaking' : ''}${p.isMicMuted ? ' muted' : ''}`}
+                    style={{
+                      background: `hsl(${(p.name.charCodeAt(0) * 37) % 360}, 45%, 35%)`,
+                      /* Live border glow driven by audio level */
+                      ...(speaking && p.isLocal ? {
+                        boxShadow: `0 0 0 ${2 + scalePct / 25}px rgba(45,206,137,${0.4 + lvl * 0.5}), 0 0 0 ${6 + scalePct / 12}px rgba(45,206,137,${0.1 + lvl * 0.15})`,
+                      } : {}),
+                    }}
+                  >
+                    {initials(p.name)}
+                    {p.isMicMuted && <span className="inbox-voice-muted-badge" title="Muted" />}
+                    {p.isScreenSharing && <span className="inbox-voice-sharing-badge" title="Sharing screen">🖥️</span>}
+                  </div>
+                )}
 
                 {/* Audio level meter — thin bar below avatar */}
                 <div className="inbox-voice-level-bar-track">
@@ -501,6 +598,14 @@ export function VoiceRoom({
           onClick={() => onDeafenedChange(!deafened)}
         >
           <span className="icon" style={{ WebkitMaskImage: 'url(/icons/headphones.svg)', maskImage: 'url(/icons/headphones.svg)' }} />
+        </button>
+        {/* Camera toggle — reuses the monitor icon until you add /icons/video.svg + video-off.svg */}
+        <button
+          className={`inbox-voice-ctrl-btn${!localCameraOn ? ' active-mute' : ''}${cameraDenied ? ' disabled' : ''}`}
+          title={cameraDenied ? 'Camera access denied' : localCameraOn ? 'Turn camera off' : 'Turn camera on'}
+          onClick={toggleCamera}
+        >
+          <span className="text-base leading-none">{localCameraOn ? '📷' : '🚫'}</span>
         </button>
         <button
           className={`inbox-voice-ctrl-btn${screenSharing ? ' active-share' : ''}`}
