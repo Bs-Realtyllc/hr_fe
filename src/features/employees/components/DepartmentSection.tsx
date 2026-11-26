@@ -24,7 +24,8 @@ export default function DepartmentSection({ department, members, currentUserId }
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+          // min(300px, 100%): on phones under ~345px a full 300px column would overflow.
+          gridTemplateColumns: "repeat(auto-fill, minmax(min(300px, 100%), 1fr))",
           gap: 16,
         }}
       >

@@ -30,7 +30,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className=" h-screen w-screen relative flex flex-col justify-center items-center">
+    <div className="min-h-dvh w-full relative flex flex-col justify-center items-center">
 
       <div className=' absolute top-7.5 left-4 lg:left-20  '>
         <img className='h-4 w-22 lg:h-5 lg:w-28' src="/logos/gitgi-hr-logo.svg" alt="" /></div >
@@ -38,7 +38,7 @@ export default function ForgotPasswordPage() {
         <div className=' m-4 lg:p-0 flex flex-col lg:w-[613px] p-5 lg:p-6 gap-3 lg:gap-6 items-center text-center'>
           <ConfettiAnimation />
 
-          <img className='h-[63px] w-[60px] lg:h-[66px] lg:w-[63px]' src="/icons/Request-sent.svg" alt="Requset sent" />
+          <img className='h-[63px] w-[60px] lg:h-[66px] lg:w-[63px]' src="/icons/Request-sent.svg" alt="Request sent" />
           <div className='lg:p-6 space-y-4 lg:space-y-6'>
             <div className='lg:space-y-3'>
               <h2 className='text-[22px] lg:text-[28px] font-semibold leading-9 text-(--neutral-normal)'>Email on the way!</h2>
@@ -79,7 +79,7 @@ export default function ForgotPasswordPage() {
       ) : (
         <div className=" m-4 lg:m-0  lg:w-[591px] flex flex-col p-5 lg:p-6 gap-4 lg:gap-6">
           <div className=" space-y-3 text-center ">
-            <h1 className='text-[22px] lg:text-[28px] font-semibold leading-9 text-(--neutral-normal)  '>Forget Password ?</h1>
+            <h1 className='text-[22px] lg:text-[28px] font-semibold leading-9 text-(--neutral-normal)  '>Forgot Password?</h1>
             <p className='text-[14px] lg:text-[18px] font-medium leading-7 text-(--gray-dark-active) '>All good. Enter your account’s email address and we’ll send you a link to reset your password.</p>
           </div>
 

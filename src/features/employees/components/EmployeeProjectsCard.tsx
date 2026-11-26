@@ -20,18 +20,19 @@ export default function EmployeeProjectsCard({ projects }: { projects: Project[]
             background: 'var(--color-bg)', borderRadius: 'var(--radius-md)',
             border: '1px solid var(--color-border)', padding: 16, marginBottom: 12,
           }}>
-            <div className="flex justify-between items-start mb-2">
-              <div>
+            {/* Wraps on phones: badges drop under the name instead of squeezing it. */}
+            <div className="flex justify-between items-start mb-2" style={{ flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                 <div className="font-semibold">{p.name}</div>
                 {p.description && <div className="text-muted text-sm">{p.description}</div>}
               </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span className={`badge ${statusBadge[p.status]}`}>{p.status}</span>
                 <span className="badge badge-accent">{p.assigned_role.replace(/_/g, ' ')}</span>
               </div>
             </div>
 
-            <div className="flex gap-4 text-sm" style={{ marginBottom: p.milestones.length > 0 ? 12 : 0 }}>
+            <div className="flex gap-4 text-sm" style={{ marginBottom: p.milestones.length > 0 ? 12 : 0, flexWrap: 'wrap', rowGap: 4 }}>
               {p.start_date && (
                 <span className="text-muted">
                   Start: <strong>{fmtDate(p.start_date)}</strong>

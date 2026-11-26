@@ -18,7 +18,7 @@ export default function EmployeeSummaryCard({ employee }: { employee: Employee }
       <div className="grid-2" style={{ gap: 12 }}>
         <div className="flex gap-2 items-center">
           <span className="text-muted" style={{ width: 90, flexShrink: 0 }}>Email</span>
-          <span className="text-sm">{employee.email}</span>
+          <span className="text-sm" style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{employee.email}</span>
         </div>
         {employee.manager_name && (
           <div className="flex gap-2 items-center">

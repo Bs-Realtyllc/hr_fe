@@ -9,19 +9,26 @@
   margin-bottom: 24px;
 }
 
-/* 4 equal-width KpiCards + a wider TeamSummary card filling the rest of the
-   row (mirrors the reference "Jobs Summary" layout — narrow stat cards plus
-   one wider highlight card, sized so the row reaches the right edge instead
-   of leaving a gap after the last narrow card). */
+/* 4 equal-width KpiCards. */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(150px, 1fr)) minmax(220px, 1.6fr);
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
   gap: var(--space-16);
   margin-bottom: var(--space-24);
 }
 
-/* 1200px, not 1100: the full row needs ~884px, and with the sidebar open
-   (until 1120px) a 1121–1195px screen leaves only ~810–880px. */
+/* With the wider TeamSummary card present (.kpi-grid-wide), add a 5th wider
+   column so the row still reaches the right edge (reference "Jobs Summary"
+   layout). Only above 1200px — :has() is more specific than the ≤1200px
+   two-column rule below, so it must not apply there. */
+@media (min-width: 1201px) {
+  .kpi-grid:has(> .kpi-grid-wide) {
+    grid-template-columns: repeat(4, minmax(150px, 1fr)) minmax(220px, 1.6fr);
+  }
+}
+
+/* 1200px, not 1100: the full 5-column row needs ~884px, and with the sidebar
+   open (until 1120px) a 1121–1195px screen leaves only ~810–880px. */
 @media (max-width: 1200px) {
   .kpi-grid { grid-template-columns: repeat(2, minmax(150px, 1fr)); }
   .kpi-grid > .kpi-grid-wide { grid-column: 1 / -1; }

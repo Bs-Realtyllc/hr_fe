@@ -6,7 +6,10 @@ const SuccessPage = () => {
     return (
         <div>
             <ConfettiAnimation />
-            <div className=" flex w-screen h-screen justify-center items-center p-4 lg:px-15 pt-22 lg:pb-8">
+            {/* w-full (not w-screen, which includes the scrollbar and causes a sideways
+                scroll on desktop) and min-h-dvh (not h-screen, which counts the area
+                behind mobile browser bars), so the message stays centred and fits. */}
+            <div className=" flex w-full min-h-dvh justify-center items-center p-4 lg:px-15 pt-22 lg:pb-8">
                 <div className=' absolute top-7.5 left-4 lg:left-15  '>
                     <img className='h-4 w-22 lg:h-5 lg:w-28' src="/logos/gitgi-hr-logo.svg" alt="" />
                 </div >

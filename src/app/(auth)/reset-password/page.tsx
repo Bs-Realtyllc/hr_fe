@@ -103,14 +103,14 @@ function ResetPasswordForm() {
               <div className=' space-y-4 lg:space-y-6'>
                 <div className='space-y-3'>
                   <h1 className='text-[22px] lg:text-[28px] font-semibold leading-7 lg:leading-9 text-(--neutral-normal) '>Reset your Password</h1>
-                  <p className='text-[14px] lg:text-[18px] lg:font-medium leading-5 lg:leading-7 text-(--gray-dark-active'>Almost done. Enter your new password and you’re good to go.</p>
+                  <p className='text-[14px] lg:text-[18px] lg:font-medium leading-5 lg:leading-7 text-(--gray-dark-active)'>Almost done. Enter your new password and you’re good to go.</p>
                 </div>
                 <div className='space-y-3'>
                   <InputField type='password' showPasswordToggle={true} placeholder='New password'
                     autoComplete="new-password" required
                     value={form.new_password}
                     onChange={e => setForm(f => ({ ...f, new_password: e.target.value }))} />
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-left">
                     {passwordRules.map((rule) => (
                       <div
                         key={rule.label}
@@ -135,7 +135,7 @@ function ResetPasswordForm() {
                   </div>
 
 
-                  <InputField placeholder='Conform password' type='password' showPasswordToggle={true} autoComplete="new-password"
+                  <InputField placeholder='Confirm password' type='password' showPasswordToggle={true} autoComplete="new-password"
                     required
                     value={form.confirm}
                     onChange={e => setForm(f => ({ ...f, confirm: e.target.value }))} />
