@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import * as pdfjsLib from "pdfjs-dist";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+// Type-only — a real `import * as pdfjsLib from "pdfjs-dist"` here would run
+// pdfjs-dist's module code during Next's build-time module graph walk, not
+// just in the browser. Load it dynamically inside the effect instead.
+import type * as PdfjsLib from "pdfjs-dist";
 
 type DocumentPreviewProps = {
     file: File;
@@ -20,13 +21,16 @@ const PdfPreview = ({ file }: DocumentPreviewProps) => {
 
     useEffect(() => {
         let cancelled = false;
-        let loadingTask: ReturnType<typeof pdfjsLib.getDocument> | undefined;
+        let loadingTask: ReturnType<typeof PdfjsLib.getDocument> | undefined;
 
         const renderPdf = async () => {
             setLoading(true);
             setError(false);
 
             try {
+                const pdfjsLib = await import("pdfjs-dist");
+                pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+
                 const data = await file.arrayBuffer();
 
                 if (cancelled) return;
