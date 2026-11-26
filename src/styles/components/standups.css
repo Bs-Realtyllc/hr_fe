@@ -1,0 +1,25 @@
+/* ── Standups filter bar ──
+   Widths live here, not inline: .form-input/.form-select set width: 100%
+   outside Tailwind's layers, so utility classes can't override them. */
+.standup-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.standup-filter .form-label {
+  margin: 0;
+  white-space: nowrap;
+}
+.standup-filter .form-select { width: 200px; }
+.standup-filter .form-input { width: 160px; }
+
+/* Phones: one filter per row, input filling the space after its label. */
+@media (max-width: 640px) {
+  .standup-filter { width: 100%; }
+  .standup-filter .form-label { min-width: 64px; }
+  .standup-filter .form-select,
+  .standup-filter .form-input {
+    width: auto;
+    flex: 1;
+  }
+}

@@ -6,15 +6,25 @@
     "dev": "next dev -p 6001",
     "build": "next build",
     "start": "next start -p 6001",
-    "postinstall": "node scripts/copy-pdf-worker.js"
+    "postinstall": "node scripts/copy-pdf-worker.js",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@bsrealtyllc/design-system": "^0.3.0",
     "@capacitor/android": "^8.5.2",
-    "@capacitor/cli": "^8.5.2",
     "@capacitor/core": "^8.5.2",
+    "@dagrejs/dagre": "1.1.5",
     "@reduxjs/toolkit": "^2.12.0",
     "@tailwindcss/postcss": "^4.3.3",
+    "@tanstack/react-query": "^5.108.0",
+    "@xyflow/react": "12.8.2",
     "date-fns": "^4.4.0",
     "dotenv": "^18.0.9",
     "livekit-client": "^2.23.0",
@@ -36,10 +46,27 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.2",
+    "@storybook/addon-a11y": "8.6.14",
+    "@storybook/addon-essentials": "8.6.14",
+    "@storybook/nextjs": "8.6.14",
+    "@storybook/preview-api": "8.6.14",
+    "@storybook/react": "8.6.14",
+    "@storybook/test": "8.6.14",
+    "@testing-library/dom": "10.4.0",
+    "@testing-library/react": "16.3.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-datepicker": "^6.2.0",
     "@types/react-dom": "^18",
-    "typescript": "^5"
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.35",
+    "eslint-config-prettier": "^9.1.2",
+    "jsdom": "26.1.0",
+    "prettier": "^3.10.1",
+    "storybook": "8.6.14",
+    "typescript": "^5",
+    "vitest": "3.2.4",
+    "webpack": "5.99.9"
   }
 }

@@ -1,0 +1,129 @@
+'use client';
+import { useState } from 'react';
+import { api, errorMessage } from '@/lib/api';
+import Link from 'next/link';
+import Button from '@/components/ui/Button/Button';
+import InputField from '@/components/ui/InputField/InputField';
+import { useRouter } from 'next/navigation';
+import ConfettiAnimation from '@/components/ui/ConfettiAnimation';
+import MaskIcon from '@/components/ui/MaskIcon';
+
+export default function ForgotPasswordPage() {
+  const [email, setEmail] = useState('');
+  const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await api.public.post('/auth/forgot-password', { email });
+      setSent(true);
+    } catch (err: unknown) {
+      console.error('[AUTH] forgot-password failed', err);
+      setError(errorMessage(err, 'Something went wrong'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="min-h-dvh w-full relative flex flex-col justify-center items-center">
+
+      <div className=' absolute top-7.5 left-4 lg:left-20  '>
+        <img className='h-4 w-22 lg:h-5 lg:w-28' src="/logos/gitgi-hr-logo.svg" alt="" /></div >
+      {sent ? (
+        <div className=' m-4 lg:p-0 flex flex-col lg:w-[613px] p-5 lg:p-6 gap-3 lg:gap-6 items-center text-center'>
+          <ConfettiAnimation />
+
+          <img className='h-[63px] w-[60px] lg:h-[66px] lg:w-[63px]' src="/icons/Request-sent.svg" alt="Request sent" />
+          <div className='lg:p-6 space-y-4 lg:space-y-6'>
+            <div className='lg:space-y-3'>
+              <h2 className='text-[22px] lg:text-[28px] font-semibold leading-9 text-(--neutral-normal)'>Email on the way!</h2>
+              <p className='text-[14px] lg:text-[18px] font-medium leading-7 text-(--gray-dark-active)'>We sent you password reset instructions. If it doesn’t show up soon, check your spam folder.  We sent it from the email address
+                no-reply@gitgi.com.</p>
+
+            </div>
+            <Button
+              className="text-(--blue-dark-normal)!"
+              variant="text"
+              type='button'
+              size="medium"
+              onClick={() => router.push('/login')}
+              leftIcon={
+                <span
+                  className="inline-block bg-(--blue-dark-normal)"
+                  style={{
+                    width: "18px",
+                    height: "18px",
+                    backgroundColor: 'currentColor',
+                    maskImage: "url('/icons/arrow-left.svg')",
+                    WebkitMaskImage: "url('/icons/arrow-left.svg')",
+                    maskRepeat: "no-repeat",
+                    WebkitMaskRepeat: "no-repeat",
+                    maskPosition: "center",
+                    WebkitMaskPosition: "center",
+                    maskSize: "contain",
+                    WebkitMaskSize: "contain",
+                  }}
+                />
+              }
+            >
+              Back to Sign In
+            </Button>
+          </div>
+
+        </div>
+      ) : (
+        <div className=" m-4 lg:m-0  lg:w-[591px] flex flex-col p-5 lg:p-6 gap-4 lg:gap-6">
+          <div className=" space-y-3 text-center ">
+            <h1 className='text-[22px] lg:text-[28px] font-semibold leading-9 text-(--neutral-normal)  '>Forgot Password?</h1>
+            <p className='text-[14px] lg:text-[18px] font-medium leading-7 text-(--gray-dark-active) '>All good. Enter your account’s email address and we’ll send you a link to reset your password.</p>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            <div className="w-full ">
+              <InputField type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="johndoe@gitgi.com"
+                autoComplete="email"
+                required />
+            </div>
+
+
+            {error && (
+              <div className="auth-error">{error}</div>
+            )}
+
+            <div className=' mx-auto flex flex-col w-[252px] items-center mt-6 gap-5'>
+              <Button className='w-full'
+                type="submit"
+                variant='primary'
+                size='medium'
+                disabled={loading}>
+                {loading ? 'Sending…' : 'Send Reset Link'}
+              </Button>
+
+              <div >
+                <Link href="/login" className=' flex items-center gap-2'>
+                  <MaskIcon src='/icons/arrow-left.svg' color='var(--blue-dark-normal)' size={18} />
+                  <span className='text-(--blue-dark-normal) text-[16px] font-medium'> Back to Sign In</span>
+                </Link>
+
+              </div>
+            </div>
+          </form>
+        </div>
+
+
+      )
+      }
+
+    </div >
+
+  );
+}

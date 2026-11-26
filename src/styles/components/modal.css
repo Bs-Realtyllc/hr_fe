@@ -23,6 +23,8 @@
      to scroll to whatever falls off the top/bottom otherwise. Purely
      passive on a modal that already fits, so always-on is safe. */
   max-height: calc(100vh - 48px); /* 48px = .modal-overlay's 24px padding on each side */
+  /* dvh excludes mobile browser bars, so the bottom (submit buttons) isn't hidden behind them. */
+  max-height: calc(100dvh - 48px);
   overflow-y: auto;
 }
 

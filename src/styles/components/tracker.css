@@ -85,6 +85,13 @@
   width: 170px;
   margin-bottom: 0;
 }
+/* Phones: one filter per row at full width instead of 170px with a gap beside it. */
+@media (max-width: 640px) {
+  .tracker-filter-field,
+  .tracker-history-filters > .btn {
+    width: 100%;
+  }
+}
 .tracker-history-empty {
   padding: 24px;
   text-align: center;
@@ -165,4 +172,33 @@
   justify-content: space-between;
   font-size: 13px;
   color: var(--color-text-muted);
+  flex-wrap: wrap;
+  gap: 8px 16px;
 }
+/* "Page x of y" + Previous/Next */
+.tracker-history-pagination > div {
+  align-items: center;
+}
+/* Phones: count on its own line, then page label left and buttons right. */
+@media (max-width: 640px) {
+  .tracker-history-pagination > div {
+    width: 100%;
+  }
+  .tracker-history-pagination > div > span {
+    margin-right: auto;
+  }
+}
+
+/* Small-screen shift card (AttendanceHistory): label column + value column. */
+.tracker-card-fields {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 13.5px;
+}
+.tracker-card-fields dt { color: var(--color-text-muted); }
+.tracker-card-fields dd { margin: 0; min-width: 0; }
+.tracker-card-fields .tracker-table-total-cell { text-align: left; }
+/* Long pause lines wrap inside a phone-width card. */
+.tracker-card-fields .tracker-pause-chip { white-space: normal; }

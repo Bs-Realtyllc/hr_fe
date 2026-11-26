@@ -1,11 +1,4 @@
-export interface AuthUser {
-  id: number;
-  name: string;
-  email: string;
-  role: 'admin' | 'lead' | 'employee';
-  designation?: string;
-  department?: string;
-}
+import type { AuthUser } from '@/types';
 
 export function getUser(): AuthUser | null {
   if (typeof window === 'undefined') return null;

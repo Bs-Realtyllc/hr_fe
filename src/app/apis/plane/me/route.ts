@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-
-const planeBaseUrl = process.env.PLANE_BASE_URL;
-const workspaceSlug = process.env.PLANE_WORKSPACE_SLUG;
+import {
+  PLANE_BASE_URL as planeBaseUrl,
+  PLANE_WORKSPACE_SLUG as workspaceSlug,
+  getPlaneApiKey,
+} from "@/config/plane";
 
 async function planeFetch(path: string, apiKey: string) {
   const res = await fetch(`${planeBaseUrl}${path}`, {
@@ -16,7 +18,7 @@ async function planeFetch(path: string, apiKey: string) {
 }
 
 export async function GET() {
-  const apiKey = process.env.PLANE_API_KEY;
+  const apiKey = getPlaneApiKey();
 
   if (!apiKey) {
     return NextResponse.json(
@@ -31,14 +33,10 @@ export async function GET() {
       planeFetch(`/users/me`, apiKey),
       planeFetch(`/workspaces/${workspaceSlug}/members/`, apiKey),
     ]);
-    // const meData = await me.json();
-    // const membersData = await members.json();
-    const {role} = members.find((m:any)=> m.id = me.id)
+    const memberList = members.results ?? members;
+    const role = memberList.find((m: any) => (m.id ?? m.member_id) === me.id)?.role;
 
-    const updatedMe = {...me, role}
-    
-
-    return NextResponse.json({me: updatedMe})
+    return NextResponse.json({ me: { ...me, role } });
   } catch (err) {
     return NextResponse.json(
       { error: (err as Error).message },

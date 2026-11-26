@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { plusJakartaSans } from '@/fonts';
-import '../styles/global.css';
+import '@/styles/global.css';
 import '@bsrealtyllc/design-system/style.css';
-import AppShell from '@/components/AppShell';
-import StoreProvider from '@/store/storeProvider';
+import StoreProvider from '@/store/StoreProvider';
+import { AuthProvider } from '@/contexts/AuthContext';
+import QueryProvider from '@/providers/QueryProvider';
 import { ToastContainer } from 'react-toastify';
 
 export const metadata: Metadata = {
@@ -28,8 +29,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           draggable
           theme="light"
         />
+        {/* Providers only. The signed-in shell (sidebar, clock, auth guard)
+            lives in app/(app)/layout.tsx; (auth) and (public) pages render bare. */}
         <StoreProvider>
-          <AppShell>{children}</AppShell>
+          <QueryProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </QueryProvider>
         </StoreProvider>
       </body>
     </html>
