@@ -3,9 +3,9 @@ import Link from "next/link";
 
 export default function ErrorPage() {
     return (
-        <div className="fixed inset-0 flex justify-center items-center z-9999">
+        <div className=" mt-0 inset-0 flex justify-center items-center z-99">
             <div className="flex flex-col gap-4 items-center">
-                <img src="/images/error-page-img.svg" alt="" width={150} height={150} />
+                <img src="/images/error.png" alt="" width={150} height={150} />
 
                 <div className="space-y-4">
                     <div className="text-center">

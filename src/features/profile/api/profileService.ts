@@ -11,6 +11,19 @@ import { profileKeys } from "./keys";
 
 const fetchProfile = () => api.get<Profile>("/profile");
 
+export interface DocsType {
+  id: number;
+  empId: number;
+  url: string;
+  name: string;
+  filename: string;
+}
+
+interface DocsResponseType {
+  status: string;
+  files: DocsType[];
+}
+
 export const profileService = {
   /** The current user's profile — from cache when fresh, otherwise fetched. */
   getProfile: async () => {
@@ -33,6 +46,11 @@ export const profileService = {
     await profileService.invalidateProfile();
     await employeesApi.invalidate(); // name/designation/department show in rosters
     return result;
+  },
+
+  // Get document URLs for the profile Documents section
+  getDocuments: async () => {
+    return api.get<DocsResponseType>("/profile/employee-docs");
   },
 
   // Upload documents to one of the PATCH /profile/docs/* endpoints, e.g.

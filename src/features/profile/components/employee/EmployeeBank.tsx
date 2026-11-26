@@ -2,7 +2,7 @@
 
 import Button from "@/components/ui/Button/Button"
 import InputField from "@/components/ui/InputField/InputField"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { profileService } from "@/features/profile/api/profileService"
 import { BSRealtyDropdown } from "@bsrealtyllc/design-system"
 
@@ -43,28 +43,34 @@ const EmployeeBank = () => {
         loadBankData();
     }, []);
 
+    // focus first input field when click edit btn
+    const accountHolderRef = useRef<HTMLInputElement>(null);
+    useEffect(() => {
+        if (isEditingBank) {
+            accountHolderRef.current?.focus();
+        }
+    }, [isEditingBank]);
+
     // Save handler
-    const handleSaveBank = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const handleSaveBank = async () => {
         try {
             await profileService.updateProfile({
                 account_holder_name: bankInfo.accountHolder,
                 account_number: bankInfo.accountNumber,
                 branch_name: bankInfo.branchName,
+                bank_branch_name: bankInfo.branchName,
                 account_type: bankInfo.accountType,
                 bank_name: bankInfo.bankName,
-                bank_branch_name: bankInfo.branchName
-                
             } as any);
-            console.log("Updated Bank Info:", bankInfo);
+
             setIsEditingBank(false);
         } catch (err: any) {
             alert(err.message || "Failed to update bank details");
         }
-    }
+    };
 
-    if (loading) return <div className="p-4 text-gray-500">Loading bank details...</div>;
-    if (error) return <div className="p-4 text-red-500">Error: {error}</div>;
+    if (loading) return <div className="p-4 text-(--gray-normal)">Loading bank details...</div>;
+    if (error) return <div className="p-4 text-(--error-normal)">Error: {error}</div>;
 
     // Reusable Icon Renderer
     const renderMaskIcon = (iconPath: string, size = '14px') => (
@@ -82,49 +88,85 @@ const EmployeeBank = () => {
         }} />
     );
 
+    const formatAccountNumber = (accNum?: string | number | null): string => {
+        const value = String(accNum ?? "").trim();
+        if (!value) return "-";
+
+        // Too short to have middle characters to mask
+        if (value.length <= 5) {
+            return value;
+        }
+
+        const firstThree = value.slice(0, 3);
+        const lastTwo = value.slice(-2);
+        const middleCount = value.length - 5; // total length minus first 3 and last 2
+
+        return `${firstThree}${"*".repeat(middleCount)}${lastTwo}`;
+    };
+
     return (
         <div className="flex flex-col gap-4 mb-20">
             {/* Bank Details */}
             <div className="flex flex-col gap-4 p-3">
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                     <div className="flex gap-2">
                         <div className="flex justify-center items-center bg-(--blue-sky-light) rounded-full h-7 w-7 text-(--blue-salt)">
                             {renderMaskIcon('/icons/building-bank.svg', '20px')}
                         </div>
-                        <h1 className="text-[16px] font-semibold text-(--gray-darker)">Bank Details</h1>
+                        <h1 className="text-[16px] font-semibold text-(--gray-darker)">
+                            Bank Details
+                        </h1>
                     </div>
-                    <div>
+
+                    {isEditingBank ? (
+                        <div className="flex gap-2">
+                            {/* <Button
+                                type="button"
+                                className="text-(--blue-dark-normal)!"
+                                variant="text"
+                                size="xs"
+                                onClick={() => setIsEditingBank(false)}
+                            >
+                                Cancel
+                            </Button> */}
+
+                            <Button
+                                type="button"
+                                size="xs"
+                                onClick={handleSaveBank}
+                            >
+                                Save Changes
+                            </Button>
+                        </div>
+                    ) : (
                         <Button
+                            type="button"
                             className="text-(--blue-dark-normal)!"
                             variant="text"
-                            size="small"
-                            onClick={() => setIsEditingBank(!isEditingBank)}
-                            leftIcon={renderMaskIcon('/icons/edit-4.svg', '20px')}
+                            size="xs"
+                            onClick={() => setIsEditingBank(true)}
+                            leftIcon={renderMaskIcon('/icons/edit-4.svg')}
                         >
-                            {isEditingBank ? "Cancel" : "Edit"}
+                            Edit
                         </Button>
-                    </div>
+                    )}
                 </div>
 
-                <form onSubmit={handleSaveBank}>
+                <div>
                     {/* Account Holder Name */}
                     <div className="flex border-b border-(--neutral-light) justify-between py-3 gap-[6px] sm:items-center sm:gap-[16px] max-sm:flex-col">
                         <label htmlFor="acc-holder" className="text-[14px] font-medium text-(--gray-darker)">
                             Account Holder Name
                         </label>
-                        {isEditingBank ? (
-                            <div className="w-60 max-sm:w-full">
-                                <InputField
-                                    className="h-9! text-end!"
-                                    id="acc-holder"
-                                    type="text"
-                                    value={bankInfo.accountHolder}
-                                    onChange={(e) => setBankInfo({ ...bankInfo, accountHolder: e.target.value })}
-                                />
-                            </div>
-                        ) : (
-                            <p className="text-[14px] font-medium text-(--white-darker)">{bankInfo.accountHolder || '-'}</p>
-                        )}
+                        <div className="max-sm:w-full">
+                            <input ref={accountHolderRef} className="outline-none w-90 max-sm:w-full ring-0 focus:border-0 focus:outline-none focus:ring-0 active:border-0 hover:border-0 text-end text-[14px] font-medium text-(--white-darker) mr-0"
+                                id="acc-holder"
+                                type="text"
+                                value={bankInfo.accountHolder}
+                                onChange={(e) => setBankInfo({ ...bankInfo, accountHolder: e.target.value })}
+                                disabled={!isEditingBank} />
+                        </div>
+
                     </div>
 
                     {/* Account Number */}
@@ -132,19 +174,24 @@ const EmployeeBank = () => {
                         <label htmlFor="acc-num" className="text-[14px] font-medium text-(--gray-darker)">
                             Account Number
                         </label>
-                        {isEditingBank ? (
-                            <div className="w-60 max-sm:w-full">
-                                <InputField
-                                    className="h-9! text-end!"
-                                    id="acc-num"
-                                    type="text"
-                                    value={bankInfo.accountNumber}
-                                    onChange={(e) => setBankInfo({ ...bankInfo, accountNumber: e.target.value })}
-                                />
-                            </div>
-                        ) : (
-                            <p className="text-[14px] font-medium text-(--white-darker)">{bankInfo.accountNumber || '-'}</p>
-                        )}
+                        <div className="max-sm:w-full">
+                            <input className="outline-none w-90 max-sm:w-full ring-0 focus:border-0 focus:outline-none focus:ring-0 active:border-0 hover:border-0 text-end text-[14px] font-medium text-(--white-darker) mr-0"
+                                id="acc-num"
+                                type="text"
+                                value={
+                                    isEditingBank
+                                        ? (bankInfo?.accountNumber ?? "")
+                                        : formatAccountNumber(bankInfo?.accountNumber)
+                                }
+                                onChange={(e) =>
+                                    setBankInfo((prev) => ({
+                                        ...prev,
+                                        accountNumber: e.target.value,
+                                    }))
+                                }
+                                disabled={!isEditingBank}
+                            />
+                        </div>
                     </div>
 
                     {/* Bank Name */}
@@ -152,19 +199,15 @@ const EmployeeBank = () => {
                         <label htmlFor="branch" className="text-[14px] font-medium text-(--gray-darker)">
                             Bank Name
                         </label>
-                        {isEditingBank ? (
-                            <div className="w-60 max-sm:w-full">
-                                <InputField
-                                    className="h-9! text-end!"
-                                    id="bank"
-                                    type="text"
-                                    value={bankInfo.bankName}
-                                    onChange={(e) => setBankInfo({ ...bankInfo, bankName: e.target.value })}
-                                />
-                            </div>
-                        ) : (
-                            <p className="text-[14px] font-medium text-(--white-darker)">{bankInfo.bankName || '-'}</p>
-                        )}
+                        <div className="max-sm:w-full">
+                            <input className="outline-none w-90 max-sm:w-full ring-0 focus:border-0 focus:outline-none focus:ring-0 active:border-0 hover:border-0 text-end text-[14px] font-medium text-(--white-darker) mr-0"
+                                id="bank"
+                                type="text"
+                                value={bankInfo.bankName}
+                                onChange={(e) => setBankInfo({ ...bankInfo, bankName: e.target.value })}
+                                disabled={!isEditingBank} />
+                        </div>
+
                     </div>
 
                     {/* Branch Name */}
@@ -172,19 +215,14 @@ const EmployeeBank = () => {
                         <label htmlFor="branch" className="text-[14px] font-medium text-(--gray-darker)">
                             Branch Name
                         </label>
-                        {isEditingBank ? (
-                            <div className="w-60 max-sm:w-full">
-                                <InputField
-                                    className="h-9! text-end!"
-                                    id="branch"
-                                    type="text"
-                                    value={bankInfo.branchName}
-                                    onChange={(e) => setBankInfo({ ...bankInfo, branchName: e.target.value })}
-                                />
-                            </div>
-                        ) : (
-                            <p className="text-[14px] font-medium text-(--white-darker)">{bankInfo.branchName || '-'}</p>
-                        )}
+                        <div className="max-sm:w-full">
+                            <input className="outline-none w-90 max-sm:w-full ring-0 focus:border-0 focus:outline-none focus:ring-0 active:border-0 hover:border-0 text-end text-[14px] font-medium text-(--white-darker) mr-0"
+                                id="branch"
+                                type="text"
+                                value={bankInfo.branchName}
+                                onChange={(e) => setBankInfo({ ...bankInfo, branchName: e.target.value })}
+                                disabled={!isEditingBank} />
+                        </div>
                     </div>
 
                     {/* Account Type */}
@@ -193,9 +231,9 @@ const EmployeeBank = () => {
                             Account Type
                         </label>
                         {isEditingBank ? (
-                            <div className="w-60 max-sm:w-full pb-1">
+                            <div className="max-sm:w-full">
                                 <BSRealtyDropdown
-                                    className="w-60! max-sm:w-full! text-end!"
+                                    className="w-50! max-sm:w-full! [&_.bsr-dropdown\_input-wrapper]:h-9! [&_.bsr-dropdown\_input]:h-full!"
                                     value={bankInfo.accountType}
                                     onChange={(val: string) => setBankInfo({ ...bankInfo, accountType: val })}
                                     options={[
@@ -209,13 +247,7 @@ const EmployeeBank = () => {
                             <p className="text-[14px] font-medium text-(--white-darker) capitalize">{bankInfo.accountType || '-'}</p>
                         )}
                     </div>
-
-                    {isEditingBank && (
-                        <div className="flex justify-end gap-2 mt-4">
-                            <Button type="submit" size="xs">Save Changes</Button>
-                        </div>
-                    )}
-                </form>
+                </div>
             </div>
         </div>
     )

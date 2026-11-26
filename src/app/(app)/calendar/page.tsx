@@ -1,898 +1,1560 @@
-'use client';
-import { useEffect, useState, useCallback } from 'react';
-import { usePermissions } from '@/hooks/usePermissions';
-import { api } from '@/lib/api';
-import Button from '@/components/ui/Button/Button';
-import { showToast } from '@/lib/toast';
+'use client'
 
-interface CalEvent {
-  date: string;
-  label: string;
-  type: 'meeting' | 'holiday';
-  sub?: string;
-  time?: string;
-  meetLink?: string;
-  meetingId?: number;
+import { useState, useRef, useEffect } from "react"
+import { createPortal } from "react-dom"
+import {
+    startOfMonth,
+    endOfMonth,
+    eachDayOfInterval,
+    format,
+} from "date-fns"
+import { Copy, MapPin, Search } from "lucide-react"
+import Button from "@/components/ui/Button/Button"
+import PageHeader from "@/components/layout/PageHeader"
+import MaskIcon from "@/components/ui/MaskIcon"
+import InputField from "@/components/ui/InputField/InputField"
+import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+    meetingStorage,
+    MeetingEvent
+} from "@/data/meetingStorage";
+import {
+    eventStorage,
+    CalendarEvent
+} from "@/data/eventStorage";
+
+interface Employee {
+    id: number;
+    name: string;
+    email: string;
+    designation?: string;
+    department?: string;
+    profile_picture?: string | null;
 }
-
-interface Meeting {
-  id: number;
-  title: string;
-  description: string | null;
-  start_datetime: string;
-  end_datetime: string;
-  attendees: string[] | null;
-  meet_link: string | null;
-  creator_name: string | null;
-}
-
-interface GoogleStatus {
-  connected: boolean;
-  webhookActive: boolean;
-}
-
-interface Holiday {
-  id: number;
-  name: string;
-  message: string | null;
-  holiday_date: string;
-  year: number;
-}
-
-function getDaysInMonth(year: number, month: number) {
-  return new Date(year, month + 1, 0).getDate();
-}
-function getFirstDayOfMonth(year: number, month: number) {
-  return new Date(year, month, 1).getDay();
-}
-
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const DAYS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-function addMonths(year: number, month: number, delta: number) {
-  const d = new Date(year, month + delta, 1);
-  return { y: d.getFullYear(), m: d.getMonth() };
-}
-
-// ── Icons ────────────────────────────────────────────────────────────────────
-interface IconProps { size?: number; color: string }
-
-function MeetingIcon({ size = 14, color }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="6" width="14" height="12" rx="2" />
-      <path d="M16 10.5L22 7v10l-6-3.5" />
-    </svg>
-  );
-}
-
-function HolidayIcon({ size = 14, color }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 21V4" />
-      <path d="M5 4h13l-3 4 3 4H5" />
-    </svg>
-  );
-}
-
-const TYPE_CONFIG: Record<'meeting' | 'holiday', { color: string; bg: string; Icon: (p: IconProps) => JSX.Element; label: string }> = {
-  meeting: { color: 'var(--color-primary)', bg: 'var(--color-primary-light)', Icon: MeetingIcon, label: 'Meeting' },
-  holiday: { color: 'var(--color-primary)', bg: 'var(--color-primary-light)', Icon: HolidayIcon, label: 'Holiday' },
-};
 
 // ── Schedule Meeting Modal ─────────────────────────────────────────────────
 interface ScheduleModalProps {
-  defaultDate: string;
-  onClose: () => void;
-  onCreated: () => void;
+    defaultDate: string;
+    onClose: () => void;
+    onCreated: (meeting: MeetingEvent) => void;
 }
 
-function ScheduleModal({ defaultDate, onClose, onCreated }: ScheduleModalProps) {
-  const [form, setForm] = useState({
-    title: '', description: '', date: defaultDate,
-    startTime: '10:00', endTime: '10:30', attendees: '',
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+function ScheduleModal({
+    defaultDate,
+    onClose,
+    onCreated
+}: ScheduleModalProps) {
+    const { user } = useAuth();
 
-  const set = (k: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-      setForm(f => ({ ...f, [k]: e.target.value }));
+    const [form, setForm] = useState({
+        title: '',
+        description: '',
+        date: defaultDate,
+        startTime: '10:00',
+        endTime: '10:30',
+        meetLink: '',
+    });
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
-    if (!form.title || !form.date || !form.startTime || !form.endTime) {
-      setError('Title, date, and times are required.'); return;
-    }
-    setLoading(true);
-    try {
-      await api.post('/google/meetings', {
-        title: form.title,
-        description: form.description,
-        start_datetime: `${form.date}T${form.startTime}:00`,
-        end_datetime: `${form.date}T${form.endTime}:00`,
-        attendees: form.attendees
-          ? form.attendees.split(',').map(s => s.trim()).filter(Boolean)
-          : [],
-      });
-      onCreated();
-    } catch {
-      setError('Failed to create meeting. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }
+    const [error, setError] = useState('');
 
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 540 }} onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-8)' }}>
-            <MeetingIcon size={18} color="var(--color-primary)" /> Schedule Meeting
-          </h2>
+    const set = (k: keyof typeof form) =>
+        (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+            setForm(f => ({ ...f, [k]: e.target.value }));
+        };
 
-          <Button variant='text' size='small' onClick={onClose}>X</Button>
-        </div>
-        <form onSubmit={submit}>
-          <div className="form-group">
-            <label className="form-label">Title *</label>
-            <input className="form-input" value={form.title} onChange={set('title')} placeholder="Meeting title" />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Description</label>
-            <textarea className="form-textarea"
-              value={form.description} onChange={set('description')} placeholder="Optional agenda" />
-          </div>
-          <div className="grid-3">
-            <div className="form-group">
-              <label className="form-label">Date *</label>
-              <input type="date" className="form-input" value={form.date} onChange={set('date')} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Start *</label>
-              <input type="time" className="form-input" value={form.startTime} onChange={set('startTime')} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">End *</label>
-              <input type="time" className="form-input" value={form.endTime} onChange={set('endTime')} />
-            </div>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Attendees <span className="text-muted" style={{ fontWeight: 400 }}>(comma-separated emails)</span></label>
-            <input className="form-input" value={form.attendees} onChange={set('attendees')}
-              placeholder="alice@co.com, bob@co.com" />
-          </div>
-          {error && <p className="form-error-text" style={{ marginBottom: 'var(--space-12)' }}>{error}</p>}
-          <div className="flex gap-3 justify-end">
+    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [employeeLoading, setEmployeeLoading] = useState(false);
+    const [employeeError, setEmployeeError] = useState("");
 
-            <Button type='button' variant='text' size='small' onClick={onClose}>Cancel</Button>
-            <Button type='submit' variant='primary' size='small' disabled={loading}>{loading ? 'Scheduling…' : 'Schedule'}</Button>
+    const [employeeSearch, setEmployeeSearch] = useState("");
+    const [showEmployees, setShowEmployees] = useState(false);
+    const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
 
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
+    const attendeeRef = useRef<HTMLDivElement>(null);
 
-// ── Holiday List Modal ───────────────────────────────────────────────────────
-interface HolidayListModalProps {
-  holidays: Holiday[];
-  isAdmin: boolean;
-  onClose: () => void;
-  onChanged: () => void;
-}
+    // Fetch employees
+    useEffect(() => {
+        const fetchEmployees = async () => {
+            try {
+                setEmployeeLoading(true);
+                setEmployeeError("");
 
-function HolidayListModal({ holidays, isAdmin, onClose, onChanged }: HolidayListModalProps) {
-  const [form, setForm] = useState({ name: '', holiday_date: '', message: '' });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+                const response = await api.get<Employee[]>("/employees");
 
-  const todayStart = new Date(new Date().toDateString());
-  const sorted = [...holidays].sort((a, b) => a.holiday_date.localeCompare(b.holiday_date));
-  const upcoming = sorted.filter(h => new Date(h.holiday_date) >= todayStart);
-  const past = sorted.filter(h => new Date(h.holiday_date) < todayStart);
+                setEmployees(Array.isArray(response) ? response : []);
+            } catch (error) {
+                console.error("Failed to fetch employees:", error);
+                setEmployeeError("Unable to load employees.");
+            } finally {
+                setEmployeeLoading(false);
+            }
+        };
 
-  const addHoliday = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name.trim() || !form.holiday_date) return;
-    setSaving(true);
-    setError('');
-    try {
-      await api.post('/holidays', form);
-      setForm({ name: '', holiday_date: '', message: '' });
-      onChanged();
-    } catch {
-      setError('Failed to add holiday');
-    } finally {
-      setSaving(false);
-    }
-  };
+        fetchEmployees();
+    }, []);
 
-  const removeHoliday = async (id: number) => {
-    if (!confirm('Remove this holiday?')) return;
-    await api.delete(`/holidays/${id}`);
-    onChanged();
-  };
+    useEffect(() => {
+        if (!user) return;
 
-  const renderCard = (h: Holiday, isPast: boolean) => (
-    <div key={h.id} style={{
-      borderRadius: 10,
-      border: '1px solid var(--color-border)',
-      borderLeft: `3px solid ${TYPE_CONFIG.holiday.color}`,
-      padding: '12px 14px',
-      opacity: isPast ? 0.6 : 1,
-      background: isPast ? 'var(--color-bg)' : 'var(--color-surface)',
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 700, fontSize: 14 }}>
-          <span className="icon-mask" style={{
-            width: 14, height: 14, backgroundColor: 'var(--color-text-h1)',
-            WebkitMaskImage: 'url(/icons/gift.svg)', maskImage: 'url(/icons/gift.svg)',
-          }} />
-          {h.name}
-        </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}>
-            {new Date(h.holiday_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-          </span>
-          {isAdmin && (
-            <button className="btn btn-sm btn-danger" onClick={() => removeHoliday(h.id)}>Remove</button>
-          )}
-        </div>
-      </div>
-      {h.message && (
-        <p style={{ fontSize: 13, color: 'var(--color-text-body)', marginTop: 6, lineHeight: 1.5 }}>{h.message}</p>
-      )}
-    </div>
-  );
+        const creator = employees.find(employee =>
+            employee.id === user.id ||
+            employee.email.toLowerCase() === user.email.toLowerCase()
+        ) ?? {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            designation: user.designation,
+            department: user.department
+        };
 
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 560, maxHeight: '88vh', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-        <div className="modal-header" style={{ padding: '18px 22px', margin: 0, borderBottom: '1px solid var(--color-border)' }}>
-          <div>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
-              <span className="icon-mask" style={{
-                width: 16, height: 16, backgroundColor: 'var(--color-primary)',
-                WebkitMaskImage: 'url(/icons/gift.svg)', maskImage: 'url(/icons/gift.svg)',
-              }} />
-              Company Holidays
-            </h2>
-            <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 2 }}>{holidays.length} fixed paid holidays this year</div>
-          </div>
+        setSelectedEmployees(previous => {
+            const selectedIndex = previous.findIndex(employee =>
+                employee.id === creator.id ||
+                employee.email.toLowerCase() === creator.email.toLowerCase()
+            );
+            if (selectedIndex === -1) return [creator, ...previous];
+            return previous.map((employee, index) =>
+                index === selectedIndex ? { ...employee, ...creator } : employee
+            );
+        });
+    }, [employees, user]);
 
-          <Button
-            variant='text'
-            size='small' onClick={onClose}>X</Button>
-        </div>
+    // Search employees
+    const filteredEmployees = employees.filter(employee => {
+        const search = employeeSearch.trim().toLowerCase();
 
-        <div style={{ padding: 18, overflowY: 'auto' }}>
-          {isAdmin && (
-            <form onSubmit={addHoliday} style={{ marginBottom: 18, background: 'var(--color-bg)', padding: 14, borderRadius: 10 }}>
-              <div className="grid-2" style={{ marginBottom: 10 }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Holiday Name</label>
-                  <input className="form-input" placeholder="e.g. Dashain" value={form.name}
-                    onChange={e => setForm({ ...form, name: e.target.value })} />
+        return (
+            employee.name?.toLowerCase().includes(search) ||
+            employee.email?.toLowerCase().includes(search) ||
+            employee.designation?.toLowerCase().includes(search) ||
+            employee.department?.toLowerCase().includes(search)
+        );
+    });
+
+    // Select employee
+    const handleSelectEmployee = (employee: Employee) => {
+        setSelectedEmployees(prev => {
+            if (prev.some(item => item.id === employee.id)) {
+                return prev;
+            }
+
+            return [...prev, employee];
+        });
+
+        setEmployeeSearch("");
+        setShowEmployees(true);
+    };
+
+    // Remove employee
+    const handleRemoveEmployee = (id: number) => {
+        setSelectedEmployees(prev =>
+            prev.filter(employee => employee.id !== id)
+        );
+    };
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (
+                attendeeRef.current &&
+                !attendeeRef.current.contains(event.target as Node)
+            ) {
+                setShowEmployees(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+
+    // Generate mock meeting link
+    const generateMeetLink = () => {
+        const code = Math.random().toString(36).substring(2, 5)
+            + '-' + Math.random().toString(36).substring(2, 6)
+            + '-' + Math.random().toString(36).substring(2, 5);
+
+        setForm(f => ({
+            ...f,
+            meetLink: `https://meet.google.com/${code}`
+        }));
+    };
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+
+        if (!form.title.trim() || !form.date || !form.startTime || !form.endTime) {
+            setError('Title, date, and times are required.');
+            return;
+        }
+
+        if (form.endTime <= form.startTime) {
+            setError('End time must be later than start time.');
+            return;
+        }
+
+        const newMeeting: MeetingEvent = {
+            id: Date.now(),
+            title: form.title.trim(),
+            description: form.description || null,
+            start_datetime: `${form.date}T${form.startTime}:00`,
+            end_datetime: `${form.date}T${form.endTime}:00`,
+            attendees: selectedEmployees.map(employee => employee.email),
+            meet_link: form.meetLink || null,
+            creator_name: 'Current User',
+        };
+
+        onCreated(newMeeting);
+    };
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div
+                className="w-full md:w-[590px] lg:w-[590px] py-6 px-7 bg-(--soft-white-light) flex flex-col gap-5 rounded-lg"
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="flex justify-between py-2">
+                    <h2 className="flex items-center gap-2">
+                        <MaskIcon src="/icons/google-meet.svg" size={24} />
+                        <span className="text-[20px] font-semibold leading-7 text-[#17212B]">
+                            Schedule Meeting
+                        </span>
+                    </h2>
+
+                    <MaskIcon
+                        src="/icons/cross.svg"
+                        size={20}
+                        onClick={onClose}
+                    />
                 </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Date</label>
-                  <input className="form-input" type="date" value={form.holiday_date}
-                    onChange={e => setForm({ ...form, holiday_date: e.target.value })} />
+
+                <form onSubmit={submit} className="space-y-5">
+                    <div className="flex flex-col gap-4">
+
+                        <div className="flex flex-col gap-2">
+                            <label className="form-label">
+                                Title <span>*</span>
+                            </label>
+                            <InputField
+                                value={form.title}
+                                onChange={set('title')}
+                                placeholder="Meeting Title"
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <label className="form-label">Description</label>
+
+                            <div className="border border-(--soft-white-dark-hover) rounded-md hover:border-(--blue-dark-normal) focus-within:border-(--blue-dark-normal)">
+                                <textarea
+                                    className="block w-full h-full border-0 bg-transparent px-4 py-2 focus:outline-none resize-none"
+                                    rows={3}
+                                    value={form.description}
+                                    onChange={set('description')}
+                                    placeholder="Agenda Of Meeting"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 justify-between">
+                            <div className="flex flex-col gap-2">
+                                <label className="form-label">
+                                    Date <span>*</span>
+                                </label>
+                                <InputField
+                                    type="date"
+                                    value={form.date}
+                                    onChange={set('date')}
+                                />
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <label className="form-label">
+                                    Start <span>*</span>
+                                </label>
+                                <InputField
+                                    type="time"
+                                    value={form.startTime}
+                                    onChange={set('startTime')}
+                                />
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <label className="form-label">
+                                    End <span>*</span>
+                                </label>
+                                <InputField
+                                    type="time"
+                                    value={form.endTime}
+                                    onChange={set('endTime')}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <div className="flex justify-between gap-2 items-end ">
+                                <div className="flex flex-col gap-2 w-[364px]">
+                                    <label className="form-label">
+                                        Video conference URL
+                                    </label>
+                                    <InputField
+                                        value={form.meetLink}
+                                        onChange={set('meetLink')}
+                                        placeholder="Meeting URL"
+                                    />
+
+                                </div>
+
+                                <Button
+                                    type="button"
+                                    className="h-[44px]!"
+                                    onClick={generateMeetLink}
+                                >
+                                    Auto-Generate
+                                </Button>
+                            </div>
+                            <p className="text-[12px] text-(--info-normal)">Add a link, or auto-generate one, to save this interview.</p>
+                        </div>
+
+
+                        <div className="flex flex-col gap-2">
+                            <label className="form-label">Attendees</label>
+
+                            <div className="relative" ref={attendeeRef}>
+                                <div className="relative">
+                                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B]" />
+                                    <input
+                                        type="text"
+                                        value={employeeSearch}
+                                        onFocus={() => setShowEmployees(true)}
+                                        onChange={(e) => {
+                                            setEmployeeSearch(e.target.value);
+                                            setShowEmployees(true);
+                                        }}
+                                        placeholder="Search by name or email to add attendees"
+                                        className="h-[40px] w-full rounded-md border border-(--soft-white-dark-hover) bg-white pl-9 pr-3 text-xs outline-none focus:border-(--blue-dark-normal)"
+                                    />
+                                </div>
+
+                                {showEmployees && (
+                                    <div className="absolute z-20 mt-1 max-h-[160px] w-full overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                                        {employeeLoading ? (
+                                            <p className="p-3 text-xs text-gray-500">Loading employees...</p>
+                                        ) : employeeError ? (
+                                            <p className="p-3 text-xs text-red-500">{employeeError}</p>
+                                        ) : filteredEmployees.filter(employee =>
+                                            !selectedEmployees.some(selected => selected.id === employee.id)
+                                        ).length > 0 ? (
+                                            filteredEmployees
+                                                .filter(employee => !selectedEmployees.some(selected => selected.id === employee.id))
+                                                .map(employee => (
+                                                    <button
+                                                        key={employee.id}
+                                                        type="button"
+                                                        onClick={() => handleSelectEmployee(employee)}
+                                                        className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
+                                                    >
+                                                        <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-[#EAF3F9] text-[10px] font-semibold text-[#235E94]">
+                                                            {employee.profile_picture ? (
+                                                                <img
+                                                                    src={employee.profile_picture.startsWith("http")
+                                                                        ? employee.profile_picture
+                                                                        : `${(process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/api\/?$/, "")}/uploads/profile/photo/${employee.profile_picture}`}
+                                                                    alt=""
+                                                                    className="h-full w-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                employee.name.split(" ").map(word => word[0]).join("").slice(0, 2)
+                                                            )}
+                                                        </span>
+                                                        <span className="min-w-0 flex-1">
+                                                            <span className="block truncate text-xs font-medium text-[#17212B]">{employee.name}</span>
+                                                            <span className="block truncate text-[10px] text-gray-500">{employee.email}</span>
+                                                        </span>
+                                                    </button>
+                                                ))
+                                        ) : (
+                                            <p className="p-3 text-xs text-gray-500">
+                                                {employeeSearch ? "No employees found." : "No more employees to add."}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                                {selectedEmployees.length > 0 && (
+                                    <div className="mt-2">
+                                        <p className="mb-1 text-[9px] font-medium uppercase text-[#64748B]">
+                                            Selected attendees ({selectedEmployees.length})
+                                        </p>
+                                        <div className="space-y-1">
+                                            {selectedEmployees.map(employee => (
+                                                <div key={employee.id} className="flex items-center gap-2 py-1">
+                                                    <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-[#EAF3F9] text-[10px] font-semibold text-[#235E94]">
+                                                        {employee.profile_picture ? (
+                                                            <img
+                                                                src={employee.profile_picture.startsWith("http")
+                                                                    ? employee.profile_picture
+                                                                    : `${(process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/api\/?$/, "")}/uploads/profile/photo/${employee.profile_picture}`}
+                                                                alt=""
+                                                                className="h-full w-full object-cover"
+                                                            />
+                                                        ) : employee.name.split(" ").map(word => word[0]).join("").slice(0, 2)}
+                                                    </span>
+                                                    <span className="min-w-0 flex-1">
+                                                        <span className="block truncate text-[11px] font-medium text-[#17212B]">
+                                                            {employee.name}
+                                                            {user && (
+                                                                employee.id === user.id ||
+                                                                employee.email.toLowerCase() === user.email.toLowerCase()
+                                                            ) && (
+                                                                <span className="ml-1 rounded bg-[#DDF0FA] px-1 text-[9px]">You</span>
+                                                            )}
+                                                        </span>
+                                                        <span className="block truncate text-[9px] text-gray-500">{employee.email}</span>
+                                                    </span>
+                                                    {employee.designation && (
+                                                        <span className="text-[10px] text-gray-500">{employee.designation}</span>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveEmployee(employee.id)}
+                                                        className="px-1 text-gray-500 hover:text-red-500"
+                                                        aria-label={`Remove ${employee.name}`}
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+
+                        {error && (
+                            <p className="form-error-text">{error}</p>
+                        )}
+                    </div>
+
+                    <div className="flex gap-3 justify-end">
+                        <Button
+                            type="button"
+                            variant="text"
+                            size="small"
+                            onClick={onClose}
+                        >
+                            Cancel
+                        </Button>
+
+                        <Button
+                            type="submit"
+                            variant="primary"
+                            size="small"
+                        >
+                            Schedule
+                        </Button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+interface SuccessMeetingPopupProps {
+    meeting: MeetingEvent;
+    onClose: () => void;
+}
+
+function SuccessMeetingPopup({
+    meeting,
+    onClose
+}: SuccessMeetingPopupProps) {
+    return createPortal(
+        <div className="modal-overlay" onClick={onClose}>
+            <div
+                className="w-full border max-w-[452px] bg-(--soft-white-light) rounded-lg p-8 flex flex-col gap-4"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex flex-col gap-2 items-center">
+                    <img src="/icons/success-icon.svg" alt="" className="h-10 w-10" />
+
+                    <p className="text-[12px] text-(--gray-dark-hover)">
+                        YOU'RE ALL SET
+                    </p>
+
+                    <div className="flex flex-col gap-2 items-center text-center">
+                        <h2 className="text-[20px] font-semibold text-[#17212B]">
+                            Meeting Schedule
+                        </h2>
+
+                        <p className="text-[12px] text-(--gray-dark-hover)">
+                            Your meeting has been successfully scheduled for
+                            {" "}
+                            {format(
+                                new Date(meeting.start_datetime),
+                                "MMMM dd, yyyy"
+                            )}
+                            {" at "}
+                            {format(
+                                new Date(meeting.start_datetime),
+                                "hh:mm a"
+                            )}.
+                        </p>
+
+
+                    </div>
                 </div>
-              </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Message <span className="text-muted" style={{ fontWeight: 400 }}>(optional)</span></label>
-                <input className="form-input" placeholder="e.g. Wishing you a joyful celebration! 🎉" value={form.message}
-                  onChange={e => setForm({ ...form, message: e.target.value })} />
-              </div>
-              {error && <p className="form-error-text">{error}</p>}
-              <div className="flex justify-end" style={{ marginTop: 10 }}>
+
+                <div className="flex w-full">
+                    <Button className="w-full"
+                        size="small" onClick={onClose}>
+                        Done
+                    </Button>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+}
+
+// Create Event
+interface EventModalProps {
+    defaultDate: string;
+    onClose: () => void;
+    onCreated: (event: CalendarEvent) => void;
+}
+
+function EventModal({
+    defaultDate,
+    onClose,
+    onCreated
+}: EventModalProps) {
+    const { user } = useAuth();
+
+    const [form, setForm] = useState({
+        title: "",
+        date: defaultDate,
+        startTime: "10:00",
+        endTime: "11:00",
+        eventType: "in-person" as "in-person" | "online",
+        location: "",
+        meetLink: ""
+    });
+
+    const [error, setError] = useState("");
+    const [copyError, setCopyError] = useState("");
+    const [copied, setCopied] = useState(false);
+    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [employeeLoading, setEmployeeLoading] = useState(false);
+    const [employeeError, setEmployeeError] = useState("");
+    const [employeeSearch, setEmployeeSearch] = useState("");
+    const [showEmployees, setShowEmployees] = useState(false);
+    const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
+    const attendeeRef = useRef<HTMLDivElement>(null);
+
+    const set = (key: Exclude<keyof typeof form, "eventType">) =>
+        (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+            setForm(prev => ({
+                ...prev,
+                [key]: e.target.value
+            }));
+        };
+
+    useEffect(() => {
+        const fetchEmployees = async () => {
+            try {
+                setEmployeeLoading(true);
+                setEmployeeError("");
+                const response = await api.get<Employee[]>("/employees");
+                setEmployees(Array.isArray(response) ? response : []);
+            } catch (error) {
+                console.error("Failed to fetch employees:", error);
+                setEmployeeError("Unable to load employees.");
+            } finally {
+                setEmployeeLoading(false);
+            }
+        };
+
+        fetchEmployees();
+    }, []);
+
+    useEffect(() => {
+        if (!user) return;
+
+        const creator = employees.find(employee =>
+            employee.id === user.id ||
+            employee.email.toLowerCase() === user.email.toLowerCase()
+        ) ?? {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            designation: user.designation,
+            department: user.department
+        };
+
+        setSelectedEmployees(previous => {
+            const selectedIndex = previous.findIndex(employee =>
+                employee.id === creator.id ||
+                employee.email.toLowerCase() === creator.email.toLowerCase()
+            );
+            if (selectedIndex === -1) return [creator, ...previous];
+            return previous.map((employee, index) =>
+                index === selectedIndex ? { ...employee, ...creator } : employee
+            );
+        });
+    }, [employees, user]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (attendeeRef.current && !attendeeRef.current.contains(event.target as Node)) {
+                setShowEmployees(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const filteredEmployees = employees.filter(employee => {
+        const search = employeeSearch.trim().toLowerCase();
+        return (
+            employee.name?.toLowerCase().includes(search) ||
+            employee.email?.toLowerCase().includes(search) ||
+            employee.designation?.toLowerCase().includes(search) ||
+            employee.department?.toLowerCase().includes(search)
+        );
+    });
+
+    const generateMeetLink = () => {
+        const code = Math.random().toString(36).substring(2, 5)
+            + "-" + Math.random().toString(36).substring(2, 6)
+            + "-" + Math.random().toString(36).substring(2, 5);
+        setForm(prev => ({ ...prev, meetLink: `https://meet.google.com/${code}` }));
+        setCopied(false);
+    };
+
+    const copyMeetLink = async () => {
+        if (!form.meetLink) return;
+
+        try {
+            await navigator.clipboard.writeText(form.meetLink);
+            setCopied(true);
+            setCopyError("");
+        } catch (copyFailure) {
+            console.error("Failed to copy meeting link:", copyFailure);
+            setCopied(false);
+            setCopyError("Unable to copy link.");
+        }
+    };
+
+    const handleSelectEmployee = (employee: Employee) => {
+        setSelectedEmployees(prev => prev.some(item => item.id === employee.id)
+            ? prev
+            : [...prev, employee]);
+        setEmployeeSearch("");
+        setShowEmployees(true);
+    };
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        setError("");
+
+        if (
+            !form.title.trim() ||
+            !form.date ||
+            !form.startTime ||
+            !form.endTime ||
+            (form.eventType === "in-person" && !form.location.trim())
+        ) {
+            setError(form.eventType === "in-person"
+                ? "Event name, date, times, and location are required."
+                : "Event name, date, and times are required.");
+            return;
+        }
+
+        if (form.endTime <= form.startTime) {
+            setError("End time must be later than start time.");
+            return;
+        }
+
+        const newEvent: CalendarEvent = {
+            id: Date.now(),
+            title: form.title.trim(),
+            description: null,
+            start_datetime: `${form.date}T${form.startTime}:00`,
+            end_datetime: `${form.date}T${form.endTime}:00`,
+            location: form.eventType === "in-person" ? form.location.trim() : null,
+            event_type: form.eventType,
+            meet_link: form.eventType === "online" ? form.meetLink.trim() || null : null,
+            attendees: selectedEmployees.map(employee => employee.email),
+            creator_name: "Current User"
+        };
+
+        onCreated(newEvent);
+    };
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div
+                className="w-full max-w-[440px] max-h-[90vh] overflow-y-auto p-5 bg-(--soft-white-light) flex flex-col gap-4 rounded-lg"
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="flex justify-between items-center">
+                    <h2 className="text-[16px] font-semibold text-[#17212B]">
+                        Create Event
+                    </h2>
+
+                    <MaskIcon
+                        src="/icons/cross.svg"
+                        size={20}
+                        onClick={onClose}
+                    />
+                </div>
+
+                <form onSubmit={submit} className="space-y-4">
+                    <div className="flex flex-col gap-3">
+
+                        <div className="flex flex-col gap-2">
+                            <label className="form-label">
+                                Event Name <span>*</span>
+                            </label>
+
+                            <InputField
+                                value={form.title}
+                                onChange={set("title")}
+                                placeholder="Enter event name"
+                            />
+                        </div>
+
+                        <div
+                            className="grid grid-cols-2 rounded-md border border-(--soft-white-dark-hover) p-0.5"
+                            role="group"
+                            aria-label="Event type"
+                        >
+                            {(["in-person", "online"] as const).map(type => (
+                                <button
+                                    key={type}
+                                    type="button"
+                                    aria-pressed={form.eventType === type}
+                                    onClick={() => {
+                                        setForm(prev => ({ ...prev, eventType: type }));
+                                        if (type === "online" && !form.meetLink) generateMeetLink();
+                                        setCopyError("");
+                                    }}
+                                    className={`h-8 rounded text-xs font-medium transition-colors ${form.eventType === type
+                                        ? "bg-[#DDF0FA] text-[#17212B]"
+                                        : "text-[#17212B] hover:bg-[#F3F7FA]"
+                                        }`}
+                                >
+                                    {type === "in-person" ? "In Person" : "Online"}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <label className="form-label">Date <span>*</span></label>
+
+                            <InputField
+                                type="date"
+                                value={form.date}
+                                onChange={set("date")}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="flex min-w-0 flex-col gap-2">
+                                <label className="form-label">Start <span>*</span></label>
+
+                                <InputField
+                                    type="time"
+                                    value={form.startTime}
+                                    onChange={set("startTime")}
+                                />
+                            </div>
+
+                            <div className="flex min-w-0 flex-col gap-2">
+                                <label className="form-label">End <span>*</span></label>
+
+                                <InputField
+                                    type="time"
+                                    value={form.endTime}
+                                    onChange={set("endTime")}
+                                />
+                            </div>
+                        </div>
+
+                        {form.eventType === "in-person" ? (
+                            <div className="flex flex-col gap-2">
+                                <label className="form-label">Location <span>*</span></label>
+                                <div className="relative">
+                                    <MapPin size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B]" />
+                                    <InputField
+                                        value={form.location}
+                                        onChange={set("location")}
+                                        placeholder="Enter event location"
+                                        className="[&_.input-field__input]:pl-9"
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-2">
+                                <label className="form-label">Video conference URL</label>
+                                <div className="flex gap-2">
+                                    <InputField
+                                        value={form.meetLink}
+                                        onChange={set("meetLink")}
+                                        placeholder="https://meet.google.com/..."
+                                        className="min-w-0 flex-1"
+                                        onInput={() => setCopied(false)}
+                                    />
+                                    <Button
+                                        type="button"
+                                        size="small"
+                                        leftIcon={<Copy size={14} />}
+                                        onClick={copyMeetLink}
+                                    >
+                                        {copied ? "Copied" : "Copy"}
+                                    </Button>
+                                </div>
+                                <p className="text-[11px] text-(--info-normal)">
+                                    Add a link, or{" "}
+                                    <button type="button" className="underline" onClick={generateMeetLink}>
+                                        generate one
+                                    </button>
+                                    , to share with attendees.
+                                </p>
+                                {copyError && <p className="text-xs text-red-600" role="alert">{copyError}</p>}
+                            </div>
+                        )}
+
+                        <div className="flex flex-col gap-2">
+                            <label className="form-label">Attendees</label>
+                            <div className="relative" ref={attendeeRef}>
+                                <div className="relative">
+                                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B]" />
+                                    <input
+                                        type="text"
+                                        value={employeeSearch}
+                                        onFocus={() => setShowEmployees(true)}
+                                        onChange={event => {
+                                            setEmployeeSearch(event.target.value);
+                                            setShowEmployees(true);
+                                        }}
+                                        placeholder="Search by name or email to add attendees"
+                                        className="h-[40px] w-full rounded-md border border-(--soft-white-dark-hover) bg-white pl-9 pr-3 text-xs outline-none focus:border-(--blue-dark-normal)"
+                                    />
+                                </div>
+                                {showEmployees && (
+                                    <div className="absolute z-20 mt-1 max-h-[160px] w-full overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                                        {employeeLoading ? (
+                                            <p className="p-3 text-xs text-gray-500">Loading employees...</p>
+                                        ) : employeeError ? (
+                                            <p className="p-3 text-xs text-red-500">{employeeError}</p>
+                                        ) : filteredEmployees.filter(employee =>
+                                            !selectedEmployees.some(selected => selected.id === employee.id)
+                                        ).length > 0 ? (
+                                            filteredEmployees
+                                                .filter(employee => !selectedEmployees.some(selected => selected.id === employee.id))
+                                                .map(employee => (
+                                                    <button
+                                                        key={employee.id}
+                                                        type="button"
+                                                        onClick={() => handleSelectEmployee(employee)}
+                                                        className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
+                                                    >
+                                                        <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-[#EAF3F9] text-[10px] font-semibold text-[#235E94]">
+                                                            {employee.profile_picture ? (
+                                                                <img
+                                                                    src={employee.profile_picture.startsWith("http")
+                                                                        ? employee.profile_picture
+                                                                        : `${(process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/api\/?$/, "")}/uploads/profile/photo/${employee.profile_picture}`}
+                                                                    alt=""
+                                                                    className="h-full w-full object-cover"
+                                                                />
+                                                            ) : employee.name.split(" ").map(word => word[0]).join("").slice(0, 2)}
+                                                        </span>
+                                                        <span className="min-w-0 flex-1">
+                                                            <span className="block truncate text-xs font-medium text-[#17212B]">{employee.name}</span>
+                                                            <span className="block truncate text-[10px] text-gray-500">{employee.email}</span>
+                                                        </span>
+                                                    </button>
+                                                ))
+                                        ) : (
+                                            <p className="p-3 text-xs text-gray-500">
+                                                {employeeSearch ? "No employees found." : "No more employees to add."}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                                {selectedEmployees.length > 0 && (
+                                    <div className="mt-2">
+                                        <p className="mb-1 text-[9px] font-medium uppercase text-[#64748B]">
+                                            Selected attendees ({selectedEmployees.length})
+                                        </p>
+                                        <div className="space-y-1">
+                                            {selectedEmployees.map(employee => (
+                                                <div key={employee.id} className="flex items-center gap-2 py-1">
+                                                    <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-[#EAF3F9] text-[10px] font-semibold text-[#235E94]">
+                                                        {employee.profile_picture ? (
+                                                            <img
+                                                                src={employee.profile_picture.startsWith("http")
+                                                                    ? employee.profile_picture
+                                                                    : `${(process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/api\/?$/, "")}/uploads/profile/photo/${employee.profile_picture}`}
+                                                                alt=""
+                                                                className="h-full w-full object-cover"
+                                                            />
+                                                        ) : employee.name.split(" ").map(word => word[0]).join("").slice(0, 2)}
+                                                    </span>
+                                                    <span className="min-w-0 flex-1">
+                                                        <span className="block truncate text-[11px] font-medium text-[#17212B]">
+                                                            {employee.name}
+                                                            {user && (
+                                                                employee.id === user.id ||
+                                                                employee.email.toLowerCase() === user.email.toLowerCase()
+                                                            ) && (
+                                                                <span className="ml-1 rounded bg-[#DDF0FA] px-1 text-[9px]">You</span>
+                                                            )}
+                                                        </span>
+                                                        <span className="block truncate text-[9px] text-gray-500">{employee.email}</span>
+                                                    </span>
+                                                    {employee.designation && (
+                                                        <span className="text-[10px] text-gray-500">{employee.designation}</span>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedEmployees(prev => prev.filter(item => item.id !== employee.id))}
+                                                        className="px-1 text-gray-500 hover:text-red-500"
+                                                        aria-label={`Remove ${employee.name}`}
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {error && (
+                            <p className="form-error-text">{error}</p>
+                        )}
+                    </div>
+
+                    <div className="flex justify-end gap-3">
+                        <Button
+                            type="button"
+                            variant="text"
+                            size="small"
+                            onClick={onClose}
+                        >
+                            Cancel
+                        </Button>
+
+                        <Button
+                            type="submit"
+                            variant="primary"
+                            size="small"
+                        >
+                            Create Event
+                        </Button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+// success event
+interface SuccessEventPopupProps {
+    event: CalendarEvent;
+    onClose: () => void;
+}
+
+function SuccessEventPopup({
+    event,
+    onClose
+}: SuccessEventPopupProps) {
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    if (!mounted) return null;
+
+    return createPortal(
+        <div className="modal-overlay" onClick={onClose}>
+            <div
+                className="w-full max-w-[452px] bg-(--soft-white-light) rounded-lg p-8 flex flex-col gap-4"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex flex-col gap-2 items-center">
+                    <img
+                        src="/icons/success-icon.svg"
+                        alt=""
+                        className="h-10 w-10"
+                    />
+
+                    <p className="text-[12px] text-(--gray-dark-hover)">
+                        YOU'RE ALL SET
+                    </p>
+
+                    <div className="flex flex-col gap-2 items-center text-center">
+                        <h2 className="text-[20px] font-semibold text-[#17212B]">
+                            Event Created
+                        </h2>
+
+                        <p className="text-[12px] text-(--gray-dark-hover)">
+                            Your event{" "}
+                            <span className="font-semibold">
+                                {event.title}
+                            </span>{" "}
+                            has been successfully created for{" "}
+                            {format(
+                                new Date(event.start_datetime),
+                                "MMMM dd, yyyy"
+                            )}
+                            {" at "}
+                            {format(
+                                new Date(event.start_datetime),
+                                "hh:mm a"
+                            )}.
+                        </p>
+                    </div>
+                </div>
 
                 <Button
-                  variant='primary'
-                  size='small'
-                  type='submit'
-                  disabled={saving}
-                  leftIcon={
-                    <span
-                      className="icon-mask"
-                      style={{
-                        width: 16,
-                        height: 16,
-                        WebkitMaskImage: `url(/icons/plus.svg)`,
-                        maskImage: `url(/icons/plus.svg)`,
-                      }}
-                    />
-                  }
+                    className="w-full"
+                    size="small"
+                    onClick={onClose}
                 >
-                  {saving ? 'Adding…' : 'Add'}
+                    Done
                 </Button>
-              </div>
-            </form>
-          )}
-
-          {holidays.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <div style={{
-                width: 48, height: 48, borderRadius: 12, background: 'var(--color-primary-light)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px',
-              }}>
-                <span className="icon-mask" style={{
-                  width: 22, height: 22, backgroundColor: 'var(--color-primary)',
-                  WebkitMaskImage: 'url(/icons/gift.svg)', maskImage: 'url(/icons/gift.svg)',
-                }} />
-              </div>
-              <p className="text-muted" style={{ fontSize: 13 }}>
-                No holidays have been added yet{isAdmin ? ' — add the official list above.' : '.'}
-              </p>
             </div>
-          ) : (
-            <>
-              {upcoming.length > 0 && (
-                <>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-text-muted)', marginBottom: 8 }}>
-                    Upcoming
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: past.length ? 20 : 0 }}>
-                    {upcoming.map(h => renderCard(h, false))}
-                  </div>
-                </>
-              )}
-              {past.length > 0 && (
-                <>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-text-muted)', marginBottom: 8 }}>
-                    Past
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {past.map(h => renderCard(h, true))}
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+        </div>,
+        document.body
+    );
 }
 
-// ── Day Events Drawer ────────────────────────────────────────────────────────
-interface DayEventsDrawerProps {
-  dateStr: string;
-  dayEvents: CalEvent[];
-  onClose: () => void;
-  onAddMeeting: () => void;
-}
+const WEEKDAYS = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+]
+const DROPDOWN_WEEKDAYS = [
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat",
+    "Sun",
+]
 
-function DayEventsDrawer({ dateStr, dayEvents, onClose, onAddMeeting }: DayEventsDrawerProps) {
-  const heading = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-  });
+// Main page
+const CalendarPage = () => {
+    const [currentDate, setCurrentDate] = useState<Date>(new Date())
+    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+    const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false)
+    const [events, setEvents] = useState<MeetingEvent[]>([]);
+    const dropdownRef = useRef<HTMLDivElement>(null)
+    const [showModal, setShowModal] = useState(false);
+    const [modalDate, setModalDate] = useState(format(new Date(), "yyyy-MM-dd"))
+    const [successMeeting, setSuccessMeeting] = useState<MeetingEvent | null>(null);
+    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
 
-  return (
-    <div className="drawer-overlay" onClick={onClose}>
-      <div className="drawer" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
-        <div className="drawer-header">
-          <h2 style={{ fontSize: 16 }}>{heading}</h2>
-          <button className="modal-close" onClick={onClose}>×</button>
-        </div>
-        <div className="drawer-body">
-          {dayEvents.length === 0 ? (
-            <p className="text-muted" style={{ fontSize: 13 }}>Nothing scheduled on this day.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {dayEvents.map((ev, i) => {
-                const cfg = TYPE_CONFIG[ev.type];
-                const Icon = cfg.Icon;
-                return (
-                  <div key={i} style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 12,
-                    border: '1px solid var(--color-border)', borderRadius: 10, padding: 12,
-                  }}>
-                    <div style={{
-                      width: 34, height: 34, borderRadius: 8, background: cfg.bg,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                    }}>
-                      <Icon size={16} color={cfg.color} />
-                    </div>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14 }}>{ev.label}</div>
-                      <div className="text-muted" style={{ fontSize: 12.5, marginTop: 2 }}>
-                        {ev.time || ev.sub || cfg.label}
-                      </div>
-                      {ev.sub && ev.time && (
-                        <div className="text-muted" style={{ fontSize: 12, marginTop: 1 }}>{ev.sub}</div>
-                      )}
-                      {ev.meetLink && (
-                        <a href={ev.meetLink} target="_blank" rel="noreferrer" style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 6,
-                          fontSize: 12.5, color: 'var(--color-primary)', fontWeight: 700, textDecoration: 'none',
-                        }}>
-                          Join
-                          <span className="icon-mask" style={{
-                            width: 12, height: 12, backgroundColor: 'var(--color-primary)',
-                            WebkitMaskImage: 'url(/icons/external-link.svg)', maskImage: 'url(/icons/external-link.svg)',
-                          }} />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+    const [showEventModal, setShowEventModal] = useState(false);
 
-          <button className="btn btn-secondary btn-sm" style={{ width: '100%', justifyContent: 'center', marginTop: 16 }} onClick={onAddMeeting}>
-            <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }} />
-            Schedule a meeting on this day
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+    const [eventModalDate, setEventModalDate] = useState(
+        format(new Date(), "yyyy-MM-dd")
+    );
 
-// ── Main Page ──────────────────────────────────────────────────────────────
-export default function CalendarPage() {
-  const today = new Date();
-  const { isAdmin } = usePermissions();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const [successEvent, setSuccessEvent] = useState<CalendarEvent | null>(null);
 
-  const [year, setYear] = useState(today.getFullYear());
-  const [month, setMonth] = useState(today.getMonth());
-  const [events, setEvents] = useState<CalEvent[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [dayDrawerDate, setDayDrawerDate] = useState<string | null>(null);
-  const [showHolidays, setShowHolidays] = useState(false);
-  const [holidays, setHolidays] = useState<Holiday[]>([]);
-  const [syncing, setSyncing] = useState(false);
-  const [googleStatus, setGoogleStatus] = useState<GoogleStatus | null>(null);
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+    // Load saved meetings from localStorage
+    useEffect(() => {
+        const savedMeetings = meetingStorage.getAll();
+        setEvents(savedMeetings);
+    }, []);
 
-  useEffect(() => {
-    api.get<GoogleStatus>('/google/status').then(setGoogleStatus).catch(() => null);
-  }, []);
+    // delete meeting
+    const handleDeleteMeeting = (id: number) => {
+        meetingStorage.delete(id);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('google_connected')) {
-      window.history.replaceState({}, '', '/calendar');
-      api.get<GoogleStatus>('/google/status').then(setGoogleStatus).catch(() => null);
-      handleSync();
+        setEvents(prev =>
+            prev.filter(event => event.id !== id)
+        );
+    };
+
+    // Event
+    useEffect(() => {
+        setCalendarEvents(eventStorage.getAll());
+    }, []);
+
+    const handleCreateEventClick = (dateStr: string) => {
+        setEventModalDate(dateStr);
+        setShowEventModal(true);
+    };
+
+    // Close month dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsMonthPickerOpen(false)
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside)
+        return () => document.removeEventListener("mousedown", handleClickOutside)
+    }, [])
+
+    // Main calendar
+    const monthStart = startOfMonth(currentDate)
+    const monthEnd = endOfMonth(currentDate)
+
+    const days = eachDayOfInterval({
+        start: monthStart,
+        end: monthEnd,
+    })
+
+    // Previous month dates
+    const mainCalendarOffset = monthStart.getDay()
+
+    const previousMonthTotalDays = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        0
+    ).getDate()
+
+    const previousMonthDays = Array.from(
+        { length: mainCalendarOffset },
+        (_, index) => previousMonthTotalDays - mainCalendarOffset + index + 1
+    )
+
+    // Next month dates
+    const totalCalendarCells = mainCalendarOffset + days.length
+
+    const nextMonthOffset = (7 - (totalCalendarCells % 7)) % 7
+
+    const nextMonthDays = Array.from(
+        { length: nextMonthOffset },
+        (_, index) => index + 1
+    )
+
+    // DROPDOWN CALENDAR - WEEK STARTS ON MONDAY
+    const dropdownMonthStart = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        1
+    )
+    const dropdownTotalDays = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+        0
+    ).getDate()
+
+    // JavaScript getDay(): Sunday = 0, Monday = 1
+    // Convert to Monday-first: Monday = 0, Sunday = 6
+    const dropdownStartOffset =
+        (dropdownMonthStart.getDay() + 6) % 7
+    const dropdownDays = Array.from(
+        { length: dropdownTotalDays },
+        (_, index) => index + 1
+    )
+
+    // Today's date
+    const today = new Date()
+
+    // MONTH NAVIGATION
+    const handlePreviousMonth = () => {
+        setCurrentDate(
+            new Date(
+                currentDate.getFullYear(),
+                currentDate.getMonth() - 1,
+                1
+            )
+        )
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
-  const loadEvents = useCallback(() => {
-    Promise.all([
-      api.get<Meeting[]>('/google/meetings').catch(() => []),
-      api.get<Holiday[]>('/holidays').catch(() => []),
-    ]).then(([meetings, holidayList]) => {
-      const cal: CalEvent[] = [];
-      setHolidays(holidayList);
-
-      for (const m of meetings) {
-        cal.push({
-          date: m.start_datetime.split('T')[0],
-          label: m.title,
-          type: 'meeting',
-          sub: m.creator_name ? `by ${m.creator_name}` : undefined,
-          time: new Date(m.start_datetime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-          meetLink: m.meet_link ?? undefined,
-          meetingId: m.id,
-        });
-      }
-
-      for (const h of holidayList) {
-        cal.push({ date: h.holiday_date.split('T')[0], label: h.name, type: 'holiday', sub: 'Public Holiday' });
-      }
-
-      setEvents(cal);
-    });
-  }, []);
-
-  useEffect(() => { loadEvents(); }, [loadEvents]);
-
-  async function handleSync() {
-    setSyncing(true);
-    try { await api.post('/google/sync', {}); loadEvents(); }
-    catch { /* silent if not connected */ }
-    finally { setSyncing(false); }
-  }
-
-  async function connectGoogle() {
-    try {
-      const response = await api.get<{ url: string }>('/google/auth-url');
-      window.location.href = response.url;
-    } catch (err: any) {
-      // console.log("err",err.response.data.error)
-      showToast('error', 'Error connecting to Google calender');
+    const handleNextMonth = () => {
+        setCurrentDate(
+            new Date(
+                currentDate.getFullYear(),
+                currentDate.getMonth() + 1,
+                1
+            )
+        )
     }
-  }
 
-  async function disconnectGoogle() {
-    if (!confirm('Disconnect the shared Google Calendar account?')) return;
-    await api.delete('/google/disconnect');
-    setGoogleStatus({ connected: false, webhookActive: false });
-  }
+    // date select from dropdown
+    const handleDateSelect = (day: number) => {
+        const newDate = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth(),
+            day
+        )
 
-  const prevMonth = () => month === 0 ? (setYear(y => y - 1), setMonth(11)) : setMonth(m => m - 1);
-  const nextMonth = () => month === 11 ? (setYear(y => y + 1), setMonth(0)) : setMonth(m => m + 1);
-  const goToday = () => { setYear(today.getFullYear()); setMonth(today.getMonth()); setSelected(todayStr); };
+        setSelectedDate(newDate)
+        setCurrentDate(newDate)
+        setIsMonthPickerOpen(false)
+    }
 
-  const daysInMonth = getDaysInMonth(year, month);
-  const firstDay = getFirstDayOfMonth(year, month);
+    // SCHEDULE MEETING
+    const handleScheduleClick = (dateStr?: string) => {
+        const targetDate = dateStr || format(currentDate, "yyyy-MM-dd")
 
-  const { y: prevY, m: prevM } = addMonths(year, month, -1);
-  const { y: nextY, m: nextM } = addMonths(year, month, 1);
-  const prevMonthDays = getDaysInMonth(prevY, prevM);
+        setModalDate(targetDate)
+        setShowModal(true)
+    }
 
-  interface CalCell { day: number; y: number; m: number; inMonth: boolean }
+    return (
+        <div>
+            {/* Page Header */}
+            <PageHeader
+                title={"Calendar "}
+                discription={"View and manage your schedule, meetings, company events, and important dates in one place."}
+            />
 
-  const leading: CalCell[] = Array.from({ length: firstDay }, (_, i) => ({
-    day: prevMonthDays - firstDay + 1 + i, y: prevY, m: prevM, inMonth: false,
-  }));
-  const current: CalCell[] = Array.from({ length: daysInMonth }, (_, i) => ({
-    day: i + 1, y: year, m: month, inMonth: true,
-  }));
-  const trailingCount = (7 - (leading.length + current.length) % 7) % 7;
-  const trailing: CalCell[] = Array.from({ length: trailingCount }, (_, i) => ({
-    day: i + 1, y: nextY, m: nextM, inMonth: false,
-  }));
-  const cells: CalCell[] = [...leading, ...current, ...trailing];
+            {/* Main container */}
+            <div className="w-full flex flex-col gap-5">
 
-  const dateStrOf = (c: CalCell) => `${c.y}-${String(c.m + 1).padStart(2, '0')}-${String(c.day).padStart(2, '0')}`;
+                {/* Calendar container */}
+                <div className="w-full rounded-xl space-y-7">
+                    {/* Calendar action */}
+                    <div className="w-full flex justify-end">
+                        <div className="flex items-center gap-2">
+                            {/* Date picker Dropdown */}
+                            <div className="relative" ref={dropdownRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsMonthPickerOpen((prev) => !prev)}
+                                    className="p-3 bg-(--soft-white-light) rounded-lg flex justify-center items-center gap-2 cursor-pointer"
+                                >
+                                    <MaskIcon src="/icons/calendar.svg" size={16} color={"#141B34"} />
 
-  const eventsForDay = (day: number) => {
-    const ds = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return events.filter(e => e.date === ds);
-  };
+                                    <span className="text-[14px] font-medium leading-5 text-[#020617]">
+                                        {format(currentDate, "MMM, yyyy")}
+                                    </span>
 
-  // Upcoming (meetings + holidays), soonest first
-  const upcomingList = [...events]
-    .filter(e => e.date >= todayStr)
-    .sort((a, b) => a.date === b.date ? (a.time || '').localeCompare(b.time || '') : a.date.localeCompare(b.date))
-    .slice(0, 6);
+                                    <MaskIcon src="/icons/chevron-down.svg" size={16} color="#17212B" />
+                                </button>
 
-  // This week (Sun–Sat containing today), independent of the navigated month above
-  const weekDates = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - today.getDay() + i);
-    return d;
-  });
+                                {/* Dropdown calander */}
+                                {isMonthPickerOpen && (
+                                    <div className="absolute -right-18 mt-3 bg-(--soft-white-light) rounded-xl shadow-lg p-4 z-50">
+                                        <div className="flex flex-col gap-3 w-[245px]">
 
-  // Rendered twice below: once next to the title (mobile only), once in the
-  // control row (desktop only) — same markup, CSS picks which copy shows.
-  const monthNav = (
-    <div style={{
-      display: 'inline-flex', alignItems: 'center', gap: 0,
-      border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden',
-    }}>
-      <button onClick={prevMonth} style={{ padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--color-text-body)' }}>‹</button>
-      <div style={{ padding: '7px 16px', fontWeight: 700, fontSize: 14, borderLeft: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)', minWidth: 160, textAlign: 'center' }}>
-        {MONTHS[month]} {year}
-      </div>
-      <button onClick={nextMonth} style={{ padding: '7px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--color-text-body)' }}>›</button>
-    </div>
-  );
+                                            {/* Months Switcher */}
+                                            <div className="flex items-center justify-between">
+                                                {/* previous month */}
+                                                <button
+                                                    type="button"
+                                                    onClick={handlePreviousMonth}
+                                                    className="flex items-center"
+                                                >
+                                                    <MaskIcon src="/icons/chevron-left.svg" color="#3C4653" size={16} />
+                                                </button>
 
-  return (
-    <div>
-      {showModal && selected && (
-        <ScheduleModal
-          defaultDate={selected}
-          onClose={() => setShowModal(false)}
-          onCreated={() => { setShowModal(false); loadEvents(); }}
-        />
-      )}
+                                                {/* Current month */}
+                                                <span className="text-[16px] font-semibold leading-6 tracking-[0.15px]">
+                                                    {format(currentDate, "MMMM yyyy")}
+                                                </span>
 
-      {dayDrawerDate && (
-        <DayEventsDrawer
-          dateStr={dayDrawerDate}
-          dayEvents={events.filter(e => e.date === dayDrawerDate)}
-          onClose={() => setDayDrawerDate(null)}
-          onAddMeeting={() => { setDayDrawerDate(null); setSelected(dayDrawerDate); setShowModal(true); }}
-        />
-      )}
+                                                {/* Next month */}
+                                                <button
+                                                    type="button"
+                                                    onClick={handleNextMonth}
+                                                    className="flex items-center"
+                                                >
+                                                    <MaskIcon className="rotate-180" src="/icons/chevron-left.svg" color="#3C4653" size={16} />
+                                                </button>
+                                            </div>
 
-      {showHolidays && (
-        <HolidayListModal holidays={holidays} isAdmin={isAdmin} onClose={() => setShowHolidays(false)} onChanged={loadEvents} />
-      )}
+                                            <div className="flex flex-col gap-2">
+                                                {/*Dropdown Weekday - Mon First */}
+                                                <div className="grid grid-cols-7 justify-between content-between">
 
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="page-header">
-        <div className="flex justify-between" style={{ flexWrap: 'wrap', gap: 16, alignItems: 'flex-end' }}>
-          <div className="flex justify-between items-center cal-title-row">
-            <div>
-              <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.5px' }}>Calendar</h1>
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 10,
-                padding: '6px 14px', borderRadius: 20,
-                background: 'var(--color-primary-light)', color: 'var(--color-primary)',
-                fontWeight: 700, fontSize: 13,
-              }}>
-                {today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-              </div>
-            </div>
-            {/* Same month-nav as below — mobile-only here, next to the title; desktop keeps it in the control row */}
-            <div className="cal-nav-mobile">{monthNav}</div>
-          </div>
+                                                    {DROPDOWN_WEEKDAYS.map((day) => (
+                                                        <div key={day} className="text-[14px] font-medium leading-5 text-[#3C4653]">
+                                                            {day}
+                                                        </div>
+                                                    ))}
+                                                </div>
 
-          <div className="flex items-center gap-2 cal-header-controls" style={{ flexWrap: 'wrap' }}>
-            {/* Month navigation */}
-            <div className="cal-nav-group cal-nav-desktop">{monthNav}</div>
+                                                {/* Dropdown days */}
+                                                <div className="grid grid-cols-7 ">
+                                                    {/* Empety space before first day */}
+                                                    {Array.from(
+                                                        {
+                                                            length: dropdownStartOffset
+                                                        },
+                                                        (_, index) => (
+                                                            <div key={`empty-${index}`} className="h-8 w-8">
 
-            <button className="btn btn-secondary btn-sm" onClick={goToday}>Today</button>
+                                                            </div>
+                                                        )
+                                                    )}
+                                                    {/* Days */}
+                                                    {dropdownDays.map((day) => {
+                                                        const isSelected = selectedDate.getDate() === day &&
+                                                            selectedDate.getMonth() === currentDate.getMonth() &&
+                                                            selectedDate.getFullYear() === currentDate.getFullYear()
 
-            {/* Google Calendar controls */}
-            {googleStatus?.connected ? (
-              <>
-                <button className="btn btn-secondary btn-sm" onClick={handleSync} disabled={syncing}>
-                  {syncing ? '⟳ Syncing…' : '⟳ Sync'}
-                </button>
-                {googleStatus.webhookActive && (
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14,
-                    height: 40, boxSizing: 'border-box',
-                    color: 'var(--color-primary)', background: 'var(--color-primary-light)',
-                    border: '2px solid var(--color-primary-light)', borderRadius: 'var(--radius-full)', padding: '0 14px', fontWeight: 600,
-                  }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-primary)' }} />
-                    Live sync
-                  </span>
-                )}
-                {isAdmin && (
-                  <button className="btn btn-secondary btn-sm btn-danger" onClick={disconnectGoogle}>
-                    Disconnect
-                  </button>
-                )}
-              </>
-            ) : isAdmin ? (
-              <button className="btn btn-primary btn-sm" onClick={connectGoogle}>
-                Connect Google Calendar
-              </button>
-            ) : null}
+                                                        const isToday =
+                                                            today.getDate() === day &&
+                                                            today.getMonth() === currentDate.getMonth() &&
+                                                            today.getFullYear() === currentDate.getFullYear()
 
-            <button className="btn btn-primary btn-sm cal-add-btn"
-              onClick={() => { if (!selected) setSelected(todayStr); setShowModal(true); }}>
-              + Meeting
-            </button>
-          </div>
-        </div>
-      </div>
+                                                        return (
+                                                            <button
+                                                                key={day}
+                                                                type="button"
+                                                                onClick={() => handleDateSelect(day)}
+                                                                className={`h-8 w-8 text-[14px] font-medium leading-5 flex justify-center items-center rounded-full  ${isToday
+                                                                    ? "border border-[#1E5C8B]"
+                                                                    : " hover:bg-[#EBF5FB]"
+                                                                    }`}
+                                                            >
+                                                                {day}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
-      {/* ── Calendar grid ──────────────────────────────────────────────────── */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        {/* Day-of-week header */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
-          borderBottom: '1px solid var(--color-border)',
-        }}>
-          {DAYS_FULL.map(d => (
-            <div key={d} style={{
-              textAlign: 'center', padding: '12px 0', fontSize: 14, fontWeight: 500,
-              color: 'var(--color-text-body)',
-            }}>
-              <span className="cal-dow-full">{d}</span>
-              <span className="cal-dow-short">{d.slice(0, 3)}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Day cells */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-          {cells.map((c, i) => {
-            const dateStr = dateStrOf(c);
-            const dayEvents = c.inMonth ? eventsForDay(c.day) : [];
-            const isToday = c.inMonth && dateStr === todayStr;
-            const isSel = c.inMonth && dateStr === selected;
-            const visible = dayEvents.slice(0, 2);
-            const overflow = dayEvents.length - visible.length;
-            const isHover = hoverIdx === i;
-            const isLastCol = i % 7 === 6;
-
-            const handleCellClick = () => {
-              if (!c.inMonth) return;
-              setSelected(dateStr);
-              if (dayEvents.length > 0) {
-                setDayDrawerDate(dateStr);
-                return;
-              }
-              if (dateStr >= todayStr) {
-                setShowModal(true);
-              }
-            };
-
-            return (
-              <div
-                key={i}
-                className="cal-cell"
-                onMouseEnter={() => setHoverIdx(i)}
-                onMouseLeave={() => setHoverIdx(null)}
-                onClick={handleCellClick}
-                style={{
-                  position: 'relative',
-                  minWidth: 0,
-                  cursor: c.inMonth ? 'pointer' : 'default',
-                  borderBottom: '1px solid var(--color-border)',
-                  borderRight: isLastCol ? 'none' : '1px solid var(--color-border)',
-                  // Not --color-primary-light: that's also the event chip's own
-                  // background, so a hovered cell made the chip's "card" boundary
-                  // vanish into the cell around it. A neutral gray keeps both visible.
-                  background: (c.inMonth && isHover)
-                    ? 'var(--gray-light-hover)'
-                    : c.inMonth ? 'var(--color-surface)' : 'var(--color-bg)',
-                  transition: 'background 0.12s',
-                }}
-              >
-                {/* Day number */}
-                <div style={{ marginBottom: 6, display: 'flex', justifyContent: 'flex-end' }}>
-                  {isToday ? (
-                    <span style={{
-                      width: 22, height: 22, borderRadius: '50%',
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 12, fontWeight: 700,
-                      background: 'var(--color-primary)', color: 'var(--soft-white-light)',
-                    }}>
-                      {String(c.day).padStart(2, '0')}
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: 12, color: c.inMonth ? 'var(--color-text-h1)' : 'var(--gray-normal)' }}>
-                      {String(c.day).padStart(2, '0')}
-                    </span>
-                  )}
-                </div>
-
-                {/* Event chips — full detail on desktop, cell has no room for this on mobile */}
-                <div className="cal-chip-full">
-                  {visible.map((ev, j) => {
-                    const cfg = TYPE_CONFIG[ev.type];
-                    return (
-                      <div key={j} style={{
-                        background: cfg.bg,
-                        borderLeft: `2px solid ${cfg.color}`,
-                        borderRadius: 3, padding: '4px 7px',
-                        marginBottom: 6,
-                        overflow: 'hidden',
-                      }}>
-                        <div style={{ fontSize: 11, color: 'var(--gray-dark)', lineHeight: 1.4 }}>
-                          {ev.time || ev.sub || cfg.label}
+                            {/* Schedule Meeting Button */}
+                            <Button
+                                size="medium"
+                                leftIcon={<MaskIcon src="/icons/plus.svg" size={18} />}
+                                onClick={() => handleScheduleClick()}
+                            >
+                                Schedule Meeting
+                            </Button>
                         </div>
-                        <div style={{
-                          fontSize: 12.5, fontWeight: 600, color: 'var(--color-text-h1)', lineHeight: 1.4,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
-                          {ev.label}
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {overflow > 0 && (
-                    <div style={{
-                      fontSize: 10, fontWeight: 600, color: 'var(--color-primary)',
-                      background: 'var(--color-primary-light)',
-                      borderRadius: 4, padding: '1px 5px', marginTop: 1,
-                    }}>
-                      +{overflow} more
                     </div>
-                  )}
-                </div>
 
-                {/* Compact mobile equivalent — a dot per event, capped at 4; tap the day and use the Upcoming list below for detail */}
-                {dayEvents.length > 0 && (
-                  <div className="cal-chip-compact">
-                    {dayEvents.slice(0, 4).map((ev, j) => (
-                      <span key={j} style={{
-                        width: 5, height: 5, borderRadius: '50%',
-                        background: TYPE_CONFIG[ev.type].color, flexShrink: 0,
-                      }} />
-                    ))}
-                    {dayEvents.length > 4 && (
-                      <span style={{ fontSize: 8, fontWeight: 700, color: 'var(--color-primary)' }}>
-                        +{dayEvents.length - 4}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {googleStatus?.connected && (
-        <div style={{ textAlign: 'right', fontSize: 12, color: 'var(--color-text-muted)', marginTop: 16 }}>
-          {googleStatus.webhookActive ? '🟢 Live sync active' : 'Google Calendar connected (manual sync)'}
-        </div>
-      )}
-
-      {/* ── Below calendar: Upcoming / This Week (left) + Holidays (right) ──── */}
-      <div className="cal-bottom-grid">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Upcoming */}
-          <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <div className="card-title">Upcoming</div>
-            {upcomingList.length === 0 ? (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center', padding: '20px 0' }}>
-                <div style={{
-                  width: 48, height: 48, borderRadius: 12, background: 'var(--color-primary-light)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px',
-                }}>
-                  <span className="icon-mask" style={{
-                    width: 22, height: 22, backgroundColor: 'var(--color-primary)',
-                    WebkitMaskImage: 'url(/icons/calendar.svg)', maskImage: 'url(/icons/calendar.svg)',
-                  }} />
-                </div>
-                <p className="text-muted" style={{ fontSize: 13 }}>Nothing scheduled.</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {upcomingList.map((ev, i) => {
-                  const cfg = TYPE_CONFIG[ev.type];
-                  const Icon = cfg.Icon;
-                  return (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{
-                        width: 34, height: 34, borderRadius: 8, background: cfg.bg,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                      }}>
-                        <Icon size={16} color={cfg.color} />
-                      </div>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {ev.label}
+                    {/*Main Calendar Grid */}
+                    <div className="w-full flex flex-col gap-4">
+                        {/* Weekday Headers */}
+                        <div className="grid grid-cols-7">
+                            {WEEKDAYS.map((day) => (
+                                <div
+                                    key={day}
+                                    className="text-center text-[16px] font-medium leading-6 text-[#17212B]"
+                                >
+                                    {day}
+                                </div>
+                            ))}
                         </div>
-                        <div className="text-muted" style={{ fontSize: 12 }}>
-                          {new Date(ev.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                          {ev.time && ` · ${ev.time}`}
+
+
+                        {/* Main Calendar Days */}
+                        <div className="grid grid-cols-7 gap-1">
+
+                            {/* Previous month dates */}
+                            {previousMonthDays.map((day, index) => (
+                                <div
+                                    key={`prev-${index}`}
+                                    className="h-[150px] bg-[#E8E9EA80] rounded-sm p-2"
+                                >
+                                    <div className="flex justify-end">
+                                        <span className="text-[12px] leading-4 text-[#B7BABD]">
+                                            {day}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+
+                            {/* Current month dates */}
+                            {days.map((day) => {
+                                const dateKey = format(day, "yyyy-MM-dd")
+
+                                const dayEvents = events.filter(
+                                    event => event.start_datetime.slice(0, 10) === dateKey
+                                );
+
+                                const dayCalendarEvents = calendarEvents.filter(
+                                    event => event.start_datetime.slice(0, 10) === dateKey
+                                );
+                                const dayItems = [
+                                    ...dayEvents.map(item => ({ type: "meeting" as const, item })),
+                                    ...dayCalendarEvents.map(item => ({ type: "event" as const, item }))
+                                ].sort((a, b) =>
+                                    a.item.start_datetime.localeCompare(b.item.start_datetime)
+                                );
+                                const visibleDayItems = dayItems.slice(0, 2);
+                                const hiddenDayItemCount = dayItems.length - visibleDayItems.length;
+
+                                return (
+                                    <div
+                                        key={dateKey}
+                                        className="h-[150px] p-2 flex flex-col rounded-sm gap-1 bg-white"
+                                    >
+                                        {/* Day Number and Add Button */}
+                                        <div className="flex items-center justify-between">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleCreateEventClick(dateKey)}
+                                                className="p-0.5 rounded hover:bg-gray-100 transition-colors cursor-pointer"
+                                                aria-label={`Create event on ${dateKey}`}
+                                            >
+                                                <MaskIcon
+                                                    src="/icons/plus.svg"
+                                                    size={14}
+                                                    color="#334155"
+                                                />
+                                            </button>
+
+                                            <span className="text-[12px] leading-4">
+                                                {format(day, "dd")}
+                                            </span>
+                                        </div>
+
+                                        {/* Meetings and Calendar Events */}
+                                        <div className="flex flex-col gap-1 overflow-hidden">
+                                            {visibleDayItems.map(({ type, item }, index) => {
+                                                const isMeeting = type === "meeting";
+                                                return (
+                                                    <div
+                                                        key={`${type}-${item.id}`}
+                                                        className={`rounded-md px-2 py-1 text-[11px] leading-tight cursor-pointer ${isMeeting
+                                                            ? index % 2 === 0
+                                                                ? "bg-[#E5E5E5] text-[#0F172A]"
+                                                                : "bg-[#DDF0FA] text-[#0F172A]"
+                                                            : "bg-[#FFF0D9] text-[#7A4B00]"
+                                                            }`}
+                                                        onClick={() => console.log(
+                                                            isMeeting ? "Meeting details:" : "Event details:",
+                                                            item
+                                                        )}
+                                                    >
+                                                        <div className={`flex items-center gap-1 text-[11px] font-medium ${isMeeting ? "text-[#2D343F]" : ""
+                                                            }`}>
+                                                            <MaskIcon
+                                                                src="/icons/clock.svg"
+                                                                size={12}
+                                                                color={isMeeting ? "#2D343F" : "#7A4B00"}
+                                                            />
+                                                            <span>
+                                                                {format(new Date(item.start_datetime), "hh:mm a")}
+                                                                {" - "}
+                                                                {format(new Date(item.end_datetime), "hh:mm a")}
+                                                            </span>
+                                                        </div>
+                                                        <div className="truncate text-[12px] font-medium">
+                                                            {item.title}
+                                                        </div>
+                                                        <span className={`text-[10px] ${isMeeting ? "text-[#235E94]" : ""
+                                                            }`}>
+                                                            {isMeeting ? "Meeting" : "Event"}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                            {hiddenDayItemCount > 0 && (
+                                                <span className="px-2 text-[10px] font-medium text-[#475569]">
+                                                    +{hiddenDayItemCount} more
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )
+                            })}
+
+                            {/* Next month dates */}
+                            {nextMonthDays.map((day, index) => (
+                                <div
+                                    key={`next-${index}`}
+                                    className="h-[150px] bg-[#E8E9EA80] rounded-sm p-2"
+                                >
+                                    <div className="flex justify-end">
+                                        <span className="text-[12px] leading-4 text-[#B7BABD]">
+                                            {day}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+
                         </div>
-                      </div>
-                      {ev.meetLink && (
-                        <a href={ev.meetLink} target="_blank" rel="noreferrer" style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 4,
-                          fontSize: 12, color: 'var(--color-primary)', fontWeight: 700, textDecoration: 'none', flexShrink: 0,
-                        }}>
-                          Join
-                          <span className="icon-mask" style={{
-                            width: 12, height: 12, backgroundColor: 'var(--color-primary)',
-                            WebkitMaskImage: 'url(/icons/external-link.svg)', maskImage: 'url(/icons/external-link.svg)',
-                          }} />
-                        </a>
-                      )}
+
                     </div>
-                  );
-                })}
-              </div>
+
+                </div>
+
+
+                {/* Holidays & events */}
+                <div>
+                    <h2 className="text-lg font-semibold text-[#020617]">Holiday</h2>
+                </div>
+            </div>
+            {/* Popup schedule meeting */}
+            {showModal && (
+                <ScheduleModal
+                    defaultDate={modalDate}
+                    onClose={() => setShowModal(false)}
+                    onCreated={(meeting) => {
+                        console.log("Meeting created:", meeting);
+
+                        try {
+                            meetingStorage.add(meeting);
+                        } catch (error) {
+                            console.error("Failed to save meeting:", error);
+                        }
+
+                        setEvents(prev => [...prev, meeting]);
+                        setShowModal(false);
+                        setSuccessMeeting(meeting);
+                    }}
+                />
             )}
-          </div>
-        </div>
 
-        {/* Holidays teaser — moved here from the header, bottom-right of the calendar */}
-        <div className="card" style={{ textAlign: 'center', padding: 24 }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: 12, background: 'var(--color-primary-light)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px',
-          }}>
-            <span className="icon-mask" style={{
-              width: 22, height: 22, backgroundColor: 'var(--color-primary)',
-              WebkitMaskImage: 'url(/icons/gift.svg)', maskImage: 'url(/icons/gift.svg)',
-            }} />
-          </div>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Company Holidays</div>
-          <p className="text-muted" style={{ fontSize: 13, marginBottom: 16 }}>
-            {holidays.length} fixed paid holidays this year
-          </p>
+            {successMeeting && (
+                <SuccessMeetingPopup
+                    meeting={successMeeting}
+                    onClose={() => setSuccessMeeting(null)}
+                />
+            )}
 
-          <Button
-            variant='primary'
-            size='large' onClick={() => setShowHolidays(true)}> View full list of holidays</Button>
-        </div>
-      </div>
-    </div>
-  );
+            {/* Event */}
+            {showEventModal && (
+                <EventModal
+                    defaultDate={eventModalDate}
+                    onClose={() => setShowEventModal(false)}
+                    onCreated={(event) => {
+                        eventStorage.add(event);
+
+                        setCalendarEvents(prev => [...prev, event]);
+
+                        setShowEventModal(false);
+
+                        setSuccessEvent(event);
+                    }}
+                />
+            )}
+
+            {successEvent && (
+                <SuccessEventPopup
+                    event={successEvent}
+                    onClose={() => setSuccessEvent(null)}
+                />
+            )}
+
+        </div >
+    )
 }
+
+export default CalendarPage
+

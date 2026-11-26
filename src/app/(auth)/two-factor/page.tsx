@@ -257,6 +257,7 @@ const TwoFactorAuthPage = () => {
                             )}
                         </div>
 
+
                         <button type="button" onClick={backToSignIn} disabled={loading}>
                             <span className="w-full text-[18px] font-medium leading-7 text-(--blue-dark-normal)">Back to sign in</span>
                         </button>

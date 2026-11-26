@@ -63,7 +63,10 @@ export default function PersonalInfoForm({ profile, me, password }: { profile: P
                 onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
                 disabled={!isNameEdit}
               />
-              <Button type='button' variant='primary' size='small' className='shrink-0' onClick={() => setIsNameEdit(prev => !prev)} >Edit</Button>
+              <Button type='button' variant='primary' size='small' className='shrink-0' onClick={() => {
+                setIsNameEdit(true);
+                setTimeout(() => document.getElementById('name')?.focus(), 0);
+              }} >Edit</Button>
             </ProfileFieldRow>
 
             <ProfileFieldRow label='Email' htmlFor='email'>
@@ -76,7 +79,10 @@ export default function PersonalInfoForm({ profile, me, password }: { profile: P
                 onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
                 disabled={!isEmailEdit}
               />
-              <Button type='button' variant='primary' size='small' className='shrink-0' onClick={() => setIsEmailEdit(prev => !prev)}>Edit</Button>
+              <Button type='button' variant='primary' size='small' className='shrink-0' onClick={() => {
+                setIsEmailEdit(true);
+                setTimeout(() => document.getElementById('email')?.focus(), 0);
+              }}>Edit</Button>
             </ProfileFieldRow>
 
             <ProfileFieldRow label='Phone No.' htmlFor='phone'>
@@ -89,7 +95,10 @@ export default function PersonalInfoForm({ profile, me, password }: { profile: P
                 onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
                 disabled={!isPhoneEdit}
               />
-              <Button type='button' variant='primary' size='small' className='shrink-0' onClick={() => setIsPhoneEdit(prev => !prev)}>Edit</Button>
+              <Button type='button' variant='primary' size='small' className='shrink-0' onClick={() => {
+                setIsPhoneEdit(true);
+                setTimeout(() => document.getElementById('phone')?.focus(), 0);
+              }}>Edit</Button>
             </ProfileFieldRow>
 
             {/* Role is read-only here — it's never actually editable through this

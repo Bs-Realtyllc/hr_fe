@@ -1,23 +1,11 @@
 import type { Metadata } from 'next';
-import { Plus_Jakarta_Sans, IBM_Plex_Sans } from 'next/font/google';
+import { plusJakartaSans } from '@/fonts';
 import '@/styles/global.css';
 import '@bsrealtyllc/design-system/style.css';
 import StoreProvider from '@/store/StoreProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
 import QueryProvider from '@/providers/QueryProvider';
 import { ToastContainer } from 'react-toastify';
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-plus-jakarta-sans',
-});
-
-const ibmPlexSans = IBM_Plex_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-ibm-plex-sans',
-});
 
 export const metadata: Metadata = {
   title: 'HR Platform',

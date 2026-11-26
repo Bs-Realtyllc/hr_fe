@@ -1125,6 +1125,7 @@ function PreJoinModal({ channelName, onJoin, onCancel }: {
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
   }
+  // useEffect(()=> console.log("streamRef",streamRef), [streamRef])
 
   useEffect(() => () => cleanup(), []);
 

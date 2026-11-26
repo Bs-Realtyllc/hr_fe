@@ -7,8 +7,16 @@ export function useCompanyInfo(flash: Flash) {
   // Company info (Organization tab) — readable by every role, editable by admin only.
   // work_start/work_end are the company-wide default working hours used to
   // flag late clock-ins; null until an admin actually sets them.
-  const [companyInfo, setCompanyInfo] = useState({ name: '', email: '', website: '', work_start: '', work_end: '', late_grace_minutes: '15' });
+  const emptyCompanyInfo = { name: '', email: '', website: '', work_start: '', work_end: '', late_grace_minutes: '15' };
+  const [companyInfo, setCompanyInfo] = useState(emptyCompanyInfo);
+  // Last loaded/saved values — compared against companyInfo to enable Save only when dirty.
+  const [savedCompanyInfo, setSavedCompanyInfo] = useState(emptyCompanyInfo);
   const [savingCompanyInfo, setSavingCompanyInfo] = useState(false);
+
+  // Each field stays disabled until its Edit button is clicked.
+  const [isCompanyNameEdit, setIsCompanyNameEdit] = useState(false);
+  const [isCompanyEmailEdit, setIsCompanyEmailEdit] = useState(false);
+  const [isCompanyWebEdit, setIsCompanyWebEdit] = useState(false);
 
   const loadCompanyInfo = async () => {
     try {
@@ -16,7 +24,7 @@ export function useCompanyInfo(flash: Flash) {
         name: string | null; email: string | null; website: string | null;
         work_start: string | null; work_end: string | null; late_grace_minutes: number | null;
       }>('/company');
-      setCompanyInfo({
+      const loadedCompanyInfo = {
         name: data.name ?? '',
         email: data.email ?? '',
         website: data.website ?? '',
@@ -24,7 +32,9 @@ export function useCompanyInfo(flash: Flash) {
         work_start: data.work_start?.slice(0, 5) ?? '',
         work_end: data.work_end?.slice(0, 5) ?? '',
         late_grace_minutes: String(data.late_grace_minutes ?? 15),
-      });
+      };
+      setCompanyInfo(loadedCompanyInfo);
+      setSavedCompanyInfo(loadedCompanyInfo);
     } catch {
       /* leave fields blank if company info can't be loaded */
     }
@@ -41,6 +51,11 @@ export function useCompanyInfo(flash: Flash) {
         work_end: companyInfo.work_end || null,
         late_grace_minutes: companyInfo.late_grace_minutes ? Number(companyInfo.late_grace_minutes) : null,
       });
+      setSavedCompanyInfo({ ...companyInfo });
+      // Disable all Company Information fields after successful save
+      setIsCompanyNameEdit(false);
+      setIsCompanyEmailEdit(false);
+      setIsCompanyWebEdit(false);
       flash('Company information saved.');
     } catch {
       flash('Unable to save company information.', 'err');
@@ -54,9 +69,18 @@ export function useCompanyInfo(flash: Flash) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const isCompanyDirty = JSON.stringify(companyInfo) !== JSON.stringify(savedCompanyInfo);
+
   return {
     companyInfo,
     setCompanyInfo,
+    isCompanyDirty,
+    isCompanyNameEdit,
+    setIsCompanyNameEdit,
+    isCompanyEmailEdit,
+    setIsCompanyEmailEdit,
+    isCompanyWebEdit,
+    setIsCompanyWebEdit,
     savingCompanyInfo,
     saveCompanyInfo,
   };

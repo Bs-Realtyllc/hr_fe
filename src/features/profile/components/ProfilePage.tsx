@@ -4,7 +4,7 @@ import { isAdmin as isAdminUser } from '@/lib/permissions';
 import Button from '@/components/ui/Button/Button';
 import PageHeader from '@/components/layout/PageHeader';
 import ErrorPage from '@/components/ui/ErrorPage';
-import { BSRealtyTabs } from '@bsrealtyllc/design-system';
+import Tabs from '@/components/profile/Tabs';
 import type { EmployeeTab, Tab } from '../types';
 // Hooks: one per concern; all called here so state survives tab switches.
 import { useFlash } from '../hooks/useFlash';
@@ -47,7 +47,7 @@ export default function ProfilePage() {
   const password = usePasswordChange(profile, flash);
   const twoFactor = useTwoFactor(flash);
   const company = useCompanyInfo(flash);
-  const { savingCompanyInfo, saveCompanyInfo } = company;
+  const { savingCompanyInfo, saveCompanyInfo, isCompanyDirty } = company;
   const notifications = useNotificationPreferences(flash);
   const team = useTeamAccess(profile, flash);
   const loginHistory = useLoginHistory(flash);
@@ -57,11 +57,9 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className=" " style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>
+      <div>
         {loadError ? (
-          <div className="flex flex-col items-center gap-3">
-            {/* <p>{loadError}</p>
-            <Button variant="primary" size="small" type="button" onClick={load}>Retry</Button> */}
+          <div className=" fixed h-screen top-0 right-0 left-[265px] flex justify-center items-center" >
             <ErrorPage />
           </div>
         ) : 'Loading profile…'}
@@ -96,12 +94,14 @@ export default function ProfilePage() {
   };
 
   // Admin Save Changes: one element, shown beside the tabs (≥768px) or after the form (<768px).
+  // Only the Personal Info and Organization tabs have something to save.
+  const showSaveButton = tab === 'personal' || tab === 'organization';
   const saveButton = (
     <Button
       variant='primary'
       size='small'
       type="button"
-      disabled={saving || savingCompanyInfo || (tab === 'personal' && !isDirty)}
+      disabled={tab === 'personal' ? saving || !isDirty : savingCompanyInfo || !isCompanyDirty}
       onClick={handleSaveChanges}
     >
       {saving || savingCompanyInfo ? 'Saving…' : 'Save Changes'}
@@ -123,14 +123,12 @@ export default function ProfilePage() {
 
         {/* ── Tabs ────────────────────────────────────────────────────────────── */}
         {isAdmin ? (
-          <div className="bg-(--soft-white-light) border border-(--soft-white-normal) rounded-lg" style={{ padding: 24, overflow: 'hidden' }}>
+          <div className="bg-(--soft-white-light) border border-(--soft-white-normal) rounded-lg px-6" style={{ overflow: 'hidden' }}>
 
             <div className='flex justify-between py-6'>
               <div className='min-w-0 max-w-full overflow-x-auto'>
-                <BSRealtyTabs
-                  className='flex-nowrap whitespace-nowrap m-1'
-                  defaultValue='personal'
-                  value={tab}
+                <Tabs
+                  activeTab={tab}
                   onChange={(newTab) => setTab(newTab as Tab)}
                   tabs={[
                     { label: 'Personal Info', value: 'personal' },
@@ -141,7 +139,7 @@ export default function ProfilePage() {
                 />
               </div>
               {/* ≥768px: beside the tabs. Below that it moves to the end of the form (see below). */}
-              <div className="shrink-0 max-md:hidden">{saveButton}</div>
+              {showSaveButton && <div className="shrink-0 max-md:hidden">{saveButton}</div>}
             </div>
 
             {/* ── PERSONAL INFO ─────────────────────────────────────────────── */}
@@ -171,7 +169,7 @@ export default function ProfilePage() {
             )}
 
             {/* <768px: Save sits at the end of the form, after the fields it saves. */}
-            <div className="mt-8 md:hidden">{saveButton}</div>
+            {showSaveButton && <div className="mt-8 md:hidden">{saveButton}</div>}
           </div>
         ) : (
           <div className='flex w-full gap-5 max-[1120px]:flex-col'>
@@ -179,33 +177,34 @@ export default function ProfilePage() {
             <div className="flex-1 min-w-0 bg-(--soft-white-light) border border-(--soft-white-normal) rounded-lg px-6 p-b-6" style={{ overflow: 'hidden' }}>
 
               <div className='flex justify-between py-6'>
-                <div className='min-w-0 max-w-full overflow-x-auto'>
-                  <BSRealtyTabs
-                    className='flex-nowrap whitespace-nowrap m-1'
-                    defaultValue='personal'
-                    value={employeeTab}
+                <div className='w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                  <Tabs
+                    className="m-1"
+                    activeTab={employeeTab}
                     onChange={(newTab) => setEmployeeTab(newTab as EmployeeTab)}
                     tabs={[
-                      { label: 'Personal Info', value: 'personal' },
+                      { label: 'Personal Details', value: 'personal' },
                       { label: 'Employment Details', value: 'employment' },
                       { label: 'Bank Details', value: 'bank' },
                       { label: 'Documents', value: 'documents' },
-                      { label: 'Organization', value: 'organization' },
+                      // { label: 'Organization', value: 'organization' },
                       { label: 'Security', value: 'security' },
                       { label: 'Notification', value: 'notification' },
                     ]}
                   />
                 </div>
               </div>
+              <div className='max-w-[824px]'>
               {employeeTab === 'personal' && <EmployeePersonalInformation />}
               {employeeTab === 'employment' && <EmployeeEmployment />}
               {employeeTab === 'bank' && <EmployeeBank />}
               {employeeTab === 'documents' && <EmployeeDocuments />}
+              {/* Organization tab hidden for employees (dev change) — kept for re-enabling:
               {employeeTab === 'organization' && (
                 <div className='pt-2'>
                   <OrganizationSection isAdmin={isAdmin} profile={profile} company={company} team={team} />
                 </div>
-              )}
+              )} */}
               {employeeTab === 'security' && (
                 <div className='max-w-[929px] flex flex-col gap-11 pt-2'>
                   <LoginSecuritySection twoFactor={twoFactor} loginHistory={loginHistory} trustedDevices={trustedDevices} />
@@ -221,6 +220,7 @@ export default function ProfilePage() {
                   <EmailNotificationsSection notifications={notifications} />
                 </div>
               )}
+              </div>
             </div>
             <ProfileTipsSidebar />
           </div>

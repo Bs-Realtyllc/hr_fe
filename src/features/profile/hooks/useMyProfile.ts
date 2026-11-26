@@ -97,6 +97,10 @@ export function useMyProfile(flash: Flash, clearFlash: () => void) {
       await api.put('/profile', payload);
       await employeesApi.invalidate(); // name/email/phone show in rosters
       await load({ fresh: true }); // refresh the header card and form from the saved data
+      // Disable all Personal Info fields after successful save
+      setIsNameEdit(false);
+      setIsEmailEdit(false);
+      setIsPhoneEdit(false);
       flash('Profile updated successfully.');
     } catch (err) {
       console.error('Profile update failed:', err);

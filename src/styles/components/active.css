@@ -63,7 +63,7 @@
 }
 .attendance-filters {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: end;
   gap: 12px;
 }
@@ -103,13 +103,38 @@
   flex-direction: column;
   gap: 4px;
 }
+.attendance-clockin-header,
+.attendance-clockout-header,
+.attendance-source-header {
+  width: 140px;
+}
+.attendance-pause-header {
+  width: 400px;
+}
 .attendance-pause-chip {
   font-size: 12.5px;
-  white-space: nowrap;
 }
 .attendance-pause-chip-reason {
   font-weight: 500;
   color: var(--color-text-body);
+}
+.attendance-pause-expand-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-right: 6px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.attendance-pause-expand-btn:hover {
+  color: var(--color-primary);
+}
+.attendance-pause-expand-btn-open {
+  transform: rotate(90deg);
 }
 .attendance-total-header {
   text-align: right;

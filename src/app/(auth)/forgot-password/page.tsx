@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button/Button';
 import InputField from '@/components/ui/InputField/InputField';
 import { useRouter } from 'next/navigation';
 import ConfettiAnimation from '@/components/ui/ConfettiAnimation';
+import MaskIcon from '@/components/ui/MaskIcon';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -108,36 +109,11 @@ export default function ForgotPasswordPage() {
               </Button>
 
               <div >
-                {/* <Link href="/login" className=''>
-                    ← Back to Sign In
-                  </Link> */}
-                <Button
-                  className="text-(--blue-dark-normal)!"
-                  variant="text"
-                  type='button'
-                  size="medium"
-                  onClick={() => router.push('/login')}
-                  leftIcon={
-                    <span
-                      className="inline-block bg-(--blue-dark-normal)"
-                      style={{
-                        width: "18px",
-                        height: "18px",
-                        backgroundColor: 'currentColor',
-                        maskImage: "url('/icons/arrow-left.svg')",
-                        WebkitMaskImage: "url('/icons/arrow-left.svg')",
-                        maskRepeat: "no-repeat",
-                        WebkitMaskRepeat: "no-repeat",
-                        maskPosition: "center",
-                        WebkitMaskPosition: "center",
-                        maskSize: "contain",
-                        WebkitMaskSize: "contain",
-                      }}
-                    />
-                  }
-                >
-                  Back to Sign In
-                </Button>
+                <Link href="/login" className=' flex items-center gap-2'>
+                  <MaskIcon src='/icons/arrow-left.svg' color='var(--blue-dark-normal)' size={18} />
+                  <span className='text-(--blue-dark-normal) text-[16px] font-medium'> Back to Sign In</span>
+                </Link>
+
               </div>
             </div>
           </form>

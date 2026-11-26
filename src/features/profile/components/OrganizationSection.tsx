@@ -11,7 +11,7 @@ import type { TeamAccessState } from '../hooks/useTeamAccess';
 // Shared across roles — everyone can see company info, only admin can edit
 // it, and Team Access management stays admin-only.
 export default function OrganizationSection({ isAdmin, profile, company, team }: { isAdmin: boolean; profile: Profile | null; company: CompanyInfoState; team: TeamAccessState }) {
-  const { companyInfo, setCompanyInfo } = company;
+  const { companyInfo, setCompanyInfo, isCompanyNameEdit, setIsCompanyNameEdit, isCompanyEmailEdit, setIsCompanyEmailEdit, isCompanyWebEdit, setIsCompanyWebEdit } = company;
   const { teamAccessLoaded, teamAccessMembers, openMemberMenuId, setOpenMemberMenuId, viewMemberProfile, openEditRole } = team;
   return (
     <div className='flex flex-col w-full max-w-[929px] gap-11'>
@@ -32,10 +32,13 @@ export default function OrganizationSection({ isAdmin, profile, company, team }:
               className='profile-text-field'
               value={companyInfo.name}
               onChange={(e) => setCompanyInfo((prev) => ({ ...prev, name: e.target.value }))}
-              disabled={!isAdmin}
+              disabled={!isAdmin || !isCompanyNameEdit}
             />
             {isAdmin && (
-              <Button type='button' variant='primary' size='medium' className='shrink-0' onClick={() => document.getElementById('company_name')?.focus()}>Edit</Button>
+              <Button type='button' variant='primary' size='medium' className='shrink-0' onClick={() => {
+                setIsCompanyNameEdit(true);
+                setTimeout(() => document.getElementById('company_name')?.focus(), 0);
+              }}>Edit</Button>
             )}
           </ProfileFieldRow>
           <ProfileFieldRow label='Company Email' htmlFor='company_email'>
@@ -46,10 +49,13 @@ export default function OrganizationSection({ isAdmin, profile, company, team }:
               className='profile-text-field'
               value={companyInfo.email}
               onChange={(e) => setCompanyInfo((prev) => ({ ...prev, email: e.target.value }))}
-              disabled={!isAdmin}
+              disabled={!isAdmin || !isCompanyEmailEdit}
             />
             {isAdmin && (
-              <Button type='button' variant='primary' size='medium' className='shrink-0' onClick={() => document.getElementById('company_email')?.focus()}>Edit</Button>
+              <Button type='button' variant='primary' size='medium' className='shrink-0' onClick={() => {
+                setIsCompanyEmailEdit(true);
+                setTimeout(() => document.getElementById('company_email')?.focus(), 0);
+              }}>Edit</Button>
             )}
           </ProfileFieldRow>
           <ProfileFieldRow label='Company Website' htmlFor='company_website'>
@@ -60,10 +66,13 @@ export default function OrganizationSection({ isAdmin, profile, company, team }:
               className='profile-text-field'
               value={companyInfo.website}
               onChange={(e) => setCompanyInfo((prev) => ({ ...prev, website: e.target.value }))}
-              disabled={!isAdmin}
+              disabled={!isAdmin || !isCompanyWebEdit}
             />
             {isAdmin && (
-              <Button type='button' variant='primary' size='medium' className='shrink-0' onClick={() => document.getElementById('company_website')?.focus()}>Edit</Button>
+              <Button type='button' variant='primary' size='medium' className='shrink-0' onClick={() => {
+                setIsCompanyWebEdit(true);
+                setTimeout(() => document.getElementById('company_website')?.focus(), 0);
+              }}>Edit</Button>
             )}
           </ProfileFieldRow>
         </div>

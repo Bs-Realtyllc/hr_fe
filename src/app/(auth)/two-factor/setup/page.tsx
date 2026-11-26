@@ -209,16 +209,14 @@ export default function SetupTwoFactorAuthPage() {
                                         {loading ? 'Setting up...' : 'Setup 2FA'}
                                     </Button>
 
-                                    <Button
-                                        variant='text'
+                                    <button
                                         type="button"
-                                        size="small"
                                         onClick={finishSetup}
                                         disabled={loading}
-                                        className="w-full text-(--blue-dark-normal)!"
+                                        className="w-full text-[18px] font-medium text-(--blue-dark-normal)"
                                     >
                                         Setup later, go to my account
-                                    </Button>
+                                    </button>
                                 </div>
                             </div>
                         ) : step === 'scan' && setupData ? (
