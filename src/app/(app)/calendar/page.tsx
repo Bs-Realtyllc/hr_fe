@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback, useId } from "react"
 import { createPortal } from "react-dom"
 import Image from "next/image"
 import {
@@ -34,7 +34,9 @@ import DayEventsDrawer from "@/features/calendar/components/DayEventsDrawer";
 import HolidayListDrawer from "@/features/calendar/components/HolidayListDrawer";
 import { buildDayItems, DAY_ITEM_CHIP_BACKGROUND, formatTimeRange, type DayItem } from "@/features/calendar/dayItems";
 import ItemDetailsPopover from "@/features/calendar/components/ItemDetailsPopover";
-import { localDateKey, localTime, timeZoneLabel, toInstant, userTimeZone } from "@/features/calendar/localTime";
+import { localDateKey, userTimeZone } from "@/features/calendar/localTime";
+import { browserZoneName, displayZoneName, instantInZone, zonedToInstant } from "@/features/calendar/timeZones";
+import TimeZonePicker from "@/features/calendar/components/TimeZonePicker";
 import {
     meetingsApi,
     type MeetingEvent,
@@ -283,13 +285,38 @@ function usePrefillAttendees(
     }, [emails, employees, loading, setSelected]);
 }
 
-// Under the date/time fields of both modals: times are typed in the viewer's
-// own timezone (and saved as exact instants), so say which one that is.
-function TimeZoneNote() {
+// Under the date/time fields of both modals. Times are typed in the chosen
+// zone (the viewer's own by default) and saved as exact instants. When another
+// zone is picked, show what that is in the viewer's own time.
+interface TimeZoneFieldProps {
+    timeZone: string;
+    onChange: (timeZone: string) => void;
+    date: string;
+    startTime: string;
+    endTime: string;
+}
+
+function TimeZoneField({ timeZone, onChange, date, startTime, endTime }: TimeZoneFieldProps) {
+    const mine = userTimeZone();
+    const id = useId();
+
+    let inYourTime: string | null = null;
+    if (timeZone !== mine && date && startTime && endTime) {
+        const start = new Date(zonedToInstant(date, startTime, timeZone));
+        const end = new Date(zonedToInstant(date, endTime, timeZone));
+        inYourTime = `${format(start, "EEE, MMM d, h:mm a")} – ${format(end, "h:mm a")}`;
+    }
+
     return (
-        <p className="text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--gray-dark-hover)">
-            Times are in your timezone: {timeZoneLabel()}
-        </p>
+        <div className="flex flex-col gap-(--space-8)">
+            <label className="form-label" htmlFor={id}>Timezone</label>
+            <TimeZonePicker id={id} value={timeZone} onChange={onChange} />
+            <p className="text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--gray-dark-hover)">
+                {inYourTime
+                    ? <>That&apos;s {inYourTime} in your timezone ({displayZoneName(mine)}).</>
+                    : "Times are in your timezone. Pick another to schedule in someone else’s time."}
+            </p>
+        </div>
     );
 }
 
@@ -309,13 +336,19 @@ function ScheduleModal({
     onClose,
     onSave
 }: ScheduleModalProps) {
+    // Editing reopens in the zone the meeting was scheduled in (older ones, or a zone
+    // this browser doesn't know: the viewer's)
+    const initialZone = (initial?.time_zone && browserZoneName(initial.time_zone)) || userTimeZone();
     const [form, setForm] = useState({
         title: initial?.title ?? '',
         description: initial?.description ?? '',
-        date: initial ? localDateKey(initial.start_datetime) : defaultDate,
-        startTime: initial ? localTime(initial.start_datetime) : '10:00',
-        endTime: initial ? localTime(initial.end_datetime) : '10:30',
+        date: initial ? instantInZone(initial.start_datetime, initialZone).date : defaultDate,
+        startTime: initial ? instantInZone(initial.start_datetime, initialZone).time : '10:00',
+        endTime: initial ? instantInZone(initial.end_datetime, initialZone).time : '10:30',
     });
+    // The zone the times above are typed in. Changing it keeps the typed times
+    // and reads them in the new zone (10:00 stays 10:00, now New York's 10:00).
+    const [timeZone, setTimeZone] = useState(initialZone);
     // Google creates the Meet link when the meeting is scheduled, so it's read-only here
     const meetLink = initial?.meet_link ?? '';
 
@@ -348,10 +381,10 @@ function ScheduleModal({
         const input: MeetingInput = {
             title: form.title.trim(),
             description: form.description.trim() || null,
-            start_datetime: toInstant(form.date, form.startTime),
-            end_datetime: toInstant(form.date, form.endTime),
+            start_datetime: zonedToInstant(form.date, form.startTime, timeZone),
+            end_datetime: zonedToInstant(form.date, form.endTime, timeZone),
             attendees: selectedEmployees.map(employee => employee.email),
-            time_zone: userTimeZone(),
+            time_zone: timeZone,
         };
 
         setSaving(true);
@@ -448,7 +481,13 @@ function ScheduleModal({
                                 />
                             </div>
                         </div>
-                        <TimeZoneNote />
+                        <TimeZoneField
+                            timeZone={timeZone}
+                            onChange={setTimeZone}
+                            date={form.date}
+                            startTime={form.startTime}
+                            endTime={form.endTime}
+                        />
 
                         {/* Figma "url". Google Meet creates the link when the meeting is
                             scheduled, so it's read-only, with Copy once there is one. */}
@@ -660,16 +699,21 @@ function EventModal({
     onClose,
     onSave
 }: EventModalProps) {
+    // Editing reopens in the zone the event was entered in (older ones, or a zone
+    // this browser doesn't know: the viewer's)
+    const initialZone = (initial?.time_zone && browserZoneName(initial.time_zone)) || userTimeZone();
     const [form, setForm] = useState({
         title: initial?.title ?? "",
-        date: initial ? localDateKey(initial.start_datetime) : defaultDate,
-        startTime: initial ? localTime(initial.start_datetime) : "10:00",
-        endTime: initial ? localTime(initial.end_datetime) : "11:00",
+        date: initial ? instantInZone(initial.start_datetime, initialZone).date : defaultDate,
+        startTime: initial ? instantInZone(initial.start_datetime, initialZone).time : "10:00",
+        endTime: initial ? instantInZone(initial.end_datetime, initialZone).time : "11:00",
         eventType: (initial?.event_type ?? "in-person") as "in-person" | "online",
         location: initial?.location ?? "",
         meetLink: initial?.meet_link ?? ""
     });
 
+    // The zone the times are typed in (see the meeting modal)
+    const [timeZone, setTimeZone] = useState(initialZone);
     const [error, setError] = useState("");
     const [saving, setSaving] = useState(false);
     const { copied, copyError, copy, reset: resetCopy } = useCopyLink();
@@ -718,12 +762,13 @@ function EventModal({
         const input: CalendarEventInput = {
             title: form.title.trim(),
             description: initial?.description ?? null,
-            start_datetime: toInstant(form.date, form.startTime),
-            end_datetime: toInstant(form.date, form.endTime),
+            start_datetime: zonedToInstant(form.date, form.startTime, timeZone),
+            end_datetime: zonedToInstant(form.date, form.endTime, timeZone),
             location: form.eventType === "in-person" ? form.location.trim() : null,
             event_type: form.eventType,
             meet_link: form.eventType === "online" ? form.meetLink.trim() || null : null,
-            attendees: selectedEmployees.map(employee => employee.email)
+            attendees: selectedEmployees.map(employee => employee.email),
+            time_zone: timeZone
         };
 
         setSaving(true);
@@ -830,7 +875,13 @@ function EventModal({
                                 />
                             </div>
                             <div className="col-span-2">
-                                <TimeZoneNote />
+                                <TimeZoneField
+                                    timeZone={timeZone}
+                                    onChange={setTimeZone}
+                                    date={form.date}
+                                    startTime={form.startTime}
+                                    endTime={form.endTime}
+                                />
                             </div>
                         </div>
 

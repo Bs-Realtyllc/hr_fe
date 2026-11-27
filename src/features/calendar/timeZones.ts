@@ -27,6 +27,19 @@ const MODERN_NAMES: Record<string, string> = {
     'Pacific/Ponape': 'Pacific/Pohnpei',
 };
 
+/**
+ * A stored zone as this browser spells it ("Asia/Kathmandu" → "Asia/Katmandu"
+ * where the engine still uses the old name), so it matches the picker's list
+ * and the viewer's own zone. Null for a zone this browser doesn't know.
+ */
+export function browserZoneName(zone: string): string | null {
+    try {
+        return new Intl.DateTimeFormat('en-US', { timeZone: zone }).resolvedOptions().timeZone;
+    } catch {
+        return null;
+    }
+}
+
 /** The zone's name as people know it today ("Asia/Katmandu" → "Asia/Kathmandu"). */
 export function displayZoneName(zone: string): string {
     return (MODERN_NAMES[zone] ?? zone).replace(/_/g, ' ');
@@ -85,16 +98,17 @@ export function instantInZone(iso: string, timeZone: string): { date: string; ti
 let cached: { key: string; options: TimeZoneOption[] } | null = null;
 
 /**
- * Every zone this browser knows (plus UTC and `include`, so the viewer's own
- * zone is always there), sorted by current offset then name.
+ * Every zone this browser knows, plus UTC and `include` (the viewer's own zone,
+ * and a stored one that may be spelled differently), sorted by current offset
+ * then name.
  */
-export function timeZoneOptions(include?: string): TimeZoneOption[] {
-    const key = `${new Date().toDateString()}|${include ?? ''}`; // offsets move with DST
+export function timeZoneOptions(include: string[] = []): TimeZoneOption[] {
+    const key = `${new Date().toDateString()}|${include.join(',')}`; // offsets move with DST
     if (cached?.key === key) return cached.options;
 
     const zones = new Set<string>(Intl.supportedValuesOf('timeZone'));
     zones.add('UTC');
-    if (include) zones.add(include);
+    include.forEach(zone => zones.add(zone));
 
     const now = new Date();
     const options = [...zones].map(value => {

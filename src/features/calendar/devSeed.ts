@@ -76,6 +76,7 @@ function seedMeetings(): MeetingEvent[] {
         attendees: [],
         google_event_id: null,
         meet_link: meet ? 'https://meet.google.com/abc-defg-hij' : null,
+        time_zone: null,
         status: 'scheduled',
         created_by: null,
         creator_name: 'Sample data',
@@ -118,6 +119,7 @@ function seedEvents(): CalendarEvent[] {
         event_type: 'location' in where ? 'in-person' : 'online',
         meet_link: 'meet' in where ? 'https://meet.google.com/klm-nopq-rst' : null,
         attendees: [],
+        time_zone: null,
         created_by: null,
         creator_name: 'Sample data',
     });

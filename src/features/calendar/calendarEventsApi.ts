@@ -17,15 +17,19 @@ export interface CalendarEvent {
     meet_link: string | null;
     /** Attendee emails */
     attendees: string[];
+    /** IANA zone the event was entered in (null for older ones) — the edit modal reopens in it */
+    time_zone: string | null;
     created_by: number | null;
     creator_name: string | null;
 }
 
-/** Body of POST and PUT — the edit modal always sends every field. Times are ISO instants. */
+/** Body of POST and PUT — the edit modal always sends every field. Times are ISO instants, typed in time_zone. */
 export type CalendarEventInput = Pick<
     CalendarEvent,
     'title' | 'description' | 'start_datetime' | 'end_datetime' | 'event_type' | 'location' | 'meet_link' | 'attendees'
->;
+> & {
+    time_zone: string;
+};
 
 const BASE = '/calendar-events';
 

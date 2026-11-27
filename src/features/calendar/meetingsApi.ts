@@ -16,6 +16,8 @@ export interface MeetingEvent {
     attendees: string[];
     google_event_id: string | null;
     meet_link: string | null;
+    /** IANA zone the meeting was scheduled in (null for older ones) — the edit modal reopens in it */
+    time_zone: string | null;
     status: 'scheduled' | 'cancelled';
     created_by: number | null;
     creator_name: string | null;
@@ -23,8 +25,8 @@ export interface MeetingEvent {
 
 /**
  * Body of POST and PUT — the edit modal always sends every field. Times are
- * ISO instants; time_zone is the scheduler's zone, which Google shows the
- * event in (attendees still see their own local time).
+ * ISO instants; time_zone is the zone they were typed in (stored, and the
+ * zone Google shows the event in — attendees still see their own time).
  */
 export type MeetingInput = Pick<MeetingEvent, 'title' | 'description' | 'start_datetime' | 'end_datetime' | 'attendees'> & {
     time_zone: string;
