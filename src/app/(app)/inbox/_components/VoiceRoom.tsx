@@ -516,9 +516,39 @@ export function VoiceRoom({
             const lvl      = p.audioLevel ?? 0;
             const scalePct = Math.round(lvl * 100);
             const showVideo = !!p.isCameraOn && !!p.videoTrack;
+            /* Once anyone has video on, camera-off people get a same-size tile so the grid doesn't jump */
+            const tileMode  = participants.some(x => !!x.isCameraOn && !!x.videoTrack);
             return (
               <div key={p.identity} className="inbox-voice-participant">
-                {showVideo ? (
+                {!showVideo && tileMode ? (
+                  /* Camera-off tile (same size as a video tile) */
+                  <div
+                    className={`relative flex aspect-video w-48 items-center justify-center overflow-hidden rounded-xl bg-white/[0.06] ring-2 transition-shadow ${
+                      speaking ? 'ring-emerald-400' : 'ring-transparent'
+                    }`}
+                  >
+                    <div
+                      className="flex h-[56px] w-[56px] items-center justify-center rounded-full text-[18px] font-bold text-white"
+                      style={{ background: `hsl(${(p.name.charCodeAt(0) * 37) % 360}, 45%, 35%)` }}
+                    >
+                      {initials(p.name)}
+                    </div>
+                    <span
+                      className="absolute bottom-1.5 right-1.5 h-[14px] w-[14px] bg-white/60"
+                      style={{ WebkitMaskImage: 'url(/icons/video-off.svg)', maskImage: 'url(/icons/video-off.svg)', WebkitMaskSize: 'contain', maskSize: 'contain', WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat' }}
+                      title="Camera off"
+                    />
+                    {p.isMicMuted && (
+                      <span
+                        className="absolute bottom-1.5 left-1.5 h-2.5 w-2.5 rounded-full bg-red-500"
+                        title="Muted"
+                      />
+                    )}
+                    {p.isScreenSharing && (
+                      <span className="absolute right-1.5 top-1.5 text-sm" title="Sharing screen">🖥️</span>
+                    )}
+                  </div>
+                ) : showVideo ? (
                   /* Camera tile */
                   <div
                     className={`relative aspect-video w-48 overflow-hidden rounded-xl bg-black ring-2 transition-shadow ${
@@ -599,13 +629,15 @@ export function VoiceRoom({
         >
           <span className="icon" style={{ WebkitMaskImage: 'url(/icons/headphones.svg)', maskImage: 'url(/icons/headphones.svg)' }} />
         </button>
-        {/* Camera toggle — reuses the monitor icon until you add /icons/video.svg + video-off.svg */}
         <button
           className={`inbox-voice-ctrl-btn${!localCameraOn ? ' active-mute' : ''}${cameraDenied ? ' disabled' : ''}`}
           title={cameraDenied ? 'Camera access denied' : localCameraOn ? 'Turn camera off' : 'Turn camera on'}
           onClick={toggleCamera}
         >
-          <span className="text-base leading-none">{localCameraOn ? '📷' : '🚫'}</span>
+          <span className="icon" style={{
+            WebkitMaskImage: localCameraOn ? 'url(/icons/video.svg)' : 'url(/icons/video-off.svg)',
+            maskImage: localCameraOn ? 'url(/icons/video.svg)' : 'url(/icons/video-off.svg)',
+          }} />
         </button>
         <button
           className={`inbox-voice-ctrl-btn${screenSharing ? ' active-share' : ''}`}
