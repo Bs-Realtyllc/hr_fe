@@ -37,4 +37,9 @@ export const meetingStorage = {
     const meetings = this.getAll().filter((meeting) => meeting.id !== id);
     this.save(meetings);
   },
+
+  /** Replace the saved meeting that has the same id. */
+  update(meeting: MeetingEvent) {
+    this.save(this.getAll().map((saved) => (saved.id === meeting.id ? meeting : saved)));
+  },
 };

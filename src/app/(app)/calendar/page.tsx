@@ -1,20 +1,34 @@
 'use client'
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { createPortal } from "react-dom"
+import Image from "next/image"
 import {
     startOfMonth,
     endOfMonth,
     eachDayOfInterval,
     format,
+    isToday,
 } from "date-fns"
-import { Copy, MapPin, Search } from "lucide-react"
 import Button from "@/components/ui/Button/Button"
 import PageHeader from "@/components/layout/PageHeader"
 import MaskIcon from "@/components/ui/MaskIcon"
 import InputField from "@/components/ui/InputField/InputField"
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { BSRealtyAvatar } from "@bsrealtyllc/design-system";
+import CompanyHolidaysCard from "@/features/calendar/components/CompanyHolidaysCard";
+import UpcomingCard from "@/features/calendar/components/UpcomingCard";
+import MonthOverviewCard from "@/features/calendar/components/MonthOverviewCard";
+import type { Employee, Holiday } from "@/features/calendar/types";
+import { profilePhotoUrl } from "@/features/calendar/profilePhoto";
+import { useCopyLink } from "@/features/calendar/useCopyLink";
+import { useEmployeeDirectory } from "@/features/calendar/useEmployeeDirectory";
+import { applyDevSeed, devSeedHolidays } from "@/features/calendar/devSeed";
+import DayEventsDrawer from "@/features/calendar/components/DayEventsDrawer";
+import HolidayListDrawer from "@/features/calendar/components/HolidayListDrawer";
+import { buildDayItems, DAY_ITEM_CHIP_BACKGROUND, formatTimeRange, type DayItem } from "@/features/calendar/dayItems";
+import ItemDetailsPopover from "@/features/calendar/components/ItemDetailsPopover";
 import {
     meetingStorage,
     MeetingEvent
@@ -24,64 +38,32 @@ import {
     CalendarEvent
 } from "@/data/eventStorage";
 
-interface Employee {
-    id: number;
-    name: string;
-    email: string;
-    designation?: string;
-    department?: string;
-    profile_picture?: string | null;
+// ── Attendee Picker (shared by both modals) ──────────────────────────────────
+// Figma "Searchbar" + "Attendes name". Loads employees, always keeps the
+// signed-in user selected first, and lets the user search, add and remove.
+interface AttendeePickerProps {
+    selected: Employee[];
+    onSelectedChange: React.Dispatch<React.SetStateAction<Employee[]>>;
+    /** Show the "Attendees" label above the search box (Create Event Figma) */
+    showLabel?: boolean;
 }
 
-// ── Schedule Meeting Modal ─────────────────────────────────────────────────
-interface ScheduleModalProps {
-    defaultDate: string;
-    onClose: () => void;
-    onCreated: (meeting: MeetingEvent) => void;
-}
-
-function ScheduleModal({
-    defaultDate,
-    onClose,
-    onCreated
-}: ScheduleModalProps) {
+function AttendeePicker({ selected, onSelectedChange, showLabel = false }: AttendeePickerProps) {
     const { user } = useAuth();
-
-    const [form, setForm] = useState({
-        title: '',
-        description: '',
-        date: defaultDate,
-        startTime: '10:00',
-        endTime: '10:30',
-        meetLink: '',
-    });
-
-    const [error, setError] = useState('');
-
-    const set = (k: keyof typeof form) =>
-        (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-            setForm(f => ({ ...f, [k]: e.target.value }));
-        };
 
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [employeeLoading, setEmployeeLoading] = useState(false);
     const [employeeError, setEmployeeError] = useState("");
-
     const [employeeSearch, setEmployeeSearch] = useState("");
     const [showEmployees, setShowEmployees] = useState(false);
-    const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
-
     const attendeeRef = useRef<HTMLDivElement>(null);
 
-    // Fetch employees
     useEffect(() => {
         const fetchEmployees = async () => {
             try {
                 setEmployeeLoading(true);
                 setEmployeeError("");
-
                 const response = await api.get<Employee[]>("/employees");
-
                 setEmployees(Array.isArray(response) ? response : []);
             } catch (error) {
                 console.error("Failed to fetch employees:", error);
@@ -94,6 +76,7 @@ function ScheduleModal({
         fetchEmployees();
     }, []);
 
+    // The creator is always an attendee, listed first.
     useEffect(() => {
         if (!user) return;
 
@@ -108,7 +91,7 @@ function ScheduleModal({
             department: user.department
         };
 
-        setSelectedEmployees(previous => {
+        onSelectedChange(previous => {
             const selectedIndex = previous.findIndex(employee =>
                 employee.id === creator.id ||
                 employee.email.toLowerCase() === creator.email.toLowerCase()
@@ -118,58 +101,213 @@ function ScheduleModal({
                 index === selectedIndex ? { ...employee, ...creator } : employee
             );
         });
-    }, [employees, user]);
+    }, [employees, user, onSelectedChange]);
 
-    // Search employees
-    const filteredEmployees = employees.filter(employee => {
-        const search = employeeSearch.trim().toLowerCase();
-
-        return (
-            employee.name?.toLowerCase().includes(search) ||
-            employee.email?.toLowerCase().includes(search) ||
-            employee.designation?.toLowerCase().includes(search) ||
-            employee.department?.toLowerCase().includes(search)
-        );
-    });
-
-    // Select employee
-    const handleSelectEmployee = (employee: Employee) => {
-        setSelectedEmployees(prev => {
-            if (prev.some(item => item.id === employee.id)) {
-                return prev;
-            }
-
-            return [...prev, employee];
-        });
-
-        setEmployeeSearch("");
-        setShowEmployees(true);
-    };
-
-    // Remove employee
-    const handleRemoveEmployee = (id: number) => {
-        setSelectedEmployees(prev =>
-            prev.filter(employee => employee.id !== id)
-        );
-    };
-
-    // Close dropdown on outside click
+    // Close the results list on an outside click
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (
-                attendeeRef.current &&
-                !attendeeRef.current.contains(event.target as Node)
-            ) {
+            if (attendeeRef.current && !attendeeRef.current.contains(event.target as Node)) {
                 setShowEmployees(false);
             }
         };
 
         document.addEventListener("mousedown", handleClickOutside);
-
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
+
+    const search = employeeSearch.trim().toLowerCase();
+    const availableEmployees = employees.filter(employee =>
+        !selected.some(item => item.id === employee.id) && (
+            employee.name?.toLowerCase().includes(search) ||
+            employee.email?.toLowerCase().includes(search) ||
+            employee.designation?.toLowerCase().includes(search) ||
+            employee.department?.toLowerCase().includes(search)
+        )
+    );
+
+    const handleSelectEmployee = (employee: Employee) => {
+        onSelectedChange(prev => prev.some(item => item.id === employee.id)
+            ? prev
+            : [...prev, employee]);
+        setEmployeeSearch("");
+        setShowEmployees(true);
+    };
+
+    const handleRemoveEmployee = (id: number) => {
+        onSelectedChange(prev => prev.filter(employee => employee.id !== id));
+    };
+
+    return (
+        <div className="flex flex-col gap-(--space-8)">
+            {showLabel && <label htmlFor="attendee-search" className="form-label">Attendees</label>}
+            <div className="relative" ref={attendeeRef}>
+                {/* Figma "Searchbar" */}
+                <div className="flex items-center gap-(--space-8) p-(--space-12) rounded-(--radius-md) border border-(--soft-white-darker-hover) bg-(--soft-white-light) focus-within:border-(--blue-dark-normal)">
+                    <MaskIcon src="/icons/search.svg" size={20} color="var(--neutral-normal)" />
+                    <input
+                        id="attendee-search"
+                        type="text"
+                        value={employeeSearch}
+                        aria-label={showLabel ? undefined : "Search attendees"}
+                        onFocus={() => setShowEmployees(true)}
+                        onChange={event => {
+                            setEmployeeSearch(event.target.value);
+                            setShowEmployees(true);
+                        }}
+                        placeholder="Search by name or email to add attendees"
+                        className="min-w-0 flex-1 bg-transparent outline-none text-(length:--body-md-size) leading-(--body-md-leading) text-(--neutral-normal) placeholder:text-(--soft-white-dark-hover)"
+                    />
+                </div>
+
+                {showEmployees && (
+                    <div className="absolute z-20 mt-(--space-4) max-h-(--calendar-attendee-results-max-height) w-full overflow-y-auto rounded-(--radius-md) border border-(--neutral-light-hover) bg-(--soft-white-light) shadow-(--shadow-sm)">
+                        {employeeLoading ? (
+                            <p className="p-(--space-12) text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--neutral-light-dark-active)">Loading employees...</p>
+                        ) : employeeError ? (
+                            <p className="p-(--space-12) text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--error-normal)">{employeeError}</p>
+                        ) : availableEmployees.length > 0 ? (
+                            availableEmployees.map(employee => (
+                                <button
+                                    key={employee.id}
+                                    type="button"
+                                    onClick={() => handleSelectEmployee(employee)}
+                                    className="flex w-full items-center gap-(--space-8) px-(--space-12) py-(--space-8) text-left cursor-pointer hover:bg-(--blue-sky-light)"
+                                >
+                                    <BSRealtyAvatar size="sm" name={employee.name} src={profilePhotoUrl(employee.profile_picture)} />
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block truncate text-(length:--body-md-size) leading-(--body-md-leading) font-medium text-(--neutral-normal)">{employee.name}</span>
+                                        <span className="block truncate text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--neutral-light-dark-active)">{employee.email}</span>
+                                    </span>
+                                </button>
+                            ))
+                        ) : (
+                            <p className="p-(--space-12) text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--neutral-light-dark-active)">
+                                {employeeSearch ? "No employees found." : "No more employees to add."}
+                            </p>
+                        )}
+                    </div>
+                )}
+
+                {selected.length > 0 && (
+                    <div className="mt-(--space-12) flex flex-col gap-(--space-12)">
+                        <p className="text-(length:--body-sm-size) leading-(--body-sm-leading) font-medium uppercase text-(--gray-dark-active)">
+                            Selected attendees ({selected.length})
+                        </p>
+                        <div className="flex flex-col gap-(--space-4)">
+                            {selected.map(employee => {
+                                const isCurrentUser = !!user && (
+                                    employee.id === user.id ||
+                                    employee.email.toLowerCase() === user.email.toLowerCase()
+                                );
+                                return (
+                                    // Figma "Attendes name": light-blue row and × on hover
+                                    <div
+                                        key={employee.id}
+                                        className="group flex items-center justify-between gap-(--space-8) px-(--space-12) py-(--space-8) rounded-(--radius-md) transition-colors hover:bg-(--blue-sky-light) focus-within:bg-(--blue-sky-light)"
+                                    >
+                                        <div className="flex min-w-0 items-center gap-[calc(var(--space-8)+var(--space-2))]">
+                                            <BSRealtyAvatar size="sm" name={employee.name} src={profilePhotoUrl(employee.profile_picture)} />
+                                            <span className="min-w-0">
+                                                <span className="flex items-center gap-(--space-8)">
+                                                    <span className="truncate text-(length:--body-md-size) leading-(--body-md-leading) font-medium text-(--neutral-normal)">
+                                                        {employee.name}
+                                                    </span>
+                                                    {isCurrentUser && (
+                                                        <span className="px-(--space-8) py-(--space-2) rounded-(--radius-full) bg-(--blue-dark-light-hover) text-(length:--label-sm-size) leading-(--label-sm-leading) font-medium text-(--blue-sky)">
+                                                            You
+                                                        </span>
+                                                    )}
+                                                </span>
+                                                <span className="block truncate text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--neutral-light-dark-active)">
+                                                    {employee.email}
+                                                </span>
+                                            </span>
+                                        </div>
+                                        <div className="flex shrink-0 items-center gap-(--space-8)">
+                                            {employee.designation && (
+                                                <span className="text-(length:--body-md-size) leading-(--body-md-leading) font-medium text-(--gray-dark)">
+                                                    {employee.designation}
+                                                </span>
+                                            )}
+                                            {/* Hidden until the row is hovered or the button has keyboard focus;
+                                                always shown on touch screens, which have no hover. */}
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveEmployee(employee.id)}
+                                                className="flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100 transition-opacity"
+                                                aria-label={`Remove ${employee.name}`}
+                                            >
+                                                <MaskIcon src="/icons/cross-outline.svg" size={12} color="var(--neutral-normal)" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// When editing, turn the saved attendee emails back into picker entries.
+// Emails that aren't in the employee list still show, under the email itself.
+// Merges with what's already selected (the picker adds the creator itself).
+function usePrefillAttendees(
+    emails: string[] | null | undefined,
+    setSelected: React.Dispatch<React.SetStateAction<Employee[]>>
+) {
+    const { employees, loading } = useEmployeeDirectory();
+    const done = useRef(false);
+
+    useEffect(() => {
+        if (done.current || loading || !emails?.length) return;
+        done.current = true;
+        const prefilled = emails.map((email, index): Employee =>
+            employees.find(e => e.email.toLowerCase() === email.toLowerCase())
+            ?? { id: -(index + 1), name: email, email }
+        );
+        setSelected(prev => [
+            ...prefilled,
+            ...prev.filter(p => !prefilled.some(e => e.email.toLowerCase() === p.email.toLowerCase())),
+        ]);
+    }, [emails, employees, loading, setSelected]);
+}
+
+// ── Schedule Meeting Modal ─────────────────────────────────────────────────
+interface ScheduleModalProps {
+    defaultDate: string;
+    /** Set to edit an existing meeting instead of scheduling a new one */
+    initial?: MeetingEvent;
+    onClose: () => void;
+    onSave: (meeting: MeetingEvent) => void;
+}
+
+function ScheduleModal({
+    defaultDate,
+    initial,
+    onClose,
+    onSave
+}: ScheduleModalProps) {
+    const [form, setForm] = useState({
+        title: initial?.title ?? '',
+        description: initial?.description ?? '',
+        date: initial?.start_datetime.slice(0, 10) ?? defaultDate,
+        startTime: initial?.start_datetime.slice(11, 16) ?? '10:00',
+        endTime: initial?.end_datetime.slice(11, 16) ?? '10:30',
+        meetLink: initial?.meet_link ?? '',
+    });
+
+    const [error, setError] = useState('');
+    const { copied, copyError, copy, reset: resetCopy } = useCopyLink();
+    const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
+    usePrefillAttendees(initial?.attendees, setSelectedEmployees);
+
+    const set = (k: keyof typeof form) =>
+        (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+            setForm(f => ({ ...f, [k]: e.target.value }));
+        };
 
 
     // Generate mock meeting link
@@ -182,6 +320,7 @@ function ScheduleModal({
             ...f,
             meetLink: `https://meet.google.com/${code}`
         }));
+        resetCopy();
     };
 
     const submit = (e: React.FormEvent) => {
@@ -199,44 +338,49 @@ function ScheduleModal({
         }
 
         const newMeeting: MeetingEvent = {
-            id: Date.now(),
+            id: initial?.id ?? Date.now(),
             title: form.title.trim(),
             description: form.description || null,
             start_datetime: `${form.date}T${form.startTime}:00`,
             end_datetime: `${form.date}T${form.endTime}:00`,
             attendees: selectedEmployees.map(employee => employee.email),
             meet_link: form.meetLink || null,
-            creator_name: 'Current User',
+            creator_name: initial?.creator_name ?? 'Current User',
         };
 
-        onCreated(newMeeting);
+        onSave(newMeeting);
     };
 
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div
-                className="w-full md:w-[590px] lg:w-[590px] py-6 px-7 bg-(--soft-white-light) flex flex-col gap-5 rounded-lg"
+                className="calendar-modal w-full md:w-(--calendar-meeting-modal-width) py-(--space-24) px-[calc(var(--space-24)+var(--space-4))] bg-(--soft-white-light) flex flex-col gap-(--space-20) rounded-(--radius-md) shadow-(--shadow-modal)"
                 onClick={e => e.stopPropagation()}
             >
-                <div className="flex justify-between py-2">
-                    <h2 className="flex items-center gap-2">
-                        <MaskIcon src="/icons/google-meet.svg" size={24} />
-                        <span className="text-[20px] font-semibold leading-7 text-[#17212B]">
-                            Schedule Meeting
+                <div className="flex items-center justify-between py-(--space-8)">
+                    <h2 className="flex items-center gap-(--space-8)">
+                        <MaskIcon src="/icons/google-meet.svg" size={24} color="var(--neutral-normal)" />
+                        <span className="text-(length:--text-lg) leading-(--title-lg-leading) font-semibold text-(--neutral-normal)">
+                            {initial ? "Edit Meeting" : "Schedule Meeting"}
                         </span>
                     </h2>
 
-                    <MaskIcon
-                        src="/icons/cross.svg"
-                        size={20}
+                    {/* Same hover as the Create event close button: light-blue circle,
+                        padded around the icon; negative margin keeps the header from shifting. */}
+                    <button
+                        type="button"
                         onClick={onClose}
-                    />
+                        aria-label="Close"
+                        className="p-(--space-4) -m-(--space-4) flex items-center justify-center rounded-(--radius-full) cursor-pointer transition-colors hover:bg-(--blue-sky-light) focus-visible:bg-(--blue-sky-light)"
+                    >
+                        <MaskIcon src="/icons/cross-outline.svg" size={20} color="var(--neutral-normal)" />
+                    </button>
                 </div>
 
-                <form onSubmit={submit} className="space-y-5">
-                    <div className="flex flex-col gap-4">
+                <form onSubmit={submit} className="flex flex-col gap-(--space-20)">
+                    <div className="flex flex-col gap-(--space-16)">
 
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-(--space-8)">
                             <label className="form-label">
                                 Title <span>*</span>
                             </label>
@@ -247,22 +391,19 @@ function ScheduleModal({
                             />
                         </div>
 
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-(--space-8)">
                             <label className="form-label">Description</label>
 
-                            <div className="border border-(--soft-white-dark-hover) rounded-md hover:border-(--blue-dark-normal) focus-within:border-(--blue-dark-normal)">
-                                <textarea
-                                    className="block w-full h-full border-0 bg-transparent px-4 py-2 focus:outline-none resize-none"
-                                    rows={3}
-                                    value={form.description}
-                                    onChange={set('description')}
-                                    placeholder="Agenda Of Meeting"
-                                />
-                            </div>
+                            <textarea
+                                className="calendar-modal__textarea"
+                                value={form.description}
+                                onChange={set('description')}
+                                placeholder="Agenda Of Meeting"
+                            />
                         </div>
 
-                        <div className="flex flex-wrap gap-2 justify-between">
-                            <div className="flex flex-col gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-(--space-24)">
+                            <div className="flex flex-col gap-(--space-8)">
                                 <label className="form-label">
                                     Date <span>*</span>
                                 </label>
@@ -273,7 +414,7 @@ function ScheduleModal({
                                 />
                             </div>
 
-                            <div className="flex flex-col gap-2">
+                            <div className="flex flex-col gap-(--space-8)">
                                 <label className="form-label">
                                     Start <span>*</span>
                                 </label>
@@ -284,7 +425,7 @@ function ScheduleModal({
                                 />
                             </div>
 
-                            <div className="flex flex-col gap-2">
+                            <div className="flex flex-col gap-(--space-8)">
                                 <label className="form-label">
                                     End <span>*</span>
                                 </label>
@@ -296,156 +437,61 @@ function ScheduleModal({
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <div className="flex justify-between gap-2 items-end ">
-                                <div className="flex flex-col gap-2 w-[364px]">
-                                    <label className="form-label">
-                                        Video conference URL
-                                    </label>
-                                    <InputField
-                                        value={form.meetLink}
-                                        onChange={set('meetLink')}
-                                        placeholder="Meeting URL"
-                                    />
-
-                                </div>
-
-                                <Button
-                                    type="button"
-                                    className="h-[44px]!"
-                                    onClick={generateMeetLink}
-                                >
-                                    Auto-Generate
-                                </Button>
+                        {/* Figma "url": Auto-Generate while empty, Copy once there's a link */}
+                        <div className="flex flex-col gap-(--space-8)">
+                            <label className="form-label">Video conference URL</label>
+                            <div className="flex items-center gap-(--space-12)">
+                                <InputField
+                                    value={form.meetLink}
+                                    onChange={set('meetLink')}
+                                    onInput={resetCopy}
+                                    placeholder="Meeting URL"
+                                    className="min-w-0 flex-1"
+                                />
+                                {form.meetLink.trim() ? (
+                                    <Button
+                                        type="button"
+                                        size="medium"
+                                        className="calendar-button-medium"
+onClick={() => copy(form.meetLink)}
+                                    >
+                                        {copied ? "Copied" : "Copy"}
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        type="button"
+                                        size="medium"
+                                        className="calendar-button-medium"
+onClick={generateMeetLink}
+                                    >
+                                        Auto-Generate
+                                    </Button>
+                                )}
                             </div>
-                            <p className="text-[12px] text-(--info-normal)">Add a link, or auto-generate one, to save this interview.</p>
+                            <p className="text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--info-normal)">
+                                Add a link, or auto-generate one, to save this interview.
+                            </p>
+                            {copyError && <p className="text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--error-normal)" role="alert">{copyError}</p>}
                         </div>
 
 
-                        <div className="flex flex-col gap-2">
-                            <label className="form-label">Attendees</label>
-
-                            <div className="relative" ref={attendeeRef}>
-                                <div className="relative">
-                                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B]" />
-                                    <input
-                                        type="text"
-                                        value={employeeSearch}
-                                        onFocus={() => setShowEmployees(true)}
-                                        onChange={(e) => {
-                                            setEmployeeSearch(e.target.value);
-                                            setShowEmployees(true);
-                                        }}
-                                        placeholder="Search by name or email to add attendees"
-                                        className="h-[40px] w-full rounded-md border border-(--soft-white-dark-hover) bg-white pl-9 pr-3 text-xs outline-none focus:border-(--blue-dark-normal)"
-                                    />
-                                </div>
-
-                                {showEmployees && (
-                                    <div className="absolute z-20 mt-1 max-h-[160px] w-full overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                                        {employeeLoading ? (
-                                            <p className="p-3 text-xs text-gray-500">Loading employees...</p>
-                                        ) : employeeError ? (
-                                            <p className="p-3 text-xs text-red-500">{employeeError}</p>
-                                        ) : filteredEmployees.filter(employee =>
-                                            !selectedEmployees.some(selected => selected.id === employee.id)
-                                        ).length > 0 ? (
-                                            filteredEmployees
-                                                .filter(employee => !selectedEmployees.some(selected => selected.id === employee.id))
-                                                .map(employee => (
-                                                    <button
-                                                        key={employee.id}
-                                                        type="button"
-                                                        onClick={() => handleSelectEmployee(employee)}
-                                                        className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
-                                                    >
-                                                        <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-[#EAF3F9] text-[10px] font-semibold text-[#235E94]">
-                                                            {employee.profile_picture ? (
-                                                                <img
-                                                                    src={employee.profile_picture.startsWith("http")
-                                                                        ? employee.profile_picture
-                                                                        : `${(process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/api\/?$/, "")}/uploads/profile/photo/${employee.profile_picture}`}
-                                                                    alt=""
-                                                                    className="h-full w-full object-cover"
-                                                                />
-                                                            ) : (
-                                                                employee.name.split(" ").map(word => word[0]).join("").slice(0, 2)
-                                                            )}
-                                                        </span>
-                                                        <span className="min-w-0 flex-1">
-                                                            <span className="block truncate text-xs font-medium text-[#17212B]">{employee.name}</span>
-                                                            <span className="block truncate text-[10px] text-gray-500">{employee.email}</span>
-                                                        </span>
-                                                    </button>
-                                                ))
-                                        ) : (
-                                            <p className="p-3 text-xs text-gray-500">
-                                                {employeeSearch ? "No employees found." : "No more employees to add."}
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-                                {selectedEmployees.length > 0 && (
-                                    <div className="mt-2">
-                                        <p className="mb-1 text-[9px] font-medium uppercase text-[#64748B]">
-                                            Selected attendees ({selectedEmployees.length})
-                                        </p>
-                                        <div className="space-y-1">
-                                            {selectedEmployees.map(employee => (
-                                                <div key={employee.id} className="flex items-center gap-2 py-1">
-                                                    <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-[#EAF3F9] text-[10px] font-semibold text-[#235E94]">
-                                                        {employee.profile_picture ? (
-                                                            <img
-                                                                src={employee.profile_picture.startsWith("http")
-                                                                    ? employee.profile_picture
-                                                                    : `${(process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/api\/?$/, "")}/uploads/profile/photo/${employee.profile_picture}`}
-                                                                alt=""
-                                                                className="h-full w-full object-cover"
-                                                            />
-                                                        ) : employee.name.split(" ").map(word => word[0]).join("").slice(0, 2)}
-                                                    </span>
-                                                    <span className="min-w-0 flex-1">
-                                                        <span className="block truncate text-[11px] font-medium text-[#17212B]">
-                                                            {employee.name}
-                                                            {user && (
-                                                                employee.id === user.id ||
-                                                                employee.email.toLowerCase() === user.email.toLowerCase()
-                                                            ) && (
-                                                                <span className="ml-1 rounded bg-[#DDF0FA] px-1 text-[9px]">You</span>
-                                                            )}
-                                                        </span>
-                                                        <span className="block truncate text-[9px] text-gray-500">{employee.email}</span>
-                                                    </span>
-                                                    {employee.designation && (
-                                                        <span className="text-[10px] text-gray-500">{employee.designation}</span>
-                                                    )}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveEmployee(employee.id)}
-                                                        className="px-1 text-gray-500 hover:text-red-500"
-                                                        aria-label={`Remove ${employee.name}`}
-                                                    >
-                                                        ×
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
+                        {/* No "Attendees" label here, per the Schedule Meeting Figma */}
+                        <AttendeePicker
+                            selected={selectedEmployees}
+                            onSelectedChange={setSelectedEmployees}
+                        />
 
                         {error && (
                             <p className="form-error-text">{error}</p>
                         )}
                     </div>
 
-                    <div className="flex gap-3 justify-end">
+                    <div className="flex justify-end gap-(--space-8)">
                         <Button
                             type="button"
                             variant="text"
                             size="small"
+                            className="calendar-modal__cancel calendar-modal__cancel--wide"
                             onClick={onClose}
                         >
                             Cancel
@@ -455,8 +501,9 @@ function ScheduleModal({
                             type="submit"
                             variant="primary"
                             size="small"
+                            className="calendar-modal__submit"
                         >
-                            Schedule
+                            {initial ? "Save" : "Schedule"}
                         </Button>
                     </div>
                 </form>
@@ -470,50 +517,99 @@ interface SuccessMeetingPopupProps {
     onClose: () => void;
 }
 
-function SuccessMeetingPopup({
-    meeting,
-    onClose
-}: SuccessMeetingPopupProps) {
+// ── Success popup (shared) ─────────────────────────────────────────────────
+// Figma "meeting_schedule_popup" (node 2698:18392).
+interface SuccessPopupProps {
+    title: string;
+    message: React.ReactNode;
+    onClose: () => void;
+}
+
+function SuccessPopup({ title, message, onClose }: SuccessPopupProps) {
+    if (typeof document === "undefined") return null;
+
     return createPortal(
         <div className="modal-overlay" onClick={onClose}>
             <div
-                className="w-full border max-w-[452px] bg-(--soft-white-light) rounded-lg p-8 flex flex-col gap-4"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="success-popup-title"
+                className="w-full max-w-(--calendar-success-popup-width) p-(--space-32) flex flex-col items-center gap-(--space-16) bg-(--soft-white-light) rounded-(--radius-md) shadow-(--shadow-popup)"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="flex flex-col gap-2 items-center">
-                    <img src="/icons/success-icon.svg" alt="" className="h-10 w-10" />
+                <div className="w-full max-w-(--calendar-popup-content-width) flex flex-col items-center gap-(--space-8) text-center">
+                    <Image src="/icons/success-icon.svg" alt="" width={64} height={64} className="size-(--space-64)" />
 
-                    <p className="text-[12px] text-(--gray-dark-hover)">
+                    <p className="text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--gray-dark-hover)">
                         YOU&apos;RE ALL SET
                     </p>
 
-                    <div className="flex flex-col gap-2 items-center text-center">
-                        <h2 className="text-[20px] font-semibold text-[#17212B]">
-                            Meeting Schedule
+                    <div className="flex flex-col items-center">
+                        <h2 id="success-popup-title" className="text-(length:--text-lg) leading-(--title-lg-leading) font-semibold text-(--neutral-normal)">
+                            {title}
                         </h2>
-
-                        <p className="text-[12px] text-(--gray-dark-hover)">
-                            Your meeting has been successfully scheduled for
-                            {" "}
-                            {format(
-                                new Date(meeting.start_datetime),
-                                "MMMM dd, yyyy"
-                            )}
-                            {" at "}
-                            {format(
-                                new Date(meeting.start_datetime),
-                                "hh:mm a"
-                            )}.
+                        <p className="text-(length:--body-sm-size) leading-(--body-sm-leading) font-medium text-(--gray-dark-hover)">
+                            {message}
                         </p>
-
-
                     </div>
                 </div>
 
-                <div className="flex w-full">
-                    <Button className="w-full"
-                        size="small" onClick={onClose}>
-                        Done
+                <Button
+                    size="small"
+                    className="calendar-button-small w-full max-w-(--calendar-popup-content-width)"
+                    onClick={onClose}
+                >
+                    Done
+                </Button>
+            </div>
+        </div>,
+        document.body
+    );
+}
+
+// ── Confirm popup ─────────────────────────────────────────────────────────
+// Figma "Logout_popup" (node 3017:29483), used for deleting a meeting.
+interface ConfirmPopupProps {
+    title: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+}
+
+function ConfirmPopup({
+    title,
+    confirmLabel = "Delete",
+    cancelLabel = "No",
+    onConfirm,
+    onCancel
+}: ConfirmPopupProps) {
+    if (typeof document === "undefined") return null;
+
+    return createPortal(
+        <div className="modal-overlay" onClick={onCancel}>
+            <div
+                role="alertdialog"
+                aria-modal="true"
+                aria-labelledby="confirm-popup-title"
+                className="p-[calc(var(--space-24)+var(--space-4))] flex flex-col items-center gap-(--space-16) bg-(--soft-white-light) rounded-(--radius-md) shadow-(--shadow-xs)"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="w-(--calendar-popup-content-width) max-w-full flex flex-col items-center gap-(--space-8) text-center">
+                    <span className="size-(--calendar-confirm-icon-size) flex items-center justify-center rounded-(--radius-full) bg-(--error-light)">
+                        <MaskIcon src="/icons/trash.svg" size={24} color="var(--error-normal)" />
+                    </span>
+                    <h2 id="confirm-popup-title" className="text-(length:--text-lg) leading-(--title-lg-leading) font-semibold text-(--neutral-normal)">
+                        {title}
+                    </h2>
+                </div>
+
+                <div className="flex items-center gap-(--space-12)">
+                    <Button size="small" className="calendar-button-confirm calendar-button-danger" onClick={onConfirm}>
+                        {confirmLabel}
+                    </Button>
+                    <Button size="small" variant="text" className="calendar-button-confirm calendar-button-danger-outline" onClick={onCancel}>
+                        {cancelLabel}
                     </Button>
                 </div>
             </div>
@@ -522,40 +618,54 @@ function SuccessMeetingPopup({
     );
 }
 
-// Create Event
+// "today at 10:00" / "November 27, 2026 at 10:00" (Figma wording)
+function formatWhen(datetime: string) {
+    const date = new Date(datetime);
+    const day = isToday(date) ? "today" : format(date, "MMMM d, yyyy");
+    return `${day} at ${format(date, "H:mm")}`;
+}
+
+function SuccessMeetingPopup({
+    meeting,
+    onClose
+}: SuccessMeetingPopupProps) {
+    return (
+        <SuccessPopup
+            title="Meeting Schedule"
+            message={<>Your meeting has been successfully scheduled for {formatWhen(meeting.start_datetime)}.</>}
+            onClose={onClose}
+        />
+    );
+}
+
 interface EventModalProps {
     defaultDate: string;
+    /** Set to edit an existing event instead of creating a new one */
+    initial?: CalendarEvent;
     onClose: () => void;
-    onCreated: (event: CalendarEvent) => void;
+    onSave: (event: CalendarEvent) => void;
 }
 
 function EventModal({
     defaultDate,
+    initial,
     onClose,
-    onCreated
+    onSave
 }: EventModalProps) {
-    const { user } = useAuth();
-
     const [form, setForm] = useState({
-        title: "",
-        date: defaultDate,
-        startTime: "10:00",
-        endTime: "11:00",
-        eventType: "in-person" as "in-person" | "online",
-        location: "",
-        meetLink: ""
+        title: initial?.title ?? "",
+        date: initial?.start_datetime.slice(0, 10) ?? defaultDate,
+        startTime: initial?.start_datetime.slice(11, 16) ?? "10:00",
+        endTime: initial?.end_datetime.slice(11, 16) ?? "11:00",
+        eventType: (initial?.event_type ?? "in-person") as "in-person" | "online",
+        location: initial?.location ?? "",
+        meetLink: initial?.meet_link ?? ""
     });
 
     const [error, setError] = useState("");
-    const [copyError, setCopyError] = useState("");
-    const [copied, setCopied] = useState(false);
-    const [employees, setEmployees] = useState<Employee[]>([]);
-    const [employeeLoading, setEmployeeLoading] = useState(false);
-    const [employeeError, setEmployeeError] = useState("");
-    const [employeeSearch, setEmployeeSearch] = useState("");
-    const [showEmployees, setShowEmployees] = useState(false);
+    const { copied, copyError, copy, reset: resetCopy } = useCopyLink();
     const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
-    const attendeeRef = useRef<HTMLDivElement>(null);
+    usePrefillAttendees(initial?.attendees, setSelectedEmployees);
 
     const set = (key: Exclude<keyof typeof form, "eventType">) =>
         (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -565,99 +675,12 @@ function EventModal({
             }));
         };
 
-    useEffect(() => {
-        const fetchEmployees = async () => {
-            try {
-                setEmployeeLoading(true);
-                setEmployeeError("");
-                const response = await api.get<Employee[]>("/employees");
-                setEmployees(Array.isArray(response) ? response : []);
-            } catch (error) {
-                console.error("Failed to fetch employees:", error);
-                setEmployeeError("Unable to load employees.");
-            } finally {
-                setEmployeeLoading(false);
-            }
-        };
-
-        fetchEmployees();
-    }, []);
-
-    useEffect(() => {
-        if (!user) return;
-
-        const creator = employees.find(employee =>
-            employee.id === user.id ||
-            employee.email.toLowerCase() === user.email.toLowerCase()
-        ) ?? {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            designation: user.designation,
-            department: user.department
-        };
-
-        setSelectedEmployees(previous => {
-            const selectedIndex = previous.findIndex(employee =>
-                employee.id === creator.id ||
-                employee.email.toLowerCase() === creator.email.toLowerCase()
-            );
-            if (selectedIndex === -1) return [creator, ...previous];
-            return previous.map((employee, index) =>
-                index === selectedIndex ? { ...employee, ...creator } : employee
-            );
-        });
-    }, [employees, user]);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (attendeeRef.current && !attendeeRef.current.contains(event.target as Node)) {
-                setShowEmployees(false);
-            }
-        };
-
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
-    const filteredEmployees = employees.filter(employee => {
-        const search = employeeSearch.trim().toLowerCase();
-        return (
-            employee.name?.toLowerCase().includes(search) ||
-            employee.email?.toLowerCase().includes(search) ||
-            employee.designation?.toLowerCase().includes(search) ||
-            employee.department?.toLowerCase().includes(search)
-        );
-    });
-
     const generateMeetLink = () => {
         const code = Math.random().toString(36).substring(2, 5)
             + "-" + Math.random().toString(36).substring(2, 6)
             + "-" + Math.random().toString(36).substring(2, 5);
         setForm(prev => ({ ...prev, meetLink: `https://meet.google.com/${code}` }));
-        setCopied(false);
-    };
-
-    const copyMeetLink = async () => {
-        if (!form.meetLink) return;
-
-        try {
-            await navigator.clipboard.writeText(form.meetLink);
-            setCopied(true);
-            setCopyError("");
-        } catch (copyFailure) {
-            console.error("Failed to copy meeting link:", copyFailure);
-            setCopied(false);
-            setCopyError("Unable to copy link.");
-        }
-    };
-
-    const handleSelectEmployee = (employee: Employee) => {
-        setSelectedEmployees(prev => prev.some(item => item.id === employee.id)
-            ? prev
-            : [...prev, employee]);
-        setEmployeeSearch("");
-        setShowEmployees(true);
+        resetCopy();
     };
 
     const submit = (e: React.FormEvent) => {
@@ -683,41 +706,47 @@ function EventModal({
         }
 
         const newEvent: CalendarEvent = {
-            id: Date.now(),
+            id: initial?.id ?? Date.now(),
             title: form.title.trim(),
-            description: null,
+            description: initial?.description ?? null,
             start_datetime: `${form.date}T${form.startTime}:00`,
             end_datetime: `${form.date}T${form.endTime}:00`,
             location: form.eventType === "in-person" ? form.location.trim() : null,
             event_type: form.eventType,
             meet_link: form.eventType === "online" ? form.meetLink.trim() || null : null,
             attendees: selectedEmployees.map(employee => employee.email),
-            creator_name: "Current User"
+            creator_name: initial?.creator_name ?? "Current User"
         };
 
-        onCreated(newEvent);
+        onSave(newEvent);
     };
 
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div
-                className="w-full max-w-[440px] max-h-[90vh] overflow-y-auto p-5 bg-(--soft-white-light) flex flex-col gap-4 rounded-lg"
+                className="calendar-modal w-full max-w-(--calendar-event-modal-width) max-h-[90vh] overflow-y-auto p-(--space-20) bg-(--soft-white-light) flex flex-col gap-(--space-20) rounded-(--radius-md) shadow-(--shadow-modal)"
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex justify-between items-center">
-                    <h2 className="text-[16px] font-semibold text-[#17212B]">
-                        Create Event
+                    <h2 className="text-(length:--text-lg) leading-(--title-lg-leading) font-semibold text-(--neutral-normal)">
+                        {initial ? "Edit event" : "Create event"}
                     </h2>
 
-                    <MaskIcon
-                        src="/icons/cross.svg"
-                        size={20}
+                    {/* Figma "cross" (node 2315:22973): light-blue circle on hover.
+                        Padding gives the circle (and click target) some room around the 16px icon;
+                        the negative margin keeps the icon where it was so the header doesn't shift. */}
+                    <button
+                        type="button"
                         onClick={onClose}
-                    />
+                        aria-label="Close"
+                        className="p-(--space-4) -m-(--space-4) flex items-center justify-center rounded-(--radius-full) cursor-pointer transition-colors hover:bg-(--blue-sky-light) focus-visible:bg-(--blue-sky-light)"
+                    >
+                        <MaskIcon src="/icons/cross-outline.svg" size={16} color="var(--neutral-normal)" />
+                    </button>
                 </div>
 
-                <form onSubmit={submit} className="space-y-4">
-                    <div className="flex flex-col gap-3">
+                <form onSubmit={submit} className="flex flex-col gap-(--space-20)">
+                    <div className="flex flex-col gap-(--space-12)">
 
                         <div className="flex flex-col gap-2">
                             <label className="form-label">
@@ -732,7 +761,7 @@ function EventModal({
                         </div>
 
                         <div
-                            className="grid grid-cols-2 rounded-md border border-(--soft-white-dark-hover) p-0.5"
+                            className="grid grid-cols-2 gap-(--space-16) overflow-hidden rounded-(--radius-md) border border-(--soft-white-darker-hover) bg-(--soft-white-light)"
                             role="group"
                             aria-label="Event type"
                         >
@@ -744,11 +773,11 @@ function EventModal({
                                     onClick={() => {
                                         setForm(prev => ({ ...prev, eventType: type }));
                                         if (type === "online" && !form.meetLink) generateMeetLink();
-                                        setCopyError("");
+                                        resetCopy();
                                     }}
-                                    className={`h-8 rounded text-xs font-medium transition-colors ${form.eventType === type
-                                        ? "bg-[#DDF0FA] text-[#17212B]"
-                                        : "text-[#17212B] hover:bg-[#F3F7FA]"
+                                    className={`p-(--space-4) text-(length:--body-md-size) leading-(--body-md-leading) font-medium text-(--neutral-normal) cursor-pointer transition-colors ${form.eventType === type
+                                        ? "bg-(--blue-sky-light-hover) rounded-(--radius-md)"
+                                        : "rounded-(--radius-xs) hover:bg-(--blue-sky-light)"
                                         }`}
                                 >
                                     {type === "in-person" ? "In Person" : "Online"}
@@ -789,168 +818,72 @@ function EventModal({
                         </div>
 
                         {form.eventType === "in-person" ? (
-                            <div className="flex flex-col gap-2">
+                            <div className="flex flex-col gap-(--space-8)">
                                 <label className="form-label">Location <span>*</span></label>
                                 <div className="relative">
-                                    <MapPin size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B]" />
+                                    {/* z-10: the input's container is position:relative and would paint over the icon */}
+                                    <MaskIcon
+                                        src="/icons/map-pin.svg"
+                                        size={20}
+                                        color="var(--neutral-normal)"
+                                        className="absolute left-(--space-16) top-1/2 -translate-y-1/2 z-10 pointer-events-none"
+                                    />
                                     <InputField
                                         value={form.location}
                                         onChange={set("location")}
                                         placeholder="Enter event location"
-                                        className="[&_.input-field__input]:pl-9"
+                                        className="calendar-modal__input--with-icon"
                                     />
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex flex-col gap-2">
+                            <div className="flex flex-col gap-(--space-8)">
                                 <label className="form-label">Video conference URL</label>
-                                <div className="flex gap-2">
+                                <div className="flex items-center gap-(--space-12)">
                                     <InputField
                                         value={form.meetLink}
                                         onChange={set("meetLink")}
                                         placeholder="https://meet.google.com/..."
                                         className="min-w-0 flex-1"
-                                        onInput={() => setCopied(false)}
+                                        onInput={resetCopy}
                                     />
                                     <Button
                                         type="button"
-                                        size="small"
-                                        leftIcon={<Copy size={14} />}
-                                        onClick={copyMeetLink}
+                                        size="medium"
+                                        className="calendar-button-medium"
+onClick={() => copy(form.meetLink)}
                                     >
                                         {copied ? "Copied" : "Copy"}
                                     </Button>
                                 </div>
-                                <p className="text-[11px] text-(--info-normal)">
+                                <p className="text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--info-normal)">
                                     Add a link, or{" "}
                                     <button type="button" className="underline" onClick={generateMeetLink}>
                                         generate one
                                     </button>
                                     , to share with attendees.
                                 </p>
-                                {copyError && <p className="text-xs text-red-600" role="alert">{copyError}</p>}
+                                {copyError && <p className="text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--error-normal)" role="alert">{copyError}</p>}
                             </div>
                         )}
 
-                        <div className="flex flex-col gap-2">
-                            <label className="form-label">Attendees</label>
-                            <div className="relative" ref={attendeeRef}>
-                                <div className="relative">
-                                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B]" />
-                                    <input
-                                        type="text"
-                                        value={employeeSearch}
-                                        onFocus={() => setShowEmployees(true)}
-                                        onChange={event => {
-                                            setEmployeeSearch(event.target.value);
-                                            setShowEmployees(true);
-                                        }}
-                                        placeholder="Search by name or email to add attendees"
-                                        className="h-[40px] w-full rounded-md border border-(--soft-white-dark-hover) bg-white pl-9 pr-3 text-xs outline-none focus:border-(--blue-dark-normal)"
-                                    />
-                                </div>
-                                {showEmployees && (
-                                    <div className="absolute z-20 mt-1 max-h-[160px] w-full overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                                        {employeeLoading ? (
-                                            <p className="p-3 text-xs text-gray-500">Loading employees...</p>
-                                        ) : employeeError ? (
-                                            <p className="p-3 text-xs text-red-500">{employeeError}</p>
-                                        ) : filteredEmployees.filter(employee =>
-                                            !selectedEmployees.some(selected => selected.id === employee.id)
-                                        ).length > 0 ? (
-                                            filteredEmployees
-                                                .filter(employee => !selectedEmployees.some(selected => selected.id === employee.id))
-                                                .map(employee => (
-                                                    <button
-                                                        key={employee.id}
-                                                        type="button"
-                                                        onClick={() => handleSelectEmployee(employee)}
-                                                        className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
-                                                    >
-                                                        <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-[#EAF3F9] text-[10px] font-semibold text-[#235E94]">
-                                                            {employee.profile_picture ? (
-                                                                <img
-                                                                    src={employee.profile_picture.startsWith("http")
-                                                                        ? employee.profile_picture
-                                                                        : `${(process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/api\/?$/, "")}/uploads/profile/photo/${employee.profile_picture}`}
-                                                                    alt=""
-                                                                    className="h-full w-full object-cover"
-                                                                />
-                                                            ) : employee.name.split(" ").map(word => word[0]).join("").slice(0, 2)}
-                                                        </span>
-                                                        <span className="min-w-0 flex-1">
-                                                            <span className="block truncate text-xs font-medium text-[#17212B]">{employee.name}</span>
-                                                            <span className="block truncate text-[10px] text-gray-500">{employee.email}</span>
-                                                        </span>
-                                                    </button>
-                                                ))
-                                        ) : (
-                                            <p className="p-3 text-xs text-gray-500">
-                                                {employeeSearch ? "No employees found." : "No more employees to add."}
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-                                {selectedEmployees.length > 0 && (
-                                    <div className="mt-2">
-                                        <p className="mb-1 text-[9px] font-medium uppercase text-[#64748B]">
-                                            Selected attendees ({selectedEmployees.length})
-                                        </p>
-                                        <div className="space-y-1">
-                                            {selectedEmployees.map(employee => (
-                                                <div key={employee.id} className="flex items-center gap-2 py-1">
-                                                    <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-[#EAF3F9] text-[10px] font-semibold text-[#235E94]">
-                                                        {employee.profile_picture ? (
-                                                            <img
-                                                                src={employee.profile_picture.startsWith("http")
-                                                                    ? employee.profile_picture
-                                                                    : `${(process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/api\/?$/, "")}/uploads/profile/photo/${employee.profile_picture}`}
-                                                                alt=""
-                                                                className="h-full w-full object-cover"
-                                                            />
-                                                        ) : employee.name.split(" ").map(word => word[0]).join("").slice(0, 2)}
-                                                    </span>
-                                                    <span className="min-w-0 flex-1">
-                                                        <span className="block truncate text-[11px] font-medium text-[#17212B]">
-                                                            {employee.name}
-                                                            {user && (
-                                                                employee.id === user.id ||
-                                                                employee.email.toLowerCase() === user.email.toLowerCase()
-                                                            ) && (
-                                                                <span className="ml-1 rounded bg-[#DDF0FA] px-1 text-[9px]">You</span>
-                                                            )}
-                                                        </span>
-                                                        <span className="block truncate text-[9px] text-gray-500">{employee.email}</span>
-                                                    </span>
-                                                    {employee.designation && (
-                                                        <span className="text-[10px] text-gray-500">{employee.designation}</span>
-                                                    )}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setSelectedEmployees(prev => prev.filter(item => item.id !== employee.id))}
-                                                        className="px-1 text-gray-500 hover:text-red-500"
-                                                        aria-label={`Remove ${employee.name}`}
-                                                    >
-                                                        ×
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                        <AttendeePicker
+                            selected={selectedEmployees}
+                            onSelectedChange={setSelectedEmployees}
+                            showLabel
+                        />
 
                         {error && (
                             <p className="form-error-text">{error}</p>
                         )}
                     </div>
 
-                    <div className="flex justify-end gap-3">
+                    <div className="flex justify-end gap-(--space-8)">
                         <Button
                             type="button"
                             variant="text"
                             size="small"
+                            className="calendar-modal__cancel"
                             onClick={onClose}
                         >
                             Cancel
@@ -960,8 +893,9 @@ function EventModal({
                             type="submit"
                             variant="primary"
                             size="small"
+                            className="calendar-modal__submit"
                         >
-                            Create Event
+                            {initial ? "Save" : "Create Event"}
                         </Button>
                     </div>
                 </form>
@@ -980,65 +914,12 @@ function SuccessEventPopup({
     event,
     onClose
 }: SuccessEventPopupProps) {
-    const [mounted, setMounted] = useState(false);
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    if (!mounted) return null;
-
-    return createPortal(
-        <div className="modal-overlay" onClick={onClose}>
-            <div
-                className="w-full max-w-[452px] bg-(--soft-white-light) rounded-lg p-8 flex flex-col gap-4"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div className="flex flex-col gap-2 items-center">
-                    <img
-                        src="/icons/success-icon.svg"
-                        alt=""
-                        className="h-10 w-10"
-                    />
-
-                    <p className="text-[12px] text-(--gray-dark-hover)">
-                        YOU&apos;RE ALL SET
-                    </p>
-
-                    <div className="flex flex-col gap-2 items-center text-center">
-                        <h2 className="text-[20px] font-semibold text-[#17212B]">
-                            Event Created
-                        </h2>
-
-                        <p className="text-[12px] text-(--gray-dark-hover)">
-                            Your event{" "}
-                            <span className="font-semibold">
-                                {event.title}
-                            </span>{" "}
-                            has been successfully created for{" "}
-                            {format(
-                                new Date(event.start_datetime),
-                                "MMMM dd, yyyy"
-                            )}
-                            {" at "}
-                            {format(
-                                new Date(event.start_datetime),
-                                "hh:mm a"
-                            )}.
-                        </p>
-                    </div>
-                </div>
-
-                <Button
-                    className="w-full"
-                    size="small"
-                    onClick={onClose}
-                >
-                    Done
-                </Button>
-            </div>
-        </div>,
-        document.body
+    return (
+        <SuccessPopup
+            title="Event Created"
+            message={<>Your event <span className="font-semibold">{event.title}</span> has been successfully created for {formatWhen(event.start_datetime)}.</>}
+            onClose={onClose}
+        />
     );
 }
 
@@ -1083,11 +964,23 @@ const CalendarPage = () => {
 
     // Load saved meetings from localStorage
     useEffect(() => {
+        applyDevSeed(); // development only: /calendar?seed or ?seed=clear
         const savedMeetings = meetingStorage.getAll();
         setEvents(savedMeetings);
     }, []);
 
-    // delete meeting
+    // Chip details popover — the clicked item and its chip element
+    const [selectedItem, setSelectedItem] = useState<{ dayItem: DayItem; anchor: HTMLElement } | null>(null);
+    const closeDetails = useCallback(() => setSelectedItem(null), []);
+
+    // Edit — the meeting / event open in its modal (opened from the popover's pencil)
+    const [editingMeeting, setEditingMeeting] = useState<MeetingEvent | null>(null);
+    const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+
+    // Delete a meeting or event — set itemToDelete to ask first (ConfirmPopup below).
+    // Opened from the details popover's trash icon.
+    const [itemToDelete, setItemToDelete] = useState<{ kind: "meeting" | "event"; id: number } | null>(null);
+
     const handleDeleteMeeting = (id: number) => {
         meetingStorage.delete(id);
 
@@ -1096,9 +989,33 @@ const CalendarPage = () => {
         );
     };
 
+    const handleDeleteEvent = (id: number) => {
+        eventStorage.delete(id);
+        setCalendarEvents(prev => prev.filter(event => event.id !== id));
+    };
+
     // Event
     useEffect(() => {
         setCalendarEvents(eventStorage.getAll());
+    }, []);
+
+    // Day drawer ("+N more") — the "YYYY-MM-DD" it shows, or null when closed
+    const [openDayKey, setOpenDayKey] = useState<string | null>(null);
+    const closeDayDrawer = useCallback(() => setOpenDayKey(null), []);
+
+    // Full holiday list drawer ("View Full Holiday List")
+    const [showHolidayList, setShowHolidayList] = useState(false);
+    const closeHolidayList = useCallback(() => setShowHolidayList(false), []);
+
+    // Company holidays (GET /holidays). A failed load just shows no holidays.
+    const [holidays, setHolidays] = useState<Holiday[]>([]);
+    useEffect(() => {
+        api.get<Holiday[]>("/holidays")
+            .then(list => setHolidays([...(Array.isArray(list) ? list : []), ...devSeedHolidays()]))
+            .catch(error => {
+                console.error("Failed to load holidays:", error);
+                setHolidays(devSeedHolidays());
+            });
     }, []);
 
     const handleCreateEventClick = (dateStr: string) => {
@@ -1220,8 +1137,8 @@ const CalendarPage = () => {
         <div>
             {/* Page Header */}
             <PageHeader
-                title={"Calendar "}
-                discription={"View and manage your schedule, meetings, company events, and important dates in one place."}
+                title="Calendar"
+                discription="View and manage your schedule, meetings, company events, and important dates in one place."
             />
 
             {/* Main container */}
@@ -1230,28 +1147,34 @@ const CalendarPage = () => {
                 {/* Calendar container */}
                 <div className="w-full rounded-xl space-y-7">
                     {/* Calendar action */}
-                    <div className="w-full flex justify-end">
-                        <div className="flex items-center gap-2">
+                    <div className="calendar-toolbar w-full flex justify-end">
+                        <div className="flex items-center gap-(--space-16)">
                             {/* Date picker Dropdown */}
                             <div className="relative" ref={dropdownRef}>
                                 <button
                                     type="button"
                                     onClick={() => setIsMonthPickerOpen((prev) => !prev)}
-                                    className="p-3 bg-(--soft-white-light) rounded-lg flex justify-center items-center gap-2 cursor-pointer"
+                                    aria-expanded={isMonthPickerOpen}
+                                    className="p-(--space-12) bg-(--soft-white-light) rounded-(--radius-md) flex justify-center items-center gap-(--space-8) cursor-pointer"
                                 >
-                                    <MaskIcon src="/icons/calendar.svg" size={16} color={"#141B34"} />
+                                    <MaskIcon src="/icons/calendar.svg" size={16} color="var(--neutral-normal)" />
 
-                                    <span className="text-[14px] font-medium leading-5 text-[#020617]">
+                                    <span className="text-(length:--body-md-size) font-medium leading-(--body-md-leading) text-(--deep-night-normal)">
                                         {format(currentDate, "MMM, yyyy")}
                                     </span>
 
-                                    <MaskIcon src="/icons/chevron-down.svg" size={16} color="#17212B" />
+                                    <MaskIcon
+                                        src={isMonthPickerOpen ? "/icons/chevron-up.svg" : "/icons/chevron-down.svg"}
+                                        size={12}
+                                        color="var(--neutral-normal)"
+                                    />
                                 </button>
 
                                 {/* Dropdown calander */}
                                 {isMonthPickerOpen && (
-                                    <div className="absolute -right-18 mt-3 bg-(--soft-white-light) rounded-xl shadow-lg p-4 z-50">
-                                        <div className="flex flex-col gap-3 w-[245px]">
+                                    <div className="absolute left-1/2 -translate-x-1/2 mt-(--space-12) bg-(--soft-white-light) rounded-(--radius-md) shadow-(--shadow-sm) p-(--space-16) z-50">
+                                        {/* Figma "Selection_Month": panel centred under the trigger */}
+                                        <div className="flex flex-col gap-(--space-12) w-(--calendar-month-picker-width)">
 
                                             {/* Months Switcher */}
                                             <div className="flex items-center justify-between">
@@ -1261,11 +1184,11 @@ const CalendarPage = () => {
                                                     onClick={handlePreviousMonth}
                                                     className="flex items-center"
                                                 >
-                                                    <MaskIcon src="/icons/chevron-left.svg" color="#3C4653" size={16} />
+                                                    <MaskIcon src="/icons/chevron-left.svg" color="var(--gray-dark-hover)" size={16} />
                                                 </button>
 
                                                 {/* Current month */}
-                                                <span className="text-[16px] font-semibold leading-6 tracking-[0.15px]">
+                                                <span className="text-(length:--title-md-size) font-semibold leading-(--title-md-leading) tracking-(--title-md-tracking) text-(--gray-darker)">
                                                     {format(currentDate, "MMMM yyyy")}
                                                 </span>
 
@@ -1275,16 +1198,16 @@ const CalendarPage = () => {
                                                     onClick={handleNextMonth}
                                                     className="flex items-center"
                                                 >
-                                                    <MaskIcon className="rotate-180" src="/icons/chevron-left.svg" color="#3C4653" size={16} />
+                                                    <MaskIcon src="/icons/chevron-right.svg" color="var(--gray-dark-hover)" size={16} />
                                                 </button>
                                             </div>
 
-                                            <div className="flex flex-col gap-2">
+                                            <div className="flex flex-col gap-(--space-8)">
                                                 {/*Dropdown Weekday - Mon First */}
                                                 <div className="grid grid-cols-7 justify-between content-between">
 
                                                     {DROPDOWN_WEEKDAYS.map((day) => (
-                                                        <div key={day} className="text-[14px] font-medium leading-5 text-[#3C4653]">
+                                                        <div key={day} className="text-(length:--body-md-size) font-medium leading-(--body-md-leading) text-(--gray-dark-hover)">
                                                             {day}
                                                         </div>
                                                     ))}
@@ -1319,9 +1242,9 @@ const CalendarPage = () => {
                                                                 key={day}
                                                                 type="button"
                                                                 onClick={() => handleDateSelect(day)}
-                                                                className={`h-8 w-8 text-[14px] font-medium leading-5 flex justify-center items-center rounded-full  ${isToday
-                                                                    ? "border border-[#1E5C8B]"
-                                                                    : " hover:bg-[#EBF5FB]"
+                                                                className={`size-(--space-32) text-(length:--body-md-size) font-medium leading-(--body-md-leading) text-(--gray-dark) flex justify-center items-center rounded-(--radius-full) ${isToday
+                                                                    ? "border border-(--blue-dark-normal)"
+                                                                    : "hover:bg-(--blue-sky-light)"
                                                                     }`}
                                                             >
                                                                 {day}
@@ -1338,6 +1261,7 @@ const CalendarPage = () => {
                             {/* Schedule Meeting Button */}
                             <Button
                                 size="medium"
+                                className="calendar-button-medium"
                                 leftIcon={<MaskIcon src="/icons/plus.svg" size={18} />}
                                 onClick={() => handleScheduleClick()}
                             >
@@ -1347,13 +1271,13 @@ const CalendarPage = () => {
                     </div>
 
                     {/*Main Calendar Grid */}
-                    <div className="w-full flex flex-col gap-4">
+                    <div className="w-full flex flex-col gap-(--space-16)">
                         {/* Weekday Headers */}
                         <div className="grid grid-cols-7">
                             {WEEKDAYS.map((day) => (
                                 <div
                                     key={day}
-                                    className="text-center text-[16px] font-medium leading-6 text-[#17212B]"
+                                    className="text-center text-(length:--body-lg-size) font-medium leading-(--body-lg-leading) text-(--neutral-normal)"
                                 >
                                     {day}
                                 </div>
@@ -1362,16 +1286,16 @@ const CalendarPage = () => {
 
 
                         {/* Main Calendar Days */}
-                        <div className="grid grid-cols-7 gap-1">
+                        <div className="grid grid-cols-7 gap-(--space-4)">
 
                             {/* Previous month dates */}
                             {previousMonthDays.map((day, index) => (
                                 <div
                                     key={`prev-${index}`}
-                                    className="h-[150px] bg-[#E8E9EA80] rounded-sm p-2"
+                                    className="h-(--calendar-cell-height) bg-(--neutral-light)/50 rounded-(--radius-xs) p-(--space-8)"
                                 >
                                     <div className="flex justify-end">
-                                        <span className="text-[12px] leading-4 text-[#B7BABD]">
+                                        <span className="text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--neutral-light-active)">
                                             {day}
                                         </span>
                                     </div>
@@ -1382,92 +1306,82 @@ const CalendarPage = () => {
                             {days.map((day) => {
                                 const dateKey = format(day, "yyyy-MM-dd")
 
-                                const dayEvents = events.filter(
-                                    event => event.start_datetime.slice(0, 10) === dateKey
-                                );
-
-                                const dayCalendarEvents = calendarEvents.filter(
-                                    event => event.start_datetime.slice(0, 10) === dateKey
-                                );
-                                const dayItems = [
-                                    ...dayEvents.map(item => ({ type: "meeting" as const, item })),
-                                    ...dayCalendarEvents.map(item => ({ type: "event" as const, item }))
-                                ].sort((a, b) =>
-                                    a.item.start_datetime.localeCompare(b.item.start_datetime)
-                                );
+                                const dayItems = buildDayItems(dateKey, events, calendarEvents, holidays);
                                 const visibleDayItems = dayItems.slice(0, 2);
                                 const hiddenDayItemCount = dayItems.length - visibleDayItems.length;
 
                                 return (
                                     <div
                                         key={dateKey}
-                                        className="h-[150px] p-2 flex flex-col rounded-sm gap-1 bg-white"
+                                        // Clicking anywhere in the cell creates an event, like its "+".
+                                        // Chips and "+N more" stop the click so they keep their own action.
+                                        onClick={() => handleCreateEventClick(dateKey)}
+                                        className={`h-(--calendar-cell-height) p-(--space-8) flex flex-col gap-(--space-8) bg-(--soft-white-light-active) cursor-pointer ${dayItems.length > 0 ? "rounded-(--radius-md)" : "rounded-(--radius-xs)"}`}
                                     >
                                         {/* Day Number and Add Button */}
                                         <div className="flex items-center justify-between">
                                             <button
                                                 type="button"
-                                                onClick={() => handleCreateEventClick(dateKey)}
-                                                className="p-0.5 rounded hover:bg-gray-100 transition-colors cursor-pointer"
+                                                onClick={(e) => { e.stopPropagation(); handleCreateEventClick(dateKey); }}
+                                                className="size-(--space-16) flex items-center justify-center rounded-(--radius-xs) hover:bg-(--soft-white-normal) transition-colors cursor-pointer"
                                                 aria-label={`Create event on ${dateKey}`}
                                             >
                                                 <MaskIcon
                                                     src="/icons/plus.svg"
                                                     size={14}
-                                                    color="#334155"
+                                                    color="var(--neutral-normal)"
                                                 />
                                             </button>
 
-                                            <span className="text-[12px] leading-4">
+                                            <span className="text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--neutral-normal)">
                                                 {format(day, "dd")}
                                             </span>
                                         </div>
 
-                                        {/* Meetings and Calendar Events */}
-                                        <div className="flex flex-col gap-1 overflow-hidden">
-                                            {visibleDayItems.map(({ type, item }, index) => {
-                                                const isMeeting = type === "meeting";
-                                                return (
-                                                    <div
-                                                        key={`${type}-${item.id}`}
-                                                        className={`rounded-md px-2 py-1 text-[11px] leading-tight cursor-pointer ${isMeeting
-                                                            ? index % 2 === 0
-                                                                ? "bg-[#E5E5E5] text-[#0F172A]"
-                                                                : "bg-[#DDF0FA] text-[#0F172A]"
-                                                            : "bg-[#FFF0D9] text-[#7A4B00]"
-                                                            }`}
-                                                        onClick={() => console.log(
-                                                            isMeeting ? "Meeting details:" : "Event details:",
-                                                            item
-                                                        )}
-                                                    >
-                                                        <div className={`flex items-center gap-1 text-[11px] font-medium ${isMeeting ? "text-[#2D343F]" : ""
-                                                            }`}>
+                                        {/* Meetings and Calendar Events — Figma "events" chip.
+                                            Fills the rest of the cell so "+N more" can sit at the bottom. */}
+                                        <div className="flex flex-1 min-h-0 flex-col gap-(--space-2) overflow-hidden">
+                                            {visibleDayItems.map(dayItem => (
+                                                <button
+                                                    type="button"
+                                                    key={dayItem.key}
+                                                    className={`w-full text-left flex flex-col justify-center px-(--space-8) py-(--space-4) rounded-(--radius-md) cursor-pointer ${DAY_ITEM_CHIP_BACKGROUND[dayItem.kind]}`}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedItem({ dayItem, anchor: e.currentTarget });
+                                                    }}
+                                                >
+                                                    {/* Holidays are all-day: Figma shows only the name */}
+                                                    {dayItem.kind !== "holiday" && (
+                                                        <span className="flex items-center gap-(--space-4) text-(length:--label-sm-size) leading-(--label-sm-leading) font-medium text-(--gray-dark-active)">
                                                             <MaskIcon
                                                                 src="/icons/clock.svg"
                                                                 size={12}
-                                                                color={isMeeting ? "#2D343F" : "#7A4B00"}
+                                                                color="var(--gray-dark-active)"
                                                             />
-                                                            <span>
-                                                                {format(new Date(item.start_datetime), "hh:mm a")}
-                                                                {" - "}
-                                                                {format(new Date(item.end_datetime), "hh:mm a")}
-                                                            </span>
-                                                        </div>
-                                                        <div className="truncate text-[12px] font-medium">
-                                                            {item.title}
-                                                        </div>
-                                                        <span className={`text-[10px] ${isMeeting ? "text-[#235E94]" : ""
-                                                            }`}>
-                                                            {isMeeting ? "Meeting" : "Event"}
+                                                            {/* Figma format: "12:00-16:00 PM" */}
+                                                            <span>{formatTimeRange(dayItem.start, dayItem.end)}</span>
                                                         </span>
-                                                    </div>
-                                                );
-                                            })}
+                                                    )}
+                                                    <span className="block truncate text-(length:--body-sm-size) leading-(--body-sm-leading) font-medium text-(--neutral-normal)">
+                                                        {dayItem.title}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                            {/* Figma "more": pinned to the bottom of the cell, light background on hover;
+                                                opens the day drawer with everything on that day. */}
                                             {hiddenDayItemCount > 0 && (
-                                                <span className="px-2 text-[10px] font-medium text-[#475569]">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setOpenDayKey(dateKey);
+                                                    }}
+                                                    aria-label={`Show all ${dayItems.length} items on ${format(day, "MMMM d")}`}
+                                                    className="mt-auto w-full text-left px-(--space-8) py-(--space-2) rounded-(--radius-md) text-(length:--body-sm-size) leading-(--body-sm-leading) font-medium text-(--neutral-normal) hover:bg-(--soft-white-normal) transition-colors cursor-pointer"
+                                                >
                                                     +{hiddenDayItemCount} more
-                                                </span>
+                                                </button>
                                             )}
                                         </div>
                                     </div>
@@ -1475,18 +1389,34 @@ const CalendarPage = () => {
                             })}
 
                             {/* Next month dates */}
-                            {nextMonthDays.map((day, index) => (
-                                <div
-                                    key={`next-${index}`}
-                                    className="h-[150px] bg-[#E8E9EA80] rounded-sm p-2"
-                                >
-                                    <div className="flex justify-end">
-                                        <span className="text-[12px] leading-4 text-[#B7BABD]">
-                                            {day}
-                                        </span>
+                            {/* Figma: unlike previous-month days, these look like normal days and can take a new event */}
+                            {nextMonthDays.map((day) => {
+                                const dateKey = format(
+                                    new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, day),
+                                    "yyyy-MM-dd"
+                                )
+                                return (
+                                    <div
+                                        key={`next-${dateKey}`}
+                                        onClick={() => handleCreateEventClick(dateKey)}
+                                        className="h-(--calendar-cell-height) p-(--space-8) bg-(--soft-white-light-active) rounded-(--radius-xs) cursor-pointer"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); handleCreateEventClick(dateKey); }}
+                                                className="size-(--space-16) flex items-center justify-center rounded-(--radius-xs) hover:bg-(--soft-white-normal) transition-colors cursor-pointer"
+                                                aria-label={`Create event on ${dateKey}`}
+                                            >
+                                                <MaskIcon src="/icons/plus.svg" size={14} color="var(--neutral-normal)" />
+                                            </button>
+                                            <span className="text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--neutral-normal)">
+                                                {format(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, day), "dd")}
+                                            </span>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                )
+                            })}
 
                         </div>
 
@@ -1495,17 +1425,35 @@ const CalendarPage = () => {
                 </div>
 
 
-                {/* Holidays & events */}
-                <div>
-                    <h2 className="text-lg font-semibold text-[#020617]">Holiday</h2>
+                {/* Summary cards — Figma node 2719:16406 */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-(--space-20) items-start">
+                    <div className="flex flex-col gap-(--space-20)">
+                        <CompanyHolidaysCard holidays={holidays} onViewAll={() => setShowHolidayList(true)} />
+                        <MonthOverviewCard month={currentDate} meetings={events} events={calendarEvents} holidays={holidays} />
+                    </div>
+                    <UpcomingCard meetings={events} events={calendarEvents} holidays={holidays} />
                 </div>
             </div>
             {/* Popup schedule meeting */}
+            {editingMeeting && (
+                <ScheduleModal
+                    key={`edit-meeting-${editingMeeting.id}`}
+                    defaultDate={editingMeeting.start_datetime.slice(0, 10)}
+                    initial={editingMeeting}
+                    onClose={() => setEditingMeeting(null)}
+                    onSave={(meeting) => {
+                        meetingStorage.update(meeting);
+                        setEvents(prev => prev.map(saved => saved.id === meeting.id ? meeting : saved));
+                        setEditingMeeting(null);
+                    }}
+                />
+            )}
+
             {showModal && (
                 <ScheduleModal
                     defaultDate={modalDate}
                     onClose={() => setShowModal(false)}
-                    onCreated={(meeting) => {
+                    onSave={(meeting) => {
                         console.log("Meeting created:", meeting);
 
                         try {
@@ -1521,6 +1469,52 @@ const CalendarPage = () => {
                 />
             )}
 
+            {openDayKey && (
+                <DayEventsDrawer
+                    dateKey={openDayKey}
+                    items={buildDayItems(openDayKey, events, calendarEvents, holidays)}
+                    onClose={closeDayDrawer}
+                />
+            )}
+
+            {showHolidayList && (
+                <HolidayListDrawer holidays={holidays} onClose={closeHolidayList} />
+            )}
+
+            {selectedItem && (
+                <ItemDetailsPopover
+                    dayItem={selectedItem.dayItem}
+                    anchor={selectedItem.anchor}
+                    onClose={closeDetails}
+                    onEdit={() => {
+                        const { dayItem } = selectedItem;
+                        if (dayItem.kind === "meeting") setEditingMeeting(dayItem.item);
+                        else if (dayItem.kind === "event") setEditingEvent(dayItem.item);
+                        setSelectedItem(null);
+                    }}
+                    onDelete={() => {
+                        const { dayItem } = selectedItem;
+                        if (dayItem.kind === "holiday") return;
+                        setItemToDelete({ kind: dayItem.kind, id: dayItem.item.id });
+                        setSelectedItem(null);
+                    }}
+                />
+            )}
+
+            {itemToDelete && (
+                <ConfirmPopup
+                    title={itemToDelete.kind === "meeting"
+                        ? "Do you want to delete this scheduled meeting?"
+                        : "Do you want to delete this event?"}
+                    onConfirm={() => {
+                        if (itemToDelete.kind === "meeting") handleDeleteMeeting(itemToDelete.id);
+                        else handleDeleteEvent(itemToDelete.id);
+                        setItemToDelete(null);
+                    }}
+                    onCancel={() => setItemToDelete(null)}
+                />
+            )}
+
             {successMeeting && (
                 <SuccessMeetingPopup
                     meeting={successMeeting}
@@ -1533,7 +1527,7 @@ const CalendarPage = () => {
                 <EventModal
                     defaultDate={eventModalDate}
                     onClose={() => setShowEventModal(false)}
-                    onCreated={(event) => {
+                    onSave={(event) => {
                         eventStorage.add(event);
 
                         setCalendarEvents(prev => [...prev, event]);
@@ -1541,6 +1535,20 @@ const CalendarPage = () => {
                         setShowEventModal(false);
 
                         setSuccessEvent(event);
+                    }}
+                />
+            )}
+
+            {editingEvent && (
+                <EventModal
+                    key={`edit-event-${editingEvent.id}`}
+                    defaultDate={editingEvent.start_datetime.slice(0, 10)}
+                    initial={editingEvent}
+                    onClose={() => setEditingEvent(null)}
+                    onSave={(event) => {
+                        eventStorage.update(event);
+                        setCalendarEvents(prev => prev.map(saved => saved.id === event.id ? event : saved));
+                        setEditingEvent(null);
                     }}
                 />
             )}

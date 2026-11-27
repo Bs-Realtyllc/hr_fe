@@ -66,6 +66,7 @@
   --neutral-light: #e8e9ea;
   --neutral-light-hover: #dcdedf;
   --neutral-light-active: #b7babd;
+  --neutral-light-dark: #acadb0; /* Figma "Foundation/NeutralLight/Dark" — input placeholder */
   --neutral-light-dark-active: #67686a;
 
   --neutral-normal: #17212b;
@@ -162,6 +163,21 @@
 }
 
 /*
+ * Warm Ember
+ * Source: Figma — HR Management System ("Foundation/Warm Ember")
+ *
+ * Partial ramp — only the shades the calendar frames use so far
+ * (holiday date badges, sparkles icon, all-day event chips).
+ */
+
+:root {
+  --warm-ember-light: #fef8e6;
+  --warm-ember-light-active: #fce8b0;
+  --warm-ember-normal: #f4b400;
+  --warm-ember-dark: #b78700;
+}
+
+/*
  * Status Color — Warning
  * Source: Figma — HR Management System (node 6:2929, "Warning")
  *
@@ -248,8 +264,8 @@
   --blue-dark-darker: #0c2134;
 
   --blue-sky-light: #ebf5fb;
-  --blue-sky-hover: #e0f0f9;
-  --blue-sky-active: #c0e0f2;
+  --blue-sky-light-hover: #e0f0f9;
+  --blue-sky-light-active: #c0e0f2;
   --blue-sky: #339cd4;
   --blue-sky-hover: #2e8cbf;
   --blue-sky-active: #297daa;
@@ -272,5 +288,6 @@
 
 :root {
   --charcoal-normal: #111827;
+  --deep-night-normal: #020617; /* Figma "Foundation/Deep Night/Normal" — calendar month selector text */
   --color-black: #000000;
 }

@@ -33,4 +33,11 @@ export const eventStorage = {
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
   },
+
+  /** Replace the saved event that has the same id. */
+  update(event: CalendarEvent) {
+    const events = this.getAll().map((saved) => (saved.id === event.id ? event : saved));
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+  },
 };

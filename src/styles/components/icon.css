@@ -47,10 +47,9 @@
   justify-content: center;
   width: 36px;
   height: 36px;
-  border-radius: 8px;
-  /* border: 1px solid var(--color-border); */
-  background: #f1f5f9;
-  color: #3c4653;
+  border-radius: var(--radius-md);
+  background: var(--soft-white-normal);
+  color: var(--neutral-normal);
   cursor: pointer;
   flex-shrink: 0;
   transition:
@@ -59,22 +58,12 @@
 }
 
 .topbar-icon-btn:hover {
-  background: var(--color-primary-light, #eef2ff);
+  background: var(--color-primary-light);
   color: var(--color-primary);
 }
 
+/* Figma: 20×20 icon inside the 36×36 button (8px padding) */
 .topbar-icon-btn .icon-mask {
-  width: 18px;
-  height: 18px;
-}
-
-.topbar-icon-btn-dot {
-  position: absolute;
-  top: 8px;
-  right: 9px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--color-error, #ef4444);
-  border: 1.5px solid var(--color-surface);
+  width: 20px;
+  height: 20px;
 }

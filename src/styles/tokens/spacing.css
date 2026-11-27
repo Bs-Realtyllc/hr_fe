@@ -12,6 +12,7 @@
   --space-8: 0.5rem;     /* 8px */
   --space-12: 0.75rem;   /* 12px */
   --space-16: 1rem;      /* 16px */
+  --space-20: 1.25rem;   /* 20px — not on the node 7:3337 scale; used by the page header (Figma "Nav-profile", node 614:3356) */
   --space-24: 1.5rem;    /* 24px */
   --space-32: 2rem;      /* 32px */
   --space-40: 2.5rem;    /* 40px */
