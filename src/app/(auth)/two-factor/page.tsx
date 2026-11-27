@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import type { AuthUser } from '@/types'
 import { clearTwoFactorChallenge, readTwoFactorChallenge, type TwoFactorChallenge } from '@/lib/twoFactor'
+import { routeAfterLogin } from '@/lib/welcome'
 
 // Where to send people with no pending 2FA login (direct visit, expired token).
 const LOGIN_ROUTE = '/login'
@@ -130,7 +131,7 @@ const TwoFactorAuthPage = () => {
             clearTwoFactorChallenge()
             setSuccess('Verified. Signing you in…')
             login(data.token as string, data.user as AuthUser)
-            router.replace('/welcome')
+            router.replace(await routeAfterLogin(data.token as string))
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Verification failed'
             setError(message)

@@ -9,6 +9,7 @@ import {
     type TwoFactorSetupData,
 } from '@/features/profile/components/security/TwoFactor';
 import { api } from '@/lib/api';
+import { routeAfterLogin } from '@/lib/welcome';
 
 type SetupStep = 'intro' | 'scan' | 'backup' | 'complete';
 
@@ -144,8 +145,18 @@ export default function SetupTwoFactorAuthPage() {
         setError('');
     }
 
-    function finishSetup() {
-        router.push('/welcome');
+    async function finishSetup() {
+        router.push(await routeAfterLogin());
+    }
+
+    // "Setup later": the backend hides this screen for 30 days.
+    async function setupLater() {
+        try {
+            await api.post('/auth/2fa/prompt/dismiss');
+        } catch {
+            /* worst case the screen shows again next login */
+        }
+        await finishSetup();
     }
 
     return (
@@ -211,7 +222,7 @@ export default function SetupTwoFactorAuthPage() {
 
                                     <button
                                         type="button"
-                                        onClick={finishSetup}
+                                        onClick={setupLater}
                                         disabled={loading}
                                         className="w-full text-[18px] font-medium text-(--blue-dark-normal)"
                                     >

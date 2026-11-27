@@ -5,6 +5,7 @@ import type { Profile as FullProfile } from '@/types';
 import { BACKEND_URL } from '@/config/env';
 import { profileService } from '@/features/profile/api/profileService';
 import { getToken } from "@/lib/auth"
+import { markWelcomeSeen } from "@/lib/welcome"
 import { BSRealtyAvatar } from "@bsrealtyllc/design-system"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -130,6 +131,12 @@ export default function WelcomePage() {
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
 
+    // Shown once: leaving it marks it seen, so later logins go straight to the dashboard.
+    async function leave() {
+        await markWelcomeSeen();
+        router.replace('/');
+    }
+
     useEffect(() => {
         if (!getToken()) {
             router.replace('/login');
@@ -194,7 +201,7 @@ export default function WelcomePage() {
                             <Button
                                 size="small"
                                 rightIcon={true}
-                                onClick={() => router.replace('/')}
+                                onClick={leave}
                             >
                                 Continue
                             </Button>
@@ -204,7 +211,7 @@ export default function WelcomePage() {
                             <Button
                                 size="medium"
                                 rightIcon={true}
-                                onClick={() => router.replace('/')}
+                                onClick={leave}
                             >
                                 Continue
                             </Button>

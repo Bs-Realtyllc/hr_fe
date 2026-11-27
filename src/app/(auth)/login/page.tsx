@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button/Button'
 import InputField from '@/components/ui/InputField/InputField';
 import { validateEmail } from '@/lib/validation';
 import { saveTwoFactorChallenge } from '@/lib/twoFactor';
+import { routeAfterLogin } from '@/lib/welcome';
 
 interface LoginResponse {
   token?: string;
@@ -19,15 +20,16 @@ interface LoginResponse {
   twoFactorRequired?: boolean;
 }
 
-// get /auth/2fa/status
-async function isTwoFactorEnabled(token: string | undefined): Promise<boolean> {
+// get /auth/2fa/status — should_prompt is true only when 2FA is off and
+// "Setup later" wasn't clicked in the last 30 days.
+async function shouldPromptTwoFactor(token: string | undefined): Promise<boolean> {
   if (!token) return false;
   try {
     // Explicit token: the user isn't stored as logged in yet at this point.
-    const status = await api.get<Record<string, unknown>>('/auth/2fa/status', { token });
-    return Boolean(status?.enabled ?? status?.twoFactorEnabled ?? status?.two_factor_enabled ?? status?.is_enabled);
+    const status = await api.get<{ should_prompt?: boolean }>('/auth/2fa/status', { token });
+    return status?.should_prompt === true;
   } catch {
-    return false;
+    return false; // don't block login on a failed check
   }
 }
 
@@ -52,8 +54,7 @@ export default function LoginPage() {
 
   async function finishLogin(token: string, user: AuthUser) {
     login(token, user);
-    const twoFactorEnabled = await isTwoFactorEnabled(token);
-    router.replace(twoFactorEnabled ? '/welcome' : '/two-factor/setup');
+    router.replace(await shouldPromptTwoFactor(token) ? '/two-factor/setup' : await routeAfterLogin(token));
   }
 
   // Validation

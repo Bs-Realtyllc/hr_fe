@@ -1431,6 +1431,7 @@
   justify-content: center;
   z-index: 1000;
   backdrop-filter: blur(2px);
+  padding: 16px; /* keep modals off the screen edges on phones */
 }
 .inbox-modal {
   background: var(--color-bg);

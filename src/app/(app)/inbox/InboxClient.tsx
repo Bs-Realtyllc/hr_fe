@@ -1137,8 +1137,8 @@ function PreJoinModal({ channelName, onJoin, onCancel }: {
   const bars = 16;
 
   return (
-    <div className="inbox-modal-backdrop" onClick={onCancel}>
-      <div className="inbox-modal-box" style={{ maxWidth: 400, gap: 20 }} onClick={e => e.stopPropagation()}>
+    <div className="inbox-modal-overlay" onClick={onCancel}>
+      <div className="inbox-modal" style={{ maxWidth: 400, display: 'flex', flexDirection: 'column', gap: 20, padding: 24 }} onClick={e => e.stopPropagation()}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>🔊</div>
           <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>Join #{channelName}</div>
