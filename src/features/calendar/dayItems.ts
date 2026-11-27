@@ -2,9 +2,10 @@
 // list — shared by the month grid's chips and the day drawer ("+N more").
 
 import { format } from 'date-fns';
-import type { MeetingEvent } from '@/data/meetingStorage';
-import type { CalendarEvent } from '@/data/eventStorage';
+import type { MeetingEvent } from './meetingsApi';
+import type { CalendarEvent } from './calendarEventsApi';
 import type { Holiday } from './types';
+import { localDateKey } from './localTime';
 
 export type DayItem =
     | { key: string; kind: 'holiday'; sortKey: string; title: string; description: null; item: Holiday }
@@ -30,7 +31,7 @@ export function formatTimeRange(start: string, end: string) {
     return `${format(new Date(start), 'H:mm')}-${format(new Date(end), 'H:mm a')}`;
 }
 
-/** Items on `dateKey` ("YYYY-MM-DD"); holidays are all-day so they sort first. */
+/** Items on the viewer's local day `dateKey` ("YYYY-MM-DD"); holidays are all-day so they sort first. */
 export function buildDayItems(
     dateKey: string,
     meetings: MeetingEvent[],
@@ -43,13 +44,13 @@ export function buildDayItems(
             .map(holiday => ({
                 key: `holiday-${holiday.id}`,
                 kind: 'holiday' as const,
-                sortKey: holiday.holiday_date,
+                sortKey: '', // all-day: before any timed item
                 title: holiday.name,
                 description: null,
                 item: holiday,
             })),
         ...meetings
-            .filter(meeting => meeting.start_datetime.slice(0, 10) === dateKey)
+            .filter(meeting => localDateKey(meeting.start_datetime) === dateKey)
             .map(meeting => ({
                 key: `meeting-${meeting.id}`,
                 kind: 'meeting' as const,
@@ -61,7 +62,7 @@ export function buildDayItems(
                 item: meeting,
             })),
         ...events
-            .filter(event => event.start_datetime.slice(0, 10) === dateKey)
+            .filter(event => localDateKey(event.start_datetime) === dateKey)
             .map(event => ({
                 key: `event-${event.id}`,
                 kind: 'event' as const,

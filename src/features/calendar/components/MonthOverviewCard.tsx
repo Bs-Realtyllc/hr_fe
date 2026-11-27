@@ -1,6 +1,6 @@
 import { format, isSameMonth, parseISO } from 'date-fns';
-import type { MeetingEvent } from '@/data/meetingStorage';
-import type { CalendarEvent } from '@/data/eventStorage';
+import type { MeetingEvent } from '../meetingsApi';
+import type { CalendarEvent } from '../calendarEventsApi';
 import type { Holiday } from '../types';
 import SummaryCard from './SummaryCard';
 

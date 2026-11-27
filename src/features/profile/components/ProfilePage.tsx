@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { isAdmin as isAdminUser } from '@/lib/permissions';
 import Button from '@/components/ui/Button/Button';
 import PageHeader from '@/components/layout/PageHeader';
@@ -24,6 +24,7 @@ import OrganizationSection from './OrganizationSection';
 import LoginSecuritySection from './LoginSecuritySection';
 import SecurityNotificationsSection from './SecurityNotificationsSection';
 import EmailNotificationsSection from './EmailNotificationsSection';
+import GoogleCalendarSection from './GoogleCalendarSection';
 import EditRoleModal from './EditRoleModal';
 import TwoFactorFlow from './TwoFactorFlow';
 import ProfileTipsSidebar from './ProfileTipsSidebar';
@@ -53,6 +54,20 @@ export default function ProfilePage() {
   const loginHistory = useLoginHistory(flash);
   const { showLoginHistory, setShowLoginHistory, loginHistory: loginHistoryRows, loginHistoryLoading, loginHistoryView, fetchLoginHistory } = loginHistory;
   const trustedDevices = useTrustedDevices(flash);
+
+  // Back from Google's consent screen: /profile?tab=integrations&google=connected|cancelled|error
+  // (set by hr_be's /google/callback). Open that tab, say how it went, and tidy the URL.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tab') !== 'integrations') return;
+    setTab('integrations');
+    const result = params.get('google');
+    if (result === 'connected') flash('Google Calendar connected.');
+    else if (result === 'cancelled') flash('Google Calendar connection was cancelled.', 'err');
+    else if (result === 'error') flash('Unable to connect Google Calendar. Please try again.', 'err');
+    window.history.replaceState(null, '', window.location.pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on arrival
+  }, []);
   const { showTrustedDevices, setShowTrustedDevices, trustedDevices: trustedDeviceRows, trustedDevicesLoading, revokingDeviceId, revokeTrustedDevice, revokeAllTrustedDevices } = trustedDevices;
 
   if (!profile) {
@@ -135,6 +150,7 @@ export default function ProfilePage() {
                     { label: 'Organization', value: 'organization' },
                     { label: 'Security', value: 'security' },
                     { label: 'Notification', value: 'notification' },
+                    { label: 'Integrations', value: 'integrations' },
                   ]}
                 />
               </div>
@@ -165,6 +181,13 @@ export default function ProfilePage() {
             {tab === 'notification' && (
               <div className='max-w-[532px] flex flex-col gap-11'>
                 <EmailNotificationsSection notifications={notifications} />
+              </div>
+            )}
+
+            {/* ── Integrations (admin only — this whole branch is) ─────────────── */}
+            {tab === 'integrations' && (
+              <div className='max-w-[929px] flex flex-col gap-11 pb-6'>
+                <GoogleCalendarSection flash={flash} />
               </div>
             )}
 

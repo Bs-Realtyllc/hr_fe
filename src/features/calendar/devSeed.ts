@@ -6,14 +6,14 @@
 //                         every load, until cleared)
 //   /calendar?seed=clear  remove it again
 //
-// Does nothing in production builds. Meetings and events are written to
-// localStorage (where the page reads them today). Holidays are shown on top
-// of whatever GET /holidays returns while the seed is on — the database is
-// never touched. Dates are relative to today so the data never goes stale.
+// Does nothing in production builds. Sample meetings, events and holidays are
+// shown on top of what the API returns while the seed is on — the database
+// (and Google Calendar) is never touched, so sample items can't be edited or
+// deleted. Dates are relative to today so the data never goes stale.
 
 import { addDays, format, startOfToday } from 'date-fns';
-import { meetingStorage, type MeetingEvent } from '@/data/meetingStorage';
-import { eventStorage, type CalendarEvent } from '@/data/eventStorage';
+import type { MeetingEvent } from './meetingsApi';
+import type { CalendarEvent } from './calendarEventsApi';
 import type { Holiday } from './types';
 
 // Real ids are either Date.now() values (~1.7e12, from the create modals) or
@@ -45,8 +45,9 @@ function day(offset: number) {
     return format(addDays(startOfToday(), offset), 'yyyy-MM-dd');
 }
 
+/** Today + `offset` days at local `time`, as an ISO instant (like the API's). */
 function at(offset: number, time: string) {
-    return `${day(offset)}T${time}:00`;
+    return new Date(`${day(offset)}T${time}:00`).toISOString();
 }
 
 // Attendee emails for the details popover. These won't match real employees,
@@ -73,7 +74,10 @@ function seedMeetings(): MeetingEvent[] {
         start_datetime: at(offset, start),
         end_datetime: at(offset, end),
         attendees: [],
+        google_event_id: null,
         meet_link: meet ? 'https://meet.google.com/abc-defg-hij' : null,
+        status: 'scheduled',
+        created_by: null,
         creator_name: 'Sample data',
     });
     return [
@@ -114,6 +118,7 @@ function seedEvents(): CalendarEvent[] {
         event_type: 'location' in where ? 'in-person' : 'online',
         meet_link: 'meet' in where ? 'https://meet.google.com/klm-nopq-rst' : null,
         attendees: [],
+        created_by: null,
         creator_name: 'Sample data',
     });
     return [
@@ -144,35 +149,21 @@ function seedHolidays(): Holiday[] {
     ];
 }
 
-/** Adds or removes the sample meetings/events in localStorage, per the URL. */
+/** Turns the seed on (?seed) or off (?seed=clear), per the URL. */
 export function applyDevSeed() {
-    // An explicit ?seed / ?seed=clear wins; otherwise, once the seed is on,
-    // refresh it on every load so edits to this file show up straight away.
-    const mode = seedMode() ?? (seedIsOn() ? 'add' : null);
-    if (!mode) return;
+    const mode = seedMode();
+    if (mode === 'add') localStorage.setItem(SEED_FLAG_KEY, '1');
+    if (mode === 'clear') localStorage.removeItem(SEED_FLAG_KEY);
+}
 
-    const meetings = seedMeetings();
-    const events = seedEvents();
+/** Sample meetings to show on top of the API's, or [] when the seed is off. */
+export function devSeedMeetings(): MeetingEvent[] {
+    return seedIsOn() ? seedMeetings() : [];
+}
 
-    if (mode === 'clear') {
-        meetings.forEach(m => meetingStorage.delete(m.id));
-        events.forEach(e => eventStorage.delete(e.id));
-        localStorage.removeItem(SEED_FLAG_KEY);
-        return;
-    }
-
-    localStorage.setItem(SEED_FLAG_KEY, '1');
-
-    // Replace any older copies, so changes to the sample data show up on the
-    // next ?seed without having to clear first. Real items are left alone.
-    meetings.forEach(m => {
-        meetingStorage.delete(m.id);
-        meetingStorage.add(m);
-    });
-    events.forEach(e => {
-        eventStorage.delete(e.id);
-        eventStorage.add(e);
-    });
+/** Sample events to show on top of the API's, or [] when the seed is off. */
+export function devSeedEvents(): CalendarEvent[] {
+    return seedIsOn() ? seedEvents() : [];
 }
 
 /** Sample holidays to show on top of the API's, or [] when the seed is off. */

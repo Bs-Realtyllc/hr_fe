@@ -70,9 +70,11 @@ interface ItemDetailsPopoverProps {
     onEdit?: () => void;
     /** Ask to delete the item (opens the confirm popup). Not shown for holidays. */
     onDelete?: () => void;
+    /** Show Edit and Delete. False for users who may not change this item (holidays never show them). */
+    canModify?: boolean;
 }
 
-export default function ItemDetailsPopover({ dayItem, anchor, onClose, onEdit, onDelete }: ItemDetailsPopoverProps) {
+export default function ItemDetailsPopover({ dayItem, anchor, onClose, onEdit, onDelete, canModify = true }: ItemDetailsPopoverProps) {
     const panelRef = useRef<HTMLDivElement>(null);
     const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
     const { employees } = useEmployeeDirectory();
@@ -157,7 +159,7 @@ export default function ItemDetailsPopover({ dayItem, anchor, onClose, onEdit, o
                         </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-(--space-16)">
-                        {dayItem.kind !== 'holiday' && (
+                        {dayItem.kind !== 'holiday' && canModify && (
                             <>
                                 <HeaderAction icon="/icons/edit.svg" label="Edit" color="var(--neutral-normal)" onClick={onEdit} />
                                 <HeaderAction icon="/icons/trash.svg" label="Delete" color="var(--error-normal)" onClick={onDelete} />

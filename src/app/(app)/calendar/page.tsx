@@ -9,12 +9,17 @@ import {
     eachDayOfInterval,
     format,
     isToday,
+    addDays,
+    addMonths,
+    startOfToday,
 } from "date-fns"
 import Button from "@/components/ui/Button/Button"
 import PageHeader from "@/components/layout/PageHeader"
 import MaskIcon from "@/components/ui/MaskIcon"
 import InputField from "@/components/ui/InputField/InputField"
-import { api } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
+import { isAdmin } from "@/lib/permissions";
+import { showToast } from "@/lib/toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { BSRealtyAvatar } from "@bsrealtyllc/design-system";
 import CompanyHolidaysCard from "@/features/calendar/components/CompanyHolidaysCard";
@@ -24,19 +29,22 @@ import type { Employee, Holiday } from "@/features/calendar/types";
 import { profilePhotoUrl } from "@/features/calendar/profilePhoto";
 import { useCopyLink } from "@/features/calendar/useCopyLink";
 import { useEmployeeDirectory } from "@/features/calendar/useEmployeeDirectory";
-import { applyDevSeed, devSeedHolidays } from "@/features/calendar/devSeed";
+import { applyDevSeed, devSeedEvents, devSeedHolidays, devSeedMeetings } from "@/features/calendar/devSeed";
 import DayEventsDrawer from "@/features/calendar/components/DayEventsDrawer";
 import HolidayListDrawer from "@/features/calendar/components/HolidayListDrawer";
 import { buildDayItems, DAY_ITEM_CHIP_BACKGROUND, formatTimeRange, type DayItem } from "@/features/calendar/dayItems";
 import ItemDetailsPopover from "@/features/calendar/components/ItemDetailsPopover";
+import { localDateKey, localTime, timeZoneLabel, toInstant, userTimeZone } from "@/features/calendar/localTime";
 import {
-    meetingStorage,
-    MeetingEvent
-} from "@/data/meetingStorage";
+    meetingsApi,
+    type MeetingEvent,
+    type MeetingInput
+} from "@/features/calendar/meetingsApi";
 import {
-    eventStorage,
-    CalendarEvent
-} from "@/data/eventStorage";
+    calendarEventsApi,
+    type CalendarEvent,
+    type CalendarEventInput
+} from "@/features/calendar/calendarEventsApi";
 
 // ── Attendee Picker (shared by both modals) ──────────────────────────────────
 // Figma "Searchbar" + "Attendes name". Loads employees, always keeps the
@@ -275,13 +283,24 @@ function usePrefillAttendees(
     }, [emails, employees, loading, setSelected]);
 }
 
+// Under the date/time fields of both modals: times are typed in the viewer's
+// own timezone (and saved as exact instants), so say which one that is.
+function TimeZoneNote() {
+    return (
+        <p className="text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--gray-dark-hover)">
+            Times are in your timezone: {timeZoneLabel()}
+        </p>
+    );
+}
+
 // ── Schedule Meeting Modal ─────────────────────────────────────────────────
 interface ScheduleModalProps {
     defaultDate: string;
     /** Set to edit an existing meeting instead of scheduling a new one */
     initial?: MeetingEvent;
     onClose: () => void;
-    onSave: (meeting: MeetingEvent) => void;
+    /** Saves to the API. A rejection is shown in the modal, which stays open. */
+    onSave: (input: MeetingInput) => Promise<void>;
 }
 
 function ScheduleModal({
@@ -293,14 +312,16 @@ function ScheduleModal({
     const [form, setForm] = useState({
         title: initial?.title ?? '',
         description: initial?.description ?? '',
-        date: initial?.start_datetime.slice(0, 10) ?? defaultDate,
-        startTime: initial?.start_datetime.slice(11, 16) ?? '10:00',
-        endTime: initial?.end_datetime.slice(11, 16) ?? '10:30',
-        meetLink: initial?.meet_link ?? '',
+        date: initial ? localDateKey(initial.start_datetime) : defaultDate,
+        startTime: initial ? localTime(initial.start_datetime) : '10:00',
+        endTime: initial ? localTime(initial.end_datetime) : '10:30',
     });
+    // Google creates the Meet link when the meeting is scheduled, so it's read-only here
+    const meetLink = initial?.meet_link ?? '';
 
     const [error, setError] = useState('');
-    const { copied, copyError, copy, reset: resetCopy } = useCopyLink();
+    const [saving, setSaving] = useState(false);
+    const { copied, copyError, copy } = useCopyLink();
     const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
     usePrefillAttendees(initial?.attendees, setSelectedEmployees);
 
@@ -309,22 +330,9 @@ function ScheduleModal({
             setForm(f => ({ ...f, [k]: e.target.value }));
         };
 
-
-    // Generate mock meeting link
-    const generateMeetLink = () => {
-        const code = Math.random().toString(36).substring(2, 5)
-            + '-' + Math.random().toString(36).substring(2, 6)
-            + '-' + Math.random().toString(36).substring(2, 5);
-
-        setForm(f => ({
-            ...f,
-            meetLink: `https://meet.google.com/${code}`
-        }));
-        resetCopy();
-    };
-
-    const submit = (e: React.FormEvent) => {
+    const submit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (saving) return;
         setError('');
 
         if (!form.title.trim() || !form.date || !form.startTime || !form.endTime) {
@@ -337,18 +345,22 @@ function ScheduleModal({
             return;
         }
 
-        const newMeeting: MeetingEvent = {
-            id: initial?.id ?? Date.now(),
+        const input: MeetingInput = {
             title: form.title.trim(),
-            description: form.description || null,
-            start_datetime: `${form.date}T${form.startTime}:00`,
-            end_datetime: `${form.date}T${form.endTime}:00`,
+            description: form.description.trim() || null,
+            start_datetime: toInstant(form.date, form.startTime),
+            end_datetime: toInstant(form.date, form.endTime),
             attendees: selectedEmployees.map(employee => employee.email),
-            meet_link: form.meetLink || null,
-            creator_name: initial?.creator_name ?? 'Current User',
+            time_zone: userTimeZone(),
         };
 
-        onSave(newMeeting);
+        setSaving(true);
+        try {
+            await onSave(input);
+        } catch (err) {
+            setError(errorMessage(err, initial ? "Couldn't save the meeting. Please try again." : "Couldn't schedule the meeting. Please try again."));
+            setSaving(false);
+        }
     };
 
     return (
@@ -436,40 +448,34 @@ function ScheduleModal({
                                 />
                             </div>
                         </div>
+                        <TimeZoneNote />
 
-                        {/* Figma "url": Auto-Generate while empty, Copy once there's a link */}
+                        {/* Figma "url". Google Meet creates the link when the meeting is
+                            scheduled, so it's read-only, with Copy once there is one. */}
                         <div className="flex flex-col gap-(--space-8)">
                             <label className="form-label">Video conference URL</label>
                             <div className="flex items-center gap-(--space-12)">
                                 <InputField
-                                    value={form.meetLink}
-                                    onChange={set('meetLink')}
-                                    onInput={resetCopy}
-                                    placeholder="Meeting URL"
+                                    value={meetLink}
+                                    readOnly
+                                    placeholder="Created when you schedule"
                                     className="min-w-0 flex-1"
                                 />
-                                {form.meetLink.trim() ? (
+                                {meetLink && (
                                     <Button
                                         type="button"
                                         size="medium"
                                         className="calendar-button-medium"
-onClick={() => copy(form.meetLink)}
+                                        onClick={() => copy(meetLink)}
                                     >
                                         {copied ? "Copied" : "Copy"}
-                                    </Button>
-                                ) : (
-                                    <Button
-                                        type="button"
-                                        size="medium"
-                                        className="calendar-button-medium"
-onClick={generateMeetLink}
-                                    >
-                                        Auto-Generate
                                     </Button>
                                 )}
                             </div>
                             <p className="text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--info-normal)">
-                                Add a link, or auto-generate one, to save this interview.
+                                {meetLink
+                                    ? "The Google Meet link stays the same when you edit the meeting."
+                                    : "A Google Meet link is created automatically when you schedule."}
                             </p>
                             {copyError && <p className="text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--error-normal)" role="alert">{copyError}</p>}
                         </div>
@@ -502,8 +508,9 @@ onClick={generateMeetLink}
                             variant="primary"
                             size="small"
                             className="calendar-modal__submit"
+                            disabled={saving}
                         >
-                            {initial ? "Save" : "Schedule"}
+                            {saving ? "Saving…" : initial ? "Save" : "Schedule"}
                         </Button>
                     </div>
                 </form>
@@ -643,7 +650,8 @@ interface EventModalProps {
     /** Set to edit an existing event instead of creating a new one */
     initial?: CalendarEvent;
     onClose: () => void;
-    onSave: (event: CalendarEvent) => void;
+    /** Saves to the API. A rejection is shown in the modal, which stays open. */
+    onSave: (input: CalendarEventInput) => Promise<void>;
 }
 
 function EventModal({
@@ -654,15 +662,16 @@ function EventModal({
 }: EventModalProps) {
     const [form, setForm] = useState({
         title: initial?.title ?? "",
-        date: initial?.start_datetime.slice(0, 10) ?? defaultDate,
-        startTime: initial?.start_datetime.slice(11, 16) ?? "10:00",
-        endTime: initial?.end_datetime.slice(11, 16) ?? "11:00",
+        date: initial ? localDateKey(initial.start_datetime) : defaultDate,
+        startTime: initial ? localTime(initial.start_datetime) : "10:00",
+        endTime: initial ? localTime(initial.end_datetime) : "11:00",
         eventType: (initial?.event_type ?? "in-person") as "in-person" | "online",
         location: initial?.location ?? "",
         meetLink: initial?.meet_link ?? ""
     });
 
     const [error, setError] = useState("");
+    const [saving, setSaving] = useState(false);
     const { copied, copyError, copy, reset: resetCopy } = useCopyLink();
     const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
     usePrefillAttendees(initial?.attendees, setSelectedEmployees);
@@ -683,8 +692,9 @@ function EventModal({
         resetCopy();
     };
 
-    const submit = (e: React.FormEvent) => {
+    const submit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (saving) return;
         setError("");
 
         if (
@@ -705,20 +715,24 @@ function EventModal({
             return;
         }
 
-        const newEvent: CalendarEvent = {
-            id: initial?.id ?? Date.now(),
+        const input: CalendarEventInput = {
             title: form.title.trim(),
             description: initial?.description ?? null,
-            start_datetime: `${form.date}T${form.startTime}:00`,
-            end_datetime: `${form.date}T${form.endTime}:00`,
+            start_datetime: toInstant(form.date, form.startTime),
+            end_datetime: toInstant(form.date, form.endTime),
             location: form.eventType === "in-person" ? form.location.trim() : null,
             event_type: form.eventType,
             meet_link: form.eventType === "online" ? form.meetLink.trim() || null : null,
-            attendees: selectedEmployees.map(employee => employee.email),
-            creator_name: initial?.creator_name ?? "Current User"
+            attendees: selectedEmployees.map(employee => employee.email)
         };
 
-        onSave(newEvent);
+        setSaving(true);
+        try {
+            await onSave(input);
+        } catch (err) {
+            setError(errorMessage(err, initial ? "Couldn't save the event. Please try again." : "Couldn't create the event. Please try again."));
+            setSaving(false);
+        }
     };
 
     return (
@@ -815,6 +829,9 @@ function EventModal({
                                     onChange={set("endTime")}
                                 />
                             </div>
+                            <div className="col-span-2">
+                                <TimeZoneNote />
+                            </div>
                         </div>
 
                         {form.eventType === "in-person" ? (
@@ -894,8 +911,9 @@ onClick={() => copy(form.meetLink)}
                             variant="primary"
                             size="small"
                             className="calendar-modal__submit"
+                            disabled={saving}
                         >
-                            {initial ? "Save" : "Create Event"}
+                            {saving ? "Saving…" : initial ? "Save" : "Create Event"}
                         </Button>
                     </div>
                 </form>
@@ -942,17 +960,47 @@ const DROPDOWN_WEEKDAYS = [
     "Sun",
 ]
 
+/**
+ * Meetings and events that overlap [from, to) — the viewer's local
+ * boundaries, so days are their own days — with the dev
+ * seed's samples added. A list that fails to load comes back empty, and its
+ * error is returned (aborted requests are not errors).
+ */
+async function loadCalendarItems(from: Date, to: Date, signal: AbortSignal) {
+    const [meetings, events] = await Promise.allSettled([
+        meetingsApi.list(from, to, { signal }),
+        calendarEventsApi.list(from, to, { signal }),
+    ]);
+    const failed = [meetings, events].find(result => result.status === "rejected");
+    return {
+        meetings: [...(meetings.status === "fulfilled" ? meetings.value : []), ...devSeedMeetings()],
+        events: [...(events.status === "fulfilled" ? events.value : []), ...devSeedEvents()],
+        error: failed && !signal.aborted ? (failed as PromiseRejectedResult).reason : null,
+    };
+}
+
 // Main page
 const CalendarPage = () => {
+    const { user } = useAuth();
+    // Only admins create, edit and delete events (the API enforces the same).
+    const canManageEvents = isAdmin(user);
     const [currentDate, setCurrentDate] = useState<Date>(new Date())
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false)
-    const [events, setEvents] = useState<MeetingEvent[]>([]);
     const dropdownRef = useRef<HTMLDivElement>(null)
     const [showModal, setShowModal] = useState(false);
     const [modalDate, setModalDate] = useState(format(new Date(), "yyyy-MM-dd"))
     const [successMeeting, setSuccessMeeting] = useState<MeetingEvent | null>(null);
+    // Meetings and events of the month on screen (grid, day drawer, month
+    // overview) and of the next 7 days (Upcoming card, which ignores the month
+    // on screen).
+    const [meetings, setMeetings] = useState<MeetingEvent[]>([]);
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+    const [upcomingMeetings, setUpcomingMeetings] = useState<MeetingEvent[]>([]);
+    const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
+    // Bumped after a create/edit/delete to load every list again
+    const [itemsVersion, setItemsVersion] = useState(0);
+    const reloadItems = useCallback(() => setItemsVersion(v => v + 1), []);
 
     const [showEventModal, setShowEventModal] = useState(false);
 
@@ -962,11 +1010,9 @@ const CalendarPage = () => {
 
     const [successEvent, setSuccessEvent] = useState<CalendarEvent | null>(null);
 
-    // Load saved meetings from localStorage
+    // Development only: /calendar?seed or ?seed=clear. Runs before the loads below.
     useEffect(() => {
-        applyDevSeed(); // development only: /calendar?seed or ?seed=clear
-        const savedMeetings = meetingStorage.getAll();
-        setEvents(savedMeetings);
+        applyDevSeed();
     }, []);
 
     // Chip details popover — the clicked item and its chip element
@@ -981,23 +1027,61 @@ const CalendarPage = () => {
     // Opened from the details popover's trash icon.
     const [itemToDelete, setItemToDelete] = useState<{ kind: "meeting" | "event"; id: number } | null>(null);
 
-    const handleDeleteMeeting = (id: number) => {
-        meetingStorage.delete(id);
+    // Meetings: the creator or an admin may edit or cancel (the API enforces the same)
+    const canManageMeeting = (meeting: MeetingEvent) =>
+        isAdmin(user) || (!!user && meeting.created_by === user.id);
 
-        setEvents(prev =>
-            prev.filter(event => event.id !== id)
-        );
+    const handleDeleteMeeting = async (id: number) => {
+        try {
+            await meetingsApi.remove(id);
+            reloadItems();
+        } catch (err) {
+            showToast("error", errorMessage(err, "Couldn't cancel the meeting. Please try again."));
+        }
     };
 
-    const handleDeleteEvent = (id: number) => {
-        eventStorage.delete(id);
-        setCalendarEvents(prev => prev.filter(event => event.id !== id));
+    const handleDeleteEvent = async (id: number) => {
+        try {
+            await calendarEventsApi.remove(id);
+            reloadItems();
+        } catch (err) {
+            showToast("error", errorMessage(err, "Couldn't delete the event. Please try again."));
+        }
     };
 
-    // Event
+    // The month on screen (GET /google/meetings + /calendar-events).
+    // A list that fails to load is shown empty, with a toast.
+    const monthKey = format(currentDate, "yyyy-MM");
     useEffect(() => {
-        setCalendarEvents(eventStorage.getAll());
-    }, []);
+        const controller = new AbortController();
+        // Local midnight on the 1st to local midnight on the next month's 1st
+        const from = startOfMonth(new Date(`${monthKey}-01T00:00:00`));
+        const to = addMonths(from, 1);
+        loadCalendarItems(from, to, controller.signal).then(({ meetings, events, error }) => {
+            if (controller.signal.aborted) return;
+            setMeetings(meetings);
+            setCalendarEvents(events);
+            if (error) {
+                console.error("Failed to load the calendar:", error);
+                showToast("error", errorMessage(error, "Couldn't load meetings and events."));
+            }
+        });
+        return () => controller.abort();
+    }, [monthKey, itemsVersion]);
+
+    // The next 7 days, for the Upcoming card (its failure is already shown above)
+    useEffect(() => {
+        const controller = new AbortController();
+        const from = startOfToday();
+        const to = addDays(from, 7); // matches UpcomingCard's 7 days
+        loadCalendarItems(from, to, controller.signal).then(({ meetings, events, error }) => {
+            if (controller.signal.aborted) return;
+            setUpcomingMeetings(meetings);
+            setUpcomingEvents(events);
+            if (error) console.error("Failed to load upcoming items:", error);
+        });
+        return () => controller.abort();
+    }, [itemsVersion]);
 
     // Day drawer ("+N more") — the "YYYY-MM-DD" it shows, or null when closed
     const [openDayKey, setOpenDayKey] = useState<string | null>(null);
@@ -1019,6 +1103,7 @@ const CalendarPage = () => {
     }, []);
 
     const handleCreateEventClick = (dateStr: string) => {
+        if (!canManageEvents) return;
         setEventModalDate(dateStr);
         setShowEventModal(true);
     };
@@ -1306,32 +1391,36 @@ const CalendarPage = () => {
                             {days.map((day) => {
                                 const dateKey = format(day, "yyyy-MM-dd")
 
-                                const dayItems = buildDayItems(dateKey, events, calendarEvents, holidays);
+                                const dayItems = buildDayItems(dateKey, meetings, calendarEvents, holidays);
                                 const visibleDayItems = dayItems.slice(0, 2);
                                 const hiddenDayItemCount = dayItems.length - visibleDayItems.length;
 
                                 return (
                                     <div
                                         key={dateKey}
-                                        // Clicking anywhere in the cell creates an event, like its "+".
+                                        // Clicking anywhere in the cell creates an event, like its "+" (admins only).
                                         // Chips and "+N more" stop the click so they keep their own action.
                                         onClick={() => handleCreateEventClick(dateKey)}
-                                        className={`h-(--calendar-cell-height) p-(--space-8) flex flex-col gap-(--space-8) bg-(--soft-white-light-active) cursor-pointer ${dayItems.length > 0 ? "rounded-(--radius-md)" : "rounded-(--radius-xs)"}`}
+                                        className={`h-(--calendar-cell-height) p-(--space-8) flex flex-col gap-(--space-8) bg-(--soft-white-light-active) ${canManageEvents ? "cursor-pointer" : ""} ${dayItems.length > 0 ? "rounded-(--radius-md)" : "rounded-(--radius-xs)"}`}
                                     >
                                         {/* Day Number and Add Button */}
                                         <div className="flex items-center justify-between">
-                                            <button
-                                                type="button"
-                                                onClick={(e) => { e.stopPropagation(); handleCreateEventClick(dateKey); }}
-                                                className="size-(--space-16) flex items-center justify-center rounded-(--radius-xs) hover:bg-(--soft-white-normal) transition-colors cursor-pointer"
-                                                aria-label={`Create event on ${dateKey}`}
-                                            >
-                                                <MaskIcon
-                                                    src="/icons/plus.svg"
-                                                    size={14}
-                                                    color="var(--neutral-normal)"
-                                                />
-                                            </button>
+                                            {canManageEvents ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); handleCreateEventClick(dateKey); }}
+                                                    className="size-(--space-16) flex items-center justify-center rounded-(--radius-xs) hover:bg-(--soft-white-normal) transition-colors cursor-pointer"
+                                                    aria-label={`Create event on ${dateKey}`}
+                                                >
+                                                    <MaskIcon
+                                                        src="/icons/plus.svg"
+                                                        size={14}
+                                                        color="var(--neutral-normal)"
+                                                    />
+                                                </button>
+                                            ) : (
+                                                <span aria-hidden="true" />
+                                            )}
 
                                             <span className="text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--neutral-normal)">
                                                 {format(day, "dd")}
@@ -1399,17 +1488,21 @@ const CalendarPage = () => {
                                     <div
                                         key={`next-${dateKey}`}
                                         onClick={() => handleCreateEventClick(dateKey)}
-                                        className="h-(--calendar-cell-height) p-(--space-8) bg-(--soft-white-light-active) rounded-(--radius-xs) cursor-pointer"
+                                        className={`h-(--calendar-cell-height) p-(--space-8) bg-(--soft-white-light-active) rounded-(--radius-xs) ${canManageEvents ? "cursor-pointer" : ""}`}
                                     >
                                         <div className="flex items-center justify-between">
-                                            <button
-                                                type="button"
-                                                onClick={(e) => { e.stopPropagation(); handleCreateEventClick(dateKey); }}
-                                                className="size-(--space-16) flex items-center justify-center rounded-(--radius-xs) hover:bg-(--soft-white-normal) transition-colors cursor-pointer"
-                                                aria-label={`Create event on ${dateKey}`}
-                                            >
-                                                <MaskIcon src="/icons/plus.svg" size={14} color="var(--neutral-normal)" />
-                                            </button>
+                                            {canManageEvents ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); handleCreateEventClick(dateKey); }}
+                                                    className="size-(--space-16) flex items-center justify-center rounded-(--radius-xs) hover:bg-(--soft-white-normal) transition-colors cursor-pointer"
+                                                    aria-label={`Create event on ${dateKey}`}
+                                                >
+                                                    <MaskIcon src="/icons/plus.svg" size={14} color="var(--neutral-normal)" />
+                                                </button>
+                                            ) : (
+                                                <span aria-hidden="true" />
+                                            )}
                                             <span className="text-(length:--body-sm-size) leading-(--body-sm-leading) text-(--neutral-normal)">
                                                 {format(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, day), "dd")}
                                             </span>
@@ -1429,21 +1522,21 @@ const CalendarPage = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-(--space-20) items-start">
                     <div className="flex flex-col gap-(--space-20)">
                         <CompanyHolidaysCard holidays={holidays} onViewAll={() => setShowHolidayList(true)} />
-                        <MonthOverviewCard month={currentDate} meetings={events} events={calendarEvents} holidays={holidays} />
+                        <MonthOverviewCard month={currentDate} meetings={meetings} events={calendarEvents} holidays={holidays} />
                     </div>
-                    <UpcomingCard meetings={events} events={calendarEvents} holidays={holidays} />
+                    <UpcomingCard meetings={upcomingMeetings} events={upcomingEvents} holidays={holidays} />
                 </div>
             </div>
             {/* Popup schedule meeting */}
             {editingMeeting && (
                 <ScheduleModal
                     key={`edit-meeting-${editingMeeting.id}`}
-                    defaultDate={editingMeeting.start_datetime.slice(0, 10)}
+                    defaultDate={localDateKey(editingMeeting.start_datetime)}
                     initial={editingMeeting}
                     onClose={() => setEditingMeeting(null)}
-                    onSave={(meeting) => {
-                        meetingStorage.update(meeting);
-                        setEvents(prev => prev.map(saved => saved.id === meeting.id ? meeting : saved));
+                    onSave={async (input) => {
+                        await meetingsApi.update(editingMeeting.id, input);
+                        reloadItems();
                         setEditingMeeting(null);
                     }}
                 />
@@ -1453,16 +1546,9 @@ const CalendarPage = () => {
                 <ScheduleModal
                     defaultDate={modalDate}
                     onClose={() => setShowModal(false)}
-                    onSave={(meeting) => {
-                        console.log("Meeting created:", meeting);
-
-                        try {
-                            meetingStorage.add(meeting);
-                        } catch (error) {
-                            console.error("Failed to save meeting:", error);
-                        }
-
-                        setEvents(prev => [...prev, meeting]);
+                    onSave={async (input) => {
+                        const meeting = await meetingsApi.create(input);
+                        reloadItems();
                         setShowModal(false);
                         setSuccessMeeting(meeting);
                     }}
@@ -1472,7 +1558,7 @@ const CalendarPage = () => {
             {openDayKey && (
                 <DayEventsDrawer
                     dateKey={openDayKey}
-                    items={buildDayItems(openDayKey, events, calendarEvents, holidays)}
+                    items={buildDayItems(openDayKey, meetings, calendarEvents, holidays)}
                     onClose={closeDayDrawer}
                 />
             )}
@@ -1486,6 +1572,11 @@ const CalendarPage = () => {
                     dayItem={selectedItem.dayItem}
                     anchor={selectedItem.anchor}
                     onClose={closeDetails}
+                    canModify={
+                        selectedItem.dayItem.kind === "event" ? canManageEvents
+                            : selectedItem.dayItem.kind === "meeting" ? canManageMeeting(selectedItem.dayItem.item)
+                                : false
+                    }
                     onEdit={() => {
                         const { dayItem } = selectedItem;
                         if (dayItem.kind === "meeting") setEditingMeeting(dayItem.item);
@@ -1527,13 +1618,10 @@ const CalendarPage = () => {
                 <EventModal
                     defaultDate={eventModalDate}
                     onClose={() => setShowEventModal(false)}
-                    onSave={(event) => {
-                        eventStorage.add(event);
-
-                        setCalendarEvents(prev => [...prev, event]);
-
+                    onSave={async (input) => {
+                        const event = await calendarEventsApi.create(input);
+                        reloadItems();
                         setShowEventModal(false);
-
                         setSuccessEvent(event);
                     }}
                 />
@@ -1542,12 +1630,12 @@ const CalendarPage = () => {
             {editingEvent && (
                 <EventModal
                     key={`edit-event-${editingEvent.id}`}
-                    defaultDate={editingEvent.start_datetime.slice(0, 10)}
+                    defaultDate={localDateKey(editingEvent.start_datetime)}
                     initial={editingEvent}
                     onClose={() => setEditingEvent(null)}
-                    onSave={(event) => {
-                        eventStorage.update(event);
-                        setCalendarEvents(prev => prev.map(saved => saved.id === event.id ? event : saved));
+                    onSave={async (input) => {
+                        await calendarEventsApi.update(editingEvent.id, input);
+                        reloadItems();
                         setEditingEvent(null);
                     }}
                 />
