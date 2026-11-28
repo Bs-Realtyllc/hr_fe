@@ -94,14 +94,6 @@ function initials(name: string) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
-function progressPct(start?: string, end?: string): number {
-  if (!start || !end) return 0;
-  const s = new Date(start).getTime();
-  const e = new Date(end).getTime();
-  const now = Date.now();
-  return Math.min(100, Math.max(0, Math.round(((now - s) / (e - s)) * 100)));
-}
-
 function MultiUrlField({
   label,
   values,
@@ -183,6 +175,10 @@ export default function ProjectsPage() {
   // Analytics tab already uses, rather than lifting the Board's full issue
   // state up here.
   const [moduleCounts, setModuleCounts] = useState<Record<number, { done: number; total: number }>>({});
+  // Whole-project completion ("X/Y issues done"), from the same issue fetch
+  // used for moduleCounts — matches how Plane shows real work-item-closed
+  // counts rather than a calendar-time-elapsed bar.
+  const [projectIssueCounts, setProjectIssueCounts] = useState<{ done: number; total: number } | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -225,10 +221,11 @@ export default function ProjectsPage() {
   const canWriteIssues = isPrivileged || (myAssignment != null && myAssignment.role !== 'viewer');
 
   useEffect(() => {
-    api.get<Project[]>('/projects').then(list => {
-      setProjects(list);
-      if (list.length > 0) selectProject(list[0]);
-    }).catch(() => { });
+    // Land on the project picker, not whichever project happens to be
+    // newest — auto-opening one here means clicking "Projects" in the
+    // sidebar always drops you into the same project instead of letting
+    // you choose.
+    api.get<Project[]>('/projects').then(setProjects).catch(() => { });
     employeesApi.list<Employee>().then(setEmployees).catch(() => {showToast('error', "Failed to load employee data")});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -273,6 +270,10 @@ export default function ProjectsPage() {
       counts[issue.module_id] = bucket;
     }
     setModuleCounts(counts);
+    setProjectIssueCounts({
+      total: issuesForCounts.length,
+      done: issuesForCounts.filter(i => i.status === 'done').length,
+    });
   };
 
   const toggleService = async (serviceKey: string) => {
@@ -454,6 +455,7 @@ export default function ProjectsPage() {
           setModules([]);
           setAssignments([]);
           setProjectServices([]);
+          setProjectIssueCounts(null);
         }
       }
       setDeletingProject(null);
@@ -498,11 +500,7 @@ export default function ProjectsPage() {
             </div>
           )}
           {projects.map(p => {
-            const pct = progressPct(p.start_date, p.expected_end_date);
             const isSelected = selected?.id === p.id;
-            const progressColor = p.status === 'on_hold' ? 'var(--color-warning)'
-              : p.status === 'archived' ? 'var(--color-text-muted)'
-                : 'var(--color-accent)';
             return (
               <div
                 key={p.id}
@@ -541,15 +539,9 @@ export default function ProjectsPage() {
                   </p>
                 )}
                 {(p.start_date && p.expected_end_date) && (
-                  <div>
-                    <div className="progress-bar">
-                      <div className="progress-fill" style={{ width: `${pct}%`, background: progressColor }} />
-                    </div>
-                    <div className="flex justify-between text-muted" style={{ marginTop: 6, fontSize: 11 }}>
-                      <span>{new Date(p.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
-                      <span style={{ fontWeight: 600 }}>{pct}%</span>
-                      <span>{new Date(p.expected_end_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
-                    </div>
+                  <div className="flex justify-between text-muted" style={{ fontSize: 11 }}>
+                    <span>{new Date(p.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                    <span>{new Date(p.expected_end_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
                   </div>
                 )}
               </div>
@@ -577,6 +569,11 @@ export default function ProjectsPage() {
                 <div className="flex items-center gap-2 mb-1">
                   <h2 style={{ fontSize: 18, fontWeight: 700 }}>{selected.name}</h2>
                   <span className={`badge ${statusBadge[selected.status]}`}>{selected.status.replace('_', ' ')}</span>
+                  {projectIssueCounts && projectIssueCounts.total > 0 && (
+                    <span className="badge badge-neutral">
+                      {projectIssueCounts.done}/{projectIssueCounts.total} issues done
+                    </span>
+                  )}
                 </div>
                 {selected.description && <p className="text-muted text-sm">{selected.description}</p>}
                 {(() => {
