@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { employeesApi } from '@/lib/queries/employees';
 import { usePermissions } from '@/hooks/usePermissions';
 import type { EmployeeSummary as Employee } from '@/types';
@@ -163,6 +164,18 @@ function MultiUrlField({
 }
 
 export default function ProjectsPage() {
+  // ProjectsPageInner reads the URL query (useSearchParams, for deep-linking
+  // from My Issues into a specific project/issue), which Next needs inside
+  // a Suspense boundary on a statically rendered route.
+  return (
+    <Suspense>
+      <ProjectsPageInner />
+    </Suspense>
+  );
+}
+
+function ProjectsPageInner() {
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { isPrivileged, isAdmin } = usePermissions();
 
@@ -224,8 +237,18 @@ export default function ProjectsPage() {
     // Land on the project picker, not whichever project happens to be
     // newest — auto-opening one here means clicking "Projects" in the
     // sidebar always drops you into the same project instead of letting
-    // you choose.
-    api.get<Project[]>('/projects').then(setProjects).catch(() => { });
+    // you choose. The one exception is a deep link (e.g. from My Issues,
+    // which otherwise has no way to get you from "assigned to you" to
+    // the actual project/issue).
+    api.get<Project[]>('/projects').then(list => {
+      setProjects(list);
+      const deepLinkProjectId = searchParams.get('projectId');
+      const match = deepLinkProjectId ? list.find(p => p.id === Number(deepLinkProjectId)) : null;
+      if (match) {
+        selectProject(match);
+        setActiveTab('issues');
+      }
+    }).catch(() => { });
     employeesApi.list<Employee>().then(setEmployees).catch(() => {showToast('error', "Failed to load employee data")});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -632,7 +655,15 @@ export default function ProjectsPage() {
             />
 
             {activeTab === 'issues' ? (
-              <IssueBoard projectId={selected.id} members={assignments} modules={modules} isAdmin={isAdmin} employees={employees} canWrite={canWriteIssues} />
+              <IssueBoard
+                projectId={selected.id}
+                members={assignments}
+                modules={modules}
+                isAdmin={isAdmin}
+                employees={employees}
+                canWrite={canWriteIssues}
+                initialIssueId={selected.id === Number(searchParams.get('projectId')) ? Number(searchParams.get('issueId')) || undefined : undefined}
+              />
             ) : activeTab === 'analytics' ? (
               <AnalyticsTab projectId={selected.id} />
             ) : (

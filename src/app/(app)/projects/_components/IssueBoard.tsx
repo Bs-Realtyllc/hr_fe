@@ -18,7 +18,7 @@ import {
 } from './types';
 
 export default function IssueBoard({
-  projectId, members, modules, isAdmin, employees, canWrite,
+  projectId, members, modules, isAdmin, employees, canWrite, initialIssueId,
 }: {
   projectId: number;
   members: ProjectMember[];
@@ -26,6 +26,8 @@ export default function IssueBoard({
   isAdmin: boolean;
   employees: EmployeeSummary[];
   canWrite: boolean;
+  /** Deep-linked from elsewhere (e.g. My Issues) — opens once on mount, same as clicking the card. */
+  initialIssueId?: number;
 }) {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [labels, setLabels] = useState<IssueLabel[]>([]);
@@ -41,7 +43,7 @@ export default function IssueBoard({
 
   const [groupBy, setGroupBy] = useState<GroupByField>('status');
   const [viewMode, setViewMode] = useState<ViewMode>('board');
-  const [selectedIssueId, setSelectedIssueId] = useState<number | null>(null);
+  const [selectedIssueId, setSelectedIssueId] = useState<number | null>(initialIssueId ?? null);
   const [filters, setFilters] = useState<FiltersType>(EMPTY_FILTERS);
 
   const load = useCallback(async () => {
