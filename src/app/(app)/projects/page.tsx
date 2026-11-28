@@ -186,11 +186,17 @@ export default function ProjectsPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [showModal, setShowModal] = useState(false);
+  // null = creating a new project; set = editing that existing one. Code
+  // (issue key prefix) is immutable once set — the backend's update schema
+  // doesn't even accept it — so the field only appears while creating.
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [form, setForm] = useState({
     name: '', description: '', status: 'active', code: '',
     repo_url: [] as string[], docs_url: [] as string[],
     start_date: '', expected_end_date: '',
   });
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null);
 
   const [projectServices, setProjectServices] = useState<string[]>([]);
 
@@ -281,6 +287,29 @@ export default function ProjectsPage() {
     }
   };
 
+  const emptyForm = { name: '', description: '', status: 'active', code: '', repo_url: [] as string[], docs_url: [] as string[], start_date: '', expected_end_date: '' };
+
+  const openCreateModal = () => {
+    setEditingProject(null);
+    setForm(emptyForm);
+    setShowModal(true);
+  };
+
+  const openEditModal = (p: Project) => {
+    setEditingProject(p);
+    setForm({
+      name: p.name,
+      description: p.description ?? '',
+      status: p.status,
+      code: p.code ?? '',
+      repo_url: Array.isArray(p.repo_url) ? p.repo_url : [],
+      docs_url: Array.isArray(p.docs_url) ? p.docs_url : [],
+      start_date: p.start_date ?? '',
+      expected_end_date: p.expected_end_date ?? '',
+    });
+    setShowModal(true);
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
@@ -289,15 +318,59 @@ export default function ProjectsPage() {
       repo_url: form.repo_url.filter(Boolean),
       docs_url: form.docs_url.filter(Boolean),
     };
-    try{
-    await api.post('/projects', payload);
-    setShowModal(false);
-    setForm({ name: '', description: '', status: 'active', code: '', repo_url: [], docs_url: [], start_date: '', expected_end_date: '' });
-    api.get<Project[]>('/projects').then(setProjects).catch(() => { });
-      showToast('success', "Project created successfully");
-    }catch(err){
-      showToast('error', "Failed to create project")
+    try {
+      if (editingProject) {
+        await api.put(`/projects/${editingProject.id}`, payload);
+        // The update endpoint only returns { success: true }, not the row —
+        // merge the submitted fields locally instead of refetching. `code`
+        // is deliberately left out: it's immutable and wasn't sent.
+        const updated: Project = {
+          ...editingProject,
+          name: form.name,
+          description: form.description,
+          status: form.status as Project['status'],
+          repo_url: form.repo_url.filter(Boolean),
+          docs_url: form.docs_url.filter(Boolean),
+          start_date: form.start_date || undefined,
+          expected_end_date: form.expected_end_date || undefined,
+        };
+        setProjects(prev => prev.map(p => (p.id === editingProject.id ? updated : p)));
+        if (selected?.id === editingProject.id) setSelected(updated);
+        showToast('success', 'Project updated successfully');
+      } else {
+        await api.post('/projects', payload);
+        api.get<Project[]>('/projects').then(setProjects).catch(() => { });
+        showToast('success', 'Project created successfully');
+      }
+      setShowModal(false);
+      setEditingProject(null);
+      setForm(emptyForm);
+    } catch (err) {
+      showToast('error', editingProject ? 'Failed to update project' : 'Failed to create project');
+    }
+  };
 
+  // Archive/restore reuse the same update endpoint the Edit modal does —
+  // just a one-field PATCH-via-PUT, no separate route. Archiving is
+  // reversible (restore just flips status back), so it only needs a light
+  // confirm, unlike Delete below which is permanent and cascading.
+  const toggleArchive = async (p: Project) => {
+    const archiving = p.status !== 'archived';
+    const verb = archiving ? 'Archive' : 'Restore';
+    if (!window.confirm(
+      archiving
+        ? `Archive "${p.name}"? It'll be hidden from the active project list, but nothing is deleted — you can restore it anytime.`
+        : `Restore "${p.name}"? It'll become active again.`,
+    )) return;
+    try {
+      const nextStatus: Project['status'] = archiving ? 'archived' : 'active';
+      await api.put(`/projects/${p.id}`, { status: nextStatus });
+      const updated: Project = { ...p, status: nextStatus };
+      setProjects(prev => prev.map(proj => (proj.id === p.id ? updated : proj)));
+      if (selected?.id === p.id) setSelected(updated);
+      showToast('success', `${verb}d project successfully`);
+    } catch (err) {
+      showToast('error', `Failed to ${verb.toLowerCase()} project`);
     }
   };
 
@@ -358,25 +431,35 @@ export default function ProjectsPage() {
     setModules(updated);
   };
 
-  const deleteProject = async (p: Project) => {
-    if (!window.confirm(`Delete "${p.name}"? This removes its assignments, modules, and services. This cannot be undone.`)) return;
-    try{
-    await api.delete(`/projects/${p.id}`).catch(() => { });
-    const remaining = projects.filter(proj => proj.id !== p.id);
-    setProjects(remaining);
-    if (selected?.id === p.id) {
-      if (remaining.length > 0) {
-        selectProject(remaining[0]);
-      } else {
-        setSelected(null);
-        setModules([]);
-        setAssignments([]);
-        setProjectServices([]);
+  // Deleting cascades through a project's assignments/modules/services and
+  // can't be undone, unlike Archive above — typing the project's own name
+  // is a much higher bar than a browser confirm() dialog, intentionally.
+  const openDeleteModal = (p: Project) => {
+    setDeletingProject(p);
+    setDeleteConfirmName('');
+  };
+
+  const confirmDelete = async () => {
+    const p = deletingProject;
+    if (!p || deleteConfirmName !== p.name) return;
+    try {
+      await api.delete(`/projects/${p.id}`);
+      const remaining = projects.filter(proj => proj.id !== p.id);
+      setProjects(remaining);
+      if (selected?.id === p.id) {
+        if (remaining.length > 0) {
+          selectProject(remaining[0]);
+        } else {
+          setSelected(null);
+          setModules([]);
+          setAssignments([]);
+          setProjectServices([]);
+        }
       }
-    }
-      showToast('success', "Successfully deleted project")
-    }catch(err){
-      showToast('error', "Failed to delete project");
+      setDeletingProject(null);
+      showToast('success', 'Successfully deleted project');
+    } catch (err) {
+      showToast('error', 'Failed to delete project');
     }
   };
 
@@ -390,7 +473,7 @@ export default function ProjectsPage() {
           </div>
           {isAdmin && (
 
-            <Button variant='primary' size='small' onClick={() => setShowModal(true)}
+            <Button variant='primary' size='small' onClick={openCreateModal}
               leftIcon={<span
                 className="icon-mask"
                 style={{ height: 16, width: 16, WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)' }}
@@ -518,13 +601,26 @@ export default function ProjectsPage() {
                 })()}
               </div>
               {isAdmin && (
-                <button
-                  className="btn btn-secondary btn-xs btn-danger"
-                  style={{ flexShrink: 0 }}
-                  onClick={() => deleteProject(selected)}
-                >
-                  Delete
-                </button>
+                <div className="flex gap-2" style={{ flexShrink: 0 }}>
+                  <button
+                    className="btn btn-secondary btn-xs"
+                    onClick={() => openEditModal(selected)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="btn btn-secondary btn-xs"
+                    onClick={() => toggleArchive(selected)}
+                  >
+                    {selected.status === 'archived' ? 'Restore' : 'Archive'}
+                  </button>
+                  <button
+                    className="btn btn-secondary btn-xs btn-danger"
+                    onClick={() => openDeleteModal(selected)}
+                  >
+                    Delete
+                  </button>
+                </div>
               )}
             </div>
 
@@ -685,12 +781,12 @@ export default function ProjectsPage() {
         ) : null}
       </div>
 
-      {/* New Project Modal */}
+      {/* New/Edit Project Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>New Project</h2>
+              <h2>{editingProject ? `Edit ${editingProject.name}` : 'New Project'}</h2>
               <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
             </div>
             <form onSubmit={submit}>
@@ -698,16 +794,18 @@ export default function ProjectsPage() {
                 <label className="form-label">Project Name *</label>
                 <input className="form-input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
               </div>
-              <div className="form-group">
-                <label className="form-label">Issue key prefix</label>
-                <input
-                  className="form-input"
-                  value={form.code}
-                  onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })}
-                  placeholder="Auto-generated from the name if left blank"
-                  maxLength={10}
-                />
-              </div>
+              {!editingProject && (
+                <div className="form-group">
+                  <label className="form-label">Issue key prefix</label>
+                  <input
+                    className="form-input"
+                    value={form.code}
+                    onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                    placeholder="Auto-generated from the name if left blank"
+                    maxLength={10}
+                  />
+                </div>
+              )}
               <div className="form-group">
                 <label className="form-label">Description</label>
                 <textarea className="form-textarea" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
@@ -748,19 +846,61 @@ export default function ProjectsPage() {
                   variant='primary'
                   type='submit'
                   size='small'
-                  leftIcon={<span
+                  leftIcon={!editingProject ? <span
                     className="icon-mask"
                     style={{
                       height: 16,
                       width: 16,
                       WebkitMaskImage: 'url(/icons/plus.svg)', maskImage: 'url(/icons/plus.svg)'
                     }}
-                  />}
+                  /> : undefined}
                 >
-                  Create Project
+                  {editingProject ? 'Save Changes' : 'Create Project'}
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Project Modal — typing the project's name is a deliberately
+          higher bar than a browser confirm(), since this cascades through
+          assignments/modules/services and can't be undone (unlike Archive). */}
+      {deletingProject && (
+        <div className="modal-overlay" onClick={() => setDeletingProject(null)}>
+          <div className="modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Delete {deletingProject.name}</h2>
+              <button className="modal-close" onClick={() => setDeletingProject(null)}>×</button>
+            </div>
+            <p className="text-sm" style={{ marginBottom: 14 }}>
+              This permanently removes <strong>{deletingProject.name}</strong>, along with its assignments, modules, and services. This cannot be undone.
+            </p>
+            <div className="form-group">
+              <label className="form-label">
+                Type <strong>{deletingProject.name}</strong> to confirm
+              </label>
+              <input
+                className="form-input"
+                value={deleteConfirmName}
+                onChange={e => setDeleteConfirmName(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3 justify-between mt-4">
+              <Button variant="text" size="small" onClick={() => setDeletingProject(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="small"
+                onClick={confirmDelete}
+                disabled={deleteConfirmName !== deletingProject.name}
+                style={{ background: 'var(--color-error)', borderColor: 'var(--color-error)' }}
+              >
+                Delete Project
+              </Button>
+            </div>
           </div>
         </div>
       )}
