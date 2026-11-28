@@ -2,16 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import type { EmployeeSummary as Employee } from '@/types';
+import { Avatar, ModalShell, ui, cn } from './ui';
 
 
 interface NewDmModalProps {
   employees: Employee[];
   onClose: () => void;
   onSelect: (employee: Employee) => void;
-}
-
-function initials(name: string) {
-  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
 export function NewDmModal({ employees, onClose, onSelect }: NewDmModalProps) {
@@ -34,53 +31,35 @@ export function NewDmModal({ employees, onClose, onSelect }: NewDmModalProps) {
     : employees.slice(0, 20);
 
   return (
-    <div className="inbox-modal-overlay" onClick={onClose}>
-      <div className="inbox-modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
-        <div className="inbox-modal-header">
-          <span className="inbox-modal-title">Open Direct Message</span>
-          <button className="inbox-modal-close" onClick={onClose}>✕</button>
-        </div>
-
-        <div className="inbox-modal-body">
-          <div className="inbox-modal-field">
-            <div className="inbox-modal-name-wrap">
-              <span className="inbox-modal-name-prefix" style={{ fontSize: 15 }}>🔍</span>
-              <input
-                ref={inputRef}
-                className="inbox-modal-input"
-                type="text"
-                placeholder="Search employees…"
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="inbox-dm-search-list">
-            {filtered.length === 0 ? (
-              <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>
-                No employees found
-              </div>
-            ) : filtered.map(emp => (
-              <button
-                key={emp.id}
-                className="inbox-dm-search-item"
-                onClick={() => { onSelect(emp); onClose(); }}
-              >
-                <div className="inbox-member-av" style={{ flexShrink: 0 }}>
-                  {initials(emp.name)}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <span style={{ fontWeight: 600, fontSize: 13 }}>{emp.name}</span>
-                  {emp.designation && (
-                    <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{emp.designation}</span>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
+    <ModalShell title="Select Friends" subtitle="Start a direct message with a teammate." onClose={onClose}>
+      <div className="px-4 pb-3">
+        <input
+          ref={inputRef}
+          className={ui.input}
+          type="text"
+          placeholder="Type the name of a teammate"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+        />
       </div>
-    </div>
+
+      <div className={cn('flex max-h-[320px] flex-col gap-0.5 overflow-y-auto px-2 pb-3', ui.scroll)}>
+        {filtered.length === 0 ? (
+          <div className="py-6 text-center text-sm text-[#949ba4]">No employees found</div>
+        ) : filtered.map(emp => (
+          <button
+            key={emp.id}
+            className={ui.listItem}
+            onClick={() => { onSelect(emp); onClose(); }}
+          >
+            <Avatar name={emp.name} size="size-8" text="text-xs" />
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate text-[15px] font-medium text-[#f2f3f5]">{emp.name}</span>
+              {emp.designation && <span className="truncate text-xs text-[#949ba4]">{emp.designation}</span>}
+            </div>
+          </button>
+        ))}
+      </div>
+    </ModalShell>
   );
 }

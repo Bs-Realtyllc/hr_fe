@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import type { Role } from '@/types';
+import { ModalShell, ui, cn } from './ui';
 
 interface Category {
   id: number;
@@ -77,37 +78,41 @@ export function CreateChannelModal({ categories, onClose, onCreate }: CreateChan
   }
 
   const typeIcon = { text: '#', voice: '🔊', announcement: '📢' };
+  const categoryName = categories.find(c => c.id === categoryId)?.name;
 
   return (
-    <div className="inbox-modal-overlay" onClick={onClose}>
-      <div className="inbox-modal" onClick={e => e.stopPropagation()}>
-        <div className="inbox-modal-header">
-          <span className="inbox-modal-title">Create Channel</span>
-          <button className="inbox-modal-close" onClick={onClose} aria-label="Close">✕</button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="inbox-modal-body">
+    <ModalShell title="Create Channel" subtitle={categoryName ? `in ${categoryName}` : undefined} onClose={onClose} maxW="max-w-[460px]">
+      <form onSubmit={handleSubmit} className="flex min-h-0 flex-col">
+        <div className={cn(ui.modalBody, ui.scroll)}>
           {/* Type selector */}
-          <div className="inbox-modal-field">
-            <label className="inbox-modal-label">Channel Type</label>
-            <div className="inbox-type-grid">
+          <div>
+            <label className={ui.label}>Channel Type</label>
+            <div className="flex flex-col gap-2">
               {(['text', 'voice', 'announcement'] as const).map(t => (
                 <button
                   key={t}
                   type="button"
-                  className={`inbox-type-card${type === t ? ' selected' : ''}`}
+                  className={cn(
+                    'flex items-center gap-3 rounded-[3px] px-3 py-2.5 text-left transition-colors',
+                    type === t ? 'bg-[#404249]' : 'bg-[#2b2d31] hover:bg-[#35373c]',
+                  )}
                   onClick={() => setType(t)}
                 >
-                  <span className="inbox-type-card-icon">{typeIcon[t]}</span>
-                  <span className="inbox-type-card-label">
-                    {t === 'text' ? 'Text Channel' : t === 'voice' ? 'Voice Channel' : 'Announcement'}
+                  <span className="flex size-6 shrink-0 items-center justify-center text-xl text-[#b5bac1]">{typeIcon[t]}</span>
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-base font-medium text-[#f2f3f5]">
+                      {t === 'text' ? 'Text' : t === 'voice' ? 'Voice' : 'Announcement'}
+                    </span>
+                    <span className="text-sm text-[#b5bac1]">
+                      {t === 'text'
+                        ? 'Send messages, images, GIFs, emoji, opinions, and puns'
+                        : t === 'voice'
+                        ? 'Hang out together with voice, video, and screen share'
+                        : 'Post important company updates (admin/lead only)'}
+                    </span>
                   </span>
-                  <span className="inbox-type-card-desc">
-                    {t === 'text'
-                      ? 'Post messages, share files'
-                      : t === 'voice'
-                      ? 'Hang out with voice & video'
-                      : 'Post important company updates (admin/lead only)'}
+                  <span className={cn('flex size-5 shrink-0 items-center justify-center rounded-full border-2', type === t ? 'border-[#f2f3f5]' : 'border-[#b5bac1]')}>
+                    {type === t && <span className="size-2.5 rounded-full bg-[#f2f3f5]" />}
                   </span>
                 </button>
               ))}
@@ -116,10 +121,10 @@ export function CreateChannelModal({ categories, onClose, onCreate }: CreateChan
 
           {/* Category */}
           {categories.length > 0 && (
-            <div className="inbox-modal-field">
-              <label className="inbox-modal-label">Category</label>
+            <div>
+              <label className={ui.label}>Category</label>
               <select
-                className="inbox-modal-select"
+                className={cn(ui.input, 'cursor-pointer')}
                 value={categoryId ?? ''}
                 onChange={e => setCategoryId(Number(e.target.value))}
               >
@@ -131,35 +136,35 @@ export function CreateChannelModal({ categories, onClose, onCreate }: CreateChan
           )}
 
           {/* Name */}
-          <div className="inbox-modal-field">
-            <label className="inbox-modal-label">Channel Name</label>
-            <div className="inbox-modal-name-wrap">
-              <span className="inbox-modal-name-prefix">
+          <div>
+            <label className={ui.label}>Channel Name</label>
+            <div className="flex items-center gap-1.5 rounded-[3px] bg-[#1e1f22] pl-2.5">
+              <span className="text-lg text-[#b5bac1]">
                 {type === 'voice' ? '🔊' : type === 'announcement' ? '📢' : '#'}
               </span>
               <input
                 ref={inputRef}
-                className="inbox-modal-input"
+                className={cn(ui.input, 'pl-1')}
                 type="text"
-                placeholder="e.g. design-feedback"
+                placeholder="new-channel"
                 value={name}
                 onChange={e => setName(e.target.value)}
                 maxLength={80}
               />
             </div>
             {name && (
-              <div className="inbox-modal-hint">
-                Will be created as: <strong>{slugify(name) || '…'}</strong>
+              <div className={ui.hint}>
+                Will be created as: <strong className="text-[#dbdee1]">{slugify(name) || '…'}</strong>
               </div>
             )}
           </div>
 
           {/* Description */}
           {type !== 'voice' && (
-            <div className="inbox-modal-field">
-              <label className="inbox-modal-label">Description <span style={{ opacity: 0.5 }}>(optional)</span></label>
+            <div>
+              <label className={ui.label}>Description <span className="normal-case opacity-60">(optional)</span></label>
               <input
-                className="inbox-modal-input"
+                className={ui.input}
                 type="text"
                 placeholder="What is this channel about?"
                 value={description}
@@ -170,10 +175,10 @@ export function CreateChannelModal({ categories, onClose, onCreate }: CreateChan
           )}
 
           {/* Access */}
-          <div className="inbox-modal-field">
-            <label className="inbox-modal-label">Who can access?</label>
+          <div>
+            <label className={ui.label}>Who can access?</label>
             <select
-              className="inbox-modal-select"
+              className={cn(ui.input, 'cursor-pointer')}
               value={requiredRole}
               onChange={e => setRequiredRole(e.target.value as typeof requiredRole)}
             >
@@ -184,46 +189,35 @@ export function CreateChannelModal({ categories, onClose, onCreate }: CreateChan
           </div>
 
           {/* Private channel toggle */}
-          <div className="inbox-modal-field" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="inbox-modal-label" style={{ marginBottom: 2 }}>Private Channel</div>
-              <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                Only invited members can see and join
-              </div>
+              <div className="flex items-center gap-1.5 text-base font-medium text-[#f2f3f5]">🔒 Private Channel</div>
+              <div className="mt-0.5 text-sm text-[#b5bac1]">Only selected members and roles will be able to view this channel.</div>
             </div>
-            <label style={{ position: 'relative', display: 'inline-block', width: 40, height: 22, flexShrink: 0 }}>
+            <label className="relative inline-block h-6 w-10 shrink-0 cursor-pointer">
               <input
                 type="checkbox"
                 checked={isPrivate}
                 onChange={e => setIsPrivate(e.target.checked)}
-                style={{ opacity: 0, width: 0, height: 0 }}
+                className="peer sr-only"
               />
-              <span style={{
-                position: 'absolute', inset: 0, borderRadius: 99,
-                background: isPrivate ? 'var(--color-primary)' : 'var(--color-border)',
-                cursor: 'pointer', transition: 'background 0.2s',
-              }}>
-                <span style={{
-                  position: 'absolute', top: 3, left: isPrivate ? 21 : 3,
-                  width: 16, height: 16, borderRadius: '50%', background: '#fff',
-                  transition: 'left 0.2s',
-                }} />
-              </span>
+              <span className="absolute inset-0 rounded-full bg-[#80848e] transition-colors peer-checked:bg-[#23a55a]" />
+              <span className="absolute left-[3px] top-[3px] size-[18px] rounded-full bg-white transition-transform peer-checked:translate-x-4" />
             </label>
           </div>
 
-          {error && <div className="inbox-modal-error">{error}</div>}
+          {error && <div className="text-sm text-[#fa777c]">{error}</div>}
+        </div>
 
-          <div className="inbox-modal-footer">
-            <button type="button" className="inbox-modal-btn-cancel" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" className="inbox-modal-btn-primary" disabled={loading || !name.trim()}>
-              {loading ? 'Creating…' : 'Create Channel'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className={ui.modalFoot}>
+          <button type="button" className={ui.btnLink} onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" className={ui.btnPrimary} disabled={loading || !name.trim()}>
+            {loading ? 'Creating…' : 'Create Channel'}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
   );
 }
