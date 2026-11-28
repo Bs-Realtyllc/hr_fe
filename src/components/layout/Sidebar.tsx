@@ -57,6 +57,7 @@ const allNav: { section: string; items: NavItem[] }[] = [
       { href: '/standups', label: 'Standups', icon: 'message-square-01.svg', roles: ['employee', 'intern'] as Role[] },
       { href: '/calendar', label: 'Calendar', icon: 'calendar.svg', roles: ['employee', 'intern',] as Role[] },
       { href: '/projects', label: 'Projects', icon: 'briefcase-02.svg', roles: ['employee', 'intern'] as Role[] },
+      { href: '/my-issues', label: 'My Issues', icon: 'list-checks.svg', roles: ['employee', 'intern'] as Role[] },
       { href: '/leaves', label: 'Leave Request', icon: 'calendar.svg', roles: ['employee', 'intern'] as Role[] },
       { href: '/overtime', label: 'Overtime Request', icon: 'clock-01.svg', roles: ['employee', 'intern'] as Role[] },
 
@@ -82,6 +83,7 @@ const allNav: { section: string; items: NavItem[] }[] = [
     section: 'Work',
     items: [
       { href: '/projects', label: 'Projects', icon: 'briefcase-02.svg', roles: ['admin', 'lead'] as Role[] },
+      { href: '/my-issues', label: 'My Issues', icon: 'list-checks.svg', roles: ['admin', 'lead'] as Role[] },
       { href: '/servers', label: 'Services & Access', icon: 'server-01.svg', roles: ['admin', 'lead',] as Role[] },
       { href: '/calendar', label: 'Calendar', icon: 'calendar.svg', roles: ['admin', 'lead',] as Role[] },
     ],
@@ -127,7 +129,6 @@ const allNav: { section: string; items: NavItem[] }[] = [
       { href: '/weekly-reports', label: 'Weekly Reports', icon: 'chart-up.svg', roles: ['admin', 'lead'] as Role[] },
       { href: '/leave-report', label: 'Leave Report', icon: 'clipboard.svg', roles: ['admin'] as Role[] },
       { href: '/financial-report', label: 'Financial Report', icon: 'pie-chart-01.svg', roles: ['admin'] as Role[] },
-      { href: '/performance-report', label: 'Performance Reports', icon: 'list-checks.svg', roles: ['admin', 'lead'] as Role[] }
     ],
   },
   {

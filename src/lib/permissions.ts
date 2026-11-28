@@ -56,7 +56,8 @@ export const ROUTE_ROLES: Record<string, readonly Role[]> = {
   // Finance
   '/payroll': ['admin'],
   // Work
-  '/projects': ['admin', 'lead', 'intern'],
+  '/projects': ALL_ROLES,
+  '/my-issues': ALL_ROLES,
   '/servers': ALL_ROLES,
   '/calendar': ALL_ROLES,
   // Growth & culture
@@ -70,7 +71,6 @@ export const ROUTE_ROLES: Record<string, readonly Role[]> = {
   '/weekly-reports': ['admin', 'lead', 'employee'],
   '/leave-report': ['admin'],
   '/financial-report': ['admin'],
-  '/performance-report': ALL_ROLES,
   // Account
   '/profile': ALL_ROLES,
 };

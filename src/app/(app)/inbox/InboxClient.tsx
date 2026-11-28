@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { employeesApi } from '@/lib/queries/employees';
 import { BACKEND_URL } from '@/config/env';
 import type { Role } from '@/types';
@@ -21,6 +22,7 @@ import { SavedMessagesPanel } from './_components/SavedMessagesPanel';
 import { MentionAutocomplete, getMentionQuery, applyMention } from './_components/MentionAutocomplete';
 import { NotificationToastStack, type ToastNotification } from './_components/NotificationToast';
 import { AudioRecorder } from './_components/AudioRecorder';
+import { Avatar, Icon, cn, initials, ui } from './_components/ui';
 
 /* ─────────────────────────── Types ───────────────────────── */
 
@@ -41,7 +43,6 @@ interface VoiceToken  { token: string; url: string; room: string; }
 
 const EMOJI_LIST = ['👍','❤️','😂','😮','😢','🎉','🔥','✅','👏','🙌','💪','🤔','👀','✨','🚀','💯','⭐','🌟','💡','🎯','📌','🔔','💬','📢'];
 const ROLE_RANK: Record<UserRole, number>   = { admin: 4, lead: 3, employee: 2, intern: 1 };
-const STATUS_COLOR: Record<UserStatus, string> = { online: '#23a55a', away: '#f0b232', dnd: '#f23f43', offline: '#80848e' };
 
 /* ─────────────────────────── Helpers ─────────────────────── */
 
@@ -57,7 +58,6 @@ function mapApiDm(m: any, dmCh: string): ChatMessage {
 
 const ROLE_LABEL: Record<string, string> = { admin: 'Admin', lead: 'Team Lead', employee: 'Employee', intern: 'Intern' };
 
-function initials(n: string) { return n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(); }
 function fmtTime(d: Date)    { return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }); }
 function fmtTs(d: Date) {
   const now = new Date(); const yd = new Date(now); yd.setDate(yd.getDate() - 1);
@@ -97,12 +97,12 @@ function AudioMessage({ src: initialSrc, duration }: { src: string; duration: nu
   const mins = Math.floor(duration / 60);
   const secs = String(duration % 60).padStart(2, '0');
   return (
-    <div className="dm-audio-msg">
-      <span className="dm-audio-msg-icon">🎙️</span>
+    <div className="mt-1 flex w-fit max-w-full items-center gap-2.5 rounded-lg border border-[#1e1f22] bg-[#2b2d31] px-3 py-2">
+      <span className="text-lg">🎙️</span>
       {failed
-        ? <span className="dm-audio-msg-error">Audio unavailable</span>
-        : <audio controls src={src} onError={handleError} className="dm-audio-native" preload="metadata" />}
-      <span className="dm-audio-msg-dur">{mins}:{secs}</span>
+        ? <span className="text-sm text-[#949ba4]">Audio unavailable</span>
+        : <audio controls src={src} onError={handleError} className="h-9 min-w-0 max-w-[300px] [color-scheme:dark]" preload="metadata" />}
+      <span className="shrink-0 text-xs tabular-nums text-[#949ba4]">{mins}:{secs}</span>
     </div>
   );
 }
@@ -134,7 +134,7 @@ function renderContent(content: string, me: string) {
     const handle  = m[1].slice(1).toLowerCase();
     const self    = me.toLowerCase().split(' ').some(part => part === handle);
     const special = m[1] === '@everyone' || m[1] === '@here';
-    parts.push(<span key={i++} className={`inbox-mention${self || special ? ' self' : ''}`}>{m[1]}</span>);
+    parts.push(<span key={i++} className={`rounded-[3px] px-0.5 font-medium transition-colors ${self || special ? 'bg-[#5865f2]/30 text-[#c9cdfb] hover:bg-[#5865f2] hover:text-white' : 'bg-[#5865f2]/20 text-[#c9cdfb] hover:bg-[#5865f2]/60'}`}>{m[1]}</span>);
     last = m.index + m[0].length;
   }
   if (last < content.length) parts.push(<span key={i++}>{content.slice(last)}</span>);
@@ -150,6 +150,9 @@ export default function InboxClient() {
   const [selectedDmId, setSelectedDmId]           = useState<string | null>(null);
   const [inputValue, setInputValue]               = useState('');
   const [showMembers, setShowMembers]             = useState(true);
+  // Remember the member-list toggle between visits (per browser only).
+  useEffect(() => { try { if (localStorage.getItem('inbox.showMembers') === '0') setShowMembers(false); } catch {} }, []);
+  useEffect(() => { try { localStorage.setItem('inbox.showMembers', showMembers ? '1' : '0'); } catch {} }, [showMembers]);
   const [collapsedCats, setCollapsedCats]         = useState<Set<string>>(new Set());
   const [dmCollapsed, setDmCollapsed]             = useState(false);
   const [inVoiceChannel, setInVoiceChannel]       = useState<string | null>(null);
@@ -159,6 +162,7 @@ export default function InboxClient() {
   const [editValue, setEditValue]                 = useState('');
   const [typingUsers, setTypingUsers]             = useState<string[]>([]);
   const [vcOccupants, setVcOccupants]             = useState<Record<string, string[]>>({});
+  const [callHands, setCallHands]                 = useState<string[]>([]); // names with a raised hand in *my* call
   const [loading, setLoading]                     = useState(true);
   const [socketConnected, setSocketConnected]     = useState(false);
   const [userStatus, setUserStatus]               = useState<UserStatus>('online');
@@ -209,11 +213,13 @@ export default function InboxClient() {
   const prevChIdRef         = useRef<string | null>(null);
   const curUserNameRef      = useRef(user?.name ?? 'You');
   const myIdRef             = useRef(user?.id?.toString() ?? 'me');
+  const inVoiceRef          = useRef<string | null>(null);
 
   useEffect(() => { selChIdRef.current    = selectedChannelId; }, [selectedChannelId]);
   useEffect(() => { selDmIdRef.current    = selectedDmId;      }, [selectedDmId]);
   useEffect(() => { curUserNameRef.current = user?.name ?? 'You'; }, [user?.name]);
   useEffect(() => { myIdRef.current       = user?.id?.toString() ?? 'me'; }, [user?.id]);
+  useEffect(() => { inVoiceRef.current    = inVoiceChannel; }, [inVoiceChannel]);
 
   const myId   = user?.id?.toString() ?? 'me';
   const myName = user?.name ?? 'You';
@@ -314,6 +320,9 @@ export default function InboxClient() {
       setSocketConnected(true);
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
       heartbeatRef.current = setInterval(() => socket.emit('ping'), 28000);
+      // A dropped connection removes us from voice presence server-side; if the
+      // LiveKit call is still up, announce ourselves again.
+      if (inVoiceRef.current) socket.emit('voice:join', Number(inVoiceRef.current));
     });
     socket.on('disconnect', () => {
       setSocketConnected(false);
@@ -394,7 +403,13 @@ export default function InboxClient() {
     socket.on('category:updated', (cat: any)          => setCategories(prev => prev.map(c => c.id === cat.id ? cat : c)));
     socket.on('category:deleted', (d: { id: number }) => setCategories(prev => prev.filter(c => c.id !== d.id)));
 
+    const onPageHide = () => { if (inVoiceRef.current) socket.emit('voice:leave', Number(inVoiceRef.current)); };
+    window.addEventListener('pagehide', onPageHide);
+
     return () => {
+      window.removeEventListener('pagehide', onPageHide);
+      // Navigating away from /inbox ends the call (VoiceRoom hangs up LiveKit on unmount).
+      if (inVoiceRef.current) socket.emit('voice:leave', Number(inVoiceRef.current));
       socket.disconnect(); socketRef.current = null;
       if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
       setSocketConnected(false);
@@ -411,22 +426,25 @@ export default function InboxClient() {
   }, [selectedChannelId, socketConnected]);
 
   /* ─ Voice presence listeners ─ */
+  // Keyed on the voice-channel ids only: `channels` changes on every unread-count
+  // bump, which used to refetch presence and clobber the live list mid-call.
+  const voiceChannelIds = channels.filter(c => c.type === 'voice').map(c => c.id).join(',');
   useEffect(() => {
     const s = socketRef.current;
-    if (!s || !socketConnected || channels.length === 0) return;
+    if (!s || !socketConnected || !voiceChannelIds) return;
     api.get<any[]>('/inbox/voice').then(d => {
       const g: Record<string, string[]> = {};
-      for (const e of d) { const id = String(e.channel_id); if (!g[id]) g[id] = []; g[id].push(e.name); }
+      for (const e of d) { const id = String(e.channel_id); if (!g[id]) g[id] = []; if (!g[id].includes(e.name)) g[id].push(e.name); }
       setVcOccupants(g);
     }).catch(() => {});
     const offs: Array<() => void> = [];
-    for (const vc of channels.filter(c => c.type === 'voice')) {
-      const ev = `voice:presence:${vc.id}`;
-      const h = (occ: Array<{ employee_id: number; name: string }>) => setVcOccupants(prev => ({ ...prev, [vc.id]: occ.map(o => o.name) }));
+    for (const id of voiceChannelIds.split(',')) {
+      const ev = `voice:presence:${id}`;
+      const h = (occ: Array<{ employee_id: number; name: string }>) => setVcOccupants(prev => ({ ...prev, [id]: Array.from(new Set(occ.map(o => o.name))) }));
       s.on(ev, h); offs.push(() => s.off(ev, h));
     }
     return () => offs.forEach(fn => fn());
-  }, [socketConnected, channels]);
+  }, [socketConnected, voiceChannelIds]);
 
   /* ─ Auto-scroll ─ */
   useEffect(() => { msgEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [paneMsgs.length]);
@@ -578,7 +596,12 @@ export default function InboxClient() {
       const d = await api.get<VoiceToken>(`/inbox/voice/${chId}/token`);
       setVoiceToken(d);
       setInVoiceChannel(chId);
-      setVcOccupants(prev => ({ ...prev, [chId]: [...(prev[chId] ?? []), myName] }));
+      setVcOccupants(prev => {
+        const next: Record<string, string[]> = {};
+        for (const [id, names] of Object.entries(prev)) next[id] = names.filter(n => n !== myName);
+        next[chId] = [...(next[chId] ?? []), myName];
+        return next;
+      });
       socketRef.current?.emit('voice:join', Number(chId));
       selChannel(chId);
     } catch {
@@ -589,17 +612,37 @@ export default function InboxClient() {
     if (!inVoiceChannel) return;
     socketRef.current?.emit('voice:leave', Number(inVoiceChannel));
     setVcOccupants(prev => ({ ...prev, [inVoiceChannel]: (prev[inVoiceChannel] ?? []).filter(n => n !== myName) }));
-    setInVoiceChannel(null); setVoiceToken(null); setMicMuted(false); setDeafened(false);
+    setInVoiceChannel(null); setVoiceToken(null); setMicMuted(false); setDeafened(false); setCallHands([]);
   }
 
   function toggleCat(id: string) { setCollapsedCats(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }); }
   const chIcon = (t: ChannelType) => t === 'announcement' ? '/icons/bell.svg' : '/icons/hash.svg';
 
-  if (loading) return <div className="inbox-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>Connecting to Inbox…</div></div>;
+  if (loading) return (
+    <div className="fixed inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#313338]">
+      <span className="size-8 animate-spin rounded-full border-[3px] border-[#5865f2] border-t-transparent" />
+      <div className="text-sm text-[#949ba4]">Connecting to Inbox…</div>
+    </div>
+  );
+
+  /* Shared class strings for the sidebar rows */
+  const rowBase   = 'group relative mx-2 my-px flex min-w-0 cursor-pointer items-center gap-1.5 rounded px-2 py-1.5 text-[15px] font-medium leading-5 transition-colors';
+  const rowIdle   = 'text-[#949ba4] hover:bg-[#35373c] hover:text-[#dbdee1]';
+  const rowActive = 'bg-[#404249] text-white';
+  const catHeader = 'group flex cursor-pointer select-none items-center gap-0.5 pb-1 pl-1.5 pr-3 pt-4 text-xs font-semibold uppercase tracking-wide text-[#949ba4] hover:text-[#dbdee1]';
+  const addBtn    = 'ml-auto flex size-4 items-center justify-center text-lg leading-none text-[#949ba4] hover:text-[#dbdee1]';
+  const panelBtn  = 'flex size-8 shrink-0 items-center justify-center rounded text-[#b5bac1] transition-colors hover:bg-[#3d3e45] hover:text-[#dbdee1]';
+  const headerBtn = 'flex size-6 shrink-0 items-center justify-center text-[#b5bac1] transition-colors hover:text-[#dbdee1]';
+  const headerShadow = 'shadow-[0_1px_0_rgba(4,4,5,0.2),0_1.5px_0_rgba(6,6,7,0.05),0_2px_0_rgba(4,4,5,0.05)]';
+  const unreadPill = <span className="absolute -left-2 top-1/2 h-2 w-1 -translate-y-1/2 rounded-r-full bg-white" />;
+  const badge = 'ml-auto flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-[#f23f43] px-1 text-[11px] font-bold leading-none text-white';
+
+  const membersVisible = narrow ? membersOverlay : showMembers;
+  const viewingCall = !showSaved && selCh?.type === 'voice' && inVoiceChannel === selCh.id && Boolean(voiceToken);
 
   /* ─── RENDER ─── */
   return (
-    <div className={`inbox-shell${mobileNavOpen ? ' nav-open' : ''}${membersOverlay ? ' members-open' : ''}`}>
+    <div className="fixed inset-0 z-10 flex overflow-hidden bg-[#313338] font-[family-name:var(--font-family)] text-[#dbdee1]">
 
       {/* Toasts */}
       <NotificationToastStack notifications={toasts} onDismiss={id => setToasts(prev => prev.filter(t => t.id !== id))} onOpen={n => { if (n.dmUserId) selDm(n.dmUserId); else if (n.channelId) selChannel(n.channelId); }} />
@@ -638,60 +681,101 @@ export default function InboxClient() {
       {/* ── Sidebar ── */}
       {/* Picking any channel / DM / voice channel / Saved closes the phone panel. */}
       <div
-        className="inbox-channels"
+        className={cn(
+          'flex w-60 shrink-0 flex-col overflow-hidden bg-[#2b2d31] max-[900px]:w-[200px]',
+          'max-sm:absolute max-sm:inset-0 max-sm:z-40 max-sm:w-auto',
+          !mobileNavOpen && 'max-sm:hidden',
+        )}
         onClick={e => {
-          if ((e.target as HTMLElement).closest('.inbox-ch-item, .inbox-dm-item, .inbox-voice-ch-item')) setMobileNavOpen(false);
+          if ((e.target as HTMLElement).closest('[data-nav-item]')) setMobileNavOpen(false);
         }}
       >
-        <div className="inbox-ws-header">
-          <span>HR Platform</span>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: socketConnected ? '#23a55a' : '#80848e', flexShrink: 0 }} title={socketConnected ? 'Connected' : 'Reconnecting…'} />
-          <button type="button" className="inbox-nav-btn inbox-nav-close" aria-label="Close channel list" onClick={() => setMobileNavOpen(false)}>
-            <span className="icon" style={{ WebkitMaskImage: 'url(/icons/x.svg)', maskImage: 'url(/icons/x.svg)' }} />
+        <div className={cn('relative z-[1] flex h-12 shrink-0 select-none items-center gap-2 px-4 text-base font-semibold text-[#f2f3f5] transition-colors hover:bg-[#35373c]', headerShadow)}>
+          <span className="truncate">HR Platform</span>
+          <span
+            className={cn('size-2 shrink-0 rounded-full', socketConnected ? 'bg-[#23a55a]' : 'animate-pulse bg-[#80848e]')}
+            title={socketConnected ? 'Connected' : 'Reconnecting…'}
+          />
+          <button type="button" className="ml-auto hidden size-8 items-center justify-center rounded text-[#b5bac1] hover:bg-[#404249] hover:text-white max-sm:flex" aria-label="Close channel list" onClick={() => setMobileNavOpen(false)}>
+            <Icon src="/icons/x.svg" className="size-[18px]" />
           </button>
         </div>
 
-        {/* Saved messages shortcut */}
-        <div className={`inbox-ch-item${showSaved ? ' active' : ''}`} style={{ margin: '4px 8px', borderRadius: 6 }}
-          onClick={() => { setShowSaved(true); setShowPins(false); setSelectedChannelId(''); setSelectedDmId(null); }}>
-          <span style={{ fontSize: 15, marginRight: 8, flexShrink: 0 }}>🔖</span>
-          <span className="inbox-ch-item-name">Saved Messages</span>
-        </div>
+        <div className={cn('min-h-0 flex-1 overflow-y-auto pb-4 pt-2', ui.scroll)}>
+          {/* The app sidebar is hidden on /inbox — this is the way back */}
+          <Link
+            href="/"
+            className="mx-2 mb-2 flex items-center gap-2 rounded-[4px] bg-[#1e1f22] px-2.5 py-2 text-sm font-medium text-[#dbdee1] transition-colors hover:bg-[#5865f2] hover:text-white"
+          >
+            <Icon src="/icons/arrow-left.svg" className="size-4" />
+            Go back to Dashboard
+          </Link>
 
-        <div className="inbox-channel-list">
+          {/* Saved messages shortcut */}
+          <div
+            data-nav-item
+            className={cn(rowBase, showSaved ? rowActive : rowIdle)}
+            onClick={() => { setShowSaved(true); setShowPins(false); setSelectedChannelId(''); setSelectedDmId(null); }}
+          >
+            <Icon src="/icons/bookmark.svg" className="size-5 opacity-80" />
+            <span className="min-w-0 flex-1 truncate">Saved Messages</span>
+          </div>
+
           {categories.map(cat => {
             const catChs  = visChs.filter(c => c.category_id === cat.id);
             const isCol   = collapsedCats.has(String(cat.id));
             return (
               <div key={cat.id}>
-                <div className="inbox-category-header" onClick={() => toggleCat(String(cat.id))}>
-                  <span style={{ display: 'inline-block', width: 10, height: 10, background: 'currentColor', WebkitMaskImage: 'url(/icons/chevron-down.svg)', maskImage: 'url(/icons/chevron-down.svg)', WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center', WebkitMaskSize: 'contain', maskSize: 'contain', transform: isCol ? 'rotate(-90deg)' : 'none', transition: 'transform .15s' }} />
-                  <span>{cat.name}</span>
-                  {myRole === 'admin' && <button className="inbox-cat-add-btn" title="Create channel" onClick={e => { e.stopPropagation(); setShowCreateChannel(true); }}>+</button>}
+                <div className={catHeader} onClick={() => toggleCat(String(cat.id))}>
+                  <Icon src="/icons/chevron-down.svg" className={cn('size-3 transition-transform', isCol && '-rotate-90')} />
+                  <span className="truncate">{cat.name}</span>
+                  {myRole === 'admin' && <button className={addBtn} title="Create channel" onClick={e => { e.stopPropagation(); setShowCreateChannel(true); }}>+</button>}
                 </div>
-                {!isCol && catChs.map(ch => {
+                {catChs.map(ch => {
+                  const active = selectedChannelId === ch.id;
+                  // Collapsed categories still show the selected / unread channels, like Discord.
+                  if (isCol && !active && !ch.unread) return null;
                   if (ch.type === 'voice') {
-                    const occ = vcOccupants[ch.id] ?? [];
+                    const occ = Array.from(new Set(vcOccupants[ch.id] ?? []));
                     return (
                       <div key={ch.id}>
-                        <div className={`inbox-voice-ch-item${selectedChannelId === ch.id ? ' active' : ''}`} onClick={() => { if (inVoiceChannel !== ch.id) selChannel(ch.id); }}>
-                          <span className="inbox-voice-ch-icon" />
-                          <span className="inbox-ch-item-name">{ch.name}</span>
-                          {ch.is_private && <span className="inbox-ch-lock" />}
-                          {inVoiceChannel !== ch.id && <button className="inbox-footer-btn" style={{ marginLeft: 'auto' }} title="Join" onClick={e => { e.stopPropagation(); joinVoice(ch.id); }}><span className="icon" style={{ WebkitMaskImage: 'url(/icons/phone.svg)', maskImage: 'url(/icons/phone.svg)' }} /></button>}
+                        <div data-nav-item className={cn(rowBase, active ? rowActive : rowIdle)} onClick={() => selChannel(ch.id)}>
+                          <Icon src="/icons/volume-2.svg" className="size-5 opacity-80" />
+                          <span className="min-w-0 flex-1 truncate">{ch.name}</span>
+                          {ch.is_private && <Icon src="/icons/lock.svg" className="size-3 opacity-70" />}
+                          {inVoiceChannel !== ch.id && (
+                            <button
+                              className="ml-auto flex size-5 shrink-0 items-center justify-center rounded text-[#b5bac1] opacity-0 transition hover:text-[#23a55a] group-hover:opacity-100 pointer-coarse:opacity-100"
+                              title="Join"
+                              onClick={e => { e.stopPropagation(); joinVoice(ch.id); }}
+                            >
+                              <Icon src="/icons/phone.svg" className="size-4" />
+                            </button>
+                          )}
                         </div>
-                        {occ.length > 0 && <div className="inbox-voice-participants-preview">{occ.map(n => (<div key={n} className="inbox-voice-preview-member"><div className="avatar-tiny">{initials(n)}</div><span>{n}</span></div>))}</div>}
+                        {occ.length > 0 && (
+                          <div className="mb-1 ml-9 mr-2 flex flex-col">
+                            {occ.map(n => (
+                              <div key={n} className="flex items-center gap-2 rounded px-2 py-1 text-sm text-[#949ba4] hover:bg-[#35373c] hover:text-[#dbdee1]">
+                                <Avatar name={n} size="size-6" text="text-[10px]" />
+                                <span className="truncate">{n}</span>
+                                {inVoiceChannel === ch.id && callHands.includes(n) && <span className="ml-auto text-xs" title="Hand raised">✋</span>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   }
+                  const unread = Boolean(ch.unread) && !active;
                   return (
-                    <div key={ch.id} className={`inbox-ch-item${selectedChannelId === ch.id ? ' active' : ''}${ch.unread ? ' has-unread' : ''}`} onClick={() => selChannel(ch.id)}>
-                      <span className="inbox-ch-item-icon" style={{ WebkitMaskImage: `url(${chIcon(ch.type)})`, maskImage: `url(${chIcon(ch.type)})` }} />
-                      <span className="inbox-ch-item-name">{ch.name}</span>
-                      {ch.is_private && <span className="inbox-ch-lock" />}
-                      {ch.member_role === 'readonly' && <span style={{ fontSize: 10, opacity: .6, marginLeft: 2 }}>👁</span>}
-                      {ch.mentioned && <span className="inbox-ch-mention-dot" />}
-                      {!ch.mentioned && ch.unread ? <span className="inbox-ch-unread-badge">{ch.unread}</span> : null}
+                    <div key={ch.id} data-nav-item className={cn(rowBase, active ? rowActive : unread ? 'text-[#f2f3f5] hover:bg-[#35373c]' : rowIdle, unread && 'font-semibold')} onClick={() => selChannel(ch.id)}>
+                      {unread && unreadPill}
+                      <Icon src={chIcon(ch.type)} className="size-5 opacity-80" />
+                      <span className="min-w-0 flex-1 truncate">{ch.name}</span>
+                      {ch.is_private && <Icon src="/icons/lock.svg" className="size-3 opacity-70" />}
+                      {ch.member_role === 'readonly' && <Icon src="/icons/eye.svg" className="size-3.5 opacity-60" />}
+                      {ch.mentioned && <span className={badge}>{ch.unread || '@'}</span>}
                     </div>
                   );
                 })}
@@ -700,123 +784,188 @@ export default function InboxClient() {
           })}
 
           {/* DMs */}
-          <div className="inbox-dm-section-header" onClick={() => setDmCollapsed(p => !p)}>
+          <div className={catHeader} onClick={() => setDmCollapsed(p => !p)}>
+            <Icon src="/icons/chevron-down.svg" className={cn('size-3 transition-transform', dmCollapsed && '-rotate-90')} />
             <span>Direct Messages</span>
-            <button className="inbox-cat-add-btn" title="New DM" onClick={e => { e.stopPropagation(); setShowNewDm(true); }}>+</button>
+            <button className={addBtn} title="Create DM" onClick={e => { e.stopPropagation(); setShowNewDm(true); }}>+</button>
           </div>
-          {!dmCollapsed && dmConversations.map(dm => (
-            <div key={dm.userId} className={`inbox-dm-item${selectedDmId === dm.userId ? ' active' : ''}`} onClick={() => selDm(dm.userId)}>
-              <div className="inbox-dm-avatar-wrap">
-                <div className="inbox-dm-avatar">{initials(dm.userName)}</div>
-                <span className="inbox-dm-status" style={{ background: STATUS_COLOR[dm.status] }} />
+          {!dmCollapsed && dmConversations.map(dm => {
+            const active = selectedDmId === dm.userId;
+            return (
+              <div key={dm.userId} data-nav-item className={cn(rowBase, 'gap-3 py-[5px]', active ? rowActive : dm.unread ? 'text-[#f2f3f5] hover:bg-[#35373c]' : rowIdle)} onClick={() => selDm(dm.userId)}>
+                {dm.unread && !active ? unreadPill : null}
+                <Avatar name={dm.userName} size="size-8" text="text-xs" status={dm.status} dot="size-2.5 border-[3px]" ring={active ? 'border-[#404249]' : 'border-[#2b2d31] group-hover:border-[#35373c]'} />
+                <span className="min-w-0 flex-1 truncate">{dm.userName}</span>
+                {dm.unread ? <span className={badge}>{dm.unread}</span> : null}
               </div>
-              <span className="inbox-dm-name">{dm.userName}</span>
-              {dm.unread ? <span className="inbox-dm-unread">{dm.unread}</span> : null}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* In-voice strip */}
+        {/* Voice connected strip */}
         {inVoiceChannel && (
-          <div className="inbox-voice-footer">
-            <div className="inbox-voice-footer-status"><span className="inbox-voice-footer-status-dot" />{channels.find(c => c.id === inVoiceChannel)?.name ?? 'Voice'}</div>
-            <div className="inbox-voice-footer-controls">
-              <button className={`inbox-footer-btn${micMuted ? ' muted' : ' active'}`} title={micMuted ? 'Unmute' : 'Mute'} onClick={() => setMicMuted(p => !p)}><span className="icon" style={{ WebkitMaskImage: micMuted ? 'url(/icons/mic-off.svg)' : 'url(/icons/mic.svg)', maskImage: micMuted ? 'url(/icons/mic-off.svg)' : 'url(/icons/mic.svg)' }} /></button>
-              <button className={`inbox-footer-btn${deafened ? ' muted' : ''}`} title="Deafen" onClick={() => setDeafened(p => !p)}><span className="icon" style={{ WebkitMaskImage: 'url(/icons/headphones.svg)', maskImage: 'url(/icons/headphones.svg)' }} /></button>
-              <button className="inbox-footer-btn muted" title="Leave" onClick={leaveVoice}><span className="icon" style={{ WebkitMaskImage: 'url(/icons/phone-off.svg)', maskImage: 'url(/icons/phone-off.svg)' }} /></button>
+          <div className="flex items-center gap-2 border-b border-[#2b2d31] bg-[#232428] px-2 py-2">
+            <div className="min-w-0 flex-1 pl-1">
+              <div className="flex items-center gap-1.5 text-sm font-semibold text-[#23a55a]">
+                <span className="size-2 rounded-full bg-[#23a55a]" />Voice Connected
+              </div>
+              <button className="block max-w-full truncate text-xs text-[#b5bac1] hover:underline" onClick={() => selChannel(inVoiceChannel)}>
+                {channels.find(c => c.id === inVoiceChannel)?.name ?? 'Voice'}
+                {callHands.length > 0 && <span className="ml-1.5 text-[#f0b232]">✋ {callHands.length}</span>}
+              </button>
             </div>
+            <button className={cn(panelBtn, 'hover:text-[#f23f43]')} title="Disconnect" onClick={leaveVoice}>
+              <Icon src="/icons/phone-off.svg" />
+            </button>
           </div>
         )}
 
-        {/* User footer */}
-        <div className="inbox-user-footer">
-          <div className="inbox-user-footer-profile" title="View your profile" onClick={e => openProfile(myId, e, myName, user?.role)}>
-            <div className="inbox-user-footer-avatar" style={{ position: 'relative' }}>
-              {initials(myName)}
-              <span className="inbox-user-footer-status-dot" style={{ background: STATUS_COLOR[userStatus] }} />
-            </div>
-            <div className="inbox-user-footer-info">
-              <div className="inbox-user-footer-name">{myName}</div>
-              <div className="inbox-user-footer-role">{user?.role}</div>
+        {/* User panel */}
+        <div className="flex h-[52px] shrink-0 items-center gap-1 bg-[#232428] px-2">
+          <div className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded py-1 pl-0.5 pr-2 transition-colors hover:bg-[#3d3e45]" title="View your profile" onClick={e => openProfile(myId, e, myName, user?.role)}>
+            <Avatar name={myName} size="size-8" text="text-xs" status={userStatus} dot="size-2.5 border-[3px]" ring="border-[#232428]" />
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold leading-[18px] text-[#f2f3f5]">{myName}</div>
+              <div className="truncate text-xs capitalize leading-[13px] text-[#b5bac1]">{user?.role}</div>
             </div>
           </div>
           <StatusSelector status={userStatus} onChange={handleStatus} />
-          <button className={`inbox-footer-btn${micMuted ? ' muted' : ''}`} title={micMuted ? 'Unmute' : 'Mute'} onClick={() => setMicMuted(p => !p)}><span className="icon" style={{ WebkitMaskImage: micMuted ? 'url(/icons/mic-off.svg)' : 'url(/icons/mic.svg)', maskImage: micMuted ? 'url(/icons/mic-off.svg)' : 'url(/icons/mic.svg)' }} /></button>
-          <button className={`inbox-footer-btn${deafened ? ' muted' : ''}`} title="Deafen" onClick={() => setDeafened(p => !p)}><span className="icon" style={{ WebkitMaskImage: 'url(/icons/headphones.svg)', maskImage: 'url(/icons/headphones.svg)' }} /></button>
-          <button className="inbox-footer-btn" title="Settings"><span className="icon" style={{ WebkitMaskImage: 'url(/icons/settings.svg)', maskImage: 'url(/icons/settings.svg)' }} /></button>
+          <button className={cn(panelBtn, micMuted && 'text-[#f23f43] hover:text-[#f23f43]')} title={micMuted ? 'Unmute' : 'Mute'} onClick={() => setMicMuted(p => !p)}>
+            <Icon src={micMuted ? '/icons/mic-off.svg' : '/icons/mic.svg'} />
+          </button>
+          <button className={cn(panelBtn, deafened && 'text-[#f23f43] hover:text-[#f23f43]')} title={deafened ? 'Undeafen' : 'Deafen'} onClick={() => setDeafened(p => !p)}>
+            <Icon src="/icons/headphones.svg" />
+          </button>
+          <button className={cn(panelBtn, 'max-[900px]:hidden max-sm:flex')} title="User Settings">
+            <Icon src="/icons/settings.svg" />
+          </button>
         </div>
       </div>
 
       {/* ── Main area ── */}
-      <div className="inbox-main">
+      <div className="relative flex min-w-0 flex-1 flex-col bg-[#313338]">
         {/* Header */}
-        <div className="inbox-ch-header">
-          <button type="button" className="inbox-ch-header-btn inbox-nav-btn" title="Channels" aria-label="Open channel list" onClick={() => setMobileNavOpen(true)}>
-            <span className="icon" style={{ WebkitMaskImage: 'url(/icons/menu.svg)', maskImage: 'url(/icons/menu.svg)' }} />
+        <div className={cn('relative z-[2] flex h-12 shrink-0 items-center gap-2 px-4', headerShadow)}>
+          <button type="button" className={cn(headerBtn, 'mr-1 hidden max-sm:flex')} title="Channels" aria-label="Open channel list" onClick={() => setMobileNavOpen(true)}>
+            <Icon src="/icons/menu.svg" />
           </button>
           {activeDm ? (
-            <><div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 8, flexShrink: 0, cursor: 'pointer' }} onClick={e => openProfile(activeDm.userId, e, activeDm.userName, activeDm.userDesignation)}>{initials(activeDm.userName)}</div><span className="inbox-ch-header-name" style={{ cursor: 'pointer' }} onClick={e => openProfile(activeDm.userId, e, activeDm.userName, activeDm.userDesignation)}>{activeDm.userName}</span><span className="inbox-ch-header-divider" /><span className="inbox-ch-header-desc">{activeDm.userDesignation}</span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: STATUS_COLOR[activeDm.status], marginLeft: 6, flexShrink: 0 }} /></>
+            <>
+              <Avatar name={activeDm.userName} size="size-6" text="text-[10px]" status={activeDm.status} dot="size-2 border-2" ring="border-[#313338]" onClick={e => openProfile(activeDm.userId, e, activeDm.userName, activeDm.userDesignation)} />
+              <span className="cursor-pointer truncate text-base font-semibold text-[#f2f3f5] hover:underline" onClick={e => openProfile(activeDm.userId, e, activeDm.userName, activeDm.userDesignation)}>{activeDm.userName}</span>
+              {activeDm.userDesignation && <><span className="mx-2 h-6 w-px shrink-0 bg-[#3f4147] max-md:hidden" /><span className="min-w-0 truncate text-sm text-[#949ba4] max-md:hidden">{activeDm.userDesignation}</span></>}
+            </>
           ) : showSaved ? (
-            <><span style={{ fontSize: 18 }}>🔖</span><span className="inbox-ch-header-name" style={{ marginLeft: 8 }}>Saved Messages</span></>
+            <><Icon src="/icons/bookmark.svg" className="size-6 text-[#80848e]" /><span className="truncate text-base font-semibold text-[#f2f3f5]">Saved Messages</span></>
           ) : selCh ? (
-            <><span className="inbox-ch-header-icon" style={{ WebkitMaskImage: `url(${chIcon(selCh.type)})`, maskImage: `url(${chIcon(selCh.type)})` }} /><span className="inbox-ch-header-name">{selCh.name}</span>{selCh.description && <><span className="inbox-ch-header-divider" /><span className="inbox-ch-header-desc">{selCh.description}</span></>}</>
+            <>
+              <Icon src={selCh.type === 'voice' ? '/icons/volume-2.svg' : chIcon(selCh.type)} className="size-6 text-[#80848e]" />
+              <span className="truncate text-base font-semibold text-[#f2f3f5]">{selCh.name}</span>
+              {selCh.description && <><span className="mx-2 h-6 w-px shrink-0 bg-[#3f4147] max-md:hidden" /><span className="min-w-0 truncate text-sm text-[#949ba4] max-md:hidden" title={selCh.description}>{selCh.description}</span></>}
+            </>
           ) : null}
 
-          <div className="inbox-ch-header-actions">
+          <div className="ml-auto flex shrink-0 items-center gap-4 pl-2">
             {!showSaved && selCh?.type !== 'voice' && (
               <>
-                {showSearch
-                  ? <input autoFocus className="inbox-search-input" placeholder="Search messages…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') { setShowSearch(false); setSearchQuery(''); } }} />
-                  : <button className="inbox-ch-header-btn" title="Search" onClick={() => setShowSearch(true)}><span className="icon" style={{ WebkitMaskImage: 'url(/icons/search.svg)', maskImage: 'url(/icons/search.svg)' }} /></button>
-                }
-                {selCh && !selectedDmId && <button className={`inbox-ch-header-btn${showPins ? ' active' : ''}`} title="Pinned" onClick={() => { setShowPins(p => !p); setShowSaved(false); }}>📌</button>}
+                {selCh && !selectedDmId && (
+                  <button className={cn(headerBtn, showPins && 'text-[#f2f3f5]')} title="Pinned Messages" onClick={() => { setShowPins(p => !p); setShowSaved(false); }}>
+                    <span className={cn('text-base leading-none transition', !showPins && 'opacity-60 grayscale hover:opacity-100')}>📌</span>
+                  </button>
+                )}
               </>
             )}
-            <button className={`inbox-ch-header-btn${(narrow ? membersOverlay : showMembers) ? ' active' : ''}`} title="Members" onClick={() => narrow ? setMembersOverlay(o => !o) : setShowMembers(p => !p)}><span className="icon" style={{ WebkitMaskImage: 'url(/icons/users.svg)', maskImage: 'url(/icons/users.svg)' }} /></button>
+            <button className={cn(headerBtn, membersVisible && 'text-[#f2f3f5]')} title={membersVisible ? 'Hide Member List' : 'Show Member List'} onClick={() => narrow ? setMembersOverlay(o => !o) : setShowMembers(p => !p)}>
+              <Icon src="/icons/users.svg" />
+            </button>
+            {!showSaved && selCh?.type !== 'voice' && (
+              <div className="relative max-sm:hidden">
+                <input
+                  className={cn('h-6 rounded bg-[#1e1f22] pl-2 pr-7 text-sm text-[#dbdee1] outline-none transition-[width] duration-200 placeholder:text-[#949ba4]', showSearch || searchQuery ? 'w-60' : 'w-36')}
+                  placeholder="Search"
+                  value={searchQuery}
+                  onFocus={() => setShowSearch(true)}
+                  onBlur={() => setShowSearch(false)}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Escape') { setShowSearch(false); setSearchQuery(''); (e.target as HTMLInputElement).blur(); } }}
+                />
+                {searchQuery
+                  ? <button className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-[#b5bac1] hover:text-[#dbdee1]" onMouseDown={e => { e.preventDefault(); setSearchQuery(''); }} aria-label="Clear search">✕</button>
+                  : <Icon src="/icons/search.svg" className="pointer-events-none absolute right-1.5 top-1/2 size-4 -translate-y-1/2 text-[#949ba4]" />}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Pinned panel */}
         {showPins && selCh && selCh.type !== 'voice' && (
-          <PinnedMessagesPanel channelId={selCh.id} channelName={selCh.name} canPin={myRole === 'admin' || myRole === 'lead'} onClose={() => setShowPins(false)} onJumpTo={msgId => { setShowPins(false); const el = document.getElementById(`msg-${msgId}`); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); el?.classList.add('inbox-msg-highlight'); setTimeout(() => el?.classList.remove('inbox-msg-highlight'), 2000); }} />
+          <PinnedMessagesPanel channelId={selCh.id} channelName={selCh.name} canPin={myRole === 'admin' || myRole === 'lead'} onClose={() => setShowPins(false)} onJumpTo={msgId => { setShowPins(false); const el = document.getElementById(`msg-${msgId}`); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); el?.classList.add(HIGHLIGHT_CLASS); setTimeout(() => el?.classList.remove(HIGHLIGHT_CLASS), 2000); }} />
         )}
 
         {/* Saved panel */}
         {showSaved && <SavedMessagesPanel onClose={() => setShowSaved(false)} />}
 
-        {/* Voice */}
+        {/* Active call — stays mounted while you browse other channels/DMs, so the
+            call only ends via "Leave", leaving /inbox, or closing the tab. */}
+        {inVoiceChannel && voiceToken && (
+          <div className={viewingCall ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+            <VoiceRoom
+              key={voiceToken.token}
+              token={voiceToken.token}
+              serverUrl={voiceToken.url}
+              channelName={channels.find(c => c.id === inVoiceChannel)?.name ?? 'Voice'}
+              micMuted={micMuted}
+              deafened={deafened}
+              onLeave={leaveVoice}
+              onMicMutedChange={setMicMuted}
+              onDeafenedChange={setDeafened}
+              onParticipantsChange={ps => {
+                setVcOccupants(prev => ({ ...prev, [inVoiceChannel]: Array.from(new Set(ps.map(p => p.name))) }));
+                setCallHands(ps.filter(p => p.handRaisedAt).map(p => p.name));
+              }}
+              onHandRaised={name => setToasts(prev => [...prev, { id: `hand-${name}-${Date.now()}`, type: 'hand', title: name, body: 'raised their hand', channelId: inVoiceChannel }])}
+              onHandLoweredByOther={by => setToasts(prev => [...prev, { id: `hand-lowered-${Date.now()}`, type: 'hand', title: by, body: 'lowered your hand', channelId: inVoiceChannel }])}
+            />
+          </div>
+        )}
+
+        {/* Voice channel you're not in → presence / join screen */}
         {!showSaved && selCh?.type === 'voice' ? (
-          inVoiceChannel === selCh.id && voiceToken
-            ? <VoiceRoom key={voiceToken.token} token={voiceToken.token} serverUrl={voiceToken.url} channelName={selCh.name} micMuted={micMuted} deafened={deafened} onLeave={leaveVoice} onMicMutedChange={setMicMuted} onDeafenedChange={setDeafened} onParticipantsChange={ps => setVcOccupants(prev => ({ ...prev, [selCh.id]: ps.map(p => p.name) }))} />
+          viewingCall ? null
             : <PresenceVoiceView channel={selCh} occupants={vcOccupants[selCh.id] ?? []} isInChannel={inVoiceChannel === selCh.id} micMuted={micMuted} deafened={deafened} onJoin={() => joinVoice(selCh.id)} onLeave={leaveVoice} onToggleMic={() => setMicMuted(p => !p)} onToggleDeafen={() => setDeafened(p => !p)} />
         ) : !showSaved ? (
           <>
-            <div className="inbox-messages-wrap">
-              <div className="inbox-channel-welcome">
+            <div className={cn('flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden [scrollbar-color:#1a1b1e_#2b2d31]')}>
+              {/* Channel / DM welcome — sits at the top of history, pushed down when history is short */}
+              <div className="mt-auto px-4 pb-4 pt-16">
                 {activeDm ? (
-                  <div
-                    className="inbox-channel-welcome-icon inbox-channel-welcome-avatar"
+                  <Avatar
+                    name={activeDm.userName}
+                    size="size-20"
+                    text="text-3xl"
+                    status={activeDm.status}
+                    dot="size-4 border-[5px]"
+                    ring="border-[#313338]"
                     onClick={e => openProfile(activeDm.userId, e, activeDm.userName, activeDm.userDesignation)}
-                  >
-                    {initials(activeDm.userName)}
-                    <span className="inbox-dm-status" style={{ background: STATUS_COLOR[activeDm.status], position: 'absolute', bottom: -2, right: -2, borderColor: 'var(--color-surface)' }} />
-                  </div>
+                  />
                 ) : (
-                  <div className="inbox-channel-welcome-icon">
-                    <span style={{ display: 'block', width: 28, height: 28, background: 'var(--color-primary)', WebkitMaskImage: `url(${selCh ? chIcon(selCh.type) : '/icons/hash.svg'})`, maskImage: `url(${selCh ? chIcon(selCh.type) : '/icons/hash.svg'})`, WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskPosition: 'center', maskPosition: 'center', WebkitMaskSize: 'contain', maskSize: 'contain' }} />
+                  <div className="flex size-[68px] items-center justify-center rounded-full bg-[#41434a]">
+                    <Icon src={selCh ? chIcon(selCh.type) : '/icons/hash.svg'} className="size-10 text-white" />
                   </div>
                 )}
-                <h2>{activeDm ? activeDm.userName : selCh ? `# ${selCh.name}` : 'Inbox'}</h2>
+                <h2 className="mb-2 mt-2 text-[32px] font-bold leading-10 text-[#f2f3f5] max-sm:text-2xl">
+                  {activeDm ? activeDm.userName : selCh ? `Welcome to #${selCh.name}!` : 'Inbox'}
+                </h2>
                 {activeDm?.userDesignation && (
-                  <div className="inbox-channel-welcome-role">
+                  <div className="mb-3 flex flex-wrap items-center gap-2 text-xl font-medium text-[#dbdee1] max-sm:text-base">
                     {activeDm.userDesignation}
-                    {dmEmployee?.role && <span className="inbox-channel-welcome-role-badge">{ROLE_LABEL[dmEmployee.role] ?? dmEmployee.role}</span>}
+                    {dmEmployee?.role && <span className="rounded bg-[#5865f2]/20 px-1.5 py-0.5 text-xs font-semibold text-[#c9cdfb]">{ROLE_LABEL[dmEmployee.role] ?? dmEmployee.role}</span>}
                   </div>
                 )}
-                <p>
+                <p className="text-base text-[#b5bac1]">
                   {activeDm
-                    ? <>This is the beginning of your direct messages with <strong>{activeDm.userName}</strong>.</>
-                    : selCh?.description ? selCh.description : 'Start a conversation.'}
+                    ? <>This is the beginning of your direct message history with <strong className="font-semibold text-[#dbdee1]">{activeDm.userName}</strong>.</>
+                    : selCh?.description ? selCh.description : selCh ? `This is the start of the #${selCh.name} channel.` : 'Start a conversation.'}
                 </p>
               </div>
 
@@ -827,18 +976,15 @@ export default function InboxClient() {
                 onReply={msg => setReplyingTo({ id: msg.id, userName: msg.userName, content: msg.content })}
                 onForward={msg => setForwardMsg(msg)}
                 onOpenProfile={openProfile}
+                inDm={Boolean(selectedDmId)}
+                searching={Boolean(searchQuery.trim())}
               />
               <div ref={msgEndRef} />
             </div>
 
-            <div className="inbox-typing-indicator">
-              {typingUsers.length > 0 && (<><span className="inbox-typing-dots"><span /><span /><span /></span><strong>{typingUsers.join(', ')}</strong>{typingUsers.length === 1 ? ' is' : ' are'} typing…</>)}
-            </div>
-
-            <div className="inbox-input-area">
-              {replyingTo && <ReplyPreview replyingTo={replyingTo} onCancel={() => setReplyingTo(null)} />}
-              {selCh?.type === 'announcement' && !canPost(selCh) && <div className="inbox-readonly-banner">📢 Only admins and leads can post here.</div>}
-              {selCh?.member_role === 'readonly' && <div className="inbox-readonly-banner">👁 You have read-only access to this channel.</div>}
+            <div className="shrink-0 px-4 max-sm:px-2">
+              {selCh?.type === 'announcement' && !canPost(selCh) && <div className="rounded-lg bg-[#383a40] px-4 py-3 text-sm text-[#949ba4]">📢 Only admins and leads can post in this channel.</div>}
+              {selCh?.member_role === 'readonly' && <div className="rounded-lg bg-[#383a40] px-4 py-3 text-sm text-[#949ba4]">👁 You have read-only access to this channel.</div>}
 
               {(canPost(selCh) || selectedDmId) && (
                 showAudioRecorder && selectedDmId
@@ -846,41 +992,77 @@ export default function InboxClient() {
                       onSend={sendAudioMsg}
                       onCancel={() => setShowAudioRecorder(false)}
                     />
-                  : <div className="inbox-input-wrap" style={{ position: 'relative' }}>
+                  : <div className="relative">
                       {mentionQuery !== null && <MentionAutocomplete query={mentionQuery} employees={allMems} onSelect={name => { if (!inputRef.current) return; setInputValue(applyMention(inputRef.current, name)); setMentionQuery(null); inputRef.current.focus(); }} onClose={() => setMentionQuery(null)} anchorEl={inputRef.current} />}
-                      <button className="inbox-input-attach-btn" title="Attach file"><span className="icon" /></button>
-                      <textarea ref={inputRef} className="inbox-input-field"
-                        placeholder={activeDm ? `Message ${activeDm.userName}` : selCh ? `Message #${selCh.name}` : 'Send a message'}
-                        value={inputValue} onChange={handleIC} onKeyDown={handleKD} rows={1}
-                      />
-                      <div className="inbox-input-right">
-                        <button className="inbox-input-emoji-btn" title="Emoji">😊</button>
-                        {selectedDmId && !inputValue.trim() && (
-                          <button className="inbox-input-voice-btn" title="Send voice message"
-                            onClick={() => setShowAudioRecorder(true)}>
-                            <span className="icon" style={{ WebkitMaskImage: 'url(/icons/mic.svg)', maskImage: 'url(/icons/mic.svg)' }} />
-                          </button>
-                        )}
-                        <button className="inbox-send-btn" title="Send" disabled={!inputValue.trim()} onClick={sendMsg}><span className="icon" /></button>
+                      {replyingTo && <ReplyPreview replyingTo={replyingTo} onCancel={() => setReplyingTo(null)} />}
+                      <div className={cn('flex items-start rounded-lg bg-[#383a40]', replyingTo && 'rounded-t-none')}>
+                        <button className="ml-4 mr-3 mt-[11px] flex size-6 shrink-0 items-center justify-center rounded-full bg-[#b5bac1] text-[#383a40] transition-colors hover:bg-[#dbdee1] max-sm:ml-3" title="Upload a file">
+                          <Icon src="/icons/plus.svg" className="size-4" />
+                        </button>
+                        <textarea ref={inputRef}
+                          className={cn('max-h-[50vh] min-h-[44px] min-w-0 flex-1 resize-none overflow-y-auto border-none bg-transparent py-[11px] text-base leading-[22px] text-[#dbdee1] outline-none placeholder:text-[#6d6f78] focus:ring-0', ui.scroll)}
+                          placeholder={activeDm ? `Message @${activeDm.userName}` : selCh ? `Message #${selCh.name}` : 'Send a message'}
+                          value={inputValue} onChange={handleIC} onKeyDown={handleKD} rows={1}
+                        />
+                        <div className="flex shrink-0 items-center gap-1 py-2.5 pl-2 pr-3">
+                          <button className="flex size-8 items-center justify-center rounded text-xl leading-none opacity-70 grayscale transition hover:scale-110 hover:opacity-100 hover:grayscale-0" title="Emoji">😊</button>
+                          {selectedDmId && !inputValue.trim() && (
+                            <button className="flex size-8 items-center justify-center rounded text-[#b5bac1] transition-colors hover:text-[#dbdee1]" title="Send voice message"
+                              onClick={() => setShowAudioRecorder(true)}>
+                              <Icon src="/icons/mic.svg" />
+                            </button>
+                          )}
+                          {inputValue.trim() && (
+                            <button className="flex size-8 items-center justify-center rounded text-[#b5bac1] transition-colors hover:text-[#5865f2]" title="Send" onClick={sendMsg}>
+                              <Icon src="/icons/send.svg" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
               )}
-              {(canPost(selCh) || selectedDmId) && !showAudioRecorder && <div className="inbox-input-hint">Enter to send · Shift+Enter for new line · @name to mention</div>}
+            </div>
+
+            {/* Typing indicator / hint — lives under the composer like Discord */}
+            <div className="flex h-6 shrink-0 items-center gap-1 overflow-hidden px-4 text-xs text-[#dbdee1] max-sm:px-3">
+              {typingUsers.length > 0 ? (
+                <>
+                  <span className="mr-1 inline-flex items-center gap-[3px]">
+                    <span className="size-1.5 animate-bounce rounded-full bg-[#dbdee1]" />
+                    <span className="size-1.5 animate-bounce rounded-full bg-[#dbdee1] [animation-delay:150ms]" />
+                    <span className="size-1.5 animate-bounce rounded-full bg-[#dbdee1] [animation-delay:300ms]" />
+                  </span>
+                  <span className="truncate"><strong className="font-bold">{typingUsers.join(', ')}</strong>{typingUsers.length === 1 ? ' is' : ' are'} typing…</span>
+                </>
+              ) : (canPost(selCh) || selectedDmId) && !showAudioRecorder ? (
+                <span className="truncate text-[#949ba4] max-sm:hidden">Enter to send · Shift+Enter for new line · @name to mention</span>
+              ) : null}
             </div>
           </>
         ) : null}
       </div>
 
       {/* ── Members sidebar ── */}
-      <div className={`inbox-members${showMembers ? '' : ' hidden'}`}>
-        <div className="inbox-members-title">Members — {allMems.length}</div>
-        <div className="inbox-members-list">
-          <MembersPanel members={allMems} myId={myId} statusColor={STATUS_COLOR} onOpenProfile={openProfile} />
+      <div
+        className={cn(
+          'flex w-60 shrink-0 flex-col overflow-y-auto overflow-x-hidden bg-[#2b2d31] px-2 pb-5 transition-[width,padding,opacity] duration-200',
+          ui.scroll,
+          !showMembers && 'min-[901px]:w-0 min-[901px]:px-0 min-[901px]:opacity-0 min-[901px]:pointer-events-none',
+          membersOverlay
+            ? 'max-[900px]:absolute max-[900px]:bottom-0 max-[900px]:right-0 max-[900px]:top-12 max-[900px]:z-[35] max-[900px]:w-[min(280px,100%)] max-[900px]:shadow-[-4px_0_16px_rgba(0,0,0,0.35)]'
+            : 'max-[900px]:hidden',
+        )}
+      >
+        <div className="w-56 shrink-0">
+          <MembersPanel members={allMems} myId={myId} onOpenProfile={openProfile} />
         </div>
       </div>
     </div>
   );
 }
+
+/* Flash applied to a message when jumping to it from the pinned list. */
+const HIGHLIGHT_CLASS = 'bg-[#5865f2]/20!';
 
 /* ─────────────────── MessageList ─────────────────────────── */
 
@@ -892,9 +1074,16 @@ interface MsgListProps {
   onCtxMenu: (m: ChatMessage, x: number, y: number) => void;
   onReply: (m: ChatMessage) => void; onForward: (m: ChatMessage) => void;
   onOpenProfile: (id: string, e: React.MouseEvent, name?: string, designation?: string) => void;
+  inDm?: boolean; searching?: boolean;
 }
 
-function MessageList({ messages, myId, myName, editingId, editValue, onEditChange, onEditSubmit, onEditCancel, onReaction, onDelete, onStartEdit, onCtxMenu, onReply, onForward, onOpenProfile }: MsgListProps) {
+function mentionsMe(content: string, me: string) {
+  if (/@(everyone|here)\b/.test(content)) return true;
+  const parts = me.toLowerCase().split(' ');
+  return (content.match(/@\w+/g) ?? []).some(h => parts.includes(h.slice(1).toLowerCase()));
+}
+
+function MessageList({ messages, myId, myName, editingId, editValue, onEditChange, onEditSubmit, onEditCancel, onReaction, onDelete, onStartEdit, onCtxMenu, onReply, onForward, onOpenProfile, inDm, searching }: MsgListProps) {
   // Touch long-press (500ms, finger held still) opens the same menu as right-click.
   // iOS Safari never fires `contextmenu`, and hover-only toolbars don't exist on touch.
   const pressRef = useRef<{ timer: ReturnType<typeof setTimeout>; x: number; y: number } | null>(null);
@@ -915,7 +1104,7 @@ function MessageList({ messages, myId, myName, editingId, editValue, onEditChang
   };
 
   if (messages.length === 0) return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: 14 }}>No messages yet. Say hello! 👋</div>
+    <div className="px-4 pb-6 text-sm text-[#949ba4]">{searching ? 'No messages match your search.' : 'No messages yet. Say hello! 👋'}</div>
   );
 
   type Item = { type: 'divider'; label: string } | { type: 'msg'; msg: ChatMessage; isFirst: boolean };
@@ -925,52 +1114,68 @@ function MessageList({ messages, myId, myName, editingId, editValue, onEditChang
     const dk = msg.timestamp.toDateString();
     if (dk !== lastDate) { items.push({ type: 'divider', label: dateDivLabel(msg.timestamp) }); lastDate = dk; }
     const prev = messages[i - 1];
-    items.push({ type: 'msg', msg, isFirst: !prev || !grouped(prev, msg) || prev.timestamp.toDateString() !== dk });
+    items.push({ type: 'msg', msg, isFirst: !prev || !grouped(prev, msg) || prev.timestamp.toDateString() !== dk || Boolean(msg.replyToId) });
   });
 
+  const toolBtn = 'flex size-8 items-center justify-center text-[#b5bac1] transition-colors hover:bg-[#404249] hover:text-[#dbdee1]';
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', paddingBottom: 8 }}>
+    <div className="flex flex-col pb-6">
       {items.map((item, idx) => {
         if (item.type === 'divider') return (
-          <div key={`d-${idx}`} className="inbox-date-divider">
-            <div className="inbox-date-divider-line" /><span className="inbox-date-divider-label">{item.label}</span><div className="inbox-date-divider-line" />
+          <div key={`d-${idx}`} className="mx-4 mb-0.5 mt-6 flex items-center" role="separator">
+            <div className="h-px flex-1 bg-[#3f4147]" />
+            <span className="px-1 text-xs font-semibold text-[#949ba4]">{item.label}</span>
+            <div className="h-px flex-1 bg-[#3f4147]" />
           </div>
         );
         const { msg, isFirst } = item;
         const isOwn = msg.userId === myId;
         const isEd  = editingId === msg.id;
+        const pinged = !isOwn && mentionsMe(msg.content, myName);
         return (
           <div key={msg.id} id={`msg-${msg.id}`}
-            className={`inbox-msg-group${isFirst ? ' first-in-group' : ''}${msg.isPinned ? ' pinned' : ''}${msg.isLocal ? ' local-msg' : ''}`}
+            className={cn(
+              'group relative py-0.5 pl-[72px] pr-12 transition-colors duration-500 max-sm:pl-[60px] max-sm:pr-4',
+              'pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]',
+              isFirst && 'mt-[17px]',
+              isEd ? 'bg-[#2e3035]' : pinged ? 'bg-[#f0b232]/10 hover:bg-[#f0b232]/[0.08]' : 'hover:bg-[#2e3035]',
+            )}
             onContextMenu={e => { e.preventDefault(); onCtxMenu(msg, e.clientX, e.clientY); }}
             onTouchStart={isEd ? undefined : e => startPress(msg, e)}
             onTouchMove={movePress}
             onTouchEnd={cancelPress}
             onTouchCancel={cancelPress}>
-            <div className="inbox-msg-avatar-col">
-              {isFirst ? <div className="inbox-msg-avatar" onClick={e => onOpenProfile(msg.userId, e, msg.userName, msg.userDesignation)}>{initials(msg.userName)}</div> : <span className="inbox-msg-time-compact">{fmtTime(msg.timestamp)}</span>}
-            </div>
-            <div className="inbox-msg-body">
+            {pinged && <span className="absolute inset-y-0 left-0 w-0.5 bg-[#f0b232]" />}
+
+            {/* Reply reference with Discord's curved spine */}
+            {msg.replyToId && (
+              <div className="relative mb-1 flex min-w-0 items-center gap-1 text-sm leading-[18px] before:absolute before:-left-9 before:top-1/2 before:h-[calc(50%+6px)] before:w-[30px] before:rounded-tl-md before:border-l-2 before:border-t-2 before:border-[#4e5058] max-sm:before:-left-[30px] max-sm:before:w-6">
+                {msg.replyToAuthor && <Avatar name={msg.replyToAuthor} size="size-4" text="text-[7px]" />}
+                {msg.replyToAuthor && <span className="shrink-0 font-medium text-[#f2f3f5] opacity-80">@{msg.replyToAuthor}</span>}
+                <span className="min-w-0 truncate text-[#b5bac1]">{(msg.replyToContent ?? '').slice(0, 80)}</span>
+              </div>
+            )}
+
+            <div className="relative">
+              {isFirst
+                ? <Avatar name={msg.userName} size="size-10" className="absolute -left-14 top-0.5 hover:shadow-[0_4px_4px_rgba(0,0,0,0.16)] max-sm:-left-12 max-sm:size-9" onClick={e => onOpenProfile(msg.userId, e, msg.userName, msg.userDesignation)} />
+                : <span className="absolute -left-[72px] top-0.5 w-[64px] select-none pr-1 text-right text-[11px] leading-[22px] text-[#949ba4] opacity-0 group-hover:opacity-100 max-sm:hidden">{fmtTime(msg.timestamp)}</span>}
+
               {isFirst && (
-                <div className="inbox-msg-header">
-                  <span className="inbox-msg-author" onClick={e => onOpenProfile(msg.userId, e, msg.userName, msg.userDesignation)}>{msg.userName}</span>
-                  {msg.userDesignation && <span className="inbox-msg-role-badge">{msg.userDesignation}</span>}
-                  <span className="inbox-msg-timestamp">{fmtTs(msg.timestamp)}</span>
-                  {msg.isPinned && <span style={{ fontSize: 11, color: 'var(--color-warning)', fontWeight: 600 }}>📌</span>}
-                  {msg.isSending && <span className="inbox-msg-sending-badge"><span className="inbox-msg-sending-dot" />Uploading…</span>}
-                  {!msg.isSending && msg.isLocal && !msg.sendFailed && <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Sending…</span>}
-                  {msg.sendFailed && <span style={{ fontSize: 11, color: 'var(--color-error)', fontWeight: 600 }}>⚠ Failed — retry</span>}
+                <div className="flex flex-wrap items-baseline gap-x-2 leading-[22px]">
+                  <span className="cursor-pointer font-medium text-[#f2f3f5] hover:underline" onClick={e => onOpenProfile(msg.userId, e, msg.userName, msg.userDesignation)}>{msg.userName}</span>
+                  {msg.userDesignation && <span className="self-center rounded bg-[#5865f2] px-1 text-[10px] font-semibold uppercase leading-4 text-white">{msg.userDesignation}</span>}
+                  <span className="text-xs text-[#949ba4]">{fmtTs(msg.timestamp)}</span>
+                  {msg.isPinned && <span className="text-xs" title="Pinned">📌</span>}
+                  {msg.isSending && <span className="inline-flex items-center gap-1.5 text-xs text-[#949ba4]"><span className="size-1.5 animate-pulse rounded-full bg-[#5865f2]" />Uploading…</span>}
+                  {!msg.isSending && msg.isLocal && !msg.sendFailed && <span className="text-xs text-[#949ba4]">Sending…</span>}
+                  {msg.sendFailed && <span className="text-xs font-semibold text-[#f23f43]">⚠ Failed — retry</span>}
                 </div>
               )}
-              {msg.replyToId && (
-                <div className="inbox-reply-thread">
-                  <div className="inbox-reply-thread-bar" />
-                  {msg.replyToAuthor && <span className="inbox-reply-thread-author">{msg.replyToAuthor}</span>}
-                  <span className="inbox-reply-thread-content">{(msg.replyToContent ?? '').slice(0, 80)}</span>
-                </div>
-              )}
+
               {isEd ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div className="my-1 flex flex-col gap-1">
                   <textarea
                     ref={el => { if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }}
                     value={editValue}
@@ -980,30 +1185,50 @@ function MessageList({ messages, myId, myName, editingId, editValue, onEditChang
                       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onEditSubmit(msg.id); }
                       if (e.key === 'Escape') { e.preventDefault(); onEditCancel(); }
                     }}
-                    style={{ width: '100%', border: '1.5px solid var(--color-primary)', borderRadius: 8, padding: '8px 10px', fontSize: 14, fontFamily: 'inherit', resize: 'none', outline: 'none', background: 'var(--color-bg)', color: 'var(--color-text-body)' }} rows={2} />
-                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Enter to save · Esc to cancel</div>
+                    className="w-full resize-none rounded-lg border-none bg-[#383a40] px-4 py-2.5 text-base leading-[22px] text-[#dbdee1] outline-none select-text focus:ring-0"
+                    rows={2} />
+                  <div className="text-xs text-[#dbdee1]">
+                    escape to <button className="text-[#00a8fc] hover:underline" onClick={onEditCancel}>cancel</button> • enter to <button className="text-[#00a8fc] hover:underline" onClick={() => onEditSubmit(msg.id)}>save</button>
+                  </div>
                 </div>
               ) : (
-                <div className={`inbox-msg-content${msg.edited ? ' edited' : ''}`}>{renderContent(msg.content, myName)}</div>
+                <div className={cn('whitespace-pre-wrap break-words text-base leading-[22px]', msg.isLocal || msg.isSending ? 'text-[#949ba4]' : 'text-[#dbdee1]')}>
+                  {renderContent(msg.content, myName)}
+                  {msg.edited && <span className="ml-1 select-none text-[10px] text-[#949ba4]">(edited)</span>}
+                </div>
               )}
+
               {msg.reactions.length > 0 && (
-                <div className="inbox-msg-reactions">
-                  {msg.reactions.map(r => (
-                    <button key={r.emoji} className={`inbox-reaction${r.users.includes(myId) ? ' mine' : ''}`} onClick={() => onReaction(msg.id, r.emoji)} title={`${r.users.length}`}>
-                      <span>{r.emoji}</span><span className="inbox-reaction-count">{r.users.length}</span>
-                    </button>
-                  ))}
+                <div className="mt-1 flex flex-wrap items-center gap-1">
+                  {msg.reactions.map(r => {
+                    const mine = r.users.includes(myId);
+                    return (
+                      <button
+                        key={r.emoji}
+                        className={cn(
+                          'flex h-6 items-center gap-1.5 rounded-lg border px-1.5 text-sm transition-colors',
+                          mine ? 'border-[#5865f2] bg-[#5865f2]/15' : 'border-transparent bg-[#2b2d31] hover:border-[#4e5058]',
+                        )}
+                        onClick={() => onReaction(msg.id, r.emoji)}
+                        title={`${r.users.length}`}
+                      >
+                        <span className="text-base leading-none">{r.emoji}</span>
+                        <span className={cn('text-sm font-semibold', mine ? 'text-[#c9cdfb]' : 'text-[#b5bac1]')}>{r.users.length}</span>
+                      </button>
+                    );
+                  })}
                   <EmojiPicker msgId={msg.id} onReaction={onReaction} />
                 </div>
               )}
             </div>
+
             {!isEd && (
-              <div className="inbox-msg-toolbar">
-                {EMOJI_LIST.slice(0, 3).map(e => <button key={e} className="inbox-msg-toolbar-btn" onClick={() => onReaction(msg.id, e)} style={{ fontSize: 14 }}>{e}</button>)}
-                <button className="inbox-msg-toolbar-btn" title="Reply" onClick={() => onReply(msg)}><span className="icon" style={{ WebkitMaskImage: 'url(/icons/corner-up-left.svg)', maskImage: 'url(/icons/corner-up-left.svg)' }} /></button>
-                <button className="inbox-msg-toolbar-btn" title="Forward" onClick={() => onForward(msg)}><span className="icon" style={{ WebkitMaskImage: 'url(/icons/corner-up-right.svg)', maskImage: 'url(/icons/corner-up-right.svg)' }} /></button>
-                {isOwn && <button className="inbox-msg-toolbar-btn" title="Edit" onClick={() => onStartEdit(msg)}><span className="icon" style={{ WebkitMaskImage: 'url(/icons/edit.svg)', maskImage: 'url(/icons/edit.svg)' }} /></button>}
-                <button className="inbox-msg-toolbar-btn" title="More" onClick={e => onCtxMenu(msg, e.clientX, e.clientY)}><span className="icon" style={{ WebkitMaskImage: 'url(/icons/more-horizontal.svg)', maskImage: 'url(/icons/more-horizontal.svg)' }} /></button>
+              <div className="absolute -top-4 right-4 z-[3] hidden items-center overflow-hidden rounded-md border border-[#26272b] bg-[#313338] shadow-[0_0_0_1px_rgba(4,4,5,0.15),0_4px_8px_rgba(0,0,0,0.2)] group-hover:flex">
+                {!inDm && EMOJI_LIST.slice(0, 3).map(e => <button key={e} className={cn(toolBtn, 'text-base')} onClick={() => onReaction(msg.id, e)}>{e}</button>)}
+                <button className={toolBtn} title="Reply" onClick={() => onReply(msg)}><Icon src="/icons/corner-up-left.svg" /></button>
+                <button className={toolBtn} title="Forward" onClick={() => onForward(msg)}><Icon src="/icons/corner-up-right.svg" /></button>
+                {isOwn && <button className={toolBtn} title="Edit" onClick={() => onStartEdit(msg)}><Icon src="/icons/edit.svg" /></button>}
+                <button className={toolBtn} title="More" onClick={e => onCtxMenu(msg, e.clientX, e.clientY)}><Icon src="/icons/more-horizontal.svg" /></button>
               </div>
             )}
           </div>
@@ -1018,11 +1243,19 @@ function EmojiPicker({ msgId, onReaction }: { msgId: string; onReaction: (id: st
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => { function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); } if (open) document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, [open]);
   return (
-    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
-      <button className="inbox-add-reaction-btn" onClick={() => setOpen(p => !p)} title="Add reaction">+</button>
-      {open && <div style={{ position: 'absolute', bottom: 'calc(100% + 4px)', left: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,.1)', padding: 6, display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 2, zIndex: 20, width: 180 }}>
-        {EMOJI_LIST.map(e => <button key={e} className="inbox-emoji-btn" style={{ fontSize: 18, padding: 4 }} onClick={() => { onReaction(msgId, e); setOpen(false); }}>{e}</button>)}
-      </div>}
+    <div ref={ref} className="relative inline-block">
+      <button
+        className={cn('flex h-6 items-center rounded-lg bg-[#2b2d31] px-2 text-sm text-[#b5bac1] transition hover:text-[#dbdee1] group-hover:opacity-100 pointer-coarse:opacity-100', open ? 'opacity-100' : 'opacity-0')}
+        onClick={() => setOpen(p => !p)}
+        title="Add Reaction"
+      >
+        +😊
+      </button>
+      {open && (
+        <div className="absolute bottom-[calc(100%+4px)] left-0 z-20 grid w-[232px] grid-cols-6 gap-0.5 rounded-lg bg-[#2b2d31] p-2 shadow-[0_8px_16px_rgba(0,0,0,0.24)]">
+          {EMOJI_LIST.map(e => <button key={e} className="rounded p-1 text-xl leading-none transition-colors hover:bg-[#404249]" onClick={() => { onReaction(msgId, e); setOpen(false); }}>{e}</button>)}
+        </div>
+      )}
     </div>
   );
 }
@@ -1030,20 +1263,33 @@ function EmojiPicker({ msgId, onReaction }: { msgId: string; onReaction: (id: st
 /* ─────────────────── PresenceVoiceView ───────────────────── */
 
 function PresenceVoiceView({ channel, occupants, isInChannel, micMuted, deafened, onJoin, onLeave, onToggleMic, onToggleDeafen }: { channel: Channel; occupants: string[]; isInChannel: boolean; micMuted: boolean; deafened: boolean; onJoin: () => void; onLeave: () => void; onToggleMic: () => void; onToggleDeafen: () => void; }) {
+  const ctrlBtn = 'flex size-12 items-center justify-center rounded-full transition-colors';
   return (
-    <div className="inbox-voice-view">
-      <div className="inbox-voice-view-header">
-        <div className="inbox-voice-view-title">🔊 {channel.name}</div>
-        <div className="inbox-voice-view-sub">{occupants.length === 0 ? 'No one here yet' : `${occupants.length} in channel`}</div>
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-8 overflow-y-auto bg-[#111214] p-8 text-center">
+      <div>
+        <div className="mx-auto mb-4 flex size-20 items-center justify-center rounded-full bg-[#2b2d31] text-[#b5bac1]">
+          <Icon src="/icons/volume-2.svg" className="size-10" />
+        </div>
+        <div className="text-2xl font-bold text-[#f2f3f5]">{channel.name}</div>
+        <div className="mt-1 text-sm text-[#b5bac1]">{occupants.length === 0 ? 'No one is currently in voice' : `${occupants.length} in voice`}</div>
       </div>
-      {occupants.length > 0 && <div className="inbox-voice-participants-grid">{occupants.map(n => (<div key={n} className="inbox-voice-participant"><div className="inbox-voice-participant-avatar" style={{ background: `hsl(${(n.charCodeAt(0) * 37) % 360}, 45%, 35%)` }}>{initials(n)}</div><span className="inbox-voice-participant-name">{n}</span></div>))}</div>}
+      {occupants.length > 0 && (
+        <div className="flex flex-wrap justify-center gap-3">
+          {occupants.map(n => (
+            <div key={n} className="flex w-28 flex-col items-center gap-2 rounded-lg bg-[#2b2d31] p-3">
+              <Avatar name={n} size="size-14" text="text-lg" />
+              <span className="w-full truncate text-xs font-medium text-[#dbdee1]">{n}</span>
+            </div>
+          ))}
+        </div>
+      )}
       {!isInChannel ? (
-        <button className="inbox-voice-join-btn" onClick={onJoin}>Join Voice Channel</button>
+        <button className="rounded-full bg-[#248046] px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1a6334]" onClick={onJoin}>Join Voice</button>
       ) : (
-        <div className="inbox-voice-controls-bar">
-          <button className={`inbox-voice-ctrl-btn${micMuted ? ' active-mute' : ''}`} title={micMuted ? 'Unmute' : 'Mute'} onClick={onToggleMic}><span className="icon" style={{ WebkitMaskImage: micMuted ? 'url(/icons/mic-off.svg)' : 'url(/icons/mic.svg)', maskImage: micMuted ? 'url(/icons/mic-off.svg)' : 'url(/icons/mic.svg)' }} /></button>
-          <button className={`inbox-voice-ctrl-btn${deafened ? ' active-mute' : ''}`} title="Deafen" onClick={onToggleDeafen}><span className="icon" style={{ WebkitMaskImage: 'url(/icons/headphones.svg)', maskImage: 'url(/icons/headphones.svg)' }} /></button>
-          <button className="inbox-voice-ctrl-btn leave" title="Leave" onClick={onLeave}><span className="icon" style={{ WebkitMaskImage: 'url(/icons/phone-off.svg)', maskImage: 'url(/icons/phone-off.svg)' }} /></button>
+        <div className="flex items-center gap-3">
+          <button className={cn(ctrlBtn, micMuted ? 'bg-white text-[#f23f43]' : 'bg-[#2b2d31] text-[#dbdee1] hover:bg-[#404249]')} title={micMuted ? 'Unmute' : 'Mute'} onClick={onToggleMic}><Icon src={micMuted ? '/icons/mic-off.svg' : '/icons/mic.svg'} /></button>
+          <button className={cn(ctrlBtn, deafened ? 'bg-white text-[#f23f43]' : 'bg-[#2b2d31] text-[#dbdee1] hover:bg-[#404249]')} title="Deafen" onClick={onToggleDeafen}><Icon src="/icons/headphones.svg" /></button>
+          <button className={cn(ctrlBtn, 'bg-[#da373c] text-white hover:bg-[#a12828]')} title="Leave" onClick={onLeave}><Icon src="/icons/phone-off.svg" /></button>
         </div>
       )}
     </div>
@@ -1052,28 +1298,35 @@ function PresenceVoiceView({ channel, occupants, isInChannel, micMuted, deafened
 
 /* ─────────────────── MembersPanel ───────────────────────── */
 
-function MembersPanel({ members, myId, statusColor, onOpenProfile }: { members: Member[]; myId: string; statusColor: Record<UserStatus, string>; onOpenProfile: (id: string, e: React.MouseEvent, name?: string, designation?: string) => void }) {
+function MembersPanel({ members, myId, onOpenProfile }: { members: Member[]; myId: string; onOpenProfile: (id: string, e: React.MouseEvent, name?: string, designation?: string) => void }) {
   const online  = members.filter(m => m.status !== 'offline');
   const offline = members.filter(m => m.status === 'offline');
-  const labels: Record<UserStatus, string> = { online: 'Online', away: 'Away', dnd: 'Do Not Disturb', offline: 'Offline' };
+  const labels: Record<UserStatus, string> = { online: 'Online', away: 'Idle', dnd: 'Do Not Disturb', offline: 'Offline' };
+  const sectionLabel = 'px-2 pb-1 pt-6 text-xs font-semibold uppercase tracking-wide text-[#949ba4]';
+
+  const row = (m: Member, isOffline: boolean) => (
+    <div
+      key={m.id}
+      className={cn('group flex cursor-pointer items-center gap-3 rounded px-2 py-1.5 transition hover:bg-[#35373c]', isOffline && 'opacity-30 hover:opacity-100')}
+      title={`${m.name} — ${labels[m.status]}`}
+      onClick={e => onOpenProfile(m.id, e, m.name, m.designation)}
+    >
+      <Avatar name={m.name} size="size-8" text="text-xs" status={isOffline ? undefined : m.status} dot="size-2.5 border-[3px]" ring="border-[#2b2d31] group-hover:border-[#35373c]" />
+      <div className="min-w-0">
+        <div className="truncate text-[15px] font-medium leading-5 text-[#949ba4] group-hover:text-[#dbdee1]">{m.name}{m.id === myId ? <span className="text-xs"> (you)</span> : null}</div>
+        {m.designation && <div className="truncate text-xs leading-4 text-[#949ba4]">{m.designation}</div>}
+      </div>
+    </div>
+  );
+
   return (
     <>
-      <div className="inbox-members-section-label">Online — {online.length}</div>
-      {online.map(m => (
-        <div key={m.id} className="inbox-member-row" title={`${m.name} — ${labels[m.status]}`} onClick={e => onOpenProfile(m.id, e, m.name, m.designation)}>
-          <div className="inbox-member-avatar-wrap"><div className="inbox-member-av">{initials(m.name)}</div><span className="inbox-member-status-dot" style={{ background: statusColor[m.status] }} /></div>
-          <div className="inbox-member-info"><div className="inbox-member-name">{m.name}{m.id === myId ? ' (you)' : ''}</div><div className="inbox-member-designation">{m.designation}</div></div>
-        </div>
-      ))}
+      <div className={sectionLabel}>Online — {online.length}</div>
+      {online.map(m => row(m, false))}
       {offline.length > 0 && (
         <>
-          <div className="inbox-members-section-label" style={{ marginTop: 8 }}>Offline — {offline.length}</div>
-          {offline.map(m => (
-            <div key={m.id} className="inbox-member-row offline-member" title={`${m.name} — Offline`} onClick={e => onOpenProfile(m.id, e, m.name, m.designation)}>
-              <div className="inbox-member-avatar-wrap"><div className="inbox-member-av">{initials(m.name)}</div><span className="inbox-member-status-dot" style={{ background: statusColor[m.status] }} /></div>
-              <div className="inbox-member-info"><div className="inbox-member-name">{m.name}</div><div className="inbox-member-designation">{m.designation}</div></div>
-            </div>
-          ))}
+          <div className={sectionLabel}>Offline — {offline.length}</div>
+          {offline.map(m => row(m, true))}
         </>
       )}
     </>
@@ -1125,7 +1378,6 @@ function PreJoinModal({ channelName, onJoin, onCancel }: {
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
   }
-  // useEffect(()=> console.log("streamRef",streamRef), [streamRef])
 
   useEffect(() => () => cleanup(), []);
 
@@ -1137,118 +1389,81 @@ function PreJoinModal({ channelName, onJoin, onCancel }: {
   const bars = 16;
 
   return (
-    <div className="inbox-modal-overlay" onClick={onCancel}>
-      <div className="inbox-modal" style={{ maxWidth: 400, display: 'flex', flexDirection: 'column', gap: 20, padding: 24 }} onClick={e => e.stopPropagation()}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>🔊</div>
-          <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>Join #{channelName}</div>
-          <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-            Check your microphone before joining
-          </div>
-        </div>
-
-        {/* Mic test section */}
-        <div style={{
-          background: 'var(--color-sidebar)',
-          borderRadius: 12,
-          padding: '16px 20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-          border: '1px solid var(--color-border)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: '50%',
-              background: micStatus === 'granted' ? 'rgba(45,206,137,0.15)' : micStatus === 'denied' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.08)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0,
-              border: `1.5px solid ${micStatus === 'granted' ? '#2dce89' : micStatus === 'denied' ? '#ef4444' : 'var(--color-border)'}`,
-            }}>
-              {micStatus === 'denied' ? '🚫' : '🎙️'}
+    <div className={ui.overlay} onClick={onCancel}>
+      <div className={cn(ui.modal, 'max-w-[420px]')} onClick={e => e.stopPropagation()}>
+        <div className="flex flex-col gap-5 p-5">
+          <div className="text-center">
+            <div className="mx-auto mb-3 flex size-16 items-center justify-center rounded-full bg-[#2b2d31] text-[#b5bac1]">
+              <Icon src="/icons/volume-2.svg" className="size-8" />
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>
-                {micStatus === 'idle'     && 'Microphone not tested'}
-                {micStatus === 'checking' && 'Requesting access…'}
-                {micStatus === 'granted'  && 'Microphone ready'}
-                {micStatus === 'denied'   && 'Microphone blocked'}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                {micStatus === 'idle'    && 'Click "Test mic" to allow access'}
-                {micStatus === 'checking'&& 'Allow microphone in the browser popup'}
-                {micStatus === 'granted' && 'Speak — the bar shows your level'}
-                {micStatus === 'denied'  && 'Click the 🔒 icon in the address bar → Allow'}
-              </div>
-            </div>
-            {micStatus === 'idle' || micStatus === 'denied' ? (
-              <button
-                onClick={requestMic}
-                style={{
-                  padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                  background: micStatus === 'denied' ? '#ef4444' : 'var(--color-primary)',
-                  color: '#fff', fontSize: 12, fontWeight: 600, flexShrink: 0,
-                }}
-              >
-                {micStatus === 'denied' ? 'Retry' : 'Test mic'}
-              </button>
-            ) : null}
+            <div className="text-xl font-bold text-[#f2f3f5]">Join {channelName}</div>
+            <div className="mt-1 text-sm text-[#b5bac1]">Check your microphone before joining</div>
           </div>
 
-          {/* Live mic level visualizer */}
-          {micStatus === 'granted' && (
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 28, padding: '0 2px' }}>
-              {Array.from({ length: bars }, (_, i) => {
-                const thresh = (i + 1) / bars;
-                const active = micLevel >= thresh;
-                return (
-                  <div key={i} style={{
-                    flex: 1,
-                    height: `${20 + (i / bars) * 80}%`,
-                    borderRadius: 2,
-                    background: active
-                      ? (micLevel > 0.8 ? '#f59e0b' : micLevel > 0.5 ? '#2dce89' : '#2dce89')
-                      : 'rgba(255,255,255,0.1)',
-                    transition: 'background 60ms',
-                  }} />
-                );
-              })}
+          {/* Mic test section */}
+          <div className="flex flex-col gap-3 rounded-lg bg-[#2b2d31] px-4 py-4">
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                'flex size-10 shrink-0 items-center justify-center rounded-full border-2 text-lg',
+                micStatus === 'granted' ? 'border-[#23a55a] bg-[#23a55a]/15' : micStatus === 'denied' ? 'border-[#f23f43] bg-[#f23f43]/15' : 'border-[#4e5058] bg-white/5',
+              )}>
+                {micStatus === 'denied' ? '🚫' : '🎙️'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="mb-0.5 text-sm font-semibold text-[#f2f3f5]">
+                  {micStatus === 'idle'     && 'Microphone not tested'}
+                  {micStatus === 'checking' && 'Requesting access…'}
+                  {micStatus === 'granted'  && 'Microphone ready'}
+                  {micStatus === 'denied'   && 'Microphone blocked'}
+                </div>
+                <div className="text-xs text-[#949ba4]">
+                  {micStatus === 'idle'    && 'Click "Test mic" to allow access'}
+                  {micStatus === 'checking'&& 'Allow microphone in the browser popup'}
+                  {micStatus === 'granted' && 'Speak — the bar shows your level'}
+                  {micStatus === 'denied'  && 'Click the 🔒 icon in the address bar → Allow'}
+                </div>
+              </div>
+              {micStatus === 'idle' || micStatus === 'denied' ? (
+                <button
+                  onClick={requestMic}
+                  className={cn('shrink-0 rounded-[3px] px-3.5 py-1.5 text-xs font-semibold text-white transition-colors', micStatus === 'denied' ? 'bg-[#da373c] hover:bg-[#a12828]' : 'bg-[#5865f2] hover:bg-[#4752c4]')}
+                >
+                  {micStatus === 'denied' ? 'Retry' : 'Test mic'}
+                </button>
+              ) : null}
+            </div>
+
+            {/* Live mic level visualizer */}
+            {micStatus === 'granted' && (
+              <div className="flex h-7 items-end gap-0.5 px-0.5">
+                {Array.from({ length: bars }, (_, i) => {
+                  const thresh = (i + 1) / bars;
+                  const active = micLevel >= thresh;
+                  return (
+                    <div
+                      key={i}
+                      className={cn('flex-1 rounded-sm transition-colors duration-75', active ? (micLevel > 0.8 ? 'bg-[#f0b232]' : 'bg-[#23a55a]') : 'bg-white/10')}
+                      style={{ height: `${20 + (i / bars) * 80}%` }}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Permissions note */}
+          {micStatus === 'denied' && (
+            <div className="rounded-md border border-[#f23f43]/30 bg-[#f23f43]/10 px-3.5 py-2.5 text-xs leading-relaxed text-[#fa777c]">
+              <strong>To fix:</strong> click the 🔒 lock icon in your browser&apos;s address bar,
+              find <em>Microphone</em>, set it to <em>Allow</em>, then reload the page.
             </div>
           )}
         </div>
 
-        {/* Permissions note */}
-        {micStatus === 'denied' && (
-          <div style={{
-            fontSize: 12, color: 'rgba(239,68,68,0.9)',
-            background: 'rgba(239,68,68,0.08)',
-            border: '1px solid rgba(239,68,68,0.2)',
-            borderRadius: 8, padding: '10px 14px', lineHeight: 1.5,
-          }}>
-            <strong>To fix:</strong> click the 🔒 lock icon in your browser&apos;s address bar,
-            find <em>Microphone</em>, set it to <em>Allow</em>, then reload the page.
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            onClick={onCancel}
-            style={{
-              flex: 1, padding: '10px 0', borderRadius: 8,
-              border: '1px solid var(--color-border)', background: 'transparent',
-              color: 'var(--color-text-body)', fontWeight: 600, cursor: 'pointer', fontSize: 14,
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleJoin}
-            style={{
-              flex: 2, padding: '10px 0', borderRadius: 8, border: 'none',
-              background: 'var(--color-primary)', color: '#fff',
-              fontWeight: 700, cursor: 'pointer', fontSize: 14,
-            }}
-          >
-            {micStatus === 'denied' ? 'Join anyway (listen only)' : 'Join Voice Channel'}
+        <div className={ui.modalFoot}>
+          <button onClick={onCancel} className={ui.btnLink}>Cancel</button>
+          <button onClick={handleJoin} className="rounded-[3px] bg-[#248046] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#1a6334]">
+            {micStatus === 'denied' ? 'Join anyway (listen only)' : 'Join Voice'}
           </button>
         </div>
       </div>

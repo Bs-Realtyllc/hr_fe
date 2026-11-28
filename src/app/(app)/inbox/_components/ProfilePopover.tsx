@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { avatarColor, initials } from './ui';
 
 type UserStatus = 'online' | 'away' | 'dnd' | 'offline';
 
 const STATUS_COLOR: Record<UserStatus, string> = { online: '#23a55a', away: '#f0b232', dnd: '#f23f43', offline: '#80848e' };
-const STATUS_LABEL: Record<UserStatus, string> = { online: 'Online', away: 'Away', dnd: 'Do Not Disturb', offline: 'Offline' };
+const STATUS_LABEL: Record<UserStatus, string> = { online: 'Online', away: 'Idle', dnd: 'Do Not Disturb', offline: 'Offline' };
 const ROLE_LABEL: Record<string, string> = { admin: 'Admin', lead: 'Team Lead', employee: 'Employee', intern: 'Intern' };
 
 export interface ProfileEmployee {
@@ -32,8 +33,6 @@ interface ProfilePopoverProps {
   onMessage?: () => void;
 }
 
-function initials(n: string) { return n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(); }
-function avatarColor(seed: string) { return `hsl(${(seed.charCodeAt(0) * 37) % 360}, 45%, 35%)`; }
 function fmtJoinDate(d: string) {
   const dt = new Date(d);
   if (isNaN(dt.getTime())) return d;
@@ -79,65 +78,104 @@ export function ProfilePopover({ anchorLeft, anchorRight, anchorTop, anchorBotto
 
   const color = avatarColor(employee.name || '?');
   const hasLinks = Boolean(employee.github_url || employee.discord_username);
+  const label = 'mb-1 text-xs font-bold uppercase tracking-wide text-[#f2f3f5]';
+  const value = 'text-sm text-[#dbdee1] break-words';
+  const link  = 'text-[#00a8fc] hover:underline';
 
   return (
-    <div ref={ref} className="inbox-profile-popover" style={{ left: pos.left, top: pos.top }}>
-      <div className="inbox-profile-top">
-        <div className="inbox-profile-avatar" style={{ background: color }}>
+    <div
+      ref={ref}
+      className="fixed z-[1200] w-[300px] max-w-[calc(100vw-16px)] overflow-hidden rounded-lg bg-[#232428] text-[#dbdee1] shadow-[0_8px_24px_rgba(0,0,0,0.4)] transition-opacity duration-100 starting:opacity-0"
+      style={{ left: pos.left, top: pos.top }}
+    >
+      {/* Banner */}
+      <div className="h-[60px]" style={{ background: color }} />
+
+      {/* Avatar overlapping the banner */}
+      <div className="relative px-4">
+        <div
+          className="absolute -top-10 flex size-20 items-center justify-center rounded-full border-[6px] border-[#232428] text-2xl font-semibold text-white"
+          style={{ background: color }}
+        >
           {initials(employee.name || '?')}
-          <span className="inbox-profile-status-dot" style={{ background: STATUS_COLOR[status] }} />
-        </div>
-        <div className="inbox-profile-id">
-          <div className="inbox-profile-name">{employee.name}{isSelf ? <span className="inbox-profile-you"> (you)</span> : null}</div>
-          <div className="inbox-profile-status-line">{STATUS_LABEL[status]}</div>
+          <span
+            className="absolute bottom-0 right-0 size-4 rounded-full border-[4px] border-[#232428] box-content"
+            style={{ background: STATUS_COLOR[status] }}
+            title={STATUS_LABEL[status]}
+          />
         </div>
       </div>
 
-      {(employee.designation || employee.role) && (
-        <div className="inbox-profile-badges">
-          {employee.designation && <span className="inbox-profile-designation-badge">{employee.designation}</span>}
-          {employee.role && <span className="inbox-profile-role-badge">{ROLE_LABEL[employee.role] ?? employee.role}</span>}
+      <div className="px-4 pb-4 pt-12">
+        <div className="text-xl font-bold leading-tight text-[#f2f3f5]">
+          {employee.name}{isSelf ? <span className="text-sm font-normal text-[#949ba4]"> (you)</span> : null}
         </div>
-      )}
+        <div className="mt-0.5 text-sm text-[#b5bac1]">{STATUS_LABEL[status]}</div>
 
-      <div className="inbox-profile-divider" />
+        <div className="mt-3 flex flex-col gap-3 rounded-lg bg-[#111214] p-3">
+          {(employee.designation || employee.role) && (
+            <div>
+              <div className={label}>Roles</div>
+              <div className="flex flex-wrap gap-1">
+                {employee.designation && (
+                  <span className="inline-flex items-center gap-1.5 rounded bg-[#2b2d31] px-2 py-0.5 text-xs font-medium text-[#dbdee1]">
+                    <span className="size-2.5 rounded-full bg-[#5865f2]" />{employee.designation}
+                  </span>
+                )}
+                {employee.role && (
+                  <span className="inline-flex items-center gap-1.5 rounded bg-[#2b2d31] px-2 py-0.5 text-xs font-medium text-[#dbdee1]">
+                    <span className="size-2.5 rounded-full bg-[#23a55a]" />{ROLE_LABEL[employee.role] ?? employee.role}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
-      <div className="inbox-profile-grid">
-        {employee.department && (
-          <div className="inbox-profile-field">
-            <div className="inbox-profile-field-label">Department</div>
-            <div className="inbox-profile-field-value">{employee.department}</div>
-          </div>
-        )}
-        {employee.start_date && (
-          <div className="inbox-profile-field">
-            <div className="inbox-profile-field-label">Joined</div>
-            <div className="inbox-profile-field-value">{fmtJoinDate(employee.start_date)}</div>
-          </div>
+          {(employee.department || employee.start_date) && (
+            <div className="grid grid-cols-2 gap-3">
+              {employee.department && (
+                <div>
+                  <div className={label}>Department</div>
+                  <div className={value}>{employee.department}</div>
+                </div>
+              )}
+              {employee.start_date && (
+                <div>
+                  <div className={label}>Member Since</div>
+                  <div className={value}>{fmtJoinDate(employee.start_date)}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {employee.email && (
+            <div>
+              <div className={label}>Email</div>
+              <a className={`${value} ${link}`} href={`mailto:${employee.email}`}>{employee.email}</a>
+            </div>
+          )}
+
+          {hasLinks && (
+            <div>
+              <div className={label}>Links</div>
+              <div className={value}>
+                {employee.github_url && <a href={employee.github_url} target="_blank" rel="noreferrer" className={link}>GitHub</a>}
+                {employee.github_url && employee.discord_username && ' · '}
+                {employee.discord_username && <span>Discord: {employee.discord_username}</span>}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {!isSelf && onMessage && (
+          <button
+            className="mt-3 w-full rounded-[3px] bg-[#5865f2] py-2 text-sm font-medium text-white transition-colors hover:bg-[#4752c4]"
+            onClick={onMessage}
+          >
+            Message
+          </button>
         )}
       </div>
-
-      {employee.email && (
-        <div className="inbox-profile-field">
-          <div className="inbox-profile-field-label">Email</div>
-          <a className="inbox-profile-field-value link" href={`mailto:${employee.email}`}>{employee.email}</a>
-        </div>
-      )}
-
-      {hasLinks && (
-        <div className="inbox-profile-field">
-          <div className="inbox-profile-field-label">Links</div>
-          <div className="inbox-profile-field-value">
-            {employee.github_url && <a href={employee.github_url} target="_blank" rel="noreferrer" className="link">GitHub</a>}
-            {employee.github_url && employee.discord_username && ' · '}
-            {employee.discord_username && <span>Discord: {employee.discord_username}</span>}
-          </div>
-        </div>
-      )}
-
-      {!isSelf && onMessage && (
-        <button className="inbox-profile-message-btn" onClick={onMessage}>Message</button>
-      )}
     </div>
   );
 }

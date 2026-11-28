@@ -43,6 +43,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // clock-in does, so showing both risks two clocks disagreeing.
   const showClock = tracksAttendance(user) && !pathname.startsWith('/tracker');
 
+  // The inbox is a full-screen, Discord-style app with its own navigation
+  // (including a "Go back to Dashboard" button), so it renders without the
+  // app sidebar and mobile top bar.
+  if (pathname.startsWith('/inbox')) {
+    return (
+      <>
+        {showClock && <ClockInPopup />}
+        {children}
+      </>
+    );
+  }
+
   return (
     <div className="app-shell">
       <Sidebar />

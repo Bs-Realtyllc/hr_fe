@@ -1,5 +1,5 @@
 import type { Project } from '../types';
-import { fmtDate, msBadge, statusBadge } from '../utils';
+import { fmtDate, moduleBadge, statusBadge } from '../utils';
 
 export default function EmployeeProjectsCard({ projects }: { projects: Project[] }) {
   return (
@@ -13,8 +13,8 @@ export default function EmployeeProjectsCard({ projects }: { projects: Project[]
       {projects.map(p => {
         const repos = Array.isArray(p.repo_url) ? p.repo_url : [];
         const docs = Array.isArray(p.docs_url) ? p.docs_url : [];
-        const pending = p.milestones.filter(m => m.status !== 'completed').length;
-        const total = p.milestones.length;
+        const pending = p.modules.filter(m => m.status !== 'completed').length;
+        const total = p.modules.length;
         return (
           <div key={p.id} style={{
             background: 'var(--color-bg)', borderRadius: 'var(--radius-md)',
@@ -32,7 +32,7 @@ export default function EmployeeProjectsCard({ projects }: { projects: Project[]
               </div>
             </div>
 
-            <div className="flex gap-4 text-sm" style={{ marginBottom: p.milestones.length > 0 ? 12 : 0, flexWrap: 'wrap', rowGap: 4 }}>
+            <div className="flex gap-4 text-sm" style={{ marginBottom: p.modules.length > 0 ? 12 : 0, flexWrap: 'wrap', rowGap: 4 }}>
               {p.start_date && (
                 <span className="text-muted">
                   Start: <strong>{fmtDate(p.start_date)}</strong>
@@ -47,13 +47,13 @@ export default function EmployeeProjectsCard({ projects }: { projects: Project[]
               )}
               {total > 0 && (
                 <span className="text-muted">
-                  Milestones: <strong>{total - pending}/{total} done</strong>
+                  Modules: <strong>{total - pending}/{total} done</strong>
                 </span>
               )}
             </div>
 
             {(repos.length > 0 || docs.length > 0) && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: p.milestones.length > 0 ? 10 : 0 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: p.modules.length > 0 ? 10 : 0 }}>
                 {repos.map((url, i) => (
                   <a key={i} href={url} target="_blank" rel="noreferrer" className="text-sm"
                     style={{ color: 'var(--color-accent)' }}>Repo {repos.length > 1 ? i + 1 : ''} ↗</a>
@@ -65,14 +65,14 @@ export default function EmployeeProjectsCard({ projects }: { projects: Project[]
               </div>
             )}
 
-            {p.milestones.length > 0 && (
+            {p.modules.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {p.milestones.map(m => (
+                {p.modules.map(m => (
                   <div key={m.id} className="flex items-center gap-3">
-                    <span className={`badge ${msBadge[m.status]}`} style={{ fontSize: 11 }}>{m.status.replace('_', ' ')}</span>
-                    <span className="text-sm">{m.title}</span>
+                    <span className={`badge ${moduleBadge[m.status]}`} style={{ fontSize: 11 }}>{m.status.replace('_', ' ')}</span>
+                    <span className="text-sm">{m.name}</span>
                     <span className="text-muted text-sm" style={{ marginLeft: 'auto' }}>
-                      {fmtDate(m.due_date)}
+                      {fmtDate(m.target_date)}
                     </span>
                   </div>
                 ))}
