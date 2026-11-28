@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Icon } from './ui';
 
 interface AudioRecorderProps {
   onSend: (blob: Blob, duration: number) => void;
@@ -107,14 +108,17 @@ export function AudioRecorder({ onSend, onCancel }: AudioRecorderProps) {
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }
 
+  const wrap = 'flex min-h-[52px] items-center gap-3 rounded-lg bg-[#383a40] px-4 py-2';
+  const iconBtn = 'flex size-8 shrink-0 items-center justify-center rounded-full transition-colors';
+
   /* ── Permission error ── */
   if (permErr) {
     return (
-      <div className="dm-audio-recorder">
-        <span style={{ fontSize: 13, color: 'var(--color-error)' }}>
+      <div className={wrap}>
+        <span className="flex-1 text-sm text-[#fa777c]">
           🎙️ Microphone access denied. Allow it in browser settings.
         </span>
-        <button className="dm-audio-cancel-btn" onClick={onCancel}>✕</button>
+        <button className={`${iconBtn} text-[#b5bac1] hover:bg-[#4e5058] hover:text-white`} onClick={onCancel} title="Close">✕</button>
       </div>
     );
   }
@@ -122,16 +126,16 @@ export function AudioRecorder({ onSend, onCancel }: AudioRecorderProps) {
   /* ── Preview phase ── */
   if (phase === 'preview' && audioUrl) {
     return (
-      <div className="dm-audio-preview">
-        <audio controls src={audioUrl} className="dm-audio-native" preload="metadata" />
-        <span className="dm-audio-preview-dur">{fmt(durationRef.current)}</span>
-        <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
-          <button className="dm-audio-discard-btn" onClick={onCancel} title="Discard">
-            <span style={{ WebkitMaskImage: 'url(/icons/trash-2.svg)', maskImage: 'url(/icons/trash-2.svg)', width: 16, height: 16, display: 'inline-block', background: 'currentColor', WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat', WebkitMaskSize: 'contain', maskSize: 'contain' }} />
+      <div className={wrap}>
+        <audio controls src={audioUrl} className="h-9 min-w-0 max-w-[320px] flex-1 [color-scheme:dark]" preload="metadata" />
+        <span className="shrink-0 text-xs tabular-nums text-[#949ba4]">{fmt(durationRef.current)}</span>
+        <div className="ml-auto flex gap-1.5">
+          <button className={`${iconBtn} text-[#b5bac1] hover:bg-[#da373c] hover:text-white`} onClick={onCancel} title="Discard">
+            <Icon src="/icons/trash-2.svg" className="size-4" />
           </button>
-          <button className="inbox-send-btn" title="Send voice message"
+          <button className={`${iconBtn} bg-[#5865f2] text-white hover:bg-[#4752c4]`} title="Send voice message"
             onClick={() => { if (blobRef.current) onSend(blobRef.current, durationRef.current); }}>
-            <span className="icon" style={{ WebkitMaskImage: 'url(/icons/send.svg)', maskImage: 'url(/icons/send.svg)' }} />
+            <Icon src="/icons/send.svg" className="size-4" />
           </button>
         </div>
       </div>
@@ -140,20 +144,20 @@ export function AudioRecorder({ onSend, onCancel }: AudioRecorderProps) {
 
   /* ── Recording phase ── */
   return (
-    <div className="dm-audio-recorder">
-      <span className="dm-audio-rec-dot" />
-      <span className="dm-audio-rec-time">{fmt(duration)}</span>
-      <div className="dm-audio-waveform" aria-hidden>
+    <div className={wrap}>
+      <span className="size-2.5 shrink-0 animate-pulse rounded-full bg-[#f23f43]" />
+      <span className="shrink-0 text-sm font-semibold tabular-nums text-[#f2f3f5]">{fmt(duration)}</span>
+      <div className="flex h-9 min-w-0 flex-1 items-center gap-[3px] overflow-hidden" aria-hidden>
         {bars.map((h, i) => (
-          <span key={i} className="dm-audio-waveform-bar" style={{ height: h }} />
+          <span key={i} className="w-[3px] shrink-0 rounded-full bg-[#5865f2] transition-[height] duration-75" style={{ height: h }} />
         ))}
       </div>
       {duration > 0 && (
-        <button className="dm-audio-stop-btn" title="Stop recording" onClick={stopRecording}>
-          <span className="dm-audio-stop-icon" />
+        <button className={`${iconBtn} bg-[#f23f43] text-white hover:bg-[#da373c]`} title="Stop recording" onClick={stopRecording}>
+          <span className="size-2.5 rounded-[2px] bg-white" />
         </button>
       )}
-      <button className="dm-audio-cancel-btn" title="Cancel" onClick={() => { stopAll(); onCancel(); }}>✕</button>
+      <button className={`${iconBtn} text-[#b5bac1] hover:bg-[#4e5058] hover:text-white`} title="Cancel" onClick={() => { stopAll(); onCancel(); }}>✕</button>
     </div>
   );
 }

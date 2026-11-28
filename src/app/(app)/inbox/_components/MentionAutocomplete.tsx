@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { avatarColor, initials } from './ui';
 
 // A channel member that can be @-mentioned (string ids come from the inbox service).
 interface MentionMember {
@@ -22,10 +23,6 @@ const SPECIAL = [
   { id: '__here',     name: 'here',     designation: 'Notify online members only'  },
 ];
 
-function initials(name: string) {
-  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-}
-
 export function MentionAutocomplete({ query, employees, onSelect, onClose, anchorEl }: MentionAutocompleteProps) {
   const ref  = useRef<HTMLDivElement>(null);
   const lq   = query.toLowerCase();
@@ -45,29 +42,31 @@ export function MentionAutocomplete({ query, employees, onSelect, onClose, ancho
     return () => document.removeEventListener('mousedown', handler);
   }, [onClose, anchorEl]);
 
-  /* Position above the textarea */
-  const style: React.CSSProperties = { position: 'absolute', bottom: '100%', left: 0, right: 0 };
-
   if (all.length === 0) return null;
 
+  /* Positioned above the composer */
   return (
-    <div ref={ref} className="inbox-mention-list" style={style}>
-      <div className="inbox-mention-list-header">Mentions</div>
-      {all.map(e => (
-        <button
-          key={e.id}
-          className="inbox-mention-list-item"
-          onMouseDown={ev => { ev.preventDefault(); onSelect(e.name); }}
-        >
-          <div className="inbox-mention-av">
-            {e.id.startsWith('__') ? (e.name === 'everyone' ? '👥' : '🟢') : initials(e.name)}
-          </div>
-          <div className="inbox-mention-info">
-            <span className="inbox-mention-name">@{e.name}</span>
-            {e.designation && <span className="inbox-mention-desc">{e.designation}</span>}
-          </div>
-        </button>
-      ))}
+    <div ref={ref} className="absolute inset-x-0 bottom-[calc(100%+8px)] z-30 max-h-[320px] overflow-y-auto rounded-lg bg-[#2b2d31] p-2 shadow-[0_8px_16px_rgba(0,0,0,0.24)]">
+      <div className="px-2 pb-2 pt-1 text-xs font-bold uppercase tracking-wide text-[#b5bac1]">Members</div>
+      {all.map(e => {
+        const special = e.id.startsWith('__');
+        return (
+          <button
+            key={e.id}
+            className="flex w-full items-center gap-3 rounded px-2 py-1.5 text-left transition-colors hover:bg-[#35373c]"
+            onMouseDown={ev => { ev.preventDefault(); onSelect(e.name); }}
+          >
+            <div
+              className="flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+              style={{ background: special ? '#5865f2' : avatarColor(e.name) }}
+            >
+              {special ? '@' : initials(e.name)}
+            </div>
+            <span className="truncate text-[15px] font-medium text-[#f2f3f5]">{special ? `@${e.name}` : e.name}</span>
+            {e.designation && <span className="ml-auto truncate text-xs text-[#949ba4]">{e.designation}</span>}
+          </button>
+        );
+      })}
     </div>
   );
 }

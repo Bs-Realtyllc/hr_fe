@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { Avatar, ModalShell, ui, cn } from './ui';
 
 interface ForwardTarget {
   id: string;
@@ -51,49 +52,42 @@ export function ForwardModal({ messageContent, channels, dmConversations, onForw
   }
 
   return (
-    <div className="inbox-modal-overlay" onClick={onClose}>
-      <div className="inbox-modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
-        <div className="inbox-modal-header">
-          <span className="inbox-modal-title">Forward Message</span>
-          <button className="inbox-modal-close" onClick={onClose}>✕</button>
-        </div>
-        <div className="inbox-modal-body">
-          <div className="inbox-forward-preview">
-            <div className="inbox-forward-preview-label">Message preview</div>
-            <div className="inbox-forward-preview-text">
-              {messageContent.slice(0, 120)}{messageContent.length > 120 ? '…' : ''}
-            </div>
-          </div>
-          <div className="inbox-modal-field">
-            <div className="inbox-modal-name-wrap">
-              <span className="inbox-modal-name-prefix" style={{ fontSize: 15 }}>🔍</span>
-              <input
-                ref={inputRef}
-                className="inbox-modal-input"
-                placeholder="Search channels or people…"
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="inbox-dm-search-list">
-            {filtered.length === 0 ? (
-              <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>No results</div>
-            ) : filtered.map(t => (
-              <button
-                key={`${t.type}-${t.id}`}
-                className="inbox-dm-search-item"
-                onClick={() => forward(t)}
-                disabled={loading === t.id}
-              >
-                <span style={{ fontSize: 16, width: 28, textAlign: 'center', flexShrink: 0 }}>{t.icon}</span>
-                <span style={{ fontWeight: 600, fontSize: 13 }}>{t.name}</span>
-                {loading === t.id && <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--color-text-muted)' }}>Sending…</span>}
-              </button>
-            ))}
+    <ModalShell title="Forward To" subtitle="Select where you want to share this message." onClose={onClose}>
+      <div className="px-4 pb-3">
+        <input
+          ref={inputRef}
+          className={ui.input}
+          placeholder="Search"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+        />
+      </div>
+      <div className={cn('flex max-h-[280px] flex-col gap-0.5 overflow-y-auto px-2 pb-3', ui.scroll)}>
+        {filtered.length === 0 ? (
+          <div className="py-6 text-center text-sm text-[#949ba4]">No results</div>
+        ) : filtered.map(t => (
+          <button
+            key={`${t.type}-${t.id}`}
+            className={ui.listItem}
+            onClick={() => forward(t)}
+            disabled={loading === t.id}
+          >
+            {t.type === 'dm'
+              ? <Avatar name={t.name} size="size-8" text="text-xs" />
+              : <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#1e1f22] text-base text-[#b5bac1]">{t.icon}</span>}
+            <span className="truncate text-[15px] font-medium text-[#f2f3f5]">{t.name}</span>
+            {loading === t.id && <span className="ml-auto text-xs text-[#949ba4]">Sending…</span>}
+          </button>
+        ))}
+      </div>
+      <div className="border-t border-[#3f4147] px-4 py-3">
+        <div className="border-l-4 border-[#4e5058] pl-3">
+          <div className="text-xs font-semibold uppercase tracking-wide text-[#949ba4]">Message preview</div>
+          <div className="mt-1 break-words text-sm text-[#dbdee1]">
+            {messageContent.slice(0, 120)}{messageContent.length > 120 ? '…' : ''}
           </div>
         </div>
       </div>
-    </div>
+    </ModalShell>
   );
 }

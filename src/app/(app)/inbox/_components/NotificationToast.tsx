@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { avatarColor, cn, initials } from './ui';
 
 export interface ToastNotification {
   id: string;
-  type: 'dm' | 'mention' | 'channel';
+  type: 'dm' | 'mention' | 'channel' | 'hand';
   title: string;
   body: string;
   avatar?: string;
@@ -20,10 +21,6 @@ interface NotificationToastProps {
 
 const AUTO_DISMISS_MS = 5000;
 
-function initials(name: string) {
-  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-}
-
 function ToastItem({ n, onDismiss, onOpen }: { n: ToastNotification; onDismiss: () => void; onOpen: () => void }) {
   const [exiting, setExiting] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -35,29 +32,32 @@ function ToastItem({ n, onDismiss, onOpen }: { n: ToastNotification; onDismiss: 
 
   function dismiss() { setExiting(true); setTimeout(onDismiss, 280); }
 
-  const icon = n.type === 'dm' ? '💬' : n.type === 'mention' ? '🔔' : '#';
+  const icon = n.type === 'dm' ? '💬' : n.type === 'mention' ? '🔔' : n.type === 'hand' ? '✋' : '#';
 
   return (
     <div
-      className={`inbox-toast${exiting ? ' exiting' : ''}`}
+      className={cn(
+        'group flex w-[340px] max-w-[calc(100vw-32px)] cursor-pointer items-start gap-3 rounded-lg bg-[#111214] p-3 shadow-[0_8px_16px_rgba(0,0,0,0.32)] transition-[opacity,translate] duration-300 starting:translate-x-8 starting:opacity-0',
+        exiting && 'translate-x-8 opacity-0',
+      )}
       onClick={() => { onOpen(); dismiss(); }}
     >
-      <div className="inbox-toast-avatar">
+      <div className="relative flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white" style={{ background: avatarColor(n.title) }}>
         {n.avatar ? (
-          <img src={n.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+          <img src={n.avatar} alt="" className="size-full rounded-full object-cover" />
         ) : (
           initials(n.title)
         )}
-        <span className="inbox-toast-type-badge">{icon}</span>
+        <span className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full border-2 border-[#111214] bg-[#5865f2] text-[10px]">{icon}</span>
       </div>
-      <div className="inbox-toast-content">
-        <div className="inbox-toast-title">{n.title}</div>
-        <div className="inbox-toast-body">
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-semibold text-[#f2f3f5]">{n.title}</div>
+        <div className="mt-0.5 line-clamp-2 break-words text-sm text-[#b5bac1]">
           {n.body.slice(0, 80)}{n.body.length > 80 ? '…' : ''}
         </div>
       </div>
       <button
-        className="inbox-toast-close"
+        className="flex size-6 shrink-0 items-center justify-center rounded text-xs text-[#949ba4] opacity-0 transition hover:bg-[#2b2d31] hover:text-[#dbdee1] group-hover:opacity-100"
         onClick={e => { e.stopPropagation(); dismiss(); }}
         title="Dismiss"
       >
@@ -70,7 +70,7 @@ function ToastItem({ n, onDismiss, onOpen }: { n: ToastNotification; onDismiss: 
 export function NotificationToastStack({ notifications, onDismiss, onOpen }: NotificationToastProps) {
   if (notifications.length === 0) return null;
   return (
-    <div className="inbox-toast-stack">
+    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2 max-sm:bottom-4 max-sm:right-4">
       {notifications.slice(-4).map(n => (
         <ToastItem
           key={n.id}
