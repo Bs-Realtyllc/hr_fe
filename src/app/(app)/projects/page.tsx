@@ -6,12 +6,18 @@ import type { EmployeeSummary as Employee } from '@/types';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Button from '@/components/ui/Button/Button';
+import PillTabs from '@/components/ui/PillTabs';
 import { showToast } from '@/lib/toast';
+import IssueBoard from './_components/IssueBoard';
+import AnalyticsTab from './_components/AnalyticsTab';
+import ChipDropdown from './_components/ChipDropdown';
+import MultiSelect from '@/components/ui/MultiSelect';
 
 interface Project {
   id: number;
   name: string;
   description: string;
+  code: string | null;
   repo_url: string[];
   docs_url: string[];
   status: 'active' | 'archived' | 'on_hold';
@@ -19,19 +25,34 @@ interface Project {
   expected_end_date?: string;
 }
 
-interface Milestone {
+type ModuleStatus = 'backlog' | 'planned' | 'in_progress' | 'completed' | 'cancelled';
+
+// Replaces the old Milestone — a module has real ownership (lead_id) and its
+// own subset of the team, not just a label with a deadline.
+interface ProjectModule {
   id: number;
-  title: string;
-  due_date: string;
-  status: 'pending' | 'in_progress' | 'completed';
+  project_id: number;
+  name: string;
+  description: string | null;
+  start_date: string | null;
+  target_date: string;
+  status: ModuleStatus;
+  lead_id: number | null;
+  lead_name: string | null;
 }
+
+// Named admin/member, not lead/contributor — this app's global employee
+// role already has a 'lead' value with real company-wide power (leave
+// approval, payroll, performance reviews), so a project-scoped tier can't
+// reuse that word. Matches Jira/Plane's own project-level tier naming.
+type ProjectRole = 'admin' | 'member' | 'viewer';
 
 interface Assignment {
   id: number;
   employee_id: number;
   name: string;
   designation: string;
-  role: string;
+  role: ProjectRole;
 }
 
 
@@ -58,11 +79,16 @@ const statusBadge: Record<string, string> = {
   on_hold: 'badge-warning',
 };
 
-const msStatus: Record<string, string> = {
+const moduleStatusBadge: Record<ModuleStatus, string> = {
   completed: 'badge-success',
   in_progress: 'badge-info',
-  pending: 'badge-neutral',
+  planned: 'badge-info',
+  backlog: 'badge-neutral',
+  cancelled: 'badge-neutral',
 };
+
+const ROLE_OPTIONS: ProjectRole[] = ['admin', 'member', 'viewer'];
+const ROLE_LABEL: Record<ProjectRole, string> = { admin: 'Admin', member: 'Member', viewer: 'Viewer' };
 
 function initials(name: string) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -146,16 +172,22 @@ function MultiUrlField({
 
 export default function ProjectsPage() {
   const { user } = useAuth();
-  const { isPrivileged } = usePermissions();
+  const { isPrivileged, isAdmin } = usePermissions();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [selected, setSelected] = useState<Project | null>(null);
-  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'issues' | 'analytics'>('overview');
+  const [modules, setModules] = useState<ProjectModule[]>([]);
+  // Lightweight own fetch of issue status/module pairs, just to compute
+  // "X of Y done" per module — same self-fetch pattern IssueBoard's
+  // Analytics tab already uses, rather than lifting the Board's full issue
+  // state up here.
+  const [moduleCounts, setModuleCounts] = useState<Record<number, { done: number; total: number }>>({});
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({
-    name: '', description: '', status: 'active',
+    name: '', description: '', status: 'active', code: '',
     repo_url: [] as string[], docs_url: [] as string[],
     start_date: '', expected_end_date: '',
   });
@@ -164,11 +196,27 @@ export default function ProjectsPage() {
 
   // Assignment modal state
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [assignForm, setAssignForm] = useState({ employee_id: '', role: 'developer' });
+  const [assignForm, setAssignForm] = useState<{ employee_id: string; role: ProjectRole }>({ employee_id: '', role: 'member' });
 
-  // Milestone add state
-  const [showMsModal, setShowMsModal] = useState(false);
-  const [msForm, setMsForm] = useState({ title: '', due_date: '', status: 'pending' });
+  // Module add state
+  const [showModuleModal, setShowModuleModal] = useState(false);
+  const [moduleForm, setModuleForm] = useState<{
+    name: string; description: string; start_date: string; target_date: string;
+    status: ModuleStatus; lead_id: string; member_ids: number[];
+  }>({ name: '', description: '', start_date: '', target_date: '', status: 'backlog', lead_id: '', member_ids: [] });
+
+  // isPrivileged is the HR-wide role (admin/lead) — the backend also lets a
+  // project-scoped "admin" (project.service.ts's assertProjectAdmin) manage
+  // their own project's team/modules without being an HR admin. Without this,
+  // the UI would hide Assign/Add Module from exactly the people the backend
+  // was changed to let self-serve.
+  const myAssignment = assignments.find(a => a.employee_id === user?.id);
+  const canManageProject = isPrivileged || myAssignment?.role === 'admin';
+  // A viewer (or someone with no assignment at all) can't write issues either
+  // — issue.service.ts's assertCanWrite rejects both. Threaded down so the
+  // board can disable its own controls instead of only reverting-with-a-toast
+  // after a write already failed.
+  const canWriteIssues = isPrivileged || (myAssignment != null && myAssignment.role !== 'viewer');
 
   useEffect(() => {
     api.get<Project[]>('/projects').then(list => {
@@ -201,14 +249,24 @@ export default function ProjectsPage() {
   const selectProject = async (p: Project) => {
     setSelected(p);
     if (isStacked()) window.scrollTo({ top: 0 });
-    const [ms, as, svcs] = await Promise.all([
-      api.get<Milestone[]>(`/projects/${p.id}/milestones`).catch(() => []),
+    const [mods, as, svcs, issuesForCounts] = await Promise.all([
+      api.get<ProjectModule[]>(`/projects/${p.id}/modules`).catch(() => []),
       api.get<Assignment[]>(`/projects/${p.id}/assignments`).catch(() => []),
       api.get<string[]>(`/projects/${p.id}/services`).catch(() => []),
+      api.get<{ module_id: number | null; status: string }[]>(`/projects/${p.id}/issues`).catch(() => []),
     ]);
-    setMilestones(ms);
+    setModules(mods);
     setAssignments(as);
     setProjectServices(svcs);
+    const counts: Record<number, { done: number; total: number }> = {};
+    for (const issue of issuesForCounts) {
+      if (issue.module_id == null) continue;
+      const bucket = counts[issue.module_id] ?? { done: 0, total: 0 };
+      bucket.total += 1;
+      if (issue.status === 'done') bucket.done += 1;
+      counts[issue.module_id] = bucket;
+    }
+    setModuleCounts(counts);
   };
 
   const toggleService = async (serviceKey: string) => {
@@ -227,13 +285,14 @@ export default function ProjectsPage() {
     e.preventDefault();
     const payload = {
       ...form,
+      code: form.code.trim() || undefined,
       repo_url: form.repo_url.filter(Boolean),
       docs_url: form.docs_url.filter(Boolean),
     };
     try{
     await api.post('/projects', payload);
     setShowModal(false);
-    setForm({ name: '', description: '', status: 'active', repo_url: [], docs_url: [], start_date: '', expected_end_date: '' });
+    setForm({ name: '', description: '', status: 'active', code: '', repo_url: [], docs_url: [], start_date: '', expected_end_date: '' });
     api.get<Project[]>('/projects').then(setProjects).catch(() => { });
       showToast('success', "Project created successfully");
     }catch(err){
@@ -251,7 +310,7 @@ export default function ProjectsPage() {
       role: assignForm.role,
     });
     setShowAssignModal(false);
-      setAssignForm({ employee_id: '', role: '' });
+      setAssignForm({ employee_id: '', role: 'member' });
     const as = await api.get<Assignment[]>(`/projects/${selected.id}/assignments`).catch(() => []);
     setAssignments(as);
       showToast('success', 'Successfully added to the team')
@@ -267,30 +326,40 @@ export default function ProjectsPage() {
     setAssignments(as);
   };
 
-  const submitMilestone = async (e: React.FormEvent) => {
+  const submitModule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selected) return;
-    try{
-    await api.post(`/projects/${selected.id}/milestones`, msForm);
-    setShowMsModal(false);
-    setMsForm({ title: '', due_date: '', status: 'pending' });
-    const ms = await api.get<Milestone[]>(`/projects/${selected.id}/milestones`).catch(() => []);
-    setMilestones(ms);
-      showToast('success', 'Successfully added milestone')
-    }catch(err){
-      showToast('error', 'Failed to add milestone')
+    try {
+      const { id } = await api.post<{ id: number }>(`/projects/${selected.id}/modules`, {
+        name: moduleForm.name,
+        description: moduleForm.description || null,
+        start_date: moduleForm.start_date || null,
+        target_date: moduleForm.target_date,
+        status: moduleForm.status,
+        lead_id: moduleForm.lead_id ? Number(moduleForm.lead_id) : null,
+      });
+      await Promise.all(moduleForm.member_ids.map(empId =>
+        api.post(`/projects/${selected.id}/modules/${id}/members`, { employee_id: empId })
+      ));
+      setShowModuleModal(false);
+      setModuleForm({ name: '', description: '', start_date: '', target_date: '', status: 'backlog', lead_id: '', member_ids: [] });
+      const mods = await api.get<ProjectModule[]>(`/projects/${selected.id}/modules`).catch(() => []);
+      setModules(mods);
+      showToast('success', 'Successfully added module')
+    } catch (err) {
+      showToast('error', 'Failed to add module')
     }
   };
 
-  const updateMsStatus = async (ms: Milestone, status: string) => {
+  const updateModuleStatus = async (mod: ProjectModule, status: string) => {
     if (!selected) return;
-    await api.put(`/projects/${selected.id}/milestones/${ms.id}`, { status }).catch(() => {showToast('error', 'Failed to update status of milestone')});
-    const updated = await api.get<Milestone[]>(`/projects/${selected.id}/milestones`).catch(() => []);
-    setMilestones(updated);
+    await api.put(`/projects/${selected.id}/modules/${mod.id}`, { status }).catch(() => {showToast('error', 'Failed to update status of module')});
+    const updated = await api.get<ProjectModule[]>(`/projects/${selected.id}/modules`).catch(() => []);
+    setModules(updated);
   };
 
   const deleteProject = async (p: Project) => {
-    if (!window.confirm(`Delete "${p.name}"? This removes its assignments, milestones, and services. This cannot be undone.`)) return;
+    if (!window.confirm(`Delete "${p.name}"? This removes its assignments, modules, and services. This cannot be undone.`)) return;
     try{
     await api.delete(`/projects/${p.id}`).catch(() => { });
     const remaining = projects.filter(proj => proj.id !== p.id);
@@ -300,7 +369,7 @@ export default function ProjectsPage() {
         selectProject(remaining[0]);
       } else {
         setSelected(null);
-        setMilestones([]);
+        setModules([]);
         setAssignments([]);
         setProjectServices([]);
       }
@@ -317,9 +386,9 @@ export default function ProjectsPage() {
         <div className="flex justify-between items-center">
           <div>
             <h1>Projects</h1>
-            <p>Assignments, milestones, and project timelines</p>
+            <p>Assignments, modules, and project timelines</p>
           </div>
-          {isPrivileged && (
+          {isAdmin && (
 
             <Button variant='primary' size='small' onClick={() => setShowModal(true)}
               leftIcon={<span
@@ -332,8 +401,10 @@ export default function ProjectsPage() {
       </div>
 
       <div className={`projects-layout ${selected ? 'has-detail' : ''}`}>
-        {/* Project list — hidden on mobile once a project is selected, see .projects-layout.has-detail in grid.css */}
-        <div className="projects-list" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {/* Project list — grid of tiles when browsing, a stacked sidebar once a project
+            is selected, hidden entirely on mobile or while the board is open — see
+            .projects-list rules in grid.css */}
+        <div className="projects-list">
           {projects.length === 0 && (
             <div className="empty-state card">
               <span
@@ -364,9 +435,18 @@ export default function ProjectsPage() {
                 onClick={() => selectProject(p)}
               >
                 <div className="flex justify-between items-center mb-2" style={{ gap: 8 }}>
-                  <h3 style={{ fontSize: 14.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {p.name}
-                  </h3>
+                  <div className="flex items-center gap-2" style={{ overflow: 'hidden' }}>
+                    <span
+                      className="icon-mask"
+                      style={{
+                        flexShrink: 0, height: 16, width: 16, background: 'var(--color-accent)',
+                        WebkitMaskImage: 'url(/icons/folder.svg)', maskImage: 'url(/icons/folder.svg)',
+                      }}
+                    />
+                    <h3 style={{ fontSize: 14.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {p.name}
+                    </h3>
+                  </div>
                   <span className={`badge ${statusBadge[p.status]}`} style={{ flexShrink: 0 }}>{p.status.replace('_', ' ')}</span>
                 </div>
                 {p.description && (
@@ -397,7 +477,7 @@ export default function ProjectsPage() {
         {/* Detail panel */}
         {selected ? (
           <div className="projects-detail" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Mobile-only: the list is hidden here (see .projects-layout.has-detail), so this is the way back */}
+            {/* The project list is hidden once a project is open (see .projects-layout.has-detail in grid.css) — this is the way back */}
             <button
               type="button"
               className="btn btn-text btn-xs projects-back-btn"
@@ -437,7 +517,7 @@ export default function ProjectsPage() {
                   );
                 })()}
               </div>
-              {isPrivileged && (
+              {isAdmin && (
                 <button
                   className="btn btn-secondary btn-xs btn-danger"
                   style={{ flexShrink: 0 }}
@@ -448,12 +528,28 @@ export default function ProjectsPage() {
               )}
             </div>
 
+            <PillTabs
+              options={[
+                { value: 'overview', label: 'Overview' },
+                { value: 'issues', label: 'Board' },
+                { value: 'analytics', label: 'Analytics' },
+              ]}
+              value={activeTab}
+              onChange={(v) => setActiveTab(v as 'overview' | 'issues' | 'analytics')}
+            />
+
+            {activeTab === 'issues' ? (
+              <IssueBoard projectId={selected.id} members={assignments} modules={modules} isAdmin={isAdmin} employees={employees} canWrite={canWriteIssues} />
+            ) : activeTab === 'analytics' ? (
+              <AnalyticsTab projectId={selected.id} />
+            ) : (
+            <>
             <div className="grid-2 projects-detail-split" style={{ gap: 16, alignItems: 'start' }}>
               {/* Team */}
               <div className="card">
                 <div className="flex justify-between items-center mb-3">
                   <div className="card-title" style={{ marginBottom: 0 }}>Team</div>
-                  {isPrivileged && (
+                  {canManageProject && (
 
                     <Button
                       variant='primary'
@@ -476,8 +572,8 @@ export default function ProjectsPage() {
                         <div className="font-semibold text-sm" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
                         <div className="text-muted" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.designation}</div>
                       </div>
-                      <span className="badge badge-accent" style={{ flexShrink: 0 }}>{a.role.replace(/_/g, ' ')}</span>
-                      {isPrivileged && (
+                      <span className="badge badge-accent" style={{ flexShrink: 0 }}>{a.role}</span>
+                      {canManageProject && (
                         <button onClick={() => removeAssignment(a.employee_id)} style={{
                           background: 'none', border: 'none', color: 'var(--color-error)',
                           cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0,
@@ -488,15 +584,15 @@ export default function ProjectsPage() {
                 }
               </div>
 
-              {/* Milestones */}
+              {/* Modules */}
               <div className="card">
                 <div className="flex justify-between items-center mb-3">
-                  <div className="card-title" style={{ marginBottom: 0 }}>Milestones</div>
-                  {isPrivileged && (
+                  <div className="card-title" style={{ marginBottom: 0 }}>Modules</div>
+                  {canManageProject && (
 
                     <Button
                       variant='primary'
-                      onClick={() => setShowMsModal(true)}
+                      onClick={() => setShowModuleModal(true)}
                       size='xs'
                       leftIcon={
                         <span className="icon-mask"
@@ -506,27 +602,37 @@ export default function ProjectsPage() {
                     </Button>
                   )}
                 </div>
-                {milestones.length === 0
-                  ? <p className="text-muted text-sm">No milestones defined</p>
-                  : milestones.map(m => (
+                {modules.length === 0
+                  ? <p className="text-muted text-sm">No modules defined</p>
+                  : modules.map(m => (
                     <div key={m.id} className="flex items-center gap-3 mb-3">
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className="font-semibold text-sm" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title}</div>
-                        <div className="text-muted">{new Date(m.due_date).toLocaleDateString()}</div>
+                        <div className="font-semibold text-sm" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</div>
+                        <div className="text-muted">
+                          {m.lead_name && <span>Lead: {m.lead_name} · </span>}
+                          {new Date(m.target_date).toLocaleDateString()}
+                          {moduleCounts[m.id] && (
+                            <span style={{ marginLeft: 8 }}>
+                              {moduleCounts[m.id].done}/{moduleCounts[m.id].total} issue{moduleCounts[m.id].total > 1 ? 's' : ''} done
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      {isPrivileged ? (
+                      {canManageProject ? (
                         <select
                           value={m.status}
-                          onChange={e => updateMsStatus(m, e.target.value)}
+                          onChange={e => updateModuleStatus(m, e.target.value)}
                           className="form-select"
                           style={{ width: 'auto', padding: '2px 8px', fontSize: 12, flexShrink: 0 }}
                         >
-                          <option value="pending">pending</option>
+                          <option value="backlog">backlog</option>
+                          <option value="planned">planned</option>
                           <option value="in_progress">in progress</option>
                           <option value="completed">completed</option>
+                          <option value="cancelled">cancelled</option>
                         </select>
                       ) : (
-                        <span className={`badge ${msStatus[m.status]}`} style={{ flexShrink: 0 }}>{m.status.replace('_', ' ')}</span>
+                        <span className={`badge ${moduleStatusBadge[m.status]}`} style={{ flexShrink: 0 }}>{m.status.replace('_', ' ')}</span>
                       )}
                     </div>
                   ))
@@ -573,6 +679,8 @@ export default function ProjectsPage() {
                 <p className="text-muted" style={{ fontSize: 11, marginTop: 12 }}>Click a service to toggle assignment</p>
               )}
             </div>
+            </>
+            )}
           </div>
         ) : null}
       </div>
@@ -589,6 +697,16 @@ export default function ProjectsPage() {
               <div className="form-group">
                 <label className="form-label">Project Name *</label>
                 <input className="form-input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Issue key prefix</label>
+                <input
+                  className="form-input"
+                  value={form.code}
+                  onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                  placeholder="Auto-generated from the name if left blank"
+                  maxLength={10}
+                />
               </div>
               <div className="form-group">
                 <label className="form-label">Description</label>
@@ -674,15 +792,22 @@ export default function ProjectsPage() {
                   onChange={e => setAssignForm({ ...assignForm, employee_id: e.target.value })} required>
                   <option value="">Select employee…</option>
                   {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name} — {emp.designation}</option>
+                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.designation})</option>
                   ))}
                 </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Role</label>
-                <input className="form-input" value={assignForm.role}
-                  onChange={e => setAssignForm({ ...assignForm, role: e.target.value })}
-                  placeholder="e.g. developer, tech lead, designer" />
+                <select
+                  className="form-select"
+                  value={assignForm.role}
+                  onChange={e => setAssignForm({ ...assignForm, role: e.target.value as ProjectRole })}
+                >
+                  {ROLE_OPTIONS.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                </select>
+                <p className="text-muted text-sm" style={{ marginTop: 4 }}>
+                  This is a project-only permission, separate from their HR role. Admin can manage this project's team/modules without a global HR admin. Viewer cannot create or edit issues.
+                </p>
               </div>
               <div className="flex gap-3 justify-between mt-4">
 
@@ -707,15 +832,15 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {/* Add Milestone Modal */}
-      {showMsModal && (
-        <div className="modal-overlay" onClick={() => setShowMsModal(false)}>
-          <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+      {/* Add Module Modal */}
+      {showModuleModal && (
+        <div className="modal-overlay" onClick={() => setShowModuleModal(false)}>
+          <div className="modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Add Milestone</h2>
+              <h2>Add Module</h2>
 
               <Button
-                onClick={() => setShowMsModal(false)}
+                onClick={() => setShowModuleModal(false)}
                 variant='text'
                 size='small'
                 leftIcon={<span
@@ -727,32 +852,65 @@ export default function ProjectsPage() {
                   }}
                 />}>{false}</Button>
             </div>
-            <form onSubmit={submitMilestone}>
+            <form onSubmit={submitModule}>
               <div className="form-group">
-                <label className="form-label">Title *</label>
-                <input className="form-input" value={msForm.title}
-                  onChange={e => setMsForm({ ...msForm, title: e.target.value })} required />
+                <label className="form-label">Name *</label>
+                <input className="form-input" value={moduleForm.name}
+                  onChange={e => setModuleForm({ ...moduleForm, name: e.target.value })} required />
               </div>
               <div className="form-group">
-                <label className="form-label">Due Date</label>
-                <input className="form-input" type="date" value={msForm.due_date}
-                  onChange={e => setMsForm({ ...msForm, due_date: e.target.value })} />
+                <label className="form-label">Description</label>
+                <textarea className="form-textarea" rows={2} value={moduleForm.description}
+                  onChange={e => setModuleForm({ ...moduleForm, description: e.target.value })} />
+              </div>
+              <div className="grid-2">
+                <div className="form-group">
+                  <label className="form-label">Start Date</label>
+                  <input className="form-input" type="date" value={moduleForm.start_date}
+                    onChange={e => setModuleForm({ ...moduleForm, start_date: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Target Date *</label>
+                  <input className="form-input" type="date" value={moduleForm.target_date}
+                    onChange={e => setModuleForm({ ...moduleForm, target_date: e.target.value })} required />
+                </div>
               </div>
               <div className="form-group">
                 <label className="form-label">Status</label>
-                <select className="form-select" value={msForm.status}
-                  onChange={e => setMsForm({ ...msForm, status: e.target.value })}>
-                  <option value="pending">Pending</option>
+                <select className="form-select" value={moduleForm.status}
+                  onChange={e => setModuleForm({ ...moduleForm, status: e.target.value as ModuleStatus })}>
+                  <option value="backlog">Backlog</option>
+                  <option value="planned">Planned</option>
                   <option value="in_progress">In Progress</option>
                   <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
                 </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Lead</label>
+                <select className="form-select" value={moduleForm.lead_id}
+                  onChange={e => setModuleForm({ ...moduleForm, lead_id: e.target.value })}>
+                  <option value="">Unassigned</option>
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.designation})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Members</label>
+                <MultiSelect
+                  options={employees.map(emp => ({ id: emp.id, name: emp.name }))}
+                  value={moduleForm.member_ids}
+                  onChange={ids => setModuleForm({ ...moduleForm, member_ids: ids })}
+                  placeholder="No members yet"
+                />
               </div>
               <div className="flex gap-3 justify-between mt-4">
 
                 <Button
                   variant='text'
                   size='small'
-                  onClick={() => setShowMsModal(false)}
+                  onClick={() => setShowModuleModal(false)}
                 >
                   Cancel
                 </Button>
@@ -762,7 +920,7 @@ export default function ProjectsPage() {
                   type='submit'
                   size='small'
                 >
-                  Add Milestone
+                  Add Module
                 </Button>
               </div>
             </form>

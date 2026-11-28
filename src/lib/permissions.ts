@@ -70,7 +70,6 @@ export const ROUTE_ROLES: Record<string, readonly Role[]> = {
   '/weekly-reports': ['admin', 'lead', 'employee'],
   '/leave-report': ['admin'],
   '/financial-report': ['admin'],
-  '/performance-report': ALL_ROLES,
   // Account
   '/profile': ALL_ROLES,
 };

@@ -56,10 +56,12 @@ export const statusBadge: Record<string, string> = {
   on_hold: 'badge-warning',
 };
 
-export const msBadge: Record<string, string> = {
+export const moduleBadge: Record<string, string> = {
   completed: 'badge-success',
   in_progress: 'badge-info',
-  pending: 'badge-neutral',
+  planned: 'badge-info',
+  backlog: 'badge-neutral',
+  cancelled: 'badge-neutral',
 };
 
 export const ackBadge: Record<string, string> = {

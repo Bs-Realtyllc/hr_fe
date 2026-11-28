@@ -1,6 +1,9 @@
+import React from 'react';
+
 interface PillOption {
   value: string;
   label: string;
+  icon?: React.ReactNode;
 }
 
 interface PillTabsProps {
@@ -23,6 +26,7 @@ export default function PillTabs({ options, value, onChange }: PillTabsProps) {
           className={`pill ${value === opt.value ? 'pill-active' : ''}`}
           onClick={() => onChange(opt.value)}
         >
+          {opt.icon}
           {opt.label}
         </button>
       ))}

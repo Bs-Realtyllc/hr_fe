@@ -7,8 +7,9 @@ export interface Project {
   status: string;
   start_date?: string;
   expected_end_date?: string;
-  assigned_role: string;
-  milestones: { id: number; title: string; due_date: string; status: string }[];
+  // Project-scoped permission tier, not this person's HR-wide role.
+  assigned_role: 'admin' | 'member' | 'viewer';
+  modules: { id: number; name: string; target_date: string; status: string }[];
   repo_url: string[];
   docs_url: string[];
 }

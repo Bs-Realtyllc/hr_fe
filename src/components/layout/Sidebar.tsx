@@ -127,7 +127,6 @@ const allNav: { section: string; items: NavItem[] }[] = [
       { href: '/weekly-reports', label: 'Weekly Reports', icon: 'chart-up.svg', roles: ['admin', 'lead'] as Role[] },
       { href: '/leave-report', label: 'Leave Report', icon: 'clipboard.svg', roles: ['admin'] as Role[] },
       { href: '/financial-report', label: 'Financial Report', icon: 'pie-chart-01.svg', roles: ['admin'] as Role[] },
-      { href: '/performance-report', label: 'Performance Reports', icon: 'list-checks.svg', roles: ['admin', 'lead'] as Role[] }
     ],
   },
   {
