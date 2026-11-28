@@ -7,7 +7,8 @@
 //  disable -> confirm turning 2FA off with a current authenticator code
 export type TwoFactorStep = 'intro' | 'scan' | 'backup' | 'disable';
 
-export type Tab = 'personal' | 'organization' | 'security' | 'notification';
+/** Admin profile tabs. 'integrations' is admin-only (company Google Calendar). */
+export type Tab = 'personal' | 'organization' | 'security' | 'notification' | 'integrations';
 
 export type EmployeeTab = 'personal' | 'employment' | 'bank' | 'documents' | 'security' | 'notification' | 'organization';
 

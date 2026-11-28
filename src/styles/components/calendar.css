@@ -1,0 +1,195 @@
+/*
+ * Calendar page — toolbar, "Create event" and "Schedule Meeting" modals
+ * Source: Figma — HR Management System (nodes 2826:16083 "Createevent",
+ *   2538:15247 "Schedule_meeting")
+ *
+ * Scoped to .calendar-modal on purpose: .form-label and InputField are shared
+ * across the app and their global styles are not yet aligned with Figma.
+ */
+
+/* ── Calendar component tokens ──────────────────────────────
+   Fixed sizes from the Figma frames that aren't on the spacing scale.
+   Defined once here so the page never hardcodes them. */
+:root {
+  --calendar-cell-height: 150px;                 /* "Date_Events" cell (node 2719:16345) */
+  --calendar-month-picker-width: 245px;          /* "Calender 2" dropdown content */
+  --calendar-event-modal-width: 410px;           /* "Createevent": 370px content + 2 × 20px padding */
+  --calendar-meeting-modal-width: 590px;         /* "Schedule_meeting": 534px content + 2 × 28px padding */
+  --calendar-attendee-results-max-height: 160px; /* not in Figma; about 3 result rows before scrolling */
+  --calendar-success-popup-width: 452px;         /* "meeting_schedule_popup" (node 2698:18392) */
+  --calendar-popup-content-width: 285px;         /* success + confirm popups' content column */
+  --calendar-confirm-icon-size: 52px;            /* "Logout_popup" trash circle (node 3017:29483) */
+  --calendar-confirm-button-width: 125px;        /* its Delete / No buttons */
+  --calendar-date-badge-width: 42px;             /* "date" badge in the summary cards (node 2719:16406) */
+  --calendar-day-drawer-width: 361px;            /* "+2more" day drawer (node 2852:19417) */
+  --calendar-day-drawer-control-size: 28px;      /* its calendar icon chip and close button */
+  --calendar-details-width: 354px;               /* chip details popover (node 2762:29195): 322px content + 2 × 16px */
+  --calendar-popover-z: 200;                     /* same layer as the modals and drawers */
+}
+
+/* Labels — Figma "Website/Body/medium emphasized": 14px / 20px / 500 */
+.calendar-modal .form-label {
+  font-size: var(--body-md-size);
+  line-height: var(--body-md-leading);
+  font-weight: 500;
+  color: var(--gray-dark-active);
+}
+
+/* Required asterisk */
+.calendar-modal .form-label span {
+  color: var(--error-normal);
+}
+
+/* Inputs — Figma "TextField": 12px 16px padding, #999999 border */
+.calendar-modal .input-field__container {
+  border-color: var(--soft-white-darker-hover);
+}
+
+.calendar-modal .input-field__input {
+  padding: var(--space-12) var(--space-16);
+}
+
+.calendar-modal .input-field__input::placeholder {
+  color: var(--neutral-light-dark);
+}
+
+/* Figma "TextField / Filled": blue border once the field has a value.
+   InputField has no "filled" variant, so detect it from the input itself.
+   Date/time inputs have no placeholder, so they always count as filled. */
+.calendar-modal .input-field__container:has(.input-field__input:not(:placeholder-shown)) {
+  background-color: var(--soft-white-light-active);
+  border-color: var(--blue-dark-normal);
+}
+
+/* Inputs with a leading icon (Location): 16px padding + 20px icon + 8px gap */
+.calendar-modal .calendar-modal__input--with-icon .input-field__input {
+  padding-left: calc(var(--space-16) + var(--space-20) + var(--space-8));
+}
+
+/* BSRealtyAvatar ships with Lato; use the app font like the rest of the modal */
+.calendar-modal .bsr-avatar {
+  font-family: var(--font-body);
+}
+
+/* Footer — Figma: both buttons 40px tall.
+   Cancel is an outlined button (no Button variant for it yet), 96px wide. */
+.calendar-modal .calendar-modal__submit,
+.calendar-modal .calendar-modal__cancel {
+  height: var(--space-40);
+}
+
+.calendar-modal .calendar-modal__cancel {
+  width: var(--space-96);
+  border: 1px solid var(--neutral-light-hover);
+  border-radius: var(--radius-md);
+  color: var(--neutral-normal);
+}
+
+/* Multi-line field (Schedule Meeting "Description") — same look as the
+   TextField inputs above, 64px tall per Figma. */
+.calendar-modal .calendar-modal__textarea {
+  display: block;
+  width: 100%;
+  height: var(--space-64);
+  padding: var(--space-12) var(--space-16);
+  border: 1px solid var(--soft-white-darker-hover);
+  border-radius: var(--radius-sm);
+  background-color: var(--soft-white-light-active);
+  font-family: var(--font-body);
+  font-size: var(--body-lg-size);
+  line-height: var(--body-lg-leading);
+  color: var(--neutral-normal);
+  resize: none;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.calendar-modal .calendar-modal__textarea::placeholder {
+  color: var(--neutral-light-dark);
+}
+
+.calendar-modal .calendar-modal__textarea:hover,
+.calendar-modal .calendar-modal__textarea:focus,
+.calendar-modal .calendar-modal__textarea:not(:placeholder-shown) {
+  border-color: var(--blue-dark-normal);
+}
+
+/* Schedule Meeting Figma uses a wider, rounder Cancel than Create Event */
+.calendar-modal .calendar-modal__cancel--wide {
+  width: calc(var(--space-96) + var(--space-4) + var(--space-2)); /* 102px */
+  border-radius: var(--radius-lg);
+}
+
+/* ── Medium buttons (toolbar "Schedule Meeting", modal Copy / Auto-Generate) ──
+   Figma "Primary/Active" State=medium is a fixed 44px tall; our Button
+   medium grows to 48px (12px padding + 24px line height). Scoped to the
+   calendar so other pages' buttons don't change. 44px = 40 + 4. */
+.button.calendar-button-medium {
+  height: calc(var(--space-40) + var(--space-4));
+}
+
+/* Figma "Primarysmall" is a fixed 40px tall; our Button small is 36px.
+   For small buttons outside .calendar-modal (e.g. the success popup's Done). */
+.button.calendar-button-small {
+  height: var(--space-40);
+}
+
+/* ── Confirm popup buttons (Figma "Logout_popup") ───────────────────────── */
+.button.calendar-button-confirm {
+  width: var(--calendar-confirm-button-width);
+  height: var(--space-40);
+}
+
+/* "Delete": red filled */
+.button.calendar-button-danger {
+  background-color: var(--error-normal);
+  color: var(--soft-white-light);
+}
+
+.button.calendar-button-danger:not(:disabled):hover {
+  background-color: var(--error-normal-hover);
+}
+
+/* "No": red outlined */
+.button.calendar-button-danger-outline {
+  border: 1px solid var(--error-normal-hover);
+  border-radius: var(--radius-md);
+  color: var(--error-normal);
+}
+
+.button.calendar-button-danger-outline:not(:disabled):hover {
+  background-color: var(--error-light);
+  color: var(--error-normal);
+}
+
+/* ── Day drawer ("+N more", Figma node 2852:19417) ──────────────────────
+   Right-side panel without the dark backdrop of the shared .drawer — the
+   calendar stays visible behind it. The overlay is transparent but still
+   catches clicks outside the panel to close it. */
+.calendar-day-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.calendar-day-drawer {
+  width: var(--calendar-day-drawer-width);
+  max-width: 100%;
+  height: 100%;
+  box-shadow: var(--shadow-drawer);
+  animation: drawer-slide-in 0.2s ease-out; /* keyframes from drawer.css */
+}
+
+/* ── Chip details popover (Figma node 2762:29195) ─────────────────────── */
+
+/* "Join with Google Meet": Button xs, but fully rounded (Figma radius 20) */
+.button.calendar-button-pill {
+  border-radius: var(--radius-full);
+}
+
+/* BSRealtyAvatar ships with Lato; use the app font */
+.calendar-details .bsr-avatar {
+  font-family: var(--font-body);
+}

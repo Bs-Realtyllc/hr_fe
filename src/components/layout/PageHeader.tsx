@@ -1,7 +1,8 @@
 'use client'
 
 import { useAuth } from "@/contexts/AuthContext";
-import { BSRealtyAvatar } from "@bsrealtyllc/design-system";
+import { BSRealtyAvatar, BSRealtyNotification } from "@bsrealtyllc/design-system";
+import MaskIcon from "@/components/ui/MaskIcon";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -63,10 +64,12 @@ export default function PageHeader({
                 <button className="topbar-icon-btn" title="Toggle theme">
                     <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/moon.svg)', maskImage: 'url(/icons/moon.svg)' }} />
                 </button>
-                <button className="topbar-icon-btn" title="Inbox" onClick={() => router.push('/inbox')}>
-                    <span className="icon-mask" style={{ WebkitMaskImage: 'url(/icons/inbox.svg)', maskImage: 'url(/icons/inbox.svg)' }} />
-                    <span className="topbar-icon-btn-dot" />
-                </button>
+                <BSRealtyNotification
+                    icon={<MaskIcon src="/icons/bell.svg" size={20} />}
+                    showIndicator
+                    ariaLabel="Inbox"
+                    onClick={() => router.push('/inbox')}
+                />
                 {user &&
 
                     (
@@ -77,7 +80,7 @@ export default function PageHeader({
                                     aria-expanded={showProfileToogle}
                                     className="rounded-full focus:outline-none"
                                 >
-                                    <BSRealtyAvatar size='sm' name={initials(user.name)} />
+                                    <BSRealtyAvatar size='sm' name={initials(user.name)} className="page-header-avatar" />
                                 </button>
 
                             </div>

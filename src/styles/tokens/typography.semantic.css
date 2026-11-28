@@ -41,6 +41,7 @@
 
   --title-md-size: 1rem; /* 16px */
   --title-md-leading: 1.5rem; /* 24px */
+  --title-md-tracking: 0.0094em; /* Figma "Title/medium emphasized" letter spacing */
 
   --title-sm-size: 0.875rem; /* 14px */
   --title-sm-leading: 1.25rem; /* 20px */

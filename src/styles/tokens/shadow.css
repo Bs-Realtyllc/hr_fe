@@ -8,4 +8,9 @@
 :root {
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.04);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-modal: 0 2px 7px rgba(0, 0, 0, 0.08); /* Figma "Createevent" modal (node 2826:16083) */
+  --shadow-popup: 0 2px 4px rgba(0, 0, 0, 0.08); /* Figma success popup (node 2698:18392) */
+  --shadow-xs: 0 1px 4px rgba(0, 0, 0, 0.04); /* Figma confirm popup (node 3017:29483) */
+  --shadow-drawer: -1px 0 8px rgba(0, 0, 0, 0.06); /* Figma calendar day drawer (node 2852:19417) */
+  --shadow-popover: 2px 2px 8px rgba(0, 0, 0, 0.06); /* Figma calendar chip details (node 2762:29195) */
 }
