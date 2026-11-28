@@ -18,6 +18,11 @@
   border-bottom: 1px solid var(--color-border);
 }
 .active-row:last-child { border-bottom: none; }
+/* Keep "On a break" / "Late" on one line; the name/meta column wraps instead. */
+.active-row > .badge {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
 .active-row-avatar-wrap {
   position: relative;
   flex-shrink: 0;
@@ -58,13 +63,20 @@
 }
 .attendance-filters {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: end;
   gap: 12px;
 }
 .attendance-filter-field {
   width: 170px;
   margin-bottom: 0;
+}
+/* Phones: one filter per row at full width instead of 170px with a gap beside it. */
+@media (max-width: 640px) {
+  .attendance-filter-field,
+  .attendance-filters > .btn {
+    width: 100%;
+  }
 }
 .attendance-table td {
   vertical-align: top;
@@ -91,13 +103,38 @@
   flex-direction: column;
   gap: 4px;
 }
+.attendance-clockin-header,
+.attendance-clockout-header,
+.attendance-source-header {
+  width: 140px;
+}
+.attendance-pause-header {
+  width: 400px;
+}
 .attendance-pause-chip {
   font-size: 12.5px;
-  white-space: nowrap;
 }
 .attendance-pause-chip-reason {
   font-weight: 500;
   color: var(--color-text-body);
+}
+.attendance-pause-expand-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-right: 6px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.attendance-pause-expand-btn:hover {
+  color: var(--color-primary);
+}
+.attendance-pause-expand-btn-open {
+  transform: rotate(90deg);
 }
 .attendance-total-header {
   text-align: right;
@@ -108,6 +145,29 @@
   font-variant-numeric: tabular-nums;
   color: var(--color-text-h1);
 }
+/* Small-screen card per record: label column + value column. */
+.attendance-card-fields {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 13.5px;
+}
+.attendance-card-fields dt {
+  color: var(--color-text-muted);
+}
+.attendance-card-fields dd {
+  margin: 0;
+  min-width: 0;
+}
+.attendance-card .attendance-total-cell {
+  text-align: left;
+}
+/* Long pause lines wrap instead of overflowing a phone-width card. */
+.attendance-card .attendance-pause-chip,
+.attendance-card .attendance-name-cell {
+  white-space: normal;
+}
 .attendance-pagination {
   display: flex;
   align-items: center;
@@ -117,4 +177,19 @@
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+/* "Page x of y" + Previous/Next */
+.attendance-pagination > div {
+  align-items: center;
+}
+/* Phones: count on its own line, then page label left and buttons right. */
+@media (max-width: 640px) {
+  .attendance-pagination > div {
+    width: 100%;
+  }
+  .attendance-pagination > div > span {
+    margin-right: auto;
+  }
 }

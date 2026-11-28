@@ -1,0 +1,826 @@
+/* ── Org chart ── */
+/* Height = viewport minus what sits above/below the chart (topbar, header,
+   paddings). dvh excludes mobile browser chrome; vh is the fallback. */
+.org-canvas,
+.org-outline {
+  height: calc(100vh - 220px);
+  height: calc(100dvh - 220px);
+  min-height: 420px;
+}
+
+.org-canvas {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* Mobile topbar (56px) + main-content top padding (76px) + header + 16px bottom padding. */
+@media (max-width: 1120px) {
+  .org-canvas,
+  .org-outline {
+    height: calc(100vh - 210px);
+    height: calc(100dvh - 210px);
+  }
+}
+
+/* The header wraps into two rows here, so reserve more; allow short phones. */
+@media (max-width: 640px) {
+  .org-canvas,
+  .org-outline {
+    height: calc(100vh - 270px);
+    height: calc(100dvh - 270px);
+    min-height: 320px;
+  }
+
+  /* Too big for a phone-sized canvas; pinch/drag replaces it. */
+  .org-canvas .react-flow__minimap {
+    display: none;
+  }
+}
+
+.org-canvas--state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+.org-canvas .react-flow__edge-path {
+  stroke: var(--color-border);
+  stroke-width: 1.5;
+}
+
+/* Edge anchors are structural only; keep them invisible. */
+.org-handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.org-card {
+  width: 240px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.org-card--me {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+.org-card__avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.org-card__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.org-card__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.org-card__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-h3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.org-card__meta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.org-card__me {
+  flex-shrink: 0;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.org-page__header {
+  gap: 16px;
+}
+
+/* Teams view: company and department boxes */
+.org-card--team,
+.org-card--company {
+  background: var(--color-bg);
+}
+
+.org-card--company {
+  border-color: var(--color-primary);
+}
+
+.org-card__avatar--icon {
+  border-radius: var(--radius-md);
+}
+
+/* ── Collapse / expand toggle ── */
+.org-node {
+  position: relative;
+  /* React Flow sets pointer-events: none on nodes that are neither
+     selectable nor draggable; turn them back on so the toggle can be
+     clicked and name tooltips show. Dragging a card still pans. */
+  pointer-events: all;
+}
+
+.org-toggle {
+  position: absolute;
+  left: 50%;
+  bottom: -11px;
+  transform: translateX(-50%);
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-body);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.org-toggle:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.org-toggle:focus-visible,
+.org-findme:focus-visible,
+.org-search__input:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ── Search / Find me highlight ── */
+.org-card--highlight {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px var(--color-primary-light);
+  animation: org-pulse 1.2s ease-out 2;
+}
+
+@keyframes org-pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--color-primary-light);
+  }
+  100% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .org-card--highlight {
+    animation: none;
+  }
+}
+
+/* ── Canvas toolbar ── */
+.org-search {
+  position: relative;
+  width: 280px;
+  max-width: calc(100vw - 96px);
+}
+
+.org-search__icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.org-search__input {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px 0 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-body);
+  font-size: 13px;
+  box-shadow: var(--shadow-sm);
+}
+
+.org-search__list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+.org-search__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.org-search__option.is-active {
+  background: var(--color-primary-light);
+}
+
+.org-search__avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+}
+
+.org-search__text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.org-search__name,
+.org-search__title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.org-search__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-h3);
+}
+
+.org-search__title {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.org-search__empty {
+  padding: 8px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.org-findme {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-body);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+.org-findme:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* ── Department line on person cards ── */
+.org-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.org-card__dept {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.org-card__dept-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Counts never shrink; a long department name gets the ellipsis instead. */
+.org-card__reports {
+  flex-shrink: 0;
+}
+
+.org-dept-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+}
+
+.org-dept--0 {
+  background: var(--color-primary);
+}
+.org-dept--1 {
+  background: var(--color-accent);
+}
+.org-dept--2 {
+  background: var(--color-highlight);
+}
+.org-dept--3 {
+  background: var(--color-info);
+}
+
+/* ── Outline view ── */
+.org-outline {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.org-outline__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.org-outline__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.org-outline__tree {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+}
+
+.org-outline__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 6px 8px 6px calc(8px + var(--level, 0) * 24px);
+  border-radius: var(--radius-md);
+  cursor: default;
+}
+
+.org-outline__row:hover {
+  background: var(--color-bg);
+}
+
+.org-outline__row:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.org-outline__row[aria-selected='true'] {
+  background: var(--color-bg);
+}
+
+.org-outline__row.is-me {
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.org-outline__row.is-highlight {
+  background: var(--color-primary-light);
+}
+
+.org-outline__chevron {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.org-outline__chevron.is-open {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .org-outline__chevron {
+    transition: none;
+  }
+}
+
+.org-outline__avatar {
+  width: 30px;
+  height: 30px;
+  font-size: 11px;
+}
+
+.org-outline__text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.org-outline__name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-h3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.org-outline__title {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Narrow screens: less indent so deep levels still fit. */
+@media (max-width: 640px) {
+  .org-outline__row {
+    padding-left: calc(4px + var(--level, 0) * 14px);
+  }
+  .org-outline__title {
+    display: none;
+  }
+}
+
+/* ── Narrow screens ── */
+@media (max-width: 640px) {
+  /* The shared header has a fixed height; let it grow when the tabs wrap. */
+  .org-page__header {
+    height: auto;
+    flex-wrap: wrap;
+  }
+
+  .org-outline__toolbar .org-search {
+    flex: 1 1 100%;
+    max-width: none;
+    width: auto;
+  }
+
+  /* Icon-only buttons; the label stays available to screen readers. */
+  .org-btn-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+/* ── Clickable person cards ── */
+.org-card--button {
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.org-card--button:hover {
+  border-color: var(--color-primary);
+}
+
+.org-card--button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.org-card--selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.org-outline__row.is-clickable {
+  cursor: pointer;
+}
+
+.org-outline__row.is-selected {
+  background: var(--color-primary-light);
+}
+
+/* ── Person details panel ── */
+.org-panel {
+  position: fixed;
+  top: 96px;
+  right: 24px;
+  bottom: 24px;
+  z-index: 150;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    var(--shadow-card),
+    0 12px 32px rgba(0, 0, 0, 0.12);
+  animation: org-panel-in 0.15s ease-out;
+}
+
+@keyframes org-panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .org-panel {
+    animation: none;
+  }
+}
+
+.org-panel__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.org-panel__avatar {
+  width: 48px;
+  height: 48px;
+  font-size: 16px;
+}
+
+.org-panel__heading {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.org-panel__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-h2);
+  overflow-wrap: anywhere;
+}
+
+.org-panel__name:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.org-panel__title {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-body);
+}
+
+.org-panel__status {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.org-panel__close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.org-panel__close:hover {
+  background: var(--color-bg);
+  color: var(--color-text-body);
+}
+
+.org-panel__close:focus-visible,
+.org-panel__person:focus-visible,
+.org-panel__profile:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.org-panel__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 20px 20px;
+}
+
+.org-panel__section {
+  margin: 16px 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.org-panel__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.org-panel__person {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.org-panel__person:hover {
+  background: var(--color-bg);
+}
+
+.org-panel__empty,
+.org-panel__note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.org-panel__note {
+  margin-top: 8px;
+}
+
+.org-panel__footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--color-border);
+}
+
+.org-panel__profile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--soft-white-light, #fff);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.org-panel__profile:hover {
+  background: var(--color-primary-hover);
+}
+
+/* Phones: the panel becomes a bottom sheet. */
+@media (max-width: 640px) {
+  .org-panel {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: auto;
+    max-width: none;
+    max-height: 70vh;
+  }
+}
+
+/* Header actions: Find me + view tabs */
+.org-page__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ── Panel footer: Copy link + profile ── */
+.org-panel__footer {
+  display: flex;
+  gap: 8px;
+}
+
+.org-panel__footer .org-panel__profile {
+  flex: 1;
+}
+
+.org-panel__copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-body);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.org-panel__copy:only-child {
+  flex: 1;
+}
+
+.org-panel__copy:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.org-panel__copy:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.org-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

@@ -5,6 +5,13 @@
   align-items: flex-start;
   gap: 12px;
 }
+.tracker-live-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
 .tracker-live-skeleton {
   height: 140px;
   background: var(--color-border);
@@ -40,6 +47,29 @@
   margin-top: -6px;
 }
 
+/* Inline, not a popup — sits in the flow of the page the same way any other
+   tracker state does, since the countdown needs to stay visible and keep
+   ticking without blocking the rest of the page like a modal would. */
+.tracker-idle-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+}
+.tracker-idle-banner-text { display: flex; flex-direction: column; gap: 2px; }
+.tracker-idle-banner-title { font-weight: 600; color: var(--color-text-h1); }
+.tracker-idle-banner-countdown {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-warning);
+}
+
 .tracker-history {
   display: flex;
   flex-direction: column;
@@ -47,13 +77,20 @@
 }
 .tracker-history-filters {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: end;
   gap: 12px;
 }
 .tracker-filter-field {
   width: 170px;
   margin-bottom: 0;
+}
+/* Phones: one filter per row at full width instead of 170px with a gap beside it. */
+@media (max-width: 640px) {
+  .tracker-filter-field,
+  .tracker-history-filters > .btn {
+    width: 100%;
+  }
 }
 .tracker-history-empty {
   padding: 24px;
@@ -79,6 +116,14 @@
 .tracker-table-total-header {
   text-align: right;
 }
+.tracker-clockin-header,
+.tracker-clockout-header,
+.tracker-source-header {
+  width: 140px;
+}
+.tracker-pause-header {
+  width: 400px;
+}
 .tracker-table-total-cell {
   text-align: right;
   font-weight: 700;
@@ -98,11 +143,28 @@
 }
 .tracker-pause-chip {
   font-size: 12.5px;
-  white-space: nowrap;
 }
 .tracker-pause-chip-reason {
   font-weight: 500;
   color: var(--color-text-body);
+}
+.tracker-pause-expand-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-right: 6px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.tracker-pause-expand-btn:hover {
+  color: var(--color-primary);
+}
+.tracker-pause-expand-btn-open {
+  transform: rotate(90deg);
 }
 .tracker-history-pagination {
   display: flex;
@@ -110,4 +172,33 @@
   justify-content: space-between;
   font-size: 13px;
   color: var(--color-text-muted);
+  flex-wrap: wrap;
+  gap: 8px 16px;
 }
+/* "Page x of y" + Previous/Next */
+.tracker-history-pagination > div {
+  align-items: center;
+}
+/* Phones: count on its own line, then page label left and buttons right. */
+@media (max-width: 640px) {
+  .tracker-history-pagination > div {
+    width: 100%;
+  }
+  .tracker-history-pagination > div > span {
+    margin-right: auto;
+  }
+}
+
+/* Small-screen shift card (AttendanceHistory): label column + value column. */
+.tracker-card-fields {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 13.5px;
+}
+.tracker-card-fields dt { color: var(--color-text-muted); }
+.tracker-card-fields dd { margin: 0; min-width: 0; }
+.tracker-card-fields .tracker-table-total-cell { text-align: left; }
+/* Long pause lines wrap inside a phone-width card. */
+.tracker-card-fields .tracker-pause-chip { white-space: normal; }
