@@ -806,7 +806,7 @@ export default function ProjectsPage() {
                   {ROLE_OPTIONS.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                 </select>
                 <p className="text-muted text-sm" style={{ marginTop: 4 }}>
-                  This is a project-only permission, separate from their HR role. Admin can manage this project's team/modules without a global HR admin. Viewer cannot create or edit issues.
+                  This is a project-only permission, separate from their HR role. Admin can manage this project&apos;s team/modules without a global HR admin. Viewer cannot create or edit issues.
                 </p>
               </div>
               <div className="flex gap-3 justify-between mt-4">
