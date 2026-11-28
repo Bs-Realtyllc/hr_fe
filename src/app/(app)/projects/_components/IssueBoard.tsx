@@ -11,9 +11,10 @@ import KanbanView from './KanbanView';
 import ListView from './ListView';
 import IssueDetailPanel from './IssueDetailPanel';
 import AddIssue from './AddIssue';
+import IssueFilters from './IssueFilters';
 import {
   Issue, IssueLabel, Module, ProjectMember, GroupByField, ViewMode,
-  GROUP_BY_OPTIONS, patchForBucket,
+  GROUP_BY_OPTIONS, patchForBucket, IssueFilters as FiltersType, EMPTY_FILTERS, applyFilters,
 } from './types';
 
 export default function IssueBoard({
@@ -41,6 +42,7 @@ export default function IssueBoard({
   const [groupBy, setGroupBy] = useState<GroupByField>('status');
   const [viewMode, setViewMode] = useState<ViewMode>('board');
   const [selectedIssueId, setSelectedIssueId] = useState<number | null>(null);
+  const [filters, setFilters] = useState<FiltersType>(EMPTY_FILTERS);
 
   const load = useCallback(async () => {
     try {
@@ -117,6 +119,8 @@ export default function IssueBoard({
   if (error) return <p className="text-sm" style={{ color: 'var(--color-error)' }}>{error}</p>;
 
   const isTruncated = totalIssueCount != null && totalIssueCount > issues.length;
+  const visibleIssues = applyFilters(issues, filters);
+  const isFiltered = visibleIssues.length !== issues.length;
 
   return (
     <div>
@@ -128,8 +132,11 @@ export default function IssueBoard({
       <div className="flex justify-between items-center" style={{ marginBottom: 14 }}>
         <div className="flex items-center gap-3">
           <p className="text-muted text-sm">
-            {isTruncated ? `${issues.length} of ${totalIssueCount} issues` : `${issues.length} ${issues.length === 1 ? 'issue' : 'issues'}`}
+            {isFiltered
+              ? `${visibleIssues.length} of ${issues.length} issues`
+              : isTruncated ? `${issues.length} of ${totalIssueCount} issues` : `${issues.length} ${issues.length === 1 ? 'issue' : 'issues'}`}
           </p>
+          <IssueFilters filters={filters} onChange={setFilters} members={members} labels={labels} modules={modules} />
           <PillTabs
             options={GROUP_BY_OPTIONS.map(o => ({ value: o.value, label: `Group by ${o.label}` }))}
             value={groupBy}
@@ -160,7 +167,7 @@ export default function IssueBoard({
 
       {viewMode === 'board' ? (
         <KanbanView
-          issues={issues}
+          issues={visibleIssues}
           groupBy={groupBy}
           members={members}
           employees={employees}
@@ -171,7 +178,7 @@ export default function IssueBoard({
         />
       ) : (
         <ListView
-          issues={issues}
+          issues={visibleIssues}
           groupBy={groupBy}
           members={members}
           employees={employees}
