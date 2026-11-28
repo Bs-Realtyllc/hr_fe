@@ -48,7 +48,6 @@ export default function IssueDetailPanel({
   const [priority, setPriority] = useState(issue.priority);
   const [type, setType] = useState(issue.type);
   const [parentIssueId, setParentIssueId] = useState(issue.parent_issue_id ? String(issue.parent_issue_id) : '');
-  const [storyPoints, setStoryPoints] = useState(issue.story_points != null ? String(issue.story_points) : '');
   const [assigneeId, setAssigneeId] = useState(issue.assignee_id ? String(issue.assignee_id) : '');
   const [moduleId, setModuleId] = useState(issue.module_id ? String(issue.module_id) : '');
   const [dueDate, setDueDate] = useState(issue.due_date ?? '');
@@ -104,7 +103,6 @@ export default function IssueDetailPanel({
       await api.put(`/projects/${projectId}/issues/${issue.id}`, {
         type,
         parent_issue_id: parentIssueId ? Number(parentIssueId) : null,
-        story_points: storyPoints ? Number(storyPoints) : null,
         due_date: dueDate || null,
         start_date: startDate || null,
         description: description || null,
@@ -136,7 +134,6 @@ export default function IssueDetailPanel({
 
   const isDirty = type !== issue.type
     || parentIssueId !== (issue.parent_issue_id ? String(issue.parent_issue_id) : '')
-    || storyPoints !== (issue.story_points != null ? String(issue.story_points) : '')
     || dueDate !== (issue.due_date ?? '')
     || startDate !== (issue.start_date ?? '')
     || description !== (issue.description ?? '')
@@ -259,18 +256,6 @@ export default function IssueDetailPanel({
                 menuWidth={180}
                 trigger={moduleId ? modules.find(m => String(m.id) === moduleId)?.name ?? 'None' : 'None'}
                 disabled={!canWrite}
-              />
-            </span>
-            <span className="pill" style={{ gap: 6, padding: '4px 10px' }}>
-              <span className="text-muted" style={{ fontSize: 11 }}>Points</span>
-              <input
-                type="number"
-                min="0"
-                step="0.5"
-                value={storyPoints}
-                onChange={e => setStoryPoints(e.target.value)}
-                disabled={!canWrite}
-                style={{ width: 32, border: 'none', background: 'none', font: 'inherit' }}
               />
             </span>
             <span className="pill" style={{ gap: 6, padding: '4px 10px' }}>

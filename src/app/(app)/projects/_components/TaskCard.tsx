@@ -68,7 +68,6 @@ export default function TaskCard({
 
       {/* Read-only meta row — wraps independently of the quick-edit row above. */}
       <div className="flex items-center gap-2 flex-wrap" style={{ marginBottom: 8 }}>
-        {issue.story_points != null && <span className="badge badge-accent">{issue.story_points} pt</span>}
         {issue.due_date && (
           <span className="flex items-center gap-1 text-muted" style={{ fontSize: 11 }}>
             <Calendar size={11} />

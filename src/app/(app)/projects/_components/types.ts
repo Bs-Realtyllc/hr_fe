@@ -18,7 +18,6 @@ export interface Issue {
   priority: IssuePriority;
   type: IssueType;
   parent_issue_id: number | null;
-  story_points: number | null;
   sequence_number: number;
   issue_key: string;
   assignee_id: number | null;
@@ -256,4 +255,39 @@ export function patchForBucket(field: GroupByField, bucketKey: string): Record<s
     case 'assignee': return { assignee_id: bucketKey === 'unassigned' ? null : Number(bucketKey) };
     default: return {};
   }
+}
+
+// --- Filtering (narrows which issues reach the board/list, unlike
+// grouping above, which only decides how the full set is bucketed) ---
+
+export interface IssueFilters {
+  status: IssueStatus[];
+  priority: IssuePriority[];
+  type: IssueType[];
+  /** Employee id as a string, or 'unassigned'. */
+  assignee: string[];
+  label: number[];
+  module: number[];
+}
+
+export const EMPTY_FILTERS: IssueFilters = { status: [], priority: [], type: [], assignee: [], label: [], module: [] };
+
+export function filterCount(f: IssueFilters): number {
+  return f.status.length + f.priority.length + f.type.length + f.assignee.length + f.label.length + f.module.length;
+}
+
+export function applyFilters(issues: Issue[], f: IssueFilters): Issue[] {
+  if (filterCount(f) === 0) return issues;
+  return issues.filter((i) => {
+    if (f.status.length && !f.status.includes(i.status)) return false;
+    if (f.priority.length && !f.priority.includes(i.priority)) return false;
+    if (f.type.length && !f.type.includes(i.type)) return false;
+    if (f.assignee.length) {
+      const key = i.assignee_id != null ? String(i.assignee_id) : 'unassigned';
+      if (!f.assignee.includes(key)) return false;
+    }
+    if (f.label.length && !i.labels.some((l) => f.label.includes(l.id))) return false;
+    if (f.module.length && (i.module_id == null || !f.module.includes(i.module_id))) return false;
+    return true;
+  });
 }

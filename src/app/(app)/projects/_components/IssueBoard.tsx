@@ -11,13 +11,14 @@ import KanbanView from './KanbanView';
 import ListView from './ListView';
 import IssueDetailPanel from './IssueDetailPanel';
 import AddIssue from './AddIssue';
+import IssueFilters from './IssueFilters';
 import {
   Issue, IssueLabel, Module, ProjectMember, GroupByField, ViewMode,
-  GROUP_BY_OPTIONS, patchForBucket,
+  GROUP_BY_OPTIONS, patchForBucket, IssueFilters as FiltersType, EMPTY_FILTERS, applyFilters,
 } from './types';
 
 export default function IssueBoard({
-  projectId, members, modules, isAdmin, employees, canWrite,
+  projectId, members, modules, isAdmin, employees, canWrite, initialIssueId,
 }: {
   projectId: number;
   members: ProjectMember[];
@@ -25,9 +26,15 @@ export default function IssueBoard({
   isAdmin: boolean;
   employees: EmployeeSummary[];
   canWrite: boolean;
+  /** Deep-linked from elsewhere (e.g. My Issues) — opens once on mount, same as clicking the card. */
+  initialIssueId?: number;
 }) {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [labels, setLabels] = useState<IssueLabel[]>([]);
+  // GET .../issues caps at 500 rows as a safety limit, not pagination — this
+  // is the project's real count, so the board can say so instead of silently
+  // hiding issues past the cap with no indication anything's missing.
+  const [totalIssueCount, setTotalIssueCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -36,16 +43,19 @@ export default function IssueBoard({
 
   const [groupBy, setGroupBy] = useState<GroupByField>('status');
   const [viewMode, setViewMode] = useState<ViewMode>('board');
-  const [selectedIssueId, setSelectedIssueId] = useState<number | null>(null);
+  const [selectedIssueId, setSelectedIssueId] = useState<number | null>(initialIssueId ?? null);
+  const [filters, setFilters] = useState<FiltersType>(EMPTY_FILTERS);
 
   const load = useCallback(async () => {
     try {
-      const [iss, lbl] = await Promise.all([
+      const [iss, lbl, cnt] = await Promise.all([
         api.get<Issue[]>(`/projects/${projectId}/issues`),
         api.get<IssueLabel[]>(`/projects/${projectId}/labels`),
+        api.get<{ total: number }>(`/projects/${projectId}/issues/count`).catch(() => null),
       ]);
       setIssues(iss);
       setLabels(lbl);
+      setTotalIssueCount(cnt?.total ?? null);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -110,11 +120,25 @@ export default function IssueBoard({
   if (loading) return <p className="text-muted text-sm">Loading issues…</p>;
   if (error) return <p className="text-sm" style={{ color: 'var(--color-error)' }}>{error}</p>;
 
+  const isTruncated = totalIssueCount != null && totalIssueCount > issues.length;
+  const visibleIssues = applyFilters(issues, filters);
+  const isFiltered = visibleIssues.length !== issues.length;
+
   return (
     <div>
+      {isTruncated && (
+        <p className="text-sm" style={{ color: 'var(--color-warning)', marginBottom: 10 }}>
+          Showing the first {issues.length} of {totalIssueCount} issues. Older or lower-priority issues are hidden — contact an admin if you need to see the rest.
+        </p>
+      )}
       <div className="flex justify-between items-center" style={{ marginBottom: 14 }}>
         <div className="flex items-center gap-3">
-          <p className="text-muted text-sm">{issues.length} {issues.length === 1 ? 'issue' : 'issues'}</p>
+          <p className="text-muted text-sm">
+            {isFiltered
+              ? `${visibleIssues.length} of ${issues.length} issues`
+              : isTruncated ? `${issues.length} of ${totalIssueCount} issues` : `${issues.length} ${issues.length === 1 ? 'issue' : 'issues'}`}
+          </p>
+          <IssueFilters filters={filters} onChange={setFilters} members={members} labels={labels} modules={modules} />
           <PillTabs
             options={GROUP_BY_OPTIONS.map(o => ({ value: o.value, label: `Group by ${o.label}` }))}
             value={groupBy}
@@ -145,7 +169,7 @@ export default function IssueBoard({
 
       {viewMode === 'board' ? (
         <KanbanView
-          issues={issues}
+          issues={visibleIssues}
           groupBy={groupBy}
           members={members}
           employees={employees}
@@ -156,7 +180,7 @@ export default function IssueBoard({
         />
       ) : (
         <ListView
-          issues={issues}
+          issues={visibleIssues}
           groupBy={groupBy}
           members={members}
           employees={employees}

@@ -96,7 +96,6 @@ export default function ListView({
                         disabled={!canWrite}
                       />
                     </span>
-                    {issue.story_points != null && <span className="badge badge-accent">{issue.story_points} pt</span>}
                     {issue.due_date && (
                       <span className="flex items-center gap-1 text-muted" style={{ fontSize: 11 }}>
                         <Calendar size={11} />

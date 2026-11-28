@@ -29,7 +29,6 @@ export default function AddIssue({
   const [priority, setPriority] = useState('none');
   const [type, setType] = useState<IssueType>('task');
   const [parentIssueId, setParentIssueId] = useState('');
-  const [storyPoints, setStoryPoints] = useState('');
   const [assigneeId, setAssigneeId] = useState<number | null>(null);
   const [moduleId, setModuleId] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -60,7 +59,6 @@ export default function AddIssue({
         priority,
         type,
         parent_issue_id: parentIssueId ? Number(parentIssueId) : null,
-        story_points: storyPoints ? Number(storyPoints) : null,
         assignee_id: assigneeId,
         module_id: moduleId ? Number(moduleId) : null,
         start_date: startDate || null,
@@ -171,17 +169,6 @@ export default function AddIssue({
               onChange={setModuleId}
               menuWidth={180}
               trigger={moduleId ? modules.find(m => String(m.id) === moduleId)?.name ?? 'None' : 'None'}
-            />
-          </span>
-          <span className="pill" style={{ gap: 6, padding: '4px 10px' }}>
-            <span className="text-muted" style={{ fontSize: 11 }}>Points</span>
-            <input
-              type="number"
-              min="0"
-              step="0.5"
-              value={storyPoints}
-              onChange={e => setStoryPoints(e.target.value)}
-              style={{ width: 32, border: 'none', background: 'none', font: 'inherit' }}
             />
           </span>
           <span className="pill" style={{ gap: 6, padding: '4px 10px' }}>
