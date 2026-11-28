@@ -28,6 +28,10 @@ export default function IssueBoard({
 }) {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [labels, setLabels] = useState<IssueLabel[]>([]);
+  // GET .../issues caps at 500 rows as a safety limit, not pagination — this
+  // is the project's real count, so the board can say so instead of silently
+  // hiding issues past the cap with no indication anything's missing.
+  const [totalIssueCount, setTotalIssueCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -40,12 +44,14 @@ export default function IssueBoard({
 
   const load = useCallback(async () => {
     try {
-      const [iss, lbl] = await Promise.all([
+      const [iss, lbl, cnt] = await Promise.all([
         api.get<Issue[]>(`/projects/${projectId}/issues`),
         api.get<IssueLabel[]>(`/projects/${projectId}/labels`),
+        api.get<{ total: number }>(`/projects/${projectId}/issues/count`).catch(() => null),
       ]);
       setIssues(iss);
       setLabels(lbl);
+      setTotalIssueCount(cnt?.total ?? null);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -110,11 +116,20 @@ export default function IssueBoard({
   if (loading) return <p className="text-muted text-sm">Loading issues…</p>;
   if (error) return <p className="text-sm" style={{ color: 'var(--color-error)' }}>{error}</p>;
 
+  const isTruncated = totalIssueCount != null && totalIssueCount > issues.length;
+
   return (
     <div>
+      {isTruncated && (
+        <p className="text-sm" style={{ color: 'var(--color-warning)', marginBottom: 10 }}>
+          Showing the first {issues.length} of {totalIssueCount} issues. Older or lower-priority issues are hidden — contact an admin if you need to see the rest.
+        </p>
+      )}
       <div className="flex justify-between items-center" style={{ marginBottom: 14 }}>
         <div className="flex items-center gap-3">
-          <p className="text-muted text-sm">{issues.length} {issues.length === 1 ? 'issue' : 'issues'}</p>
+          <p className="text-muted text-sm">
+            {isTruncated ? `${issues.length} of ${totalIssueCount} issues` : `${issues.length} ${issues.length === 1 ? 'issue' : 'issues'}`}
+          </p>
           <PillTabs
             options={GROUP_BY_OPTIONS.map(o => ({ value: o.value, label: `Group by ${o.label}` }))}
             value={groupBy}
