@@ -18,7 +18,6 @@ export interface Issue {
   priority: IssuePriority;
   type: IssueType;
   parent_issue_id: number | null;
-  story_points: number | null;
   sequence_number: number;
   issue_key: string;
   assignee_id: number | null;
